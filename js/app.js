@@ -238,7 +238,7 @@ function moldura(conteudo){
       </nav>
       <div class="lat-pe">
         <div class="lat-av">${esc(iniciais(p.nome))}</div>
-        <div class="lat-quem"><b>${esc(p.nome)}</b><span>${esc(nomePapel(p.papel))} · v${esc(CFG.VERSAO)}</span></div>
+        <div class="lat-quem"><b>${esc(nomeBonito(p.nome))}</b><span>${esc(nomePapel(p.papel))} · v${esc(CFG.VERSAO)}</span></div>
         <button class="lat-sair" id="m-sair" title="Sair">${svg('sair')}</button>
       </div>
     </aside>
@@ -281,25 +281,44 @@ function rota(){
 /* =====================================================================
    INÍCIO — frentes e painéis
    ===================================================================== */
+const nomeBonito = n => String(n||'').toLowerCase().replace(/(^|\s)(\S)/g, (m, e, l) => e + l.toUpperCase()).replace(/\b(Da|De|Do|Das|Dos|E)\b/g, x => x.toLowerCase());
 function telaInicio(){
   const visiveis = E.paineis.filter(podeVer);
   const grupos = {};
   visiveis.forEach(p => (grupos[p.frente] = grupos[p.frente] || []).push(p));
   const frentes = Object.keys(grupos).sort((a,b) => (ORDEM_FRENTES.indexOf(a)+1||99) - (ORDEM_FRENTES.indexOf(b)+1||99));
-  const hora = new Date().getHours();
+  const agora = new Date(), hora = agora.getHours();
   const saud = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
+  const hoje = agora.toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
   const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  // situação dos dados
+  const dataRef = p => { const m = E.metas[p.id]; if (!m) return null; return m.referencia ? new Date(m.referencia + 'T12:00') : new Date(m.atualizado_em); };
+  const comDados = visiveis.filter(p => E.metas[p.id]);
+  const dias = d => Math.floor((agora - d) / 864e5);
+  const antigos = comDados.filter(p => dias(dataRef(p)) > 30);
+  const semana = comDados.filter(p => dias(new Date(E.metas[p.id].atualizado_em)) <= 7);
+  const semDados = visiveis.filter(p => !E.metas[p.id]);
 
   moldura(`
-    ${!standalone ? `<div class="instalar" id="faixa-instalar"><p><b>Instale o app</b> no celular ou no computador para abrir direto, como um aplicativo.</p><button class="btn prim peq" id="b-inst">Instalar</button><button class="link" id="b-inst-x" aria-label="Fechar">fechar</button></div>` : ''}
-    <div class="boas">
-      <div><h2>${saud}, ${esc(E.perfil.nome.split(' ')[0])}</h2><p>${visiveis.length} painéis liberados para você em ${frentes.length} frentes.</p></div>
-      <input class="busca-global" id="busca" type="search" placeholder="Buscar painel...">
-    </div>
-    ${frentes.length ? `<div class="frentes" id="frentes">${frentes.map(f => cartaoFrente(f, grupos[f])).join('')}</div>`
+    <section class="ini-topo">
+      <div>
+        <div class="ini-eyebrow">CRV Industrial · Unidade Capinópolis</div>
+        <h1>${saud}, ${esc(nomeBonito(E.perfil.nome).split(' ')[0])}</h1>
+        <div class="ini-data">${esc(hoje.charAt(0).toUpperCase() + hoje.slice(1))}</div>
+      </div>
+      <input class="ini-busca" id="busca" type="search" placeholder="Buscar painel…" aria-label="Buscar painel">
+    </section>
+    <section class="ini-stats">
+      <div class="ist"><span>Painéis disponíveis</span><b>${visiveis.length}</b><small>em ${frentes.length} frentes</small></div>
+      <div class="ist"><span>Atualizados na semana</span><b>${semana.length}</b><small>últimos 7 dias</small></div>
+      <div class="ist ${antigos.length ? 'alerta' : ''}"><span>Dados com mais de 30 dias</span><b>${antigos.length}</b><small>${antigos.length ? esc(antigos.slice(0,2).map(p=>p.nome).join(', ')) + (antigos.length > 2 ? '…' : '') : 'tudo em dia'}</small></div>
+      <div class="ist ${semDados.length ? 'neutro' : ''}"><span>Sem dados carregados</span><b>${semDados.length}</b><small>${semDados.length ? esc(semDados.slice(0,2).map(p=>p.nome).join(', ')) + (semDados.length > 2 ? '…' : '') : 'todos carregados'}</small></div>
+    </section>
+    ${!standalone ? `<div class="ini-instalar" id="faixa-instalar"><span>Use como aplicativo no celular ou no computador.</span><button class="link" id="b-inst">Instalar</button><button class="link" id="b-inst-x" aria-label="Fechar">×</button></div>` : ''}
+    ${frentes.length ? frentes.map(f => blocoFrente(f, grupos[f])).join('')
       : `<div class="cartao vazio"><h3>Nenhum painel liberado</h3><p>Peça ao administrador para liberar as frentes que você usa.</p></div>`}
   `);
-  if ($('#b-inst')) {
+  if ($('#faixa-instalar')) {
     try { if (localStorage.getItem('crv-inst-x')) $('#faixa-instalar').remove(); } catch(_){}
     $('#b-inst') && ($('#b-inst').onclick = instalarApp);
     $('#b-inst-x') && ($('#b-inst-x').onclick = () => { $('#faixa-instalar').remove(); try{localStorage.setItem('crv-inst-x','1')}catch(_){} });
@@ -307,23 +326,24 @@ function telaInicio(){
   document.querySelectorAll('[data-painel]').forEach(b => b.onclick = () => location.hash = '#/p/' + encodeURIComponent(b.dataset.painel));
   $('#busca')?.addEventListener('input', ev => {
     const q = normal(ev.target.value);
-    document.querySelectorAll('.painel-item').forEach(b => b.classList.toggle('oculto', q && !normal(b.dataset.nome).includes(q)));
-    document.querySelectorAll('.frente').forEach(f => f.classList.toggle('oculto', !f.querySelector('.painel-item:not(.oculto)')));
+    document.querySelectorAll('.tile').forEach(b => b.classList.toggle('oculto', q && !normal(b.dataset.nome).includes(q)));
+    document.querySelectorAll('.ini-frente').forEach(f => f.classList.toggle('oculto', !f.querySelector('.tile:not(.oculto)')));
   });
 }
 
-function cartaoFrente(f, lista){
+function blocoFrente(f, lista){
   const cfg = FRENTES[f] || FRENTES['Outros controles'];
-  return `<section class="frente">
-    <div class="frente-cab"><div class="frente-ic" style="background:${cfg.cor}">${svg(cfg.ic,'#fff')}</div>
-      <div><h3>${esc(f)}</h3><small>${esc(cfg.desc)}</small></div></div>
-    <div class="paineis">${lista.map(p => {
+  return `<section class="ini-frente" style="--cor:${cfg.cor}">
+    <header class="if-cab"><span class="if-ic">${svg(cfg.ic,'#fff')}</span><h2>${esc(f)}</h2><span class="if-n">${lista.length}</span><span class="if-desc">${esc(cfg.desc)}</span></header>
+    <div class="tiles">${lista.map(p => {
       const m = E.metas[p.id];
-      const info = m ? (m.linhas == null ? `Dados de ${fmtRef(m.referencia)}` : `${fmtNum(m.linhas)} registros`) + ` · atualizado ${new Date(m.atualizado_em).toLocaleDateString('pt-BR')}` : 'Sem dados ainda';
-      return `<button class="painel-item" data-painel="${esc(p.id)}" data-nome="${esc(p.nome)}">
-        <div class="pn"><b>${esc(p.nome)}</b><small>${esc(info)}</small></div>
-        <span class="selo ${p.nivel}">${p.nivel}</span><span class="seta">›</span></button>`;
-    }).join('')}</div></section>`;
+      const ref = m ? (m.referencia ? fmtRef(m.referencia) : new Date(m.atualizado_em).toLocaleDateString('pt-BR')) : null;
+      return `<button class="tile" data-painel="${esc(p.id)}" data-nome="${esc(p.nome)}">
+        <span class="t-nome">${esc(p.nome)}</span>
+        <span class="t-meta">${ref ? 'Dados de ' + esc(ref) : '<i>Sem dados</i>'}${p.nivel === 'restrito' ? '<span class="t-cad" title="Restrito a administradores"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5zm-3 8V7a3 3 0 0 1 6 0v3z"/></svg>Restrito</span>' : ''}</span>
+      </button>`;
+    }).join('')}</div>
+  </section>`;
 }
 
 /* =====================================================================
