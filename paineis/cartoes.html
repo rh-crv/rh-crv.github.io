@@ -116,9 +116,27 @@ const R=C.rows.map(r=>Object.assign(r,{k:cat(r),N:tc(r.nome),F:tc(r.func)})).fil
 const ORD=T==='premium'?['ok','falta','bloq','regra','desl','fora','afast']:['ok','falta','bloq','desl','fora','afast'];
 const PEDE=new Set(['falta','bloq','desl','fora','regra']);
 
+/* ---------- limite do convênio (regra) ---------- */
+const OPMOT=/MOTORISTA|OPERADOR|OP\. DE MAQ/;
+let EXC={};(C.exc540||[]).forEach(m=>EXC[String(m)]={on:true,origem:'lista'});
+function regra(r){
+  if(EXC[r.mat]&&EXC[r.mat].on)return{v:540,t:'Exceção (R$ 540)'};
+  if(r.aloj&&OPMOT.test(r.func))return{v:1080,t:'Alojado, operador/motorista (R$ 1.080)'};
+  if(/^ind[uú]stria$/i.test(r.dep))return{v:180,t:'Indústria (R$ 180)'};
+  return{v:200,t:'Demais áreas (R$ 200)'};
+}
+const limAtual=r=>r.lim!=null&&r.lim>0.05?Number(r.lim):null;
+function difLim(r){if(T!=='convenio'||r.k!=='ok')return'';const a=limAtual(r),g=regra(r).v;if(a==null)return'';return a>g+0.05?'acima':a<g-0.05?'abaixo':'certo'}
+
 /* ---------- pedidos marcados no app ---------- */
 let DB=null,PED={},podeEd=true;
-async function lerPedidos(){try{if(!(window.claude&&window.claude.use))return;DB=await window.claude.use('db');const s=await DB.collection('pedidos').get();PED={};s.docs.forEach(d=>{const x=d.data();if(!x.desfeito)PED[d.id]=x});render()}catch(_){}}
+async function lerPedidos(){try{if(!(window.claude&&window.claude.use))return;DB=await window.claude.use('db');const s=await DB.collection('pedidos').get();PED={};s.docs.forEach(d=>{const x=d.data();if(!x.desfeito)PED[d.id]=x});
+  if(T==='convenio'){const e=await DB.collection('excecoes').get();e.docs.forEach(d=>{EXC[d.id]=d.data()})}render()}catch(_){}}
+async function excecao(m,on){
+  if(!DB){toast('Não dá para salvar nesta visualização.');return}
+  try{const x={on,em:new Date().toISOString(),por:(window.parent&&window.parent.CRV_QUEM)||''};await DB.collection('excecoes').doc(m).set(x);EXC[m]=x;toast(on?'Exceção de R$ 540 registrada.':'Exceção retirada.');render()}
+  catch(e){toast('Não consegui salvar: '+((e&&e.message)||'sem permissão.'))}
+}
 async function marcar(mats,desfazer){
   if(!DB){toast('Não dá para salvar nesta visualização.');return}
   const quem=(window.parent&&window.parent.CRV_QUEM)||'',hoje=new Date().toISOString();
@@ -130,14 +148,14 @@ async function marcar(mats,desfazer){
 }
 
 /* ---------- filtros ---------- */
-const S={cat:'',dep:'',ger:'',sit:'',q:'',lim:150};
+const S={cat:'',dep:'',ger:'',sit:'',q:'',lim:150,dl:''};
 const deps=[...new Set(R.map(r=>r.dep))].sort((a,b)=>a.localeCompare(b));
 const gers=[...new Set(R.map(r=>r.ger).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
 $('fCat').innerHTML='<option value="">Todas as situações do cartão</option>'+ORD.map(k=>`<option value="${k}">${CATS[k].l}</option>`).join('')+'<option value="pedido">Já solicitados (marcados no app)</option>';
 $('fDep').innerHTML='<option value="">Todos os departamentos</option>'+deps.map(d=>`<option>${esc(d)}</option>`).join('');
 $('fGer').innerHTML='<option value="">Todas as gerências</option>'+gers.map(d=>`<option>${esc(d)}</option>`).join('');
 $('fSit').innerHTML='<option value="">Situação no Quadro: todas</option>'+['Ativo','Afastado','Desligado','Fora do quadro'].map(x=>`<option>${x}</option>`).join('');
-const sel=(skip)=>R.filter(r=>(skip==='cat'||!S.cat||(S.cat==='pedido'?!!PED[r.mat]&&PEDE.has(r.k):r.k===S.cat))&&(skip==='dep'||!S.dep||r.dep===S.dep)&&(skip==='ger'||!S.ger||r.ger===S.ger)&&(!S.sit||r.sit===S.sit)&&(!S.q||(r.nome+' '+r.mat+' '+r.func).toUpperCase().includes(S.q.toUpperCase())));
+const sel=(skip)=>R.filter(r=>(skip==='cat'||!S.cat||(S.cat==='pedido'?!!PED[r.mat]&&PEDE.has(r.k):r.k===S.cat))&&(skip==='dep'||!S.dep||r.dep===S.dep)&&(skip==='ger'||!S.ger||r.ger===S.ger)&&(!S.sit||r.sit===S.sit)&&(!S.dl||(S.dl==='exc'?!!(EXC[r.mat]&&EXC[r.mat].on):S.dl==='aloj'?regra(r).v===1080:difLim(r)===S.dl))&&(!S.q||(r.nome+' '+r.mat+' '+r.func).toUpperCase().includes(S.q.toUpperCase())));
 const alvo=r=>(r.sit==='Ativo'||(T==='convenio'&&r.sit==='Afastado'))&&(T!=='premium'||r.eleg);
 
 function render(){
@@ -166,7 +184,13 @@ function render(){
   $('kpis').innerHTML=ORD.filter(k=>k==='ok'||n(k)).map(k=>{const v=n(k);const pd=PEDE.has(k)?R.filter(r=>r.k===k&&PED[r.mat]).length:0;
     const s=k==='ok'?pc(v,A.length)+' do público do cartão':k==='afast'?R.filter(r=>r.k==='afast'&&r.card==='Ativo').length+' com cartão ativo':pd?pd+' já pedidos · '+(v-pd)+' a fazer':CATS[k].acao;
     return `<button class="kpi${S.cat===k?' on':''}" style="--c:${CATS[k].c}" data-k="${k}"><div class="l">${CATS[k].l}</div><div class="v">${nf(v)}</div><div class="s">${esc(s)}</div></button>`}).join('')+
+    (T==='convenio'?(()=>{const lib=R.filter(r=>r.k==='ok');const ac=lib.filter(r=>difLim(r)==='acima').length,ab=lib.filter(r=>difLim(r)==='abaixo').length,ex=R.filter(r=>EXC[r.mat]&&EXC[r.mat].on).length,al=R.filter(r=>r.k!==null&&regra(r).v===1080&&r.sit!=='Desligado').length;
+      return `<button class="kpi${S.dl==='acima'?' on':''}" style="--c:var(--bad)" data-dl="acima"><div class="l">Limite acima da regra</div><div class="v">${nf(ac)}</div><div class="s">liberados com limite maior que o permitido</div></button>`+
+      `<button class="kpi${S.dl==='abaixo'?' on':''}" style="--c:var(--info)" data-dl="abaixo"><div class="l">Limite abaixo do permitido</div><div class="v">${nf(ab)}</div><div class="s">podem receber até o valor da regra</div></button>`+
+      `<button class="kpi${S.dl==='aloj'?' on':''}" style="--c:var(--acc)" data-dl="aloj"><div class="l">Alojados com direito a R$ 1.080</div><div class="v">${nf(al)}</div><div class="s">operadores e motoristas no alojamento</div></button>`+
+      `<button class="kpi${S.dl==='exc'?' on':''}" style="--c:var(--warn)" data-dl="exc"><div class="l">Exceções de R$ 540</div><div class="v">${nf(ex)}</div><div class="s">${ex?'marcadas na lista':'marque na lista com “Exceção 540”'}</div></button>`})():'')+
     (pedidos?`<button class="kpi${S.cat==='pedido'?' on':''}" style="--c:var(--info)" data-k="pedido"><div class="l">Já solicitados</div><div class="v">${nf(pedidos)}</div><div class="s">pedidos e bloqueios marcados no app</div></button>`:'');
+  $('kpis').querySelectorAll('[data-dl]').forEach(b=>b.onclick=()=>{S.dl=S.dl===b.dataset.dl?'':b.dataset.dl;S.lim=150;render();$('lt').scrollIntoView({behavior:'smooth',block:'start'})});
   $('kpis').querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{S.cat=S.cat===b.dataset.k?'':b.dataset.k;$('fCat').value=S.cat;S.lim=150;render();$('lt').scrollIntoView({behavior:'smooth',block:'start'})});
   /* cobertura por departamento (público do cartão) */
   const COL={ok:'var(--ok)',bloq:'var(--warn)',falta:'var(--bad)'};
@@ -181,27 +205,29 @@ function render(){
   bars('g2','ger',A.filter(r=>(!S.dep||r.dep===S.dep)));
   /* lista */
   const L=sel().sort((a,b)=>ORD.indexOf(a.k)-ORD.indexOf(b.k)||a.N.localeCompare(b.N));
-  $('lt').textContent=S.cat?CATS[S.cat]?CATS[S.cat].l:'Pedidos feitos':'Lista de colaboradores';
+  if(S.dl)$('ls').dataset.dl=S.dl;
+  $('lt').textContent=S.dl?({acima:'Limite acima da regra',abaixo:'Limite abaixo do permitido',aloj:'Alojados com direito a R$ 1.080',exc:'Exceções de R$ 540'})[S.dl]:S.cat?CATS[S.cat]?CATS[S.cat].l:'Pedidos feitos':'Lista de colaboradores';
   $('ls').textContent=S.cat&&CATS[S.cat]?'O que fazer: '+CATS[S.cat].acao+'.':'Clique nos números acima para filtrar. Na lista, “Marcar pedido” registra que a solicitação já foi feita.';
   $('cnt').textContent=`${nf(L.length)} ${L.length===1?'pessoa':'pessoas'}`;
   const lim=T==='convenio';
-  $('th').innerHTML=`<tr><th>Matrícula</th><th>Colaborador</th><th>Departamento</th><th>No Quadro</th><th>Cartão</th>${lim?'<th>Limite</th>':''}<th>Situação</th><th></th></tr>`;
+  $('th').innerHTML=`<tr><th>Matrícula</th><th>Colaborador</th><th>Departamento</th><th>No Quadro</th><th>Cartão</th>${lim?'<th>Limite atual</th><th>Limite da regra</th>':''}<th>Situação</th><th></th></tr>`;
   $('tb').innerHTML=L.slice(0,S.lim).map(r=>{const p=PED[r.mat],pede=PEDE.has(r.k);
     return `<tr><td>${esc(r.mat)}</td><td><b>${esc(r.N)}</b><div class="sm">${esc(r.F)||''}${T==='premium'&&r.sit!=='Fora do quadro'?(r.eleg?' · função permitida':' · <span style="color:var(--info)">função não permitida</span>'):''}</div>${r.outraMat?`<div class="sm" style="color:var(--warn)">Mesmo CPF da matrícula ${esc(r.outraMat)} (${esc(tc(r.outraNome))}, ${esc(r.outraSit)})</div>`:''}${r.cpfdif?'<div class="sm" style="color:var(--warn)">CPF do cartão diferente do Quadro: conferir</div>':''}</td>
       <td>${esc(tc(r.dep))}<div class="sm">${esc(tc(r.secao))}</div></td>
       <td>${esc(r.sit)}<div class="sm">${r.adm?'adm. '+br(r.adm):''}${r.desl?' · saiu '+br(r.desl):''}${r.vinc&&r.vinc!=='Efetivo'?' · '+esc(r.vinc):''}</div></td>
       <td>${r.card?`<span class="pill ${r.card==='Ativo'?'p-ok':'p-warn'}">${esc(r.card)}</span><div class="sm">ID ${esc(r.idc)}</div>`:'<span class="pill p-bad">Sem cartão</span>'}</td>
-      ${lim?`<td>${r.lim!=null&&r.lim>0.05?moeda(r.lim):'<span class="sm">—</span>'}</td>`:''}
+      ${lim?(()=>{const g=regra(r),d=difLim(r),ex=EXC[r.mat]&&EXC[r.mat].on;return `<td>${limAtual(r)!=null?moeda(limAtual(r)):'<span class="sm">—</span>'}${d==='acima'?'<div class="sm" style="color:var(--bad)">acima da regra</div>':d==='abaixo'?'<div class="sm" style="color:var(--info)">abaixo do permitido</div>':''}</td><td><b>${moeda(g.v)}</b><div class="sm">${esc(g.t)}${r.aloj?' · '+esc(r.aloj):''}</div>${r.sit!=='Desligado'&&r.sit!=='Fora do quadro'?`<button class="mini" data-exc="${esc(r.mat)}" data-on="${ex?0:1}" style="margin-top:4px">${ex?'Tirar exceção':'Exceção 540'}</button>`:''}</td>`})():''}
       <td><span class="pill ${CATS[r.k].p}">${esc(CATS[r.k].l)}</span>${p?`<div class="sm">${['falta','bloq'].includes(r.k)?'Pedido':'Bloqueio pedido'} em ${br(p.em)}${p.por?' por '+esc(String(p.por).split(' ')[0]):''}</div>`:''}</td>
       <td style="text-align:right">${pede?(p?`<button class="mini" data-des="${esc(r.mat)}">Desfazer</button>`:`<button class="mini pri" data-ped="${esc(r.mat)}">${['falta','bloq'].includes(r.k)?'Marcar pedido':'Marcar bloqueio pedido'}</button>`):''}</td></tr>`}).join('')||`<tr><td colspan="8" class="sm">Ninguém com esses filtros.</td></tr>`;
   $('more').hidden=L.length<=S.lim;
+  $('tb').querySelectorAll('[data-exc]').forEach(b=>b.onclick=()=>excecao(b.dataset.exc,b.dataset.on==='1'));
   $('tb').querySelectorAll('[data-ped]').forEach(b=>b.onclick=()=>marcar([b.dataset.ped]));
   $('tb').querySelectorAll('[data-des]').forEach(b=>b.onclick=()=>marcar([b.dataset.des],true));
   const semPed=L.filter(r=>PEDE.has(r.k)&&!PED[r.mat]);
   $('selb').hidden=!(S.cat&&PEDE.has(S.cat)&&semPed.length>1);
   $('selb').innerHTML=`<span>${nf(semPed.length)} nesta lista ainda sem pedido marcado.</span><button class="mini pri" id="pedTodos">Marcar todos como ${['falta','bloq'].includes(S.cat)?'pedido feito':'bloqueio pedido'}</button>`;
   if($('pedTodos'))$('pedTodos').onclick=()=>marcar(semPed.map(r=>r.mat));
-  $('foot').textContent=`Fonte: planilha da Sysprocard (${C.arquivo}) com ${nf(C.nPlanilha)} cartões (${Object.entries(C.sitPlanilha).map(([k,v])=>nf(v)+' '+k.toLowerCase()).join(', ')}), cruzada pela matrícula com o Quadro Geral da empresa 5. Desligados com cartão já bloqueado não aparecem.`+(T==='premium'?' '+PREM_TXT:'')+(T==='alimentacao'?' Regra do vale: afastados não recebem, exceto por acidente de trabalho.':'');
+  $('foot').textContent=`Fonte: planilha da Sysprocard (${C.arquivo}) com ${nf(C.nPlanilha)} cartões (${Object.entries(C.sitPlanilha).map(([k,v])=>nf(v)+' '+k.toLowerCase()).join(', ')}), cruzada pela matrícula com o Quadro Geral da empresa 5. Desligados com cartão já bloqueado não aparecem.`+(T==='premium'?' '+PREM_TXT:'')+(T==='convenio'?` Regra do limite: Indústria R$ 180; demais áreas R$ 200; exceções R$ 540; operadores e motoristas no alojamento R$ 1.080 (base de alojamento de ${br(C.alojRef)}).`:'')+(T==='alimentacao'?' Regra do vale: afastados não recebem, exceto por acidente de trabalho.':'');
 }
 $('q').oninput=e=>{S.q=e.target.value.trim();S.lim=150;render()};
 $('fCat').onchange=e=>{S.cat=e.target.value;S.lim=150;render()};
@@ -212,7 +238,7 @@ $('more').onclick=()=>{S.lim+=300;render()};
 
 /* ---------- exportar ---------- */
 const linhasExp=()=>sel().sort((a,b)=>ORD.indexOf(a.k)-ORD.indexOf(b.k)||a.N.localeCompare(b.N)).map(r=>{const p=PED[r.mat];const o={'Matrícula':r.mat,'Nome':r.N,'Função':r.F,'Departamento':tc(r.dep),'Seção':tc(r.secao),'Gerência':tc(r.ger),'Situação no Quadro':r.sit,'Admissão':br(r.adm),'Desligamento':br(r.desl),'Cartão':r.card||'Sem cartão','ID do cartão':r.idc};
-  if(T==='convenio')o['Limite']=r.lim!=null&&r.lim>0.05?r.lim:'';if(T==='premium')o['Função permitida']=r.eleg?'Sim':'Não';
+  if(T==='convenio'){const g=regra(r);o['Limite atual']=limAtual(r)??'';o['Limite da regra']=g.v;o['Regra']=g.t;o['Alojamento']=r.aloj||'';o['Limite x regra']=({acima:'Acima da regra',abaixo:'Abaixo do permitido',certo:'Dentro da regra'})[difLim(r)]||''}if(T==='premium')o['Função permitida']=r.eleg?'Sim':'Não';
   o['Situação']=CATS[r.k].l;o['O que fazer']=CATS[r.k].acao;o['Pedido marcado']=p?br(p.em)+(p.por?' · '+p.por:''):'';return o});
 const nomeArq=()=>`${({alimentacao:'Cartao Alimentacao',convenio:'Cartao Convenio',premium:'Cartao Premium'})[T]}${S.cat&&CATS[S.cat]?' - '+CATS[S.cat].l:''} ${new Date().toLocaleDateString('pt-BR').split('/').join('-')}`;
 async function salvar(nome,bytes,tipo){const D=window.claude&&window.claude.use?await window.claude.use('downloads'):null;
@@ -222,10 +248,10 @@ $('bX').onclick=async()=>{const X=window.XLSX||(window.parent&&window.parent.XLS
   const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,'Cartões');await salvar(nomeArq()+'.xlsx',new Uint8Array(X.write(wb,{bookType:'xlsx',type:'array'})),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')};
 $('bP').onclick=async()=>{const J=(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF);const L=linhasExp();if(!J||!L.length){toast(L.length?'Gerador de PDF indisponível.':'Nada para exportar.');return}
   const doc=new J({orientation:'landscape',unit:'mm',format:'a4'});if(typeof doc.autoTable!=='function'){toast('Gerador de tabela indisponível.');return}
-  const cols=['Matrícula','Nome','Função','Departamento','Situação no Quadro','Cartão'].concat(T==='convenio'?['Limite']:[]).concat(['Situação','O que fazer','Pedido marcado']);
+  const cols=['Matrícula','Nome','Função','Departamento','Situação no Quadro','Cartão'].concat(T==='convenio'?['Limite atual','Limite da regra']:[]).concat(['Situação','O que fazer','Pedido marcado']);
   doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text(nomeArq(),12,14);doc.setFont('helvetica','normal');doc.setFontSize(8.5);
   doc.text(`${L.length} pessoas · planilha Sysprocard de ${br(C.refPlanilha)} × Quadro de ${br(C.refQuadro)}${S.dep?' · '+S.dep:''}${S.ger?' · '+S.ger:''}`,12,19);
-  doc.autoTable({startY:23,head:[cols],body:L.map(r=>cols.map(c=>c==='Limite'&&r[c]!==''?moeda(r[c]):String(r[c]??''))),styles:{fontSize:7,cellPadding:1.4},headStyles:{fillColor:T==='premium'?[107,63,160]:T==='convenio'?[163,91,18]:[46,138,87]},margin:{left:10,right:10}});
+  doc.autoTable({startY:23,head:[cols],body:L.map(r=>cols.map(c=>(c==='Limite atual'||c==='Limite da regra')&&r[c]!==''?moeda(r[c]):String(r[c]??''))),styles:{fontSize:7,cellPadding:1.4},headStyles:{fillColor:T==='premium'?[107,63,160]:T==='convenio'?[163,91,18]:[46,138,87]},margin:{left:10,right:10}});
   await salvar(nomeArq()+'.pdf',new Uint8Array(doc.output('arraybuffer')),'application/pdf')};
 
 render();lerPedidos();
