@@ -186,6 +186,8 @@ table.nom{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
 .pchk label{display:flex;gap:8px;align-items:center;cursor:pointer}
 .pchk input{width:16px;height:16px;accent-color:var(--navy)}
 .pill.sb{background:var(--amber-soft);color:var(--amber-ink)}
+.setin{display:inline-flex;gap:4px;align-items:center}.setin input{width:150px;font:inherit;font-size:12.5px;padding:4px 7px;border:1px solid var(--line,#d5dbe6);border-radius:7px;background:#fff;color:inherit}
+.setin .btn2{padding:4px 9px;font-size:12px}.setmud{border:0;background:none;cursor:pointer;opacity:.55;font-size:12px;padding:0 2px}.setmud:hover{opacity:1}
 .pill.dl{background:var(--trk);color:var(--mut)}
 .nom td.obs{font-size:12px;color:var(--mut);min-width:240px;max-width:360px}
 .foot{color:var(--mut);font-size:12px;margin-top:18px;max-width:95ch}
@@ -239,7 +241,7 @@ table.nom{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
   <div class="tile expw" id="expw" hidden>
     <h2>Exportar <span class="sub">· mês <b id="exm"></b>, o selecionado acima</span></h2>
     <p class="sub">Marque o que entra no arquivo. Cada parte vira uma página no PDF e uma aba no Excel.</p>
-    <div class="exg"><label class="exo" id="ex_resl"><input type="checkbox" id="ex_res" checked><span><b>Resumo do mês</b><small id="ex_ress">Leitura, indicadores, radar e quem acompanhar primeiro</small></span></label><label class="exo" id="ex_jovl"><input type="checkbox" id="ex_jov" checked><span><b>Aprendizes</b><small id="ex_jovs">Radar, faltas, média e sinais de cada jovem</small></span></label><label class="exo" id="ex_setl"><input type="checkbox" id="ex_set"><span><b>Leitura por setor</b><small id="ex_sets">Sinais, faltas e média de cada setor</small></span></label><label class="exo" id="ex_ocol"><input type="checkbox" id="ex_oco"><span><b>Ocorrências</b><small id="ex_ocos">Advertências e registros do mês</small></span></label><label class="exo" id="ex_val"><input type="checkbox" id="ex_va"><span><b>Vale-alimentação</b><small id="ex_vas">Descontos, valor a receber e observação de cada jovem</small></span></label><label class="exo" id="ex_dadl"><input type="checkbox" id="ex_dad"><span><b>Pontos a confirmar</b><small id="ex_dads">Inconsistências e dados que faltam no mês</small></span></label><label class="exo" id="ex_fbjl"><input type="checkbox" id="ex_fbj"><span><b>Feedback dos jovens</b><small>Respostas sobre a área e a liderança, nota e pontos de atenção</small></span></label><label class="exo" id="ex_fbll"><input type="checkbox" id="ex_fbl"><span><b>Feedback dos líderes</b><small>Avaliação por critério, pontos positivos, a melhorar e pedidos ao RH</small></span></label><label class="exo" id="ex_basl"><input type="checkbox" id="ex_bas"><span><b>Base de jovens</b><small id="ex_bass">Ativos, stand-by e desligados, com matrículas e contrato</small></span></label></div>
+    <div class="exg"><label class="exo" id="ex_resl"><input type="checkbox" id="ex_res" checked><span><b>Resumo do mês</b><small id="ex_ress">Leitura, indicadores, radar e quem acompanhar primeiro</small></span></label><label class="exo" id="ex_jovl"><input type="checkbox" id="ex_jov" checked><span><b>Aprendizes</b><small id="ex_jovs">Radar, faltas, média e sinais de cada jovem</small></span></label><label class="exo" id="ex_setl"><input type="checkbox" id="ex_set"><span><b>Leitura por setor</b><small id="ex_sets">Sinais, faltas e média de cada setor</small></span></label><label class="exo" id="ex_ocol"><input type="checkbox" id="ex_oco"><span><b>Ocorrências</b><small id="ex_ocos">Advertências e registros do mês</small></span></label><label class="exo" id="ex_val"><input type="checkbox" id="ex_va"><span><b>Vale-alimentação</b><small id="ex_vas">Descontos, valor a receber e observação de cada jovem</small></span></label><label class="exo" id="ex_dadl"><input type="checkbox" id="ex_dad"><span><b>Pontos a confirmar</b><small id="ex_dads">Inconsistências e dados que faltam no mês</small></span></label><label class="exo" id="ex_fbjl"><input type="checkbox" id="ex_fbj"><span><b>Feedback dos jovens</b><small>Respostas sobre a área e a liderança, nota e pontos de atenção</small></span></label><label class="exo" id="ex_fbll"><input type="checkbox" id="ex_fbl"><span><b>Feedback dos líderes</b><small>Avaliação por critério, pontos positivos, a melhorar e pedidos ao RH</small></span></label><label class="exo" id="ex_basl"><input type="checkbox" id="ex_bas"><span><b>Base de jovens</b><small id="ex_bass">Ativos e desligados, com matrículas, contrato e setor</small></span></label></div>
     <div class="exrow">
       <label class="exsel">Aprendizes no arquivo <select id="ex_jovf"><option value="">Todos</option><option value="r">Só atenção e intervenção</option></select></label>
       <label class="exsel">Vale-alimentação <select id="ex_vam"><option value="c">Completo (descontos por item)</option><option value="r">Resumido (matrícula, nome, CPF e valor)</option></select></label>
@@ -355,7 +357,7 @@ table.nom{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
     <div class="kpis" id="bask"></div>
     <div class="tools">
       <input id="basb" type="search" placeholder="Buscar por nome ou matrícula" aria-label="Buscar por nome ou matrícula">
-      <select id="bass" aria-label="Situação"><option value="">Todas as situações</option><option>Ativo</option><option>Stand-by</option><option>Desligado</option></select>
+      <select id="bass" aria-label="Situação"><option value="">Todas as situações</option><option>Ativo</option><option>Stand-by</option><option>Desligado</option><option value="semsetor">Setor a definir</option></select>
       <select id="basa" aria-label="Setor"></select>
       <select id="basi" aria-label="Idade"><option value="">Todas as idades</option><option value="m">Menores de 18</option><option value="M">18 anos ou mais</option><option value="s">Sem data de nascimento</option></select>
       <button type="button" class="btn2" id="basx" hidden>Excel</button>
@@ -363,7 +365,7 @@ table.nom{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
       <span class="cnt" id="bascnt"></span>
     </div>
     <div class="tile scroll"><table class="nom"><thead><tr><th>Mat. CRV</th><th>Mat. Bittar</th><th>Aprendiz</th><th>Idade</th><th>Situação</th><th>Setor</th><th>Jornada</th><th>Início</th><th>Término</th><th>Observação</th></tr></thead><tbody id="bastb"></tbody></table></div>
-    <p class="foot">Relação de jovens da CRV com o Instituto João Bittar, atualizada em 08/10/2026. Clique em um jovem ativo ou desligado para ver o acompanhamento dele.</p>
+    <p class="foot">Relação de jovens da CRV com o Instituto João Bittar, atualizada em 21/10/2026. Clique em um jovem ativo ou desligado para ver o acompanhamento dele.</p>
   </section>
 
   <section id="dad" hidden>
@@ -397,7 +399,7 @@ table.nom{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
 
 
 
-const BASE_DATA="08/10/2026";
+const BASE_DATA="21/10/2026";
 
 const RAD=[["Normal","●","Sem sinais no mês"],["Atenção","▲","Acompanhar de perto"],["Intervenção","■","Conversar com jovem e líder"]];
 const WK=["seg","ter","qua","qui","sex","sáb","dom"];
@@ -739,27 +741,53 @@ const BST={"Ativo":"r0","Stand-by":"sb","Desligado":"dl"};
 function idade(b){if(!b.nasc)return null;const n=new Date(+b.nasc.slice(6),+b.nasc.slice(3,5)-1,+b.nasc.slice(0,2)),t=new Date();let a=t.getFullYear()-n.getFullYear();if(t.getMonth()<n.getMonth()||(t.getMonth()===n.getMonth()&&t.getDate()<n.getDate()))a--;return a;}
 const aniv=(b,k)=>b.nasc?b.nasc.slice(0,6)+(+b.nasc.slice(6)+k):"";
 function idTxt(b){const a=idade(b);if(a===null)return "Data de nascimento não informada";return a+" anos · nasc. "+b.nasc+(a<18&&b.st!=="Desligado"?" · faz 18 em "+aniv(b,18):"");}
-function baseObs(b){const o=[];if(b.st==="Desligado")o.push("Desligado em "+b.desl);if(b.st==="Stand-by")o.push("Início em "+b.ini+(b.cbo?" · CBO "+b.cbo:"")+" · setor a definir");
+function baseObs(b){const o=[];if(b.st==="Desligado")o.push("Desligado em "+b.desl);if(b.st==="Stand-by")o.push("Início em "+b.ini+(b.cbo?" · CBO "+b.cbo:"")+" · setor a definir");else if(b.st!=="Desligado"&&semSetor(b))o.push("Setor a definir"+(b.cbo?" · CBO "+b.cbo:""));
   if(b.nasc&&b.st!=="Desligado"&&dnum(b.fim)&&dnum(aniv(b,24))<=dnum(b.fim))o.push("Completa 24 anos em "+aniv(b,24)+", antes do término do contrato: conferir");
   if(b.cpfijb)o.push("CPF diferente no Instituto ("+b.cpfijb.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,"$1.$2.$3-$4")+"): conferir");
   if(dnum(b.fim)&&dnum(b.fim)<dnum(b.ini))o.push("Término anterior ao início na base: conferir");return o.join(" · ");}
 function baseList(){const q=$("basb").value.trim().toLowerCase(),st=$("bass").value,ar=$("basa").value;
   const fi=$("basi").value,ia=b=>idade(b);
-  return BASE.filter(b=>(!fi||(fi==="m"?ia(b)!==null&&ia(b)<18:fi==="M"?ia(b)!==null&&ia(b)>=18:ia(b)===null))&&(!q||nkey(b.nome).toLowerCase().includes(nkey(q).toLowerCase())||String(b.mat).includes(q)||String(b.matb).includes(q))&&(!st||b.st===st)&&(!ar||b.setor.split(" - ")[0]===ar))
+  return BASE.filter(b=>(!fi||(fi==="m"?ia(b)!==null&&ia(b)<18:fi==="M"?ia(b)!==null&&ia(b)>=18:ia(b)===null))&&(!q||nkey(b.nome).toLowerCase().includes(nkey(q).toLowerCase())||String(b.mat).includes(q)||String(b.matb).includes(q))&&(!st||(st==="semsetor"?b.st!=="Desligado"&&semSetor(b):b.st===st))&&(!ar||b.setor.split(" - ")[0]===ar))
     .sort((a,b)=>({"Ativo":0,"Stand-by":1,"Desligado":2}[a.st]-{"Ativo":0,"Stand-by":1,"Desligado":2}[b.st])||a.nome.localeCompare(b.nome));}
+/* setor preenchido no app (para quem ainda está "A definir" na base) */
+const semSetor=b=>!b.setor||/^a definir$/i.test(String(b.setor).trim());
+let SDB=null,SETOR_MAN={};
+const SETORES=()=>[...new Set(BASE.map(b=>b.setor).filter(x=>x&&!/^a definir$/i.test(x)))].sort((a,b)=>a.localeCompare(b));
+function celSetor(b){
+  if(b.st==="Desligado")return esc(b.setor);
+  const man=SETOR_MAN[b.mat];
+  if(semSetor(b)||(man&&man.editar))return '<span class="setin"><input list="setlist" data-mat="'+esc(b.mat)+'" value="'+esc(semSetor(b)?"":b.setor)+'" placeholder="Digite o setor"><button type="button" class="btn2 setok" data-mat="'+esc(b.mat)+'">Salvar</button></span><div class="sm" style="color:var(--amber-ink)">Setor a definir</div>';
+  return esc(b.setor)+(man?' <button type="button" class="setmud" data-mat="'+esc(b.mat)+'" title="Alterar o setor">✎</button><div class="sm">preenchido'+(man.por?' por '+esc(String(man.por).split(" ")[0]):"")+(man.em?' em '+esc(new Date(man.em).toLocaleDateString("pt-BR")):"")+'</div>':"");
+}
+function aplicarSetores(){BASE.forEach(b=>{if(b._setorOrig===undefined)b._setorOrig=b.setor;const m=SETOR_MAN[b.mat];b.setor=m&&m.setor?m.setor:b._setorOrig;});}
+async function salvarSetor(mat,valor){
+  const v=String(valor||"").trim().toUpperCase();if(!v){$("bascnt").textContent="Digite o setor antes de salvar.";return}
+  if(!SDB){$("bascnt").textContent="Não dá para salvar nesta visualização.";return}
+  const reg={setor:v,por:(window.parent&&window.parent.CRV_QUEM)||"",em:new Date().toISOString()};
+  try{await SDB.collection("setores").doc(String(mat)).set(reg);SETOR_MAN[mat]=reg;aplicarSetores();renderBase();$("bascnt").textContent="Setor salvo.";}
+  catch(e){$("bascnt").textContent="Não consegui salvar o setor: "+((e&&e.message)||"sem permissão para editar este painel.");}
+}
+(async()=>{try{if(!(window.claude&&window.claude.use))return;SDB=await window.claude.use("db");
+  const q=await SDB.collection("setores").get();q.docs.forEach(d=>{SETOR_MAN[d.id]=d.data()});aplicarSetores();try{renderBase()}catch(_){}}catch(_){}})();
 function renderBase(){
+  if(!$("setlist")){const dl=document.createElement("datalist");dl.id="setlist";document.body.appendChild(dl);}
+  $("setlist").innerHTML=SETORES().map(x=>'<option value="'+esc(x)+'">').join("");
   const cnt=s=>BASE.filter(b=>b.st===s).length;
-  $("bask").innerHTML=[["Ativos",cnt("Ativo"),"Com contrato em andamento"],["Stand-by",cnt("Stand-by"),"Início em 08/10/2026, setor a definir"],["Desligados",cnt("Desligado"),"Informados na base da CRV"],["Menores de 18",BASE.filter(b=>b.st!=="Desligado"&&idade(b)!==null&&idade(b)<18).length,"Ativos e stand-by · "+BASE.filter(b=>b.st!=="Desligado"&&idade(b)!==null&&idade(b)>=18).length+" com 18 ou mais · "+BASE.filter(b=>b.st!=="Desligado"&&idade(b)===null).length+" sem data"],["Total na base",BASE.length,"Atualizada em "+BASE_DATA]]
-    .map((k,i)=>'<button type="button" class="tile kpi" style="text-align:left;font:inherit;color:inherit;cursor:pointer" data-s="'+(["Ativo","Stand-by","Desligado","menor",""][i])+'"><div class="l">'+k[0]+'</div><div class="v">'+k[1]+'</div><div class="s">'+k[2]+"</div></button>").join("");
+  $("bask").innerHTML=[["Ativos",cnt("Ativo"),"Com contrato em andamento"],(cnt("Stand-by")?["Stand-by",cnt("Stand-by"),"Aguardando início"]:["Setor a definir",BASE.filter(b=>b.st!=="Desligado"&&semSetor(b)).length,"Ativos ainda sem setor · clique para preencher"]),["Desligados",cnt("Desligado"),"Informados na base da CRV"],["Menores de 18",BASE.filter(b=>b.st!=="Desligado"&&idade(b)!==null&&idade(b)<18).length,(cnt("Stand-by")?"Ativos e stand-by · ":"Ativos · ")+BASE.filter(b=>b.st!=="Desligado"&&idade(b)!==null&&idade(b)>=18).length+" com 18 ou mais · "+BASE.filter(b=>b.st!=="Desligado"&&idade(b)===null).length+" sem data"],["Total na base",BASE.length,"Atualizada em "+BASE_DATA]]
+    .map((k,i)=>'<button type="button" class="tile kpi" style="text-align:left;font:inherit;color:inherit;cursor:pointer" data-s="'+(["Ativo",cnt("Stand-by")?"Stand-by":"semsetor","Desligado","menor",""][i])+'"><div class="l">'+k[0]+'</div><div class="v">'+k[1]+'</div><div class="s">'+k[2]+"</div></button>").join("");
   const av=$("basa").value,areas=[...new Set(BASE.map(b=>b.setor.split(" - ")[0]))].sort((a,b)=>a.localeCompare(b));
   $("basa").innerHTML='<option value="">Todos os setores</option>'+areas.map(a=>"<option"+(a===av?" selected":"")+">"+esc(a)+"</option>").join("");
   const L=baseList(),js=calc(MESES[cur]).js,has=b=>js.some(j=>nkey(j.n)===nkey(b.nome));
   $("bascnt").textContent=L.length+" de "+BASE.length+" jovens";
-  $("bastb").innerHTML=L.length?L.map(b=>'<tr'+(has(b)?' class="j" tabindex="0" data-k="'+esc(nkey(b.nome))+'"':"")+'><td data-l="Mat. CRV">'+esc(b.mat)+'</td><td data-l="Mat. Bittar">'+esc(b.matb)+'</td><td><span class="nm">'+esc(tcase(b.nome))+'</span><div class="sm">CPF '+esc(b.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,"$1.$2.$3-$4"))+'</div></td><td data-l="Idade">'+(idade(b)===null?'<span class="sm">Não informada</span>':'<b'+(idade(b)<18&&b.st!=="Desligado"?' style="color:var(--amber-ink)"':"")+'>'+idade(b)+' anos</b><div class="sm">'+esc(b.nasc)+(idade(b)<18&&b.st!=="Desligado"?" · 18 em "+esc(aniv(b,18)):"")+"</div>")+'</td><td><span class="pill '+BST[b.st]+'">'+esc(b.st)+'</span></td><td data-l="Setor">'+esc(b.setor)+'</td><td data-l="Jornada">'+esc(b.jor)+'</td><td data-l="Início">'+esc(b.ini)+'</td><td data-l="Término">'+esc(b.fim)+'</td><td data-l="Observação"><span class="sm">'+esc(baseObs(b))+"</span></td></tr>").join(""):'<tr><td colspan="10" class="empty">Nenhum jovem com esse filtro.</td></tr>';
+  $("bastb").innerHTML=L.length?L.map(b=>'<tr'+(has(b)?' class="j" tabindex="0" data-k="'+esc(nkey(b.nome))+'"':"")+'><td data-l="Mat. CRV">'+esc(b.mat)+'</td><td data-l="Mat. Bittar">'+esc(b.matb)+'</td><td><span class="nm">'+esc(tcase(b.nome))+'</span><div class="sm">CPF '+esc(b.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,"$1.$2.$3-$4"))+'</div></td><td data-l="Idade">'+(idade(b)===null?'<span class="sm">Não informada</span>':'<b'+(idade(b)<18&&b.st!=="Desligado"?' style="color:var(--amber-ink)"':"")+'>'+idade(b)+' anos</b><div class="sm">'+esc(b.nasc)+(idade(b)<18&&b.st!=="Desligado"?" · 18 em "+esc(aniv(b,18)):"")+"</div>")+'</td><td><span class="pill '+BST[b.st]+'">'+esc(b.st)+'</span></td><td data-l="Setor">'+celSetor(b)+'</td><td data-l="Jornada">'+esc(b.jor)+'</td><td data-l="Início">'+esc(b.ini)+'</td><td data-l="Término">'+esc(b.fim)+'</td><td data-l="Observação"><span class="sm">'+esc(baseObs(b))+"</span></td></tr>").join(""):'<tr><td colspan="10" class="empty">Nenhum jovem com esse filtro.</td></tr>';
 }
 ["basb","bass","basa","basi"].forEach(id=>$(id).addEventListener("input",renderBase));
 $("bask").addEventListener("click",e=>{const b=e.target.closest("[data-s]");if(b){if(b.dataset.s==="menor"){$("bass").value="";$("basi").value="m";}else{$("bass").value=b.dataset.s;$("basi").value="";}renderBase();}});
-const abrirBase=e=>{const r=e.target.closest("tr.j");if(r&&(e.type==="click"||e.key==="Enter")){const j=calc(MESES[cur]).js.find(x=>nkey(x.n)===r.dataset.k);if(j){abrir(j.n);scrollTo(0,0);}}};
+const abrirBase=e=>{
+  const ok=e.target.closest(".setok");if(ok&&e.type==="click"){const i=ok.parentElement.querySelector("input");salvarSetor(ok.dataset.mat,i.value);return}
+  const mud=e.target.closest(".setmud");if(mud&&e.type==="click"){SETOR_MAN[mud.dataset.mat]=Object.assign({},SETOR_MAN[mud.dataset.mat],{editar:true});renderBase();return}
+  if(e.target.closest(".setin")){if(e.type==="keydown"&&e.key==="Enter"&&e.target.tagName==="INPUT")salvarSetor(e.target.dataset.mat,e.target.value);return}
+  const r=e.target.closest("tr.j");if(r&&(e.type==="click"||e.key==="Enter")){const j=calc(MESES[cur]).js.find(x=>nkey(x.n)===r.dataset.k);if(j){abrir(j.n);scrollTo(0,0);}}};
 $("bastb").addEventListener("click",abrirBase);$("bastb").addEventListener("keydown",abrirBase);
 $("basx").addEventListener("click",async()=>{const L=baseList(),B1=v=>({v,s:1});
   const rows=[[B1("Relação de Jovens Aprendizes · CRV Industrial · Instituto João Bittar · base de "+BASE_DATA)],[],["Matrícula CRV","Matrícula Bittar","Nome","CPF","Data de nascimento","Idade","Situação","Setor","CBO","Jornada","Início","Término","Desligamento","Observação"].map(B1)]
@@ -873,7 +901,7 @@ function exSections(){
   if(sel("dad")){const av=[...document.querySelectorAll("#avisos li")].map(li=>[(li.querySelector("b")||{}).textContent||"",(li.querySelector("span")||{}).textContent||""]);
     out.push({k:"dad",t:"Pontos a confirmar · "+m.label,tables:[{cols:[{h:"Ponto",w:25},{h:"Detalhe",w:75}],rows:av.map(a=>[{v:a[0],b:1},a[1]])}]});}
   if(sel("bas")){const L=BASE.slice().sort((a,b)=>({"Ativo":0,"Stand-by":1,"Desligado":2}[a.st]-{"Ativo":0,"Stand-by":1,"Desligado":2}[b.st])||a.nome.localeCompare(b.nome));
-    out.push({k:"bas",t:"Base de jovens · atualizada em "+BASE_DATA,p:[BASE.filter(b=>b.st==="Ativo").length+" ativos, "+BASE.filter(b=>b.st==="Stand-by").length+" em stand-by e "+BASE.filter(b=>b.st==="Desligado").length+" desligados."],
+    out.push({k:"bas",t:"Base de jovens · atualizada em "+BASE_DATA,p:[BASE.filter(b=>b.st==="Ativo").length+" ativos, "+(BASE.some(b=>b.st==="Stand-by")?BASE.filter(b=>b.st==="Stand-by").length+" em stand-by":BASE.filter(b=>b.st!=="Desligado"&&semSetor(b)).length+" com setor a definir")+" e "+BASE.filter(b=>b.st==="Desligado").length+" desligados."],
       tables:[{cols:[{h:"Matr. CRV",w:6},{h:"Matr. Bittar",w:7},{h:"Aprendiz",w:17},{h:"CPF",w:10},{h:"Idade",w:8},{h:"Situação",w:7},{h:"Setor",w:13},{h:"Jornada",w:8},{h:"Início",w:7},{h:"Término",w:7},{h:"Observação",w:10}],
         rows:L.map(b=>[b.mat,b.matb,{v:tcase(b.nome),b:1},b.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,"$1.$2.$3-$4"),idade(b)===null?"Não informada":idade(b)+" anos ("+b.nasc+")",{v:b.st,c:b.st==="Ativo"?PC.ok:b.st==="Stand-by"?PC.navy:PC.mut,b:1},b.setor,b.jor,b.ini,b.fim,baseObs(b)||"–"])}]});}
   if(sel("fbj")){const J=FB.J.slice().sort((a,b)=>a.n.localeCompare(b.n)),R=J.filter(x=>x.resp==="SIM"),nt=R.filter(x=>x.nota!==null);
