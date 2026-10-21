@@ -234,10 +234,44 @@ function criarUsuario(ctx){
   });
 }
 
+/* ---------- carimbo em todo PDF: "Gestão de Pessoas · CRV Industrial" + data de emissão ---------- */
+let PDFLIB = null;
+function carregarPdfLib(){
+  if (window.PDFLib) return Promise.resolve(window.PDFLib);
+  if (!PDFLIB) PDFLIB = new Promise((ok, falha) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js';
+    s.onload = () => ok(window.PDFLib); s.onerror = () => { PDFLIB = null; falha(new Error('pdf-lib')); };
+    document.head.appendChild(s);
+  });
+  return PDFLIB;
+}
+const ehPdf = (nome, bytes) => /\.pdf$/i.test(nome || '') || (bytes && bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46);
+async function carimbarPdf(dados){
+  const bytes = dados instanceof Uint8Array ? dados : new Uint8Array(dados instanceof ArrayBuffer ? dados : await new Blob([dados]).arrayBuffer());
+  try {
+    const { PDFDocument, StandardFonts, rgb } = await carregarPdfLib();
+    const doc = await PDFDocument.load(bytes, { ignoreEncryption: true });
+    const fonte = await doc.embedFont(StandardFonts.Helvetica);
+    const negrito = await doc.embedFont(StandardFonts.HelveticaBold);
+    const agora = new Date();
+    const quando = 'Emitido em ' + agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+    const cor = rgb(0.36, 0.42, 0.52), tam = 7;
+    doc.getPages().forEach(pg => {
+      const { width } = pg.getSize();
+      pg.drawText('Gestão de Pessoas', { x: 18, y: 7, size: tam, font: negrito, color: cor });
+      pg.drawText(' · CRV Industrial', { x: 18 + negrito.widthOfTextAtSize('Gestão de Pessoas', tam), y: 7, size: tam, font: fonte, color: cor });
+      pg.drawText(quando, { x: width - 18 - fonte.widthOfTextAtSize(quando, tam), y: 7, size: tam, font: fonte, color: cor });
+    });
+    return await doc.save();
+  } catch (e) { console.warn('carimbo do PDF não aplicado:', e); return bytes; }
+}
+
 function criarDownloads(){
   return Object.freeze({
     async save({ filename, data }){
-      const b = data instanceof Blob ? data : new Blob([data]);
+      if (ehPdf(filename)) data = await carimbarPdf(data);
+      const b = data instanceof Blob ? data : new Blob([data], ehPdf(filename) ? { type:'application/pdf' } : {});
       const u = URL.createObjectURL(b);
       const a = document.createElement('a');
       a.href = u; a.download = String(filename || 'arquivo').replace(/[\\/:*?"<>|]/g, '-');
@@ -264,7 +298,8 @@ window.CRV_PONTE = {
         // sample (IA), room, comments, mcp etc. não existem fora do Claude: o painel esconde esses recursos
         return (cache[nome] = v);
       },
-      blob: id => baixarArquivo(ctx.sb, ctx.painel, id)
+      blob: id => baixarArquivo(ctx.sb, ctx.painel, id),
+      carimbar: dados => carimbarPdf(dados)
     };
   },
   // código que roda dentro do painel, antes de tudo
@@ -273,6 +308,12 @@ window.CRV_PONTE = {
 window.claude={use:function(n){return Promise.resolve(P?P.capacidade(n):null)}};
 var f0=window.fetch.bind(window);
 window.fetch=function(u,o){var s=typeof u==='string'?u:(u&&u.url)||'';if(s.indexOf('/_blob/')===0&&P)return P.blob(s.slice(7).split(/[?#]/)[0]);return f0(u,o)};
+var oc=HTMLAnchorElement.prototype.click,od=HTMLAnchorElement.prototype.dispatchEvent;
+function crvPdf(a){if(!P||!P.carimbar||a.__crv||!a.hasAttribute('download'))return false;var h=a.href||'',n=a.download||'';if(!/\\.pdf$/i.test(n)&&!/^data:application\\/pdf/i.test(h))return false;if(!/^(blob:|data:)/i.test(h))return false;
+ fetch(h).then(function(r){return r.arrayBuffer()}).then(function(b){return P.carimbar(b)}).then(function(u8){var u=URL.createObjectURL(new Blob([u8],{type:'application/pdf'}));var x=document.createElement('a');x.href=u;x.download=n||'documento.pdf';x.__crv=1;document.body.appendChild(x);oc.call(x);setTimeout(function(){x.remove();URL.revokeObjectURL(u)},4000)}).catch(function(){a.__crv=1;oc.call(a)});return true}
+HTMLAnchorElement.prototype.click=function(){if(crvPdf(this))return;return oc.call(this)};
+HTMLAnchorElement.prototype.dispatchEvent=function(e){if(e&&e.type==='click'&&crvPdf(this))return true;return od.call(this,e)};
+document.addEventListener('click',function(ev){var a0=ev.target&&ev.target.closest&&ev.target.closest('a[download]');if(a0&&crvPdf(a0)){ev.preventDefault();return}},true);
 document.addEventListener('click',function(ev){var a=ev.target&&ev.target.closest&&ev.target.closest('a[href^="/_blob/"]');if(!a||!P)return;ev.preventDefault();var w=window.open('','_blank');P.blob(a.getAttribute('href').slice(7)).then(function(r){return r.blob()}).then(function(b){var u=URL.createObjectURL(b);if(w)w.location=u;else location.href=u})},true);
 })();`;
   }

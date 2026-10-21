@@ -816,6 +816,7 @@ function montarModelo(tpl, conteudo, referencia, p){
     body h2{font-size:17px!important}
     body h3{font-size:14.5px!important}
   </style>
+  <style id="crv-impressao">@page{@bottom-left{content:"Gestão de Pessoas · CRV Industrial";font:7pt sans-serif;color:#5d6a85}@bottom-right{content:"Emitido em ${new Date().toLocaleDateString('pt-BR')}";font:7pt sans-serif;color:#5d6a85}}</style>
   <style id="crv-compacto">
     body h1{font-size:20px!important;line-height:1.2!important;margin-top:0!important}
     body h1 small{font-size:12px!important}
