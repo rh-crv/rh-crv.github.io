@@ -677,6 +677,8 @@ fillSel();render();
 </script>
 
 
+
+<script>window.CRV_AUT_MODO='rd'</script>
 <!-- ===== Autorização de desconto (RE.0150.09) — gerada a partir da RD ===== -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&display=swap">
 <style>
@@ -742,7 +744,8 @@ function extenso(v){
 }
 
 /* dados do painel */
-const LINHAS=(typeof R!=='undefined')?R:[];
+const MODO=window.CRV_AUT_MODO||'rd';
+const LINHAS=(MODO==='rd'&&typeof R!=='undefined')?R:[];
 const FUNC=(typeof EMP!=='undefined')?EMP:{};
 const FATOS=(typeof FATO!=='undefined')?FATO:{};
 const porRd=n=>LINHAS.filter(r=>String(r.rd)===String(n).trim());
@@ -759,18 +762,20 @@ function abrir(rdPre){
   const anos=[hoje.getFullYear()-1,hoje.getFullYear(),hoje.getFullYear()+1];
   const f=document.createElement('div');f.className='aut-fundo';
   f.innerHTML=`<div class="aut-modal" role="dialog" aria-modal="true">
-   <div class="aut-cab"><h3>Autorização de desconto<small>Modelo RE.0150.09 · versão 02 · preenche a partir da RD e da matrícula</small></h3><button class="aut-x" aria-label="Fechar">&times;</button></div>
+   <div class="aut-cab"><h3>Autorização de desconto<small>Modelo RE.0150.09 · versão 02 · ${MODO==='rd'?'preenche a partir da RD e da matrícula':'farmácia · preenche pela matrícula'}</small></h3><button class="aut-x" aria-label="Fechar">&times;</button></div>
    <div class="aut-corpo">
-    <div class="aut-sec">Registro de dano</div>
+    ${MODO==='rd'?`    <div class="aut-sec">Registro de dano</div>
     <div class="aut-c s3"><label>Nº da RD</label><input id="a-rd" inputmode="numeric" placeholder="ex.: 963"></div>
     <div class="aut-c s9" style="grid-column:span 9"><label>Colaboradores desta RD</label><div class="aut-chips" id="a-chips"><span style="color:#5d6a85;font-size:12px;padding-top:5px">Digite o número da RD para puxar a data, o fato e quem está envolvido.</span></div></div>
     <div class="aut-info" id="a-rdinfo">—</div>
+`:''}
     <div class="aut-sec">Colaborador</div>
     <div class="aut-c s3"><label>Matrícula</label><input id="a-mat" inputmode="numeric"></div>
     <div class="aut-c s9" style="grid-column:span 9"><label>Nome</label><input id="a-nome"></div>
     <div class="aut-c s6"><label>Função</label><input id="a-func"></div>
     <div class="aut-c s6"><label>Setor</label><input id="a-setor"></div>
     <div class="aut-info" id="a-matinfo">Digite a matrícula para puxar nome, função e setor.</div>
+    ${MODO==='farmacia'?'<div class="aut-sec">Compras de doença comunitária (D.C.)</div><div class="aut-info" id="a-farm">Digite a matrícula para ver as compras D.C. lançadas no controle.</div>':''}
     <div class="aut-sec">Valores</div>
     <div class="aut-c s3"><label>Valor total (R$)</label><input id="a-valor" inputmode="decimal" placeholder="0,00"></div>
     <div class="aut-c s2"><label>Parcelas</label><input id="a-par" type="number" min="1" max="60" value="1"></div>
@@ -781,10 +786,10 @@ function abrir(rdPre){
     <div class="aut-sec">Referente a</div>
     <div class="aut-c s12"><label>Descrição (sai no documento)</label><textarea id="a-ref" maxlength="260"></textarea></div>
     <div class="aut-c s12"><label>Tipo</label><div class="aut-tipos">
-      <label><input type="radio" name="a-tipo" value="MAU USO" checked> Mau uso</label>
+      <label><input type="radio" name="a-tipo" value="MAU USO" ${MODO==='rd'?'checked':''}> Mau uso</label>
       <label><input type="radio" name="a-tipo" value="SUMIÇO"> Sumiço</label>
       <label><input type="radio" name="a-tipo" value="AQUISIÇÃO"> Aquisição</label>
-      <label><input type="radio" name="a-tipo" value="OUTROS"> Outros</label></div></div>
+      <label><input type="radio" name="a-tipo" value="OUTROS" ${MODO!=='rd'?'checked':''}> Outros</label></div></div>
     <div class="aut-sec">Assinatura e emissão</div>
     <div class="aut-c s3"><label>Data do documento</label><input id="a-data" type="date" value="${hoje.toISOString().slice(0,10)}"></div>
     <div class="aut-c s4"><label>Responsável do RH</label><input id="a-rhnome" value="${escA(rh.nome)}"></div>
@@ -811,6 +816,25 @@ function abrir(rdPre){
     el('a-nome').value=c[0];el('a-func').value=c[1];el('a-setor').value=c[2];
     i.className='aut-info '+(c[3]==='Desligado'?'av':'ok');
     i.textContent=c[3]==='Desligado'?'Colaborador desligado: o desconto será na rescisão.':`${c[3]} · admitido em ${brData(c[4])}`;
+    if(MODO==='farmacia')comprasDC(m);
+  };
+  const comprasDC=async m=>{
+    const box=el('a-farm');if(!box)return;
+    if(!DB){box.textContent='As compras lançadas não estão disponíveis nesta visualização.';return}
+    box.className='aut-info';box.textContent='Buscando compras…';
+    try{
+      const s=await DB.collection('folhas').get();const L=[];
+      s.docs.forEach(dc=>{const f=dc.data()||{};(f.itens||[]).forEach(it=>{if(String(it.mat)===String(m)&&it.tipo==='DC')L.push({comp:f.comp,un:f.un,data:it.data,val:+it.val||0,obs:it.obs||''})})});
+      if(!L.length){box.className='aut-info av';box.textContent='Nenhuma compra D.C. lançada para esta matrícula no controle da farmácia. Preencha o valor à mão.';return}
+      L.sort((a,b)=>a.data<b.data?-1:1);
+      const tot=L.reduce((s,x)=>s+x.val,0);
+      box.className='aut-info ok';
+      box.innerHTML=L.map(x=>`${escA(brData(x.data))} · ${x.un==='C'?'Capinópolis':x.un==='I'?'Ituiutaba':escA(x.un||'')} · <b>R$ ${moeda(x.val)}</b>${x.obs?' · '+escA(x.obs):''}`).join('<br>')+
+        `<br><b>Total D.C.: R$ ${moeda(tot)}</b> <button type="button" class="aut-chip" id="a-usar">Usar este valor</button>`+
+        L.map((x,k)=>` <button type="button" class="aut-chip" data-v="${x.val}">Só ${escA(brData(x.data))}</button>`).join('');
+      el('a-usar').onclick=()=>{el('a-valor').value=moeda(tot);vparManual=false;calc()};
+      box.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{el('a-valor').value=moeda(+b.dataset.v);vparManual=false;calc()});
+    }catch(e){box.className='aut-info er';box.textContent='Não consegui ler as compras lançadas.'}
   };
   el('a-mat').addEventListener('change',puxarMat);el('a-mat').addEventListener('keyup',e=>{if(e.key==='Enter')puxarMat()});
 
@@ -839,7 +863,8 @@ function abrir(rdPre){
     ch.querySelectorAll('.aut-chip').forEach((b,i)=>b.onclick=()=>usarLinha(L[i]));
     usarLinha(L[0]);
   };
-  el('a-rd').addEventListener('change',puxarRd);el('a-rd').addEventListener('keyup',e=>{if(e.key==='Enter')puxarRd()});
+  if(el('a-rd')){el('a-rd').addEventListener('change',puxarRd);el('a-rd').addEventListener('keyup',e=>{if(e.key==='Enter')puxarRd()})}
+  if(MODO==='farmacia')el('a-ref').value='FARMACIA - MEDICAMENTOS';
 
   /* valores */
   let vparManual=false;
@@ -866,11 +891,11 @@ function abrir(rdPre){
   };
   listar();
 
-  if(rdPre){el('a-rd').value=rdPre;puxarRd()}
+  if(rdPre&&el('a-rd')){el('a-rd').value=rdPre;puxarRd()}
 
   el('a-gerar').onclick=async()=>{
     const msg=el('a-msg');
-    const d={rd:el('a-rd').value.trim(),mat:el('a-mat').value.trim(),nome:el('a-nome').value.trim().toUpperCase(),func:el('a-func').value.trim().toUpperCase(),setor:el('a-setor').value.trim().toUpperCase(),
+    const d={rd:el('a-rd')?el('a-rd').value.trim():'',mat:el('a-mat').value.trim(),nome:el('a-nome').value.trim().toUpperCase(),func:el('a-func').value.trim().toUpperCase(),setor:el('a-setor').value.trim().toUpperCase(),
       valor:num(el('a-valor').value),par:Math.max(1,parseInt(el('a-par').value,10)||1),vpar:num(el('a-vpar').value),mes:+el('a-mes').value,ano:el('a-ano').value,
       ref:el('a-ref').value.trim().toUpperCase(),tipo:(f.querySelector('input[name=a-tipo]:checked')||{}).value||'OUTROS',data:el('a-data').value,
       rhNome:el('a-rhnome').value.trim(),rhCargo:el('a-rhcargo').value.trim().toUpperCase(),rhMat:el('a-rhmat').value.trim(),duas:el('a-2via').checked};
@@ -880,7 +905,7 @@ function abrir(rdPre){
     msg.style.color='#5d6a85';msg.textContent='Gerando o PDF…';
     try{
       const bytes=await gerarPdf(d);
-      const nomeArq=`Autorizacao de desconto - ${d.nome.split(' ')[0]} ${d.mat}${d.rd?' - RD '+d.rd:''}.pdf`;
+      const nomeArq=`Autorizacao de desconto${MODO==='farmacia'?' farmacia':''} - ${d.nome.split(' ')[0]} ${d.mat}${d.rd?' - RD '+d.rd:''}.pdf`;
       const DL=window.claude&&window.claude.use?await window.claude.use('downloads'):null;
       if(DL)await DL.save({filename:nomeArq,data:bytes});
       else{const u=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));const a=document.createElement('a');a.href=u;a.download=nomeArq;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},4000)}
