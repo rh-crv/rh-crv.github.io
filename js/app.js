@@ -386,6 +386,8 @@ const SUBACOES = {
   ouvidorias: [{ acao:'nova', nome:'Cadastrar ouvidoria' }],
   rd:       [{ acao:'novo', nome:'Cadastrar RD' }, { acao:'aut', nome:'Autorização de desconto' }, { acao:'hist', nome:'Histórico de autorizações' }],
   fadiga:   [{ acao:'novo', nome:'Cadastrar ocorrência' }],
+  treinamentos: [{ acao:'novo', nome:'Cadastrar treinamento' }],
+  crachas:  [{ acao:'novo', nome:'Cadastrar crachá de treinamento' }],
   farmacia: [{ acao:'aut', nome:'Autorização de desconto' }, { acao:'hist', nome:'Histórico de autorizações' }]
 };
 function fecharJanelasAut(w){ try { w.document.querySelectorAll('.aut-fundo,.ent-fundo,.of-fundo,.nv-fundo').forEach(x => x.remove()); } catch(_){} }
@@ -848,8 +850,8 @@ window.CRV_QUADRO = async function(){
     // só a empresa 5 (CRV); entre desligados, o desligamento mais recente vence
     const DM = (dados.DM || []).filter(r => /\(5\)\s*$/.test(String(r[21] || '')) || /^CRV\b/i.test(String(r[21] || '')))
       .sort((a, b) => String(a[20] || '') < String(b[20] || '') ? -1 : 1);
-    DM.forEach(r => { M[txt(r[0])] = { nome:txt(r[1]), funcao:txt(r[2]), setor:txt(r[3]), situacao:'Desligado', vinculo:txt(r[7]), admissao:txt(r[9]), deslig:txt(r[20]), empresa:txt(r[21]).replace(/\s*\(\d+\)$/, '') }; });
-    dados.D.forEach(r => { M[txt(r[0])] = { nome:txt(r[1]), funcao:txt(r[2]), setor:txt(r[3]), situacao:txt(r[8]) || 'Ativo', vinculo:txt(r[7]), admissao:txt(r[9]), deslig:'', empresa:'CRV' }; });
+    DM.forEach(r => { M[txt(r[0])] = { nome:txt(r[1]), funcao:txt(r[2]), setor:txt(r[3]), situacao:'Desligado', vinculo:txt(r[7]), gerencia:txt(r[6]), cnh:txt(r[17]), admissao:txt(r[9]), deslig:txt(r[20]), empresa:txt(r[21]).replace(/\s*\(\d+\)$/, '') }; });
+    dados.D.forEach(r => { M[txt(r[0])] = { nome:txt(r[1]), funcao:txt(r[2]), setor:txt(r[3]), situacao:txt(r[8]) || 'Ativo', vinculo:txt(r[7]), gerencia:txt(r[6]), cnh:txt(r[17]), admissao:txt(r[9]), deslig:'', empresa:'CRV' }; });
     _quadroBase = { mapa:M, referencia:d.referencia || '' }; _quadroBaseRef = chave;
     return _quadroBase;
   } catch(_) { return null; }
@@ -894,7 +896,7 @@ function cssCapa(p){
   return `<style id="crv-capa">${r}</style>`;
 }
 
-const PAINEIS_COM_NOVOS = ['rd', 'fadiga'];
+const PAINEIS_COM_NOVOS = ['rd', 'fadiga', 'treinamentos'];
 function montarModelo(tpl, conteudo, referencia, p, novos){
   const nomeOk = n => /^[A-Za-z_$][\w$]*$/.test(n);
   const base = location.href.split('#')[0].replace(/[^/]*$/, '');

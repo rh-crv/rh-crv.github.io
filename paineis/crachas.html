@@ -429,7 +429,7 @@ svg .hit:hover,svg .hitv:hover{fill:var(--brand-2);fill-opacity:.08}
       <div class="ref"><span>Referência</span><b id="hoje">—</b></div>
       <button class="btn" id="btnPdf" type="button">Imprimir / PDF</button>
       <button class="btn" id="btnExport" type="button" hidden>Exportar Excel</button>
-      <button class="btn primary" id="btnNovo" type="button">+ Novo treinamento</button>
+      <button class="btn primary" id="btnNovo" type="button">+ Novo crachá de treinamento</button>
     </div>
     <nav class="tabs" role="tablist" aria-label="Visões do painel">
       <button type="button" role="tab" class="tab" id="tabPainel" data-v="painel" aria-selected="true">Painel geral</button>
@@ -1074,7 +1074,7 @@ function calcFim() {
 function openForm(id) {
   editing = id || null; const r = id ? recs.find(x => x.id === id) : null;
   if (id && !r) return;
-  $("#dTitle").textContent = r ? "Editar treinamento" : "Novo treinamento";
+  $("#dTitle").textContent = r ? "Editar crachá de treinamento" : "Novo crachá de treinamento";
   $("#fErr").hidden = true; $("#delBox").hidden = true;
   $("#btnDel").hidden = !r || !canWrite;
   $("#btnSave").disabled = !canWrite;
@@ -1093,6 +1093,7 @@ iIni.onchange = calcFim; iRes.onchange = calcFim; iDur.onchange = calcFim; iFim.
 $("#dClose").onclick = closeForm; $("#dCancel").onclick = closeForm;
 $("#ovl").addEventListener("click", e => { if (e.target.id === "ovl") closeForm(); });
 $("#btnNovo").onclick = () => openForm(null);
+window.CRV_NOVO = () => openForm(null);
 $("#btnDel").onclick = () => { $("#delBox").hidden = false; };
 $("#delNo").onclick = () => { $("#delBox").hidden = true; };
 $("#delYes").onclick = async () => {
@@ -1396,7 +1397,21 @@ $("#btnExport").onclick = () => {
 
 /* ---------- Dados ---------- */
 render();
-fetch("base.json").then(r => r.json()).then(b => { base = b; render(); if (!$("#ovl").hidden) showEmp(); }).catch(() => {});
+/* cadastro de colaboradores: Quadro Geral do app (empresa 5); se não houver, tenta o arquivo antigo */
+(async () => {
+  try {
+    const f = window.parent && window.parent !== window && window.parent.CRV_QUADRO;
+    if (typeof f === "function") {
+      const q = await f();
+      if (q && q.mapa) {
+        const b = {};
+        Object.entries(q.mapa).forEach(([m, c]) => { b[m] = [c.nome, c.funcao, c.setor, c.gerencia || "", (c.admissao || "").slice(0, 10), c.situacao === "Desligado" ? "DEMITIDO" : String(c.situacao || "").toUpperCase(), (c.cnh || "").slice(0, 10)]; });
+        base = b; render(); if (!$("#ovl").hidden) showEmp(); return;
+      }
+    }
+  } catch (_) {}
+  fetch("base.json").then(r => r.json()).then(b => { base = b; render(); if (!$("#ovl").hidden) showEmp(); }).catch(() => { base = base || {}; if (!$("#ovl").hidden) showEmp(); });
+})();
 (async () => {
   if (!window.claude?.use) { $("#banner").hidden = false; $("#banner").textContent = "Abra este painel pelo Claude para carregar e editar os treinamentos."; return; }
   const [d, u, dl] = await Promise.all([claude.use("db"), claude.use("user"), claude.use("downloads")]);

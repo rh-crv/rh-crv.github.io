@@ -433,6 +433,14 @@ const sum = (a, f) => a.reduce((t, x) => t + f(x), 0);
 const dayOf = s => { const [y, m, d] = s.split("-").map(Number); return (new Date(y, m - 1, d).getDay() + 6) % 7; };
 const dnum = s => { const [y, m, d] = s.split("-").map(Number); return Date.UTC(y, m - 1, d) / 864e5; };
 
+/* treinamentos cadastrados no app */
+(function(){const N=window.CRV_NOVOS||[];if(!N.length)return;
+ N.forEach((n,k)=>{const d=n.dados||{};if(!d.titulo||d.mes===''||d.mes==null)return;
+  const st=String(d.setor||'').trim().toUpperCase();let si=DATA.setores.findIndex(x=>x.toUpperCase()===st);if(si<0){DATA.setores.push(st);si=DATA.setores.length-1}
+  const real=d.sit==='real'&&d.data;const h=parseFloat(String(d.h||'').replace(',','.'));
+  DATA.rows.push([90000+k,String(d.titulo).trim().toUpperCase(),+d.tipo||0,si,+d.mes,real?d.data:null,real?(parseInt(d.n,10)||null):null,real&&!isNaN(h)?h:null,real&&d.efic?d.efic:null]);
+ });
+})();
 const [ry, rm] = DATA.ref.split("-").map(Number);
 const ended = m => DATA.ano < ry || (DATA.ano === ry && m < rm - 1);
 const ROWS = DATA.rows.map(r => {
@@ -934,5 +942,191 @@ render();
 if (window.claude && window.claude.use) window.claude.use("downloads").then(d => { downloads = d; }).catch(() => {});
 })();
 </script>
+
+<script>
+const MES_T=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+window.CRV_NOVOS_CFG={
+  titulo:'Cadastrar treinamento',tituloEditar:'Editar treinamento cadastrado no app',botao:'+ Cadastrar treinamento',
+  sub:'Treinamento novo no cronograma ou já realizado. Entra no indicador, no cronograma e nos gráficos.',
+  rotLista:'Treinamentos cadastrados no app',alvo:'div:has(> #btnExport)',
+  campos:[
+    {tipo:'sec',rot:'Treinamento'},
+    {k:'titulo',tipo:'text',rot:'Nome do treinamento',w:'w12',obr:1,foco:1,ph:'Ex.: Segurança no trabalho - operador mantenedor',lista:()=>[...new Set(DATA.rows.map(r=>r[1]))].sort((a,b)=>a.localeCompare(b))},
+    {k:'tipo',tipo:'select',rot:'Tipo',w:'w3',ops:[['0','Coletivo'],['1','Individual']]},
+    {k:'setor',tipo:'text',rot:'Setor',w:'w5',obr:1,lista:()=>DATA.setores.slice().sort((a,b)=>a.localeCompare(b)),ph:'Escolha ou digite'},
+    {k:'mes',tipo:'select',rot:'Mês do cronograma',w:'w4',obr:1,ops:()=>[['','—']].concat(MES_T.map((m,i)=>[String(i),m+' de '+DATA.ano]))},
+    {tipo:'sec',rot:'Realização'},
+    {k:'sit',tipo:'select',rot:'Situação',w:'w3',ops:[['prev','Previsto (só no cronograma)'],['real','Realizado']],padrao:'real'},
+    {k:'data',tipo:'date',rot:'Data de realização',w:'w3'},
+    {k:'n',tipo:'int',rot:'Nº de treinados',w:'w3',ph:'Ex.: 12'},
+    {k:'h',tipo:'money',rot:'Carga horária (horas)',w:'w3',ph:'Ex.: 1,5'},
+    {k:'efic',tipo:'date',rot:'Data da avaliação de eficácia',w:'w4'},
+    {k:'tinfo',tipo:'info',rot:''}
+  ],
+  aoMudar:c=>{
+    const d=c.ler(),real=d.sit==='real';['data','n','h','efic'].forEach(k=>c.mostrar(k,real));
+    if(real&&d.data&&!c._mesTocado){const m=String(+d.data.slice(5,7)-1);const sel=c.el('mes');if(sel&&!sel.value)sel.value=m;}
+    const n=parseInt(d.n,10),h=parseFloat(String(d.h||'').replace(',','.'));
+    c.info('tinfo','',real?(n&&h?'Horas/homem deste treinamento: <b>'+(n*h).toLocaleString('pt-BR',{maximumFractionDigits:1})+'</b> ('+n+' treinados × '+String(d.h)+' h).':'Preencha a data, o nº de treinados e a carga horária. A eficácia pode ser lançada depois, em Editar.'):'Fica no cronograma como previsto. Quando acontecer, clique em Editar e mude para Realizado.');
+  },
+  validar:d=>{
+    if(d.sit==='real'){
+      if(!d.data)return 'Informe a data de realização.';
+      if(!/^\d+$/.test(d.n||''))return 'Informe o nº de treinados.';
+      if(!d.h||isNaN(parseFloat(String(d.h).replace(',','.'))))return 'Informe a carga horária em horas (ex.: 1,5).';
+      if(d.data.slice(0,4)!==String(DATA.ano))return 'O painel é de '+DATA.ano+': use uma data deste ano.';
+      if(d.efic&&d.efic<d.data)return 'A eficácia não pode ser antes da realização.';
+    }
+    return '';
+  },
+  colunas:[['Treinamento',(d,H)=>'<b>'+H.esc(d.titulo)+'</b>'],['Setor',(d,H)=>H.esc(d.setor)],['Mês',(d,H)=>d.mes!==''&&d.mes!=null?MES_T[+d.mes].slice(0,3)+'/'+DATA.ano:''],['Situação',(d,H)=>d.sit==='real'?'Realizado em '+H.brData(d.data)+' · '+H.esc(d.n)+' pessoas · '+H.esc(d.h)+' h':'Previsto']]
+};
+</script>
+<!-- ===== Cadastro de novos registros no app ===== -->
+<style>
+.nv-btn{background:#e9a23b;color:#2b1d00;border:0;border-radius:8px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap;margin-left:8px}
+.nv-btn:hover{filter:brightness(1.05)}
+.nv-fundo{position:fixed;inset:0;background:rgba(10,20,40,.55);z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;overflow:auto}
+.nv-modal{background:#fff;color:#14213d;border-radius:12px;width:100%;max-width:860px;box-shadow:0 20px 60px rgba(0,0,0,.35);font-size:13px}
+.nv-cab{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid #e0e5ef}
+.nv-cab h3{margin:0;font-size:16px;flex:1}.nv-cab small{color:#5d6a85;font-weight:400;display:block;font-size:11.5px}
+.nv-x{background:none;border:0;font-size:24px;cursor:pointer;color:#5d6a85;line-height:1}
+.nv-corpo{padding:14px 18px;display:grid;grid-template-columns:repeat(12,1fr);gap:10px 12px}
+.nv-c{display:flex;flex-direction:column;gap:4px;grid-column:span 4}
+.nv-c.w2{grid-column:span 2}.nv-c.w3{grid-column:span 3}.nv-c.w6{grid-column:span 6}.nv-c.w8{grid-column:span 8}.nv-c.w9{grid-column:span 9}.nv-c.w12{grid-column:1/-1}
+.nv-c label{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#5d6a85}
+.nv-c input,.nv-c select,.nv-c textarea{border:1px solid #d5dbe6;border-radius:7px;padding:7px 9px;font:inherit;background:#f7f9fc;color:#14213d}
+.nv-c input:focus,.nv-c select:focus,.nv-c textarea:focus{outline:none;border-color:#2e8a57;background:#fff}
+.nv-c textarea{min-height:60px;resize:vertical}
+.nv-c input[readonly]{background:#eef1f5;color:#33415c}
+.nv-sec{grid-column:1/-1;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#2e8a57;border-bottom:1px solid #e0e5ef;padding-bottom:4px;margin-top:6px;display:flex;align-items:center;gap:8px}
+.nv-info{grid-column:1/-1;background:#f2f5fa;border-radius:8px;padding:8px 10px;font-size:12.5px;color:#33415c}
+.nv-info.ok{background:#e9f5ee;color:#1d5c3a}.nv-info.av{background:#fdf1da;color:#8a5a00}.nv-info.er{background:#fdecea;color:#8a2a1a}
+.nv-pe{display:flex;gap:8px;justify-content:flex-end;align-items:center;padding:12px 18px;border-top:1px solid #e0e5ef;flex-wrap:wrap}
+.nv-pe .esp{flex:1;color:#5d6a85;font-size:12px}
+.nv-b{border:0;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer;font-size:13px}.nv-b.sec{background:#eef1f5;color:#14213d}.nv-b.pri{background:#2e8a57;color:#fff}
+.nv-lista{grid-column:1/-1;max-height:220px;overflow:auto;border:1px solid #e0e5ef;border-radius:8px}
+.nv-lista table{width:100%;border-collapse:collapse;font-size:12px}
+.nv-lista th{position:sticky;top:0;background:#f7f9fc;text-align:left;padding:6px 8px;font-size:10.5px;text-transform:uppercase;color:#5d6a85}
+.nv-lista td{padding:6px 8px;border-top:1px solid #eef1f5;vertical-align:top}
+.nv-mini{border:1px solid #d5dbe6;background:#fff;border-radius:7px;padding:4px 9px;font-size:11.5px;cursor:pointer;font-weight:600;color:#14213d;margin-left:4px}
+.nv-mini.perigo{border-color:#e7b8b0;color:#a3301c}.nv-mini.perigo.conf{background:#a3301c;color:#fff;border-color:#a3301c}
+@media (max-width:700px){.nv-corpo>*{grid-column:1/-1!important}}
+</style>
+<script>
+(function(){
+'use strict';
+const CFG=window.CRV_NOVOS_CFG;if(!CFG)return;
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const brData=s=>s?String(s).slice(0,10).split('-').reverse().join('/'):'';
+const hojeISO=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const num=v=>{if(v==null||v==='')return NaN;let t=String(v).replace(/[R$\s]/g,'');if(t.includes(','))t=t.replace(/\./g,'').replace(',','.');return parseFloat(t)};
+let DB=null;
+const db=async()=>{if(DB)return DB;try{DB=window.claude&&window.claude.use?await window.claude.use('db'):null}catch(_){DB=null}return DB};
+async function buscar(m){
+  try{const f=window.parent&&window.parent!==window&&window.parent.CRV_QUADRO;
+    if(typeof f==='function'){const q=await f();if(q&&q.mapa){const c=q.mapa[m];if(c)return c}}}catch(_){}
+  return CFG.buscarLocal?CFG.buscarLocal(m):null;
+}
+function campoHTML(c,v){
+  const val=v==null?(typeof c.padrao==='function'?c.padrao():(c.padrao==null?'':c.padrao)):v;
+  const cls='nv-c '+(c.w||'');
+  const ro=c.ro?' readonly':'';
+  const lab=`<label for="nv-${c.k}">${esc(c.rot)}${c.obr?' *':''}</label>`;
+  if(c.tipo==='sec')return `<div class="nv-sec">${esc(c.rot)}</div>`;
+  if(c.tipo==='info')return `<div class="nv-info" id="nv-${c.k}">${c.rot||''}</div>`;
+  if(c.tipo==='select'){const ops=typeof c.ops==='function'?c.ops():c.ops;
+    return `<div class="${cls}" data-k="${c.k}">${lab}<select id="nv-${c.k}">${ops.map(o=>{const [ov,ot]=Array.isArray(o)?o:[o,o];return `<option value="${esc(ov)}"${String(ov)===String(val)?' selected':''}>${esc(ot)}</option>`}).join('')}</select></div>`}
+  if(c.tipo==='textarea')return `<div class="${cls}" data-k="${c.k}">${lab}<textarea id="nv-${c.k}" placeholder="${esc(c.ph||'')}">${esc(val)}</textarea></div>`;
+  const t=c.tipo==='date'?'date':c.tipo==='time'?'time':c.tipo==='month'?'month':'text';
+  const extra=c.tipo==='mat'||c.tipo==='int'?' inputmode="numeric"':c.tipo==='money'?' inputmode="decimal"':'';
+  const dl=c.lista?` list="nv-dl-${c.k}"`:'';
+  const dlh=c.lista?`<datalist id="nv-dl-${c.k}">${(typeof c.lista==='function'?c.lista():c.lista).map(o=>`<option value="${esc(o)}">`).join('')}</datalist>`:'';
+  return `<div class="${cls}" data-k="${c.k}">${lab}<input id="nv-${c.k}" type="${t}"${extra}${ro}${dl} placeholder="${esc(c.ph||'')}" value="${esc(val)}"${c.min?` min="${c.min}"`:''}${c.max?` max="${c.max}"`:''}>${dlh}</div>`;
+}
+function abrir(reg){
+  const ed=reg||null, d0=ed?ed.dados:{};
+  const f=document.createElement('div');f.className='nv-fundo';
+  f.innerHTML=`<div class="nv-modal" role="dialog" aria-modal="true">
+   <div class="nv-cab"><h3>${esc(ed?CFG.tituloEditar:CFG.titulo)}<small>${esc(CFG.sub||'')}</small></h3><button class="nv-x" aria-label="Fechar">×</button></div>
+   <div class="nv-corpo">${CFG.campos.map(c=>campoHTML(c,d0[c.k])).join('')}
+    <div class="nv-sec">${esc(CFG.rotLista||'Cadastrados no app')}</div>
+    <div class="nv-lista" id="nv-lista"><p style="padding:8px;margin:0;color:#5d6a85">Carregando…</p></div>
+   </div>
+   <div class="nv-pe"><span class="esp" id="nv-msg"></span><button class="nv-b sec" id="nv-cancel">Cancelar</button><button class="nv-b pri" id="nv-salvar">${ed?'Salvar alterações':'Cadastrar'}</button></div>
+  </div>`;
+  document.body.appendChild(f);
+  const el=k=>f.querySelector('#nv-'+k);
+  const fechar=()=>f.remove();
+  f.querySelector('.nv-x').onclick=fechar;el('cancel').onclick=fechar;
+  f.addEventListener('mousedown',e=>{if(e.target===f)fechar()});
+  const ler=()=>{const d={};CFG.campos.forEach(c=>{if(c.tipo==='sec'||c.tipo==='info')return;const i=el(c.k);if(i)d[c.k]=i.value.trim()});return d};
+  const ctx={el,ler,set:(k,v)=>{const i=el(k);if(i)i.value=v==null?'':v},mostrar:(k,on)=>{const w=f.querySelector(`[data-k="${k}"]`);if(w)w.style.display=on?'':'none'},info:(k,cls,html)=>{const i=el(k);if(i){i.className='nv-info'+(cls?' '+cls:'');i.innerHTML=html}},editando:ed};
+  /* matrícula → Quadro */
+  CFG.campos.filter(c=>c.tipo==='mat').forEach(c=>{
+    let tm=null,ult=null;const i=el(c.k);
+    const puxar=async()=>{const m=i.value.trim().replace(/^0+(?=\d)/,'');if(!m||m===ult)return;ult=m;
+      ctx.info(c.info,'','Buscando no Quadro de Colaboradores…');
+      const q=await buscar(m);if(i.value.trim().replace(/^0+(?=\d)/,'')!==m)return;
+      if(!q){ctx.info(c.info,'av','Matrícula não encontrada na empresa 5 (CRV) do Quadro de Colaboradores. Confira o número ou preencha à mão.');return}
+      c.preencher(q,ctx);
+      ctx.info(c.info,q.situacao==='Desligado'?'av':'ok',`<b>${esc(q.nome)}</b> · ${esc(q.situacao)} · ${esc(q.funcao)} · ${esc(q.setor)}${q.admissao?' · admitido em '+esc(brData(q.admissao)):''}${q.deslig?' · desligado em '+esc(brData(q.deslig)):''}`);
+      if(CFG.aoMudar)CFG.aoMudar(ctx);
+    };
+    i.addEventListener('input',()=>{clearTimeout(tm);tm=setTimeout(puxar,450)});
+    i.addEventListener('change',()=>{clearTimeout(tm);puxar()});
+  });
+  f.querySelectorAll('input,select,textarea').forEach(x=>x.addEventListener('input',()=>CFG.aoMudar&&CFG.aoMudar(ctx)));
+  f.querySelectorAll('select').forEach(x=>x.addEventListener('change',()=>CFG.aoMudar&&CFG.aoMudar(ctx)));
+  if(CFG.aoMudar)CFG.aoMudar(ctx);
+  if(ed){const m=CFG.campos.find(c=>c.tipo==='mat');if(m&&d0[m.k])ctx.info(m.info,'ok','Dados já preenchidos. Mude a matrícula para buscar de novo no Quadro.')}
+  /* lista */
+  const listar=async()=>{
+    const h=el('lista');const D=await db();
+    if(!D){h.innerHTML='<p style="padding:8px;margin:0;color:#5d6a85">O registro não está disponível nesta visualização.</p>';return}
+    try{const s=await D.collection('novos').get();
+      const L=s.docs.map(x=>({_id:x.id,dados:x.data()})).filter(x=>!x.dados.excluida).sort((a,b)=>(b.dados.cadastradoEm||'')<(a.dados.cadastradoEm||'')?-1:1);
+      h.innerHTML=L.length?`<table><thead><tr>${CFG.colunas.map(c=>`<th>${esc(c[0])}</th>`).join('')}<th>Por</th><th></th></tr></thead><tbody>${L.map(x=>`<tr data-id="${esc(x._id)}">${CFG.colunas.map(c=>`<td>${c[1](x.dados,{esc,brData})}</td>`).join('')}<td>${esc(String(x.dados.cadastradoPor||'').split(' ')[0])}<div style="color:#5d6a85;font-size:11px">${x.dados.cadastradoEm?esc(new Date(x.dados.cadastradoEm).toLocaleDateString('pt-BR')):''}</div></td><td style="white-space:nowrap;text-align:right"><button type="button" class="nv-mini" data-ac="ed">Editar</button><button type="button" class="nv-mini perigo" data-ac="ex">Excluir</button></td></tr>`).join('')}</tbody></table>`:'<p style="padding:8px;margin:0;color:#5d6a85">Nenhum registro cadastrado no app ainda.</p>';
+      h.querySelectorAll('[data-ac]').forEach(b=>b.onclick=async()=>{
+        const id=b.closest('tr').dataset.id,x=L.find(y=>y._id===id);if(!x)return;
+        if(b.dataset.ac==='ed'){fechar();abrir(x);return}
+        if(!b.classList.contains('conf')){b.classList.add('conf');b.textContent='Confirmar exclusão';setTimeout(()=>{if(b.isConnected){b.classList.remove('conf');b.textContent='Excluir'}},8000);return}
+        try{await D.collection('novos').doc(id).update({excluida:true,excluidaEm:new Date().toISOString(),excluidaPor:(window.parent&&window.parent.CRV_QUEM)||''});recarregar('Registro excluído.')}
+        catch(e){el('msg').style.color='#8a2a1a';el('msg').textContent='Não consegui excluir: '+((e&&e.message)||'sem permissão.')}
+      });
+    }catch(_){h.innerHTML='<p style="padding:8px;margin:0;color:#8a2a1a">Não consegui ler os registros.</p>'}
+  };
+  listar();
+  el('salvar').onclick=async()=>{
+    const msg=el('msg');const d=ler();
+    const falta=CFG.campos.filter(c=>c.obr&&(!c.quando||c.quando(d))&&!d[c.k]).map(c=>c.rot.toLowerCase());
+    if(falta.length){msg.style.color='#8a2a1a';msg.textContent='Falta preencher: '+falta.join(', ')+'.';return}
+    const erro=CFG.validar?CFG.validar(d):'';if(erro){msg.style.color='#8a2a1a';msg.textContent=erro;return}
+    const D=await db();if(!D){msg.style.color='#8a2a1a';msg.textContent='Não dá para salvar nesta visualização.';return}
+    const quem=(window.parent&&window.parent.CRV_QUEM)||'';
+    msg.style.color='#5d6a85';msg.textContent='Salvando…';
+    try{
+      if(ed)await D.collection('novos').doc(ed._id).update(Object.assign({},d,{alteradoPor:quem,alteradoEm:new Date().toISOString()}));
+      else await D.collection('novos').add(Object.assign({},d,{cadastradoPor:quem,cadastradoEm:new Date().toISOString()}));
+      recarregar(ed?'Alterações salvas.':'Registro cadastrado.');
+    }catch(e){msg.style.color='#8a2a1a';msg.textContent='Não consegui salvar: '+((e&&e.message)||'sem permissão para editar este painel.')}
+  };
+  const recarregar=t=>{msg2(t);setTimeout(()=>{const r=window.parent&&window.parent.CRV_RECARREGAR;if(typeof r==='function')r();else location.reload()},500)};
+  const msg2=t=>{el('msg').style.color='#1d5c3a';el('msg').textContent=t+' Atualizando o painel…'};
+  setTimeout(()=>{const p=CFG.campos.find(c=>c.foco);if(p&&el(p.k))el(p.k).focus()},60);
+}
+function montarBotao(){
+  const alvo=(CFG.alvo&&document.querySelector(CFG.alvo))||document.querySelector('header .hin')||document.querySelector('header');
+  if(!alvo||document.querySelector('.nv-btn'))return;
+  const b=document.createElement('button');b.className='nv-btn';b.type='button';b.textContent=CFG.botao||'+ Cadastrar';
+  b.onclick=()=>abrir();
+  const ref=alvo.querySelector('.aut-btn');if(ref)alvo.insertBefore(b,ref);else alvo.appendChild(b);
+  if(CFG.posBotao)CFG.posBotao(b);
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',montarBotao);else montarBotao();
+window.CRV_NOVO=()=>abrir();
+})();
+</script>
+<!-- ===== fim: cadastro de novos ===== -->
 
 </body></html>
