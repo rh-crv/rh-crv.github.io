@@ -452,7 +452,7 @@ window.CRV_NOVOS_CFG={
   rotLista:'Ocorrências cadastradas no app',alvo:'header .acts',
   campos:[
     {tipo:'sec',rot:'Ocorrência'},
-    {k:'data',tipo:'date',rot:'Data',w:'w3',obr:1,min:'2026-01-01',max:'2026-12-31',padrao:()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}},
+    {k:'data',tipo:'date',rot:'Data da ocorrência',w:'w3',obr:1,foco:1,min:'2026-01-01',max:'2026-12-31'},
     {k:'hora',tipo:'time',rot:'Hora',w:'w2'},
     {k:'turno',tipo:'select',rot:'Turno',w:'w2',ops:[['','—'],'A','B','C']},
     {k:'setor',tipo:'select',rot:'Setor',w:'w5',obr:1,ops:()=>SETORES},
@@ -460,7 +460,7 @@ window.CRV_NOVOS_CFG={
     {k:'mot',tipo:'select',rot:'Motivo',w:'w5',obr:1,ops:()=>Object.keys(MOTC)},
     {k:'med',tipo:'select',rot:'Medida aplicada',w:'w4',ops:['Não informada','Orientação','Advertência','Suspensão']},
     {tipo:'sec',rot:'Colaborador'},
-    {k:'mat',tipo:'mat',rot:'Matrícula',w:'w3',obr:1,foco:1,info:'matinfo',preencher:(q,c)=>{c.set('nome',q.nome);c.set('func',q.funcao);c.set('secao',q.setor);c.set('sit',q.situacao)}},
+    {k:'mat',tipo:'mat',rot:'Matrícula',w:'w3',obr:1,info:'matinfo',preencher:(q,c)=>{c.set('nome',q.nome);c.set('func',q.funcao);c.set('secao',q.setor);c.set('sit',q.situacao)}},
     {k:'nome',tipo:'text',rot:'Nome',w:'w9',obr:1},
     {k:'func',tipo:'text',rot:'Função',w:'w6'},
     {k:'secao',tipo:'text',rot:'Seção',w:'w6'},

@@ -1224,12 +1224,12 @@ window.CRV_NOVOS_CFG={
   rotLista:'RDs cadastradas no app',
   campos:[
     {tipo:'sec',rot:'Registro de dano'},
-    {k:'rd',tipo:'int',rot:'Nº da RD',w:'w3',obr:1,padrao:()=>String(Math.max(0,...D.rows.map(r=>+r[0]||0))+1)},
-    {k:'data',tipo:'date',rot:'Data do dano',w:'w3',obr:1,padrao:()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}},
+    {k:'rd',tipo:'int',rot:'Nº da RD',w:'w3',obr:1,foco:1,ph:'Nº que está no papel'},
+    {k:'data',tipo:'date',rot:'Data do dano',w:'w3',obr:1},
     {k:'ger',tipo:'select',rot:'Gerência',w:'w6',ops:()=>D.gers.slice().sort((a,b)=>a.localeCompare(b)),padrao:'Não classificada'},
     {k:'rdinfo',tipo:'info',rot:''},
     {tipo:'sec',rot:'Colaborador'},
-    {k:'mat',tipo:'mat',rot:'Matrícula',w:'w3',obr:1,foco:1,info:'matinfo',preencher:(q,c)=>{c.set('nome',q.nome);c.set('func',q.funcao);c.set('dep',q.setor);c.set('sit',q.situacao==='Desligado'?'DEMITIDO':q.situacao==='Afastado'?'AFASTADO':'ATIVO');c.set('adm',(q.admissao||'').slice(0,10))}},
+    {k:'mat',tipo:'mat',rot:'Matrícula',w:'w3',obr:1,info:'matinfo',preencher:(q,c)=>{c.set('nome',q.nome);c.set('func',q.funcao);c.set('dep',q.setor);c.set('sit',q.situacao==='Desligado'?'DEMITIDO':q.situacao==='Afastado'?'AFASTADO':'ATIVO');c.set('adm',(q.admissao||'').slice(0,10))}},
     {k:'nome',tipo:'text',rot:'Nome',w:'w9',obr:1},
     {k:'func',tipo:'text',rot:'Função',w:'w4'},
     {k:'dep',tipo:'text',rot:'Departamento',w:'w4',lista:()=>D.deps},
@@ -1246,11 +1246,15 @@ window.CRV_NOVOS_CFG={
   ],
   aoMudar:c=>{
     const d=c.ler(),des=d.acao==='DESCONTO';['val','par','md'].forEach(k=>c.mostrar(k,des));
-    const ex=D.rows.filter(r=>String(r[0])===String(d.rd));
+    const ex=D.rows.filter(r=>String(r[0])===String(d.rd)&&!(c.editando&&String(c.editando.dados.rd)===String(d.rd)&&String(r[2])===String(c.editando.dados.mat)));
+    const prox=Math.max(0,...D.rows.map(r=>+r[0]||0))+1;
+    if(!d.rd){c.info('rdinfo','','Digite o nº e a data que estão na RD (pode ser uma RD entregue com atraso). Último nº no painel: <b>'+(prox-1)+'</b>. Uma linha por colaborador envolvido.');return}
     c.info('rdinfo',ex.length?'av':'',ex.length?('A RD '+d.rd+' já existe no painel com: '+ex.map(r=>r[3]+' ('+r[2]+')').join(', ')+'. Se for outro colaborador envolvido no mesmo dano, pode cadastrar.'):'Uma linha por colaborador envolvido. Se o dano envolve duas pessoas, cadastre duas vezes com o mesmo número de RD.');
   },
   validar:d=>{
     if(!/^\d+$/.test(d.rd))return 'O número da RD deve ter só números.';
+    const h=new Date(),hj=h.getFullYear()+'-'+String(h.getMonth()+1).padStart(2,'0')+'-'+String(h.getDate()).padStart(2,'0');
+    if(d.data>hj)return 'A data do dano não pode ser depois de hoje.';
     if(d.acao==='DESCONTO'&&d.val&&isNaN(parseFloat(d.val.replace(/\./g,'').replace(',','.'))))return 'Valor do desconto inválido.';
     return '';
   },
