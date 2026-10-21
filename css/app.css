@@ -305,3 +305,16 @@ body{font-variant-numeric:tabular-nums}
 .t-cad{display:inline-flex;align-items:center;gap:3px;margin-left:auto;font-size:10.5px;font-weight:600;color:#8a2a1a}
 .t-cad svg{width:10px;height:10px}
 @media (prefers-color-scheme: dark){.t-cad{color:#f5b3a5}.ist.alerta b{color:#f2b450}}
+
+/* opções abaixo de um painel (seta) */
+.lat-plinha{display:flex;align-items:center;gap:2px}
+.lat-plinha .lat-painel{flex:1;min-width:0}
+.lat-pseta{flex:none;width:26px;height:26px;border:0;background:none;color:inherit;opacity:.7;cursor:pointer;border-radius:7px;font-size:15px;line-height:1;transition:transform .15s}
+.lat-pseta:hover{opacity:1;background:rgba(255,255,255,.08)}
+.lat-pgrupo.aberto .lat-pseta{transform:rotate(90deg);opacity:1}
+.lat-psub{display:none;margin:1px 0 4px 12px;padding-left:10px;border-left:1px solid rgba(255,255,255,.12)}
+.lat-pgrupo.aberto .lat-psub{display:block}
+.lat-acao{display:flex;align-items:center;gap:6px;width:100%;background:none;border:0;color:inherit;text-align:left;cursor:pointer;border-radius:8px;padding:6px 10px;font-size:12px;opacity:.78}
+.lat-acao::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--cor);flex:none}
+.lat-acao:hover{opacity:1;background:rgba(255,255,255,.06)}
+.lat-acao.ativo{opacity:1;background:rgba(255,255,255,.12);font-weight:600}

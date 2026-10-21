@@ -205,7 +205,20 @@ function moldura(conteudo){
   window.CRV_PONTE && window.CRV_PONTE.limpar();
   const p = E.perfil;
   const h = location.hash || '#/';
-  const atual = h.startsWith('#/p/') ? decodeURIComponent(h.slice(4)) : null;
+  const atual = h.startsWith('#/p/') ? decodeURIComponent(h.slice(4).split('/')[0]) : null;
+  const acaoAtual = h.startsWith('#/p/') ? (h.slice(4).split('/')[1] || '') : '';
+  let subAbertos = {};
+  try { subAbertos = JSON.parse(localStorage.getItem('crv-menu-sub') || '{}'); } catch(_){}
+  const itemPainel = (x, cfg) => {
+    const subs = SUBACOES[x.id];
+    const bt = `<button class="lat-painel ${x.id===atual&&!acaoAtual?'ativo':''}" data-ir="#/p/${encodeURIComponent(x.id)}" style="--cor:${cfg.cor}">${esc(x.nome)}${x.nivel==='restrito'?' <i class="cad" title="Restrito">●</i>':''}</button>`;
+    if (!subs) return bt;
+    const aberto = x.id === atual || subAbertos[x.id];
+    return `<div class="lat-pgrupo ${aberto?'aberto':''}" data-pid="${esc(x.id)}">
+      <div class="lat-plinha">${bt}<button class="lat-pseta" title="Mostrar opções" aria-label="Mostrar opções">›</button></div>
+      <div class="lat-psub">${subs.map(s => `<button class="lat-acao ${x.id===atual&&acaoAtual===s.acao?'ativo':''}" data-pid="${esc(x.id)}" data-acao="${esc(s.acao)}" style="--cor:${cfg.cor}">${esc(s.nome)}</button>`).join('')}</div>
+    </div>`;
+  };
   const visiveis = E.paineis.filter(podeVer);
   const grupos = {};
   visiveis.forEach(x => (grupos[x.frente] = grupos[x.frente] || []).push(x));
@@ -229,7 +242,7 @@ function moldura(conteudo){
         ${frentes.map(f => { const cfg = FRENTES[f] || FRENTES['Outros controles']; return `
           <div class="lat-grupo ${abertas[f]?'aberto':''}" data-frente="${esc(f)}">
             <button class="lat-frente"><span class="lat-ic" style="background:${cfg.cor}">${svg(cfg.ic,'#fff')}</span><span class="lat-nome">${esc(f)}</span><span class="lat-seta">›</span></button>
-            <div class="lat-sub">${grupos[f].map(x => `<button class="lat-painel ${x.id===atual?'ativo':''}" data-ir="#/p/${encodeURIComponent(x.id)}" style="--cor:${cfg.cor}">${esc(x.nome)}${x.nivel==='restrito'?' <i class="cad" title="Restrito">●</i>':''}</button>`).join('')}</div>
+            <div class="lat-sub">${grupos[f].map(x => itemPainel(x, cfg)).join('')}</div>
           </div>`; }).join('')}
         <div class="lat-sec">Conta</div>
         ${ehAdmin() ? `<button class="lat-item ${h==='#/admin'?'ativo':''}" data-ir="#/admin">${svg('engrenagem')}<span>Administração</span></button>` : ''}
@@ -264,6 +277,18 @@ function moldura(conteudo){
     abertas[g.dataset.frente] = g.classList.contains('aberto');
     try { localStorage.setItem('crv-menu-abertas', JSON.stringify(abertas)); } catch(_){}
   });
+  lat.querySelectorAll('.lat-pseta').forEach(b => b.onclick = () => {
+    const g = b.closest('.lat-pgrupo'); g.classList.toggle('aberto');
+    subAbertos[g.dataset.pid] = g.classList.contains('aberto');
+    try { localStorage.setItem('crv-menu-sub', JSON.stringify(subAbertos)); } catch(_){}
+  });
+  lat.querySelectorAll('.lat-acao').forEach(b => b.onclick = () => {
+    fechar();
+    const id = b.dataset.pid, acao = b.dataset.acao;
+    // se o painel já está aberto, só chama a ação dentro dele
+    if (E.painelAberto === id && executarAcao(acao)) return;
+    location.hash = '#/p/' + encodeURIComponent(id) + '/' + acao;
+  });
   $('#m-sair').onclick = sair;
   $('#m-instalar').onclick = () => { fechar(); instalarApp(); };
 }
@@ -272,7 +297,7 @@ function rota(){
   if (!E.perfil) return;
   fecharModal();
   const h = location.hash || '#/';
-  if (h.startsWith('#/p/')) return telaPainel(decodeURIComponent(h.slice(4)));
+  if (h.startsWith('#/p/')) { const [id, acao] = h.slice(4).split('/'); return telaPainel(decodeURIComponent(id), acao || ''); }
   if (h === '#/admin' && ehAdmin()) return telaAdmin();
   if (h === '#/conta') return telaConta();
   telaInicio();
@@ -349,11 +374,23 @@ function blocoFrente(f, lista){
 /* =====================================================================
    PAINEL
    ===================================================================== */
-async function telaPainel(id){
+// opções que aparecem abaixo do painel no menu (seta)
+const SUBACOES = {
+  rd:       [{ acao:'aut', nome:'Autorização de desconto' }],
+  farmacia: [{ acao:'aut', nome:'Autorização de desconto' }]
+};
+function executarAcao(acao){
+  const f = document.getElementById('modelo-frame');
+  const w = f && f.contentWindow;
+  if (acao === 'aut' && w && typeof w.CRV_AUTORIZACAO === 'function') { w.CRV_AUTORIZACAO(); return true; }
+  return false;
+}
+async function telaPainel(id, acao){
+  E.painelAberto = null;
   const p = E.paineis.find(x => x.id === id);
   if (!p || !podeVer(p)) { toast('Painel não encontrado ou sem acesso.', true); location.hash = '#/'; return; }
   const cfg = FRENTES[p.frente] || FRENTES['Outros controles'];
-  if (MODELOS[id]) return telaModelo(p, cfg);
+  if (MODELOS[id]) return telaModelo(p, cfg, acao);
   moldura(`<div class="trilha"><button data-ir="#/">Início</button> › <span>${esc(p.frente)}</span> › <b>${esc(p.nome)}</b></div>
     <div class="cartao vazio"><div class="spinner" style="margin:0 auto"></div><p>Carregando dados...</p></div>`);
   document.querySelector('.trilha [data-ir]').onclick = () => location.hash = '#/';
@@ -720,7 +757,7 @@ const AVISOS = { curriculos: 'Recrutamento e Seleção fica aqui dentro, no quad
 
 const fmtRef = r => r ? r.split('-').reverse().join('/') : '—';
 
-async function telaModelo(p, cfg){
+async function telaModelo(p, cfg, acao){
   const editar = podeEditar(p);
   moldura(`<div id="modelo-area" class="cartao vazio"><div class="spinner" style="margin:0 auto"></div><p>Abrindo o painel…</p></div>`);
   const meta = { set innerHTML(v){}, set textContent(v){} };   // informações do painel ficam só em Administração
@@ -755,7 +792,15 @@ async function telaModelo(p, cfg){
     const url = URL.createObjectURL(new Blob([html], { type:'text/html' }));
     area.className = 'modelo-area';
     area.innerHTML = `<iframe id="modelo-frame" title="${esc(p.nome)}" src="${url}"></iframe>`;
-    $('#modelo-frame').onload = () => setTimeout(() => URL.revokeObjectURL(url), 2000);
+    E.painelAberto = p.id;
+    $('#modelo-frame').onload = () => {
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      if (acao) setTimeout(() => {
+        executarAcao(acao);
+        // tira a ação do endereço para o F5 não reabrir a janela
+        try { history.replaceState(null, '', '#/p/' + encodeURIComponent(p.id)); } catch(_){}
+      }, 150);
+    };
   } catch(e){ area.innerHTML = `<div class="erro">Não consegui montar o painel: ${esc(e.message)}</div>`; }
 }
 
