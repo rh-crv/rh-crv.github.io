@@ -194,7 +194,7 @@ function criarArquivos(ctx){
     async list(){
       const { data, error } = await sb.storage.from(BUCKET).list(painel, { limit: 1000 });
       if (error) throw erro('unavailable', error.message);
-      const assets = (data || []).map(f => ({ id: f.name, url: '/_blob/' + f.name, sizeBytes: f.metadata?.size, contentType: f.metadata?.mimetype }));
+      const assets = (data || []).filter(f => !f.name.startsWith('_')).map(f => ({ id: f.name, url: '/_blob/' + f.name, sizeBytes: f.metadata?.size, contentType: f.metadata?.mimetype }));
       return { assets, usage: { files: assets.length, bytes: assets.reduce((s, a) => s + (a.sizeBytes || 0), 0) } };
     },
     async delete(id){

@@ -130,7 +130,7 @@ async function carregarCatalogo(){
     sb.from('pacotes').select('painel,referencia,atualizado_em,atualizado_por')
   ]);
   if (p.error) throw p.error;
-  E.paineis = p.data || [];
+  E.paineis = (p.data || []).filter(x => x.id !== 'rs'); // R&S fica dentro do Banco de Currículos
   E.metas = {};
   (m.data || []).forEach(r => E.metas[r.painel] = r);
   (k.data || []).forEach(r => E.metas[r.painel] = { ...r, linhas:null });
@@ -693,7 +693,7 @@ const MODELOS_LISTA = ['quadro','admissoes','rescisoes','experiencia','fat','cur
   'conexao','rd','fadiga','processos','ouvidorias','recepcao','alojamentos','onibus','gratificacao'];
 const MODELOS = Object.fromEntries(MODELOS_LISTA.map(id => [id, `paineis/${id}.html`]));
 // recursos que dependem do Claude e não funcionam no app
-const AVISOS = { curriculos: 'A leitura automática de currículos por IA só funciona dentro do Claude. Aqui você consulta, cadastra e acompanha.' };
+const AVISOS = { curriculos: 'Recrutamento e Seleção fica aqui dentro, no quadro "Recrutamento e Seleção". A leitura automática de currículos por IA só funciona dentro do Claude; aqui você consulta, cadastra e acompanha.' };
 
 const fmtRef = r => r ? r.split('-').reverse().join('/') : '—';
 
@@ -724,6 +724,11 @@ async function telaModelo(p, cfg){
     area.innerHTML = `${svg('planilha')}<h3>Este painel ainda não tem dados</h3>
       <p>${editar ? 'Clique em <b>Atualizar dados</b> e escolha o arquivo de dados deste painel.' : 'O RH ainda não carregou os dados deste painel.'}</p>`;
     return;
+  }
+  if (d.conteudo && d.conteudo.arquivo) {
+    const { data: arq, error: ea } = await sb.storage.from('arquivos').download(`${p.id}/${d.conteudo.arquivo}`);
+    if (ea || !arq) { area.innerHTML = `<div class="erro">Não consegui abrir os dados deste painel. Carregue o arquivo de dados de novo.</div>`; $('#m-meta').textContent=''; return; }
+    d.conteudo = JSON.parse(await arq.text());
   }
   $('#m-meta').innerHTML = `Dados de <b>${fmtRef(d.referencia)}</b> · atualizado em ${fmtData(d.atualizado_em)}${d.atualizado_por?' por '+esc(d.atualizado_por):''} · <span class="selo ${p.nivel}">${p.nivel}</span>`;
   try {
@@ -837,19 +842,36 @@ async function carregarPacotes(arquivos, esperado){
 
 async function salvarPacote(pac, f, progresso){
   const kb = Math.round(f.size/1024);
-  const conteudo = pac.blocos ? { blocos: pac.blocos } : { nomes: pac.nomes, dados: pac.dados };
+  let conteudo = pac.blocos ? { blocos: pac.blocos } : { nomes: pac.nomes, dados: pac.dados };
+  if (kb > 1500) {
+    // arquivo grande: guarda o conteúdo como arquivo protegido (o banco recusa registros muito grandes)
+    progresso && progresso(`enviando ${fmtNum(kb)} KB…`);
+    const blob = new Blob([JSON.stringify(conteudo)], { type:'application/json' });
+    const { error: e0 } = await sb.storage.from('arquivos').upload(`${pac.painel}/_dados.json`, blob, { contentType:'application/json', upsert:true });
+    if (e0) throw e0;
+    conteudo = { arquivo: '_dados.json' };
+  }
   const reg = { painel:pac.painel, referencia:pac.referencia, conteudo, tamanho_kb:kb, atualizado_em:new Date().toISOString(), atualizado_por:E.perfil.nome };
-  progresso && progresso(`enviando ${fmtNum(kb)} KB…`);
+  progresso && progresso('salvando…');
   const { error } = await sb.from('pacotes').upsert(reg);
   if (error) throw error;
   // anotações que vieram do Claude: entram só se ainda não existirem no app (nunca sobrescreve o que já foi feito aqui)
   const regs = pac.registros || [];
-  for (let i = 0; i < regs.length; i += 200) {
-    progresso && progresso(`anotações ${Math.min(i+200, regs.length)}/${regs.length}…`);
-    const lote = regs.slice(i, i + 200).map(r => ({ painel:pac.painel, caminho:r.caminho, colecao:r.colecao, doc_id:r.doc_id, dados:r.dados, atualizado_por:'Importado do Claude' }));
+  let lote = [], tam = 0, feitos = 0;
+  const enviar = async () => {
+    if (!lote.length) return;
     const { error: e2 } = await sb.from('registros').upsert(lote, { onConflict:'painel,caminho', ignoreDuplicates:true });
     if (e2) throw e2;
+    feitos += lote.length; lote = []; tam = 0;
+    progresso && progresso(`anotações ${feitos}/${regs.length}…`);
+  };
+  for (const r of regs) {
+    const item = { painel:pac.painel, caminho:r.caminho, colecao:r.colecao, doc_id:r.doc_id, dados:r.dados, atualizado_por:'Importado do Claude' };
+    const t = JSON.stringify(r.dados).length;
+    if (lote.length && (tam + t > 400000 || lote.length >= 100)) await enviar();
+    lote.push(item); tam += t;
   }
+  await enviar();
   registrar(pac.painel, 'atualizou os dados', `${f.name} · dados de ${fmtRef(pac.referencia)}${regs.length ? ` · ${regs.length} anotações` : ''}`);
 }
 
