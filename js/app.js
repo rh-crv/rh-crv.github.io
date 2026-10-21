@@ -201,6 +201,7 @@ async function sair(){ await sb.auth.signOut(); E.sessao=null; E.perfil=null; lo
    ESTRUTURA (topo + rotas)
    ===================================================================== */
 function moldura(conteudo){
+  window.CRV_PONTE && window.CRV_PONTE.limpar();
   const p = E.perfil;
   const h = location.hash || '#/';
   const atual = h.startsWith('#/p/') ? decodeURIComponent(h.slice(4)) : null;
@@ -687,9 +688,12 @@ async function registrar(painel, acao, detalhe){
    O código do painel fica no GitHub (sem dados). Os dados ficam no
    Supabase, protegidos, e são juntados só na hora de abrir.
    ===================================================================== */
-const MODELOS = {
-  quadro: 'paineis/quadro.html'
-};
+const MODELOS_LISTA = ['quadro','admissoes','rescisoes','experiencia','fat','curriculos','perfil','absenteismo','absenteismo-gestao',
+  'ferias','sancoes','sysprocard','unimed','uniodonto','farmacia','jovem','renapsi','treinamentos','crachas','pesquisas','lideres',
+  'conexao','rd','fadiga','processos','ouvidorias','recepcao','alojamentos','onibus','gratificacao'];
+const MODELOS = Object.fromEntries(MODELOS_LISTA.map(id => [id, `paineis/${id}.html`]));
+// recursos que dependem do Claude e não funcionam no app
+const AVISOS = { curriculos: 'A leitura automática de currículos por IA só funciona dentro do Claude. Aqui você consulta, cadastra e acompanha.' };
 
 const fmtRef = r => r ? r.split('-').reverse().join('/') : '—';
 
@@ -701,9 +705,10 @@ async function telaModelo(p, cfg){
       <div><h2>${esc(p.nome)}</h2><div class="meta" id="m-meta">Carregando…</div></div>
       <div class="acoes">${editar ? '<button class="btn prim" id="b-pacote">Atualizar dados</button>' : ''}</div>
     </div>
+    ${AVISOS[p.id] ? `<div class="aviso-painel">${esc(AVISOS[p.id])}</div>` : ''}
     <div id="modelo-area" class="cartao vazio"><div class="spinner" style="margin:0 auto"></div><p>Abrindo o painel…</p></div>`);
   document.querySelector('.trilha [data-ir]').onclick = () => location.hash = '#/';
-  $('#b-pacote') && ($('#b-pacote').onclick = () => escolherPacote(p));
+  $('#b-pacote') && ($('#b-pacote').onclick = () => escolherPacotes(p.id));
 
   const [pac, tpl] = await Promise.all([
     sb.from('pacotes').select('referencia,conteudo,atualizado_em,atualizado_por').eq('painel', p.id).maybeSingle(),
@@ -722,6 +727,9 @@ async function telaModelo(p, cfg){
   }
   $('#m-meta').innerHTML = `Dados de <b>${fmtRef(d.referencia)}</b> · atualizado em ${fmtData(d.atualizado_em)}${d.atualizado_por?' por '+esc(d.atualizado_por):''} · <span class="selo ${p.nivel}">${p.nivel}</span>`;
   try {
+    // ponte: o que o painel pedir ao "Claude" (salvar anotações, baixar arquivos...) vem para o app
+    window.__CRV_PAINEL = window.CRV_PONTE.criar({ sb, painel: p.id, perfil: () => E.perfil, quem: () => E.perfil.nome,
+      podeEditar: () => podeEditar(p), ehAdmin: () => ehAdmin() });
     const html = montarModelo(tpl, d.conteudo, d.referencia);
     const url = URL.createObjectURL(new Blob([html], { type:'text/html' }));
     area.className = 'modelo-area';
@@ -730,51 +738,137 @@ async function telaModelo(p, cfg){
   } catch(e){ area.innerHTML = `<div class="erro">Não consegui montar o painel: ${esc(e.message)}</div>`; }
 }
 
-function montarModelo(tpl, conteudo, referencia){
-  const seguro = v => JSON.stringify(v).replace(/</g,'\\u003c').replace(/\u2028/g,'\\u2028').replace(/\u2029/g,'\\u2029');
-  const nomes = (conteudo.nomes || Object.keys(conteudo.dados || {})).filter(n => /^[A-Z][A-Z0-9_]*$/.test(n));
-  const js = [
-    // os painéis usam "window.claude.use('downloads')" para baixar arquivos: aqui isso vira download normal
-    `window.claude={use:async n=>n==='downloads'?{save:async o=>{const b=new Blob([o.data]);const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=o.filename;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},4000);return true}}:null};`,
-    `const CRV_REF=${seguro(referencia)};`,
-    ...nomes.map(n => `const ${n}=${seguro(conteudo.dados[n])};`)
-  ].join('\n');
-  const refBR = fmtRef(referencia);
-  if (!tpl.includes('/*__CRV_DADOS__*/')) throw new Error('arquivo do painel sem o ponto de dados');
-  return tpl.split('__CRV_REFBR__').join(refBR).replace('/*__CRV_DADOS__*/', () => js);
+function jsValor(v){
+  // JSON seguro dentro de <script>, restaurando NaN / Infinity / undefined
+  return JSON.stringify(v).replace(/</g,'\\u003c').replace(/\u2028/g,'\\u2028').replace(/\u2029/g,'\\u2029')
+    .replace(/\{"\$crv":"(NaN|Infinity|-Infinity|undefined)"\}/g, '$1');
 }
 
-function escolherPacote(p){
+function montarModelo(tpl, conteudo, referencia){
+  const nomeOk = n => /^[A-Za-z_$][\w$]*$/.test(n);
+  const base = location.href.split('#')[0].replace(/[^/]*$/, '');
+  let html = tpl.split('__CRV_REFBR__').join(fmtRef(referencia)).split('__CRV_BASE__').join(base);
+  const ponte = `<script>${window.CRV_PONTE.scriptPainel()}<\/script>`;
+  html = /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, m => m + ponte) : ponte + html;
+
+  if (conteudo && conteudo.blocos) {               // formato 2: vários blocos por script
+    for (const b of conteudo.blocos) {
+      if (b.tipo === 'json') { html = html.replace(`/*__CRV_JSON_${b.script}__*/`, () => b.texto.replace(/<\/script/gi, '<\\/script')); continue; }
+      const js = b.itens.filter(i => nomeOk(i.nome)).map(i => {
+        const k = ['const','let','var'].includes(i.kind) ? i.kind : 'const';
+        return i.ctor ? `${k} ${i.nome}=new ${i.ctor === 'Set' ? 'Set' : 'Map'}(${jsValor(i.valor)});` : `${k} ${i.nome}=${jsValor(i.valor)};`;
+      }).join('\n');
+      html = html.replace(`/*__CRV_DADOS_${b.script}__*/`, () => js);
+    }
+    return html;
+  }
+  // formato 1 (Quadro Geral)
+  const nomes = (conteudo.nomes || Object.keys(conteudo.dados || {})).filter(n => /^[A-Z][A-Z0-9_]*$/.test(n));
+  const js = [`const CRV_REF=${jsValor(referencia)};`, ...nomes.map(n => `const ${n}=${jsValor(conteudo.dados[n])};`)].join('\n');
+  if (!html.includes('/*__CRV_DADOS__*/')) throw new Error('arquivo do painel sem o ponto de dados');
+  return html.replace('/*__CRV_DADOS__*/', () => js);
+}
+
+/* ---------- carregar arquivos de dados (um ou vários de uma vez) ---------- */
+function escolherPacotes(esperado){
   const inp = document.createElement('input');
-  inp.type = 'file'; inp.accept = '.json,application/json';
-  inp.onchange = async () => {
-    const f = inp.files[0]; if (!f) return;
-    let pac;
-    try { pac = JSON.parse(await f.text()); } catch(_) { return toast('Esse arquivo não é um arquivo de dados do app.', true); }
-    if (pac.tipo !== 'crv-pacote' || !pac.dados) return toast('Esse arquivo não é um arquivo de dados do app.', true);
-    if (pac.painel !== p.id) return toast(`Esse arquivo é do painel "${pac.painel}", não deste.`, true);
-    const kb = Math.round(f.size/1024);
-    abrirModal({
-      titulo: 'Atualizar dados de ' + p.nome,
-      corpo: `<div class="ok">Arquivo <b>${esc(f.name)}</b> · dados de <b>${fmtRef(pac.referencia)}</b> · ${fmtNum(kb)} KB</div>
-        <p style="color:var(--mut)">Os dados atuais deste painel serão substituídos. Todos com acesso passam a ver a versão nova.</p>`,
-      pe: `<button class="btn borda" id="pk-c">Cancelar</button><button class="btn prim" id="pk-ok">Salvar no app</button>`,
-      aoAbrir: () => {
-        $('#pk-c').onclick = fecharModal;
-        $('#pk-ok').onclick = async () => {
-          const bt = $('#pk-ok'); bt.disabled = true; bt.textContent = 'Enviando… (pode levar alguns segundos)';
-          const reg = { painel:p.id, referencia:pac.referencia, conteudo:{ nomes:pac.nomes, dados:pac.dados }, tamanho_kb:kb,
-            atualizado_em:new Date().toISOString(), atualizado_por:E.perfil.nome };
-          const { error } = await sb.from('pacotes').upsert(reg);
-          if (error) { bt.disabled=false; bt.textContent='Salvar no app'; return toast(traduzErro(error), true); }
-          E.metas[p.id] = { painel:p.id, arquivo:f.name, linhas:null, atualizado_em:reg.atualizado_em, atualizado_por:reg.atualizado_por, referencia:pac.referencia };
-          registrar(p.id, 'atualizou os dados', `${f.name} · dados de ${fmtRef(pac.referencia)}`);
-          fecharModal(); toast('Dados atualizados.'); telaPainel(p.id);
-        };
-      }
-    });
-  };
+  inp.type = 'file'; inp.multiple = !esperado; inp.accept = '.json,.zip,application/json,application/zip';
+  inp.onchange = () => inp.files.length && carregarPacotes([...inp.files], esperado);
   inp.click();
+}
+
+async function lerPacote(f){
+  let pac;
+  try { pac = JSON.parse(await f.text()); } catch(_) { throw new Error('não é um arquivo de dados do app'); }
+  if (pac.tipo !== 'crv-pacote' || !(pac.dados || pac.blocos)) throw new Error('não é um arquivo de dados do app');
+  return pac;
+}
+
+async function carregarPacotes(arquivos, esperado){
+  const itens = [];
+  for (const f of arquivos) {
+    if (/\.zip$/i.test(f.name)) { itens.push({ f, zip:true, painel: esperado || null }); continue; }
+    try { const pac = await lerPacote(f); itens.push({ f, pac, painel: pac.painel }); }
+    catch(e){ itens.push({ f, erro: e.message }); }
+  }
+  for (const it of itens) {
+    if (it.erro) continue;
+    const p = E.paineis.find(x => x.id === it.painel);
+    if (it.zip) { if (!it.painel) it.painel = 'curriculos'; continue; }
+    if (!p) it.erro = `painel "${it.painel}" não existe no app`;
+    else if (esperado && it.painel !== esperado) it.erro = `este arquivo é do painel "${p.nome}"`;
+    else if (!podeEditar(p)) it.erro = 'sem permissão para este painel';
+  }
+  const validos = itens.filter(i => !i.erro);
+  const nomeP = id => E.paineis.find(x => x.id === id)?.nome || id;
+  abrirModal({
+    titulo: validos.length > 1 ? `Carregar ${validos.length} arquivos de dados` : 'Atualizar dados',
+    largo: itens.length > 1,
+    corpo: `<p style="margin-top:0;color:var(--mut)">Os dados atuais de cada painel serão substituídos pela versão do arquivo. As anotações feitas no app (avaliações, programações, fichas…) <b>são mantidas</b>.</p>
+      <div class="tabela-env" style="max-height:340px"><table class="tab"><thead><tr><th>Arquivo</th><th>Painel</th><th>Dados de</th><th>Situação</th></tr></thead><tbody>
+      ${itens.map((i, n) => `<tr style="cursor:default"><td>${esc(i.f.name)}</td><td>${esc(i.painel ? nomeP(i.painel) : '—')}</td>
+        <td>${i.pac ? fmtRef(i.pac.referencia) : (i.zip ? 'arquivos' : '—')}</td>
+        <td id="pk-st-${n}">${i.erro ? `<span style="color:var(--coral)">${esc(i.erro)}</span>` : 'pronto'}</td></tr>`).join('')}
+      </tbody></table></div>`,
+    pe: `<button class="btn borda" id="pk-c">Cancelar</button><button class="btn prim" id="pk-ok" ${validos.length ? '' : 'disabled'}>Salvar no app</button>`,
+    aoAbrir: () => {
+      $('#pk-c').onclick = fecharModal;
+      $('#pk-ok').onclick = async () => {
+        const bt = $('#pk-ok'); bt.disabled = true; $('#pk-c').disabled = true;
+        let ok = 0;
+        for (const [n, i] of itens.entries()) {
+          if (i.erro) continue;
+          const st = $('#pk-st-' + n);
+          st.textContent = 'enviando…';
+          try {
+            if (i.zip) { const q = await enviarZip(i.f, i.painel, t => st.textContent = t); st.innerHTML = `<span style="color:var(--cane)">✓ ${q} arquivos</span>`; ok++; continue; }
+            await salvarPacote(i.pac, i.f, t => st.textContent = t);
+            st.innerHTML = '<span style="color:var(--cane)">✓ salvo</span>'; ok++;
+          } catch(e){ st.innerHTML = `<span style="color:var(--coral)">${esc(traduzErro(e))}</span>`; }
+        }
+        bt.textContent = 'Concluído'; $('#pk-c').disabled = false; $('#pk-c').textContent = 'Fechar';
+        $('#pk-c').onclick = () => { fecharModal(); rota(); };
+        toast(`${ok} de ${validos.length} carregados.`);
+        await carregarCatalogo();
+      };
+    }
+  });
+}
+
+async function salvarPacote(pac, f, progresso){
+  const kb = Math.round(f.size/1024);
+  const conteudo = pac.blocos ? { blocos: pac.blocos } : { nomes: pac.nomes, dados: pac.dados };
+  const reg = { painel:pac.painel, referencia:pac.referencia, conteudo, tamanho_kb:kb, atualizado_em:new Date().toISOString(), atualizado_por:E.perfil.nome };
+  progresso && progresso(`enviando ${fmtNum(kb)} KB…`);
+  const { error } = await sb.from('pacotes').upsert(reg);
+  if (error) throw error;
+  // anotações que vieram do Claude: entram só se ainda não existirem no app (nunca sobrescreve o que já foi feito aqui)
+  const regs = pac.registros || [];
+  for (let i = 0; i < regs.length; i += 200) {
+    progresso && progresso(`anotações ${Math.min(i+200, regs.length)}/${regs.length}…`);
+    const lote = regs.slice(i, i + 200).map(r => ({ painel:pac.painel, caminho:r.caminho, colecao:r.colecao, doc_id:r.doc_id, dados:r.dados, atualizado_por:'Importado do Claude' }));
+    const { error: e2 } = await sb.from('registros').upsert(lote, { onConflict:'painel,caminho', ignoreDuplicates:true });
+    if (e2) throw e2;
+  }
+  registrar(pac.painel, 'atualizou os dados', `${f.name} · dados de ${fmtRef(pac.referencia)}${regs.length ? ` · ${regs.length} anotações` : ''}`);
+}
+
+async function enviarZip(f, painel, progresso){
+  if (!window.JSZip) await new Promise((ok, falha) => { const s = document.createElement('script'); s.src = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js'; s.onload = ok; s.onerror = () => falha(new Error('não consegui abrir o .zip')); document.head.appendChild(s); });
+  const zip = await JSZip.loadAsync(f);
+  const nomes = Object.keys(zip.files).filter(n => !zip.files[n].dir);
+  let q = 0;
+  for (const n of nomes) {
+    const id = n.split('/').pop().replace(/\.[^.]+$/, '');
+    if (!/^[0-9a-f]{32}$/.test(id)) continue;
+    const blob = await zip.files[n].async('blob');
+    const tipo = /\.pdf$/i.test(n) ? 'application/pdf' : /\.png$/i.test(n) ? 'image/png' : /\.jpe?g$/i.test(n) ? 'image/jpeg' : /\.docx$/i.test(n) ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : 'application/octet-stream';
+    const { error } = await sb.storage.from('arquivos').upload(`${painel}/${id}`, blob, { contentType: tipo, upsert: true });
+    if (error) throw error;
+    q++; progresso && progresso(`arquivos ${q}/${nomes.length}…`);
+  }
+  registrar(painel, 'enviou arquivos', `${f.name} · ${q} arquivos`);
+  return q;
 }
 
 /* =====================================================================
@@ -901,7 +995,8 @@ function formSenha(u){
 function adminPaineis(){
   const c = $('#admin-corpo');
   const frentes = frentesExistentes();
-  c.innerHTML = `<div class="cartao-cab"><h3>Painéis do app</h3></div>
+  c.innerHTML = `<div class="cartao-cab"><h3>Painéis do app</h3><button class="btn prim" id="p-lote">Carregar arquivos de dados</button></div>
+    <p style="color:var(--mut);margin-top:0;font-size:13px"><b>Carregar arquivos de dados:</b> selecione de uma vez todos os arquivos de dados (.json) que o Claude preparou — cada um vai para o seu painel.</p>
     <p style="color:var(--mut);margin-top:0;font-size:13px">Mude a frente ou o nível de acesso de cada painel. <b>Restrito</b>: só administradores. <b>Controlado</b>: quem tiver a frente liberada. <b>Geral</b>: também quem tiver a frente liberada (dado operacional).</p>
     <div class="tabela-env" style="max-height:none"><table class="tab"><thead><tr><th>Painel</th><th>Frente</th><th>Nível</th><th>Base</th><th></th></tr></thead><tbody>
     ${E.paineis.map(p=>{ const m=E.metas[p.id]; return `<tr data-id="${esc(p.id)}" style="cursor:default">
@@ -911,6 +1006,7 @@ function adminPaineis(){
       <td>${m ? `${m.linhas==null ? 'dados de '+fmtRef(m.referencia) : fmtNum(m.linhas)+' linhas'} · ${new Date(m.atualizado_em).toLocaleDateString('pt-BR')}` : '—'}</td>
       <td>${m ? '<button class="btn peq perigo p-apagar">Apagar dados</button>' : ''}</td></tr>`; }).join('')}
     </tbody></table></div>`;
+  $('#p-lote').onclick = () => escolherPacotes(null);
   c.querySelectorAll('tr[data-id]').forEach(tr => {
     const id = tr.dataset.id;
     const salvar = async (campo, valor) => {

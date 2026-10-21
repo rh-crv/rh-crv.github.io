@@ -229,3 +229,5 @@ table.tab tbody tr:hover{background:var(--bg)}
 .modelo-area{background:var(--card);border-radius:var(--raio);border:1px solid var(--line);box-shadow:var(--sombra);overflow:hidden}
 .modelo-area iframe{display:block;width:100%;height:calc(100vh - 190px);min-height:620px;border:0;background:#fff}
 @media (max-width:900px){.modelo-area iframe{height:calc(100vh - 210px)}}
+.aviso-painel{background:#fdf1da;color:#8a5a00;border-radius:10px;padding:9px 14px;font-size:13px;margin-bottom:12px}
+@media (prefers-color-scheme: dark){.aviso-painel{background:#3a2f18;color:#f2b450}}

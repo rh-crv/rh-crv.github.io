@@ -1,0 +1,857 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Painel dos Ônibus CRV</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: faixa cor de asfalto com a logo e a faixa de pista; resumo clicável; abas por pergunta (frota, disponibilidade, preventivas, checklist, a conferir) */
+:root{
+  --band:#1f2c31; --band-2:#162126; --lane:#f2b632;
+  --brand:#0f6e7c; --brand-strong:#0a5560; --brand-soft:#dcedf0; --brand-ink:#ffffff;
+  --bg:#f2f3ef; --surface:#ffffff; --surface-2:#eff1ec; --line:#d8dcd2; --line-2:#e7eae2; --track:#e6e9e1;
+  --fg:#182226; --fg-2:#46535a; --fg-3:#6a767c;
+  --ok:#2e7d4f; --ok-bg:#dff0e4; --man:#c2671a; --man-bg:#fbe9d6; --crit:#c3352f; --crit-bg:#fbe6e4;
+  --warn:#8f6200; --warn-bg:#fdf2d4; --res:#6b4aa8; --res-bg:#ece5f7; --wash:#1b7fa6; --wash-bg:#dbeef6; --week:#6b4aa8;
+  --f-display:"Archivo","Segoe UI",system-ui,sans-serif;
+  --f-body:"Source Sans 3","Segoe UI",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+  --shadow:0 1px 2px rgba(20,35,40,.06),0 2px 8px rgba(20,35,40,.05);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --band:#1a262b; --band-2:#131c20; --lane:#f2b632;
+  --brand:#5cc4d3; --brand-strong:#8ad7e2; --brand-soft:#15323a; --brand-ink:#08262c;
+  --bg:#0f1517; --surface:#171f22; --surface-2:#1e282c; --line:#2e3a3f; --line-2:#253034; --track:#253034;
+  --fg:#e7edee; --fg-2:#b4c0c4; --fg-3:#89969b;
+  --ok:#6fcf95; --ok-bg:#183526; --man:#f0a35f; --man-bg:#3b2816; --crit:#f07068; --crit-bg:#3d1c1c;
+  --warn:#f1c14f; --warn-bg:#382d13; --res:#b79cf0; --res-bg:#2b2342; --wash:#62bfe6; --wash-bg:#143140; --week:#b79cf0;
+  --shadow:none; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --band:#1a262b; --band-2:#131c20; --lane:#f2b632;
+  --brand:#5cc4d3; --brand-strong:#8ad7e2; --brand-soft:#15323a; --brand-ink:#08262c;
+  --bg:#0f1517; --surface:#171f22; --surface-2:#1e282c; --line:#2e3a3f; --line-2:#253034; --track:#253034;
+  --fg:#e7edee; --fg-2:#b4c0c4; --fg-3:#89969b;
+  --ok:#6fcf95; --ok-bg:#183526; --man:#f0a35f; --man-bg:#3b2816; --crit:#f07068; --crit-bg:#3d1c1c;
+  --warn:#f1c14f; --warn-bg:#382d13; --res:#b79cf0; --res-bg:#2b2342; --wash:#62bfe6; --wash-bg:#143140; --week:#b79cf0;
+  --shadow:none; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.45}
+.wrap{max-width:1320px;margin:0 auto;padding-inline:20px}
+@media (max-width:600px){.wrap{padding-inline:16px}}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+button{font:inherit;color:inherit}
+h1,h2,h3{text-wrap:balance}
+.band{background:linear-gradient(180deg,var(--band),var(--band-2));color:#fff;padding-block:18px 66px;position:relative}
+.band::after{content:"";position:absolute;left:0;right:0;bottom:52px;height:3px;background:repeating-linear-gradient(90deg,var(--lane) 0 26px,transparent 26px 46px);opacity:.75}
+.band-top{display:flex;flex-wrap:wrap;align-items:center;gap:14px 24px;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:18px;min-width:0}
+.brand img{height:46px;width:auto;display:block}
+.brand .sep{width:1px;height:38px;background:rgba(255,255,255,.35)}
+.brand h1{font-family:var(--f-display);font-weight:800;font-size:24px;letter-spacing:-.01em;margin:0;line-height:1.1}
+.brand .sub{font-size:13.5px;color:rgba(255,255,255,.78);margin-top:3px}
+.band-meta{font-size:13px;color:rgba(255,255,255,.8);text-align:right}
+.band-meta b{color:#fff;font-weight:600}
+@media (max-width:600px){.brand img{height:34px}.brand h1{font-size:20px}.band-meta{text-align:left}}
+.summary{margin-top:-46px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;position:relative}
+@media (max-width:1000px){.summary{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:520px){.summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;box-shadow:var(--shadow);position:relative;overflow:hidden;text-align:left;cursor:pointer;display:block;width:100%}
+.kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--k,var(--line))}
+.kpi:hover{border-color:var(--k)}
+.kpi .k{font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--fg-3);font-weight:700}
+.kpi .v{font-family:var(--f-display);font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1;margin-top:4px;color:var(--k,var(--fg))}
+.kpi .h{font-size:12.5px;color:var(--fg-3)}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-top:16px}
+.tabs{display:flex;gap:2px;overflow-x:auto;border-bottom:1px solid var(--line);margin:8px 0 16px}
+.tab{font-family:var(--f-display);font-weight:600;font-size:14.5px;background:none;border:none;border-bottom:3px solid transparent;color:var(--fg-3);padding:10px 14px 9px;cursor:pointer;white-space:nowrap}
+.tab[aria-selected=true]{color:var(--brand);border-bottom-color:var(--brand)}
+.tab:hover{color:var(--fg)}
+.tab .ct{font-family:var(--f-mono);font-size:11.5px;font-weight:600;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:0 7px;margin-left:6px;color:var(--fg-2)}
+.tab .ct.hot{background:var(--crit);border-color:var(--crit);color:#fff}
+.btn{font-size:13.5px;font-weight:600;border-radius:7px;padding:7px 13px;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--fg-2);white-space:nowrap}
+.btn:hover{background:var(--surface-2);color:var(--fg)}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.btn.primary:hover{background:var(--brand-strong);border-color:var(--brand-strong)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.small{font-size:12.5px;color:var(--fg-3)}
+.mono{font-family:var(--f-mono);font-size:13px;font-variant-numeric:tabular-nums}
+.lead{background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:16px 18px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 22px;margin-bottom:16px}
+@media (max-width:900px){.lead{grid-template-columns:minmax(0,1fr)}}
+.lead h3{font-family:var(--f-display);font-size:12px;text-transform:uppercase;letter-spacing:.07em;margin:0 0 4px;color:var(--c,var(--fg-3))}
+.lead p{margin:0;font-size:14.5px;color:var(--fg-2)}
+.lead p b{color:var(--fg)}
+.lk{background:none;border:none;padding:0;color:var(--brand);font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:2px;font-size:inherit}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;color:var(--fg-2);margin-bottom:10px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.cards{align-items:start;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.cc{background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:14px 16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.cc-h{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.cc-h h3{margin:0;font-family:var(--f-display);font-size:16px;font-weight:700}
+.cc-h .tot{font-family:var(--f-display);font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1;text-align:right;white-space:nowrap}
+.cc-h .tot small{display:block;font-family:var(--f-body);font-size:11px;font-weight:600;color:var(--fg-3);text-transform:uppercase;letter-spacing:.06em;margin-top:3px}
+.fleet{display:flex;flex-wrap:wrap;gap:5px}
+.bus{font-family:var(--f-mono);font-size:12px;font-weight:600;border-radius:6px;padding:3px 7px;border:1px solid var(--c);background:var(--cb);color:var(--c);cursor:pointer;position:relative}
+.bus:hover{filter:brightness(.96)}
+.bus.s-lib{--c:var(--ok);--cb:var(--ok-bg)} .bus.s-man{--c:var(--man);--cb:var(--man-bg)} .bus.s-int{--c:var(--crit);--cb:var(--crit-bg)} .bus.s-res{--c:var(--res);--cb:var(--res-bg)}
+.bus.al::after{content:"";position:absolute;top:-4px;right:-4px;width:9px;height:9px;border-radius:50%;background:var(--crit);border:2px solid var(--surface)}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.st{border-radius:7px;padding:6px 8px;background:var(--surface-2);border:none;text-align:left;cursor:pointer}
+.st:disabled{cursor:default}
+.st:not(:disabled):hover{outline:2px solid var(--brand);outline-offset:-2px}
+.st .n{font-family:var(--f-display);font-weight:700;font-size:18px;font-variant-numeric:tabular-nums;line-height:1.1;color:var(--c,var(--fg))}
+.st .l{font-size:11px;color:var(--fg-3);font-weight:600}
+.st.zero .n{color:var(--fg-3);opacity:.6}
+.cc-f{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;color:var(--fg-3);flex-wrap:wrap}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);min-width:0}
+.panel+.panel{margin-top:16px}
+.panel-h{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:6px 12px;padding:14px 16px 12px;border-bottom:1px solid var(--line-2)}
+.panel-h h2{font-family:var(--f-display);font-size:16.5px;font-weight:700;margin:0}
+.panel-h .note{font-size:13px;color:var(--fg-3)}
+.panel-b{padding:14px 16px}
+.filters{display:flex;flex-wrap:wrap;gap:10px;align-items:end;padding:14px 16px;border-bottom:1px solid var(--line-2)}
+.fld{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1 1 150px}
+.fld label{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--fg-3);font-weight:700}
+select,input[type=search]{font:inherit;font-size:14px;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:7px 9px;width:100%;min-width:0}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--fg-3);font-weight:700;text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--surface-2)}
+th[data-k]{cursor:pointer;user-select:none}
+th[data-k]:hover{color:var(--fg)}
+th .ar{font-family:var(--f-mono);margin-left:3px;color:var(--brand)}
+td{padding:9px 12px;border-bottom:1px solid var(--line-2);vertical-align:top}
+td.r,th.r{text-align:right}
+tr.row{cursor:pointer}
+tr.row:hover td{background:var(--surface-2)}
+.nm{font-weight:700}
+.empty{padding:28px 16px;text-align:center;color:var(--fg-3)}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px;white-space:nowrap;line-height:1.5;background:var(--cb);color:var(--c)}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;flex:none}
+.p-lib,.p-ok{--c:var(--ok);--cb:var(--ok-bg)} .p-man{--c:var(--man);--cb:var(--man-bg)} .p-venc,.p-int{--c:var(--crit);--cb:var(--crit-bg)} .p-prox{--c:var(--warn);--cb:var(--warn-bg)} .p-res{--c:var(--res);--cb:var(--res-bg)} .p-wash{--c:var(--wash);--cb:var(--wash-bg)}
+/* disponibilidade */
+.av{display:grid;gap:14px}
+.avrow{display:grid;grid-template-columns:minmax(0,170px) minmax(0,1fr);gap:6px 14px;align-items:center;background:none;border:none;padding:6px;border-radius:8px;text-align:left;width:100%;cursor:pointer}
+.avrow:hover{background:var(--surface-2)}
+.avrow .nm2{font-family:var(--f-display);font-weight:700;font-size:13.5px}
+.avrow .nm2 small{display:block;font-family:var(--f-body);font-weight:500;font-size:12px;color:var(--fg-3)}
+.avbars{display:grid;gap:4px;position:relative}
+.avb{display:grid;grid-template-columns:minmax(0,1fr) 92px;gap:10px;align-items:center}
+.avb .tr{height:14px;background:var(--track);border-radius:4px;position:relative}
+.avb .tr i{display:block;height:100%;border-radius:4px;background:var(--c);min-width:2px}
+.avb .tr::after{content:"";position:absolute;top:-3px;bottom:-3px;left:85%;width:2px;background:var(--fg)}
+.avb .vl{font-family:var(--f-mono);font-size:12.5px;font-weight:600;white-space:nowrap}
+.avb .vl small{font-family:var(--f-body);font-weight:500;color:var(--fg-3);font-size:11.5px}
+.avb.na .tr{background:repeating-linear-gradient(135deg,var(--track) 0 6px,transparent 6px 10px)}
+.avb.na .tr::after{display:none}
+#ckCats .avb .tr::after{display:none}
+@media (max-width:640px){.avrow{grid-template-columns:minmax(0,1fr)}}
+/* preventivas */
+.seg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}
+@media (max-width:520px){.seg{grid-template-columns:minmax(0,1fr)}}
+.sg{border:1px solid var(--line);border-left:4px solid var(--c);border-radius:8px;background:var(--surface);padding:9px 12px;text-align:left;cursor:pointer}
+.sg:hover{border-color:var(--c)}
+.sg .n{font-family:var(--f-display);font-size:24px;font-weight:700;color:var(--c);line-height:1.1;font-variant-numeric:tabular-nums}
+.sg .l{font-size:12.5px;color:var(--fg-2);font-weight:600}
+.pgrid{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:16px;align-items:start}
+@media (max-width:1000px){.pgrid{grid-template-columns:minmax(0,1fr)}}
+.pgrid .panel+.panel{margin-top:0}
+.day{display:grid;grid-template-columns:104px minmax(0,1fr);gap:10px;padding:9px 0;border-bottom:1px solid var(--line-2);align-items:start}
+.day:last-child{border-bottom:none}
+.day .dt{font-family:var(--f-mono);font-size:12.5px;font-weight:600}
+.day .dt small{display:block;font-family:var(--f-body);color:var(--fg-3);font-weight:500;font-size:12px}
+/* checklist */
+.wait{border:1.5px dashed var(--line);border-radius:10px;padding:22px 20px;background:var(--surface);display:grid;gap:8px;margin-bottom:16px}
+.wait h2{font-family:var(--f-display);font-size:18px;margin:0}
+.wait p{margin:0;color:var(--fg-2);max-width:80ch}
+.wait ul{margin:4px 0 0;padding-left:18px;color:var(--fg-2);max-width:80ch}
+/* a conferir */
+.issues{display:grid;gap:10px}
+.iss{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--c);border-radius:9px;box-shadow:var(--shadow);padding:12px 16px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 14px;align-items:center}
+.iss.crit{--c:var(--crit)} .iss.warn{--c:var(--warn)} .iss.info{--c:var(--brand)}
+.iss h3{margin:0;font-family:var(--f-display);font-size:15px}
+.iss p{margin:2px 0 0;font-size:13.5px;color:var(--fg-2);max-width:95ch}
+.iss .tg{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--c);margin-bottom:2px}
+@media (max-width:640px){.iss{grid-template-columns:minmax(0,1fr)}}
+/* modal */
+.ov{position:fixed;inset:0;background:rgba(8,16,18,.55);z-index:50;display:flex;align-items:center;justify-content:center;padding:16px}
+.dlg{background:var(--surface);color:var(--fg);border-radius:12px;border:1px solid var(--line);width:100%;max-width:560px;max-height:calc(100% - 32px);overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+.dlg-wide{max-width:780px}
+.dlg-h{padding:16px 18px 10px;border-bottom:1px solid var(--line-2)}
+.dlg-h h3{margin:0;font-family:var(--f-display);font-size:17px}
+.dlg-b{padding:14px 18px;display:grid;gap:12px}
+.dlg-b>*{min-width:0}
+.dlg-f{display:flex;gap:8px;justify-content:flex-end;padding:12px 18px 16px;flex-wrap:wrap;align-items:center}
+.dlg-f .sp{flex:1;font-size:13px;color:var(--fg-3)}
+.li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;padding:10px 18px;border:none;border-bottom:1px solid var(--line-2);cursor:pointer;background:none;width:100%;text-align:left;align-items:center}
+.li:hover{background:var(--surface-2)}
+.li .meta{font-size:12.5px;color:var(--fg-3);overflow-wrap:anywhere}
+.ficha{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.ficha div{background:var(--surface-2);border-radius:8px;padding:8px 10px;min-width:0}
+.ficha span{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--fg-3);font-weight:700}
+.ficha b{font-size:14px;font-weight:600;overflow-wrap:anywhere}
+.ficha .w{grid-column:1/-1}
+.fs{border:1px solid var(--line);border-radius:8px;padding:8px 12px 10px;margin:0;display:grid;gap:6px;min-width:0}
+.fs legend{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--fg-3);font-weight:700;padding:0 4px}
+.fs.cols{grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
+.chk{display:flex;align-items:flex-start;gap:7px;font-size:14px;color:var(--fg-2);cursor:pointer}
+.chk input{margin-top:3px}
+.note-w{font-size:13px;border-radius:7px;padding:7px 10px;background:var(--warn-bg);color:var(--warn)}
+.note-c{font-size:13px;border-radius:7px;padding:7px 10px;background:var(--crit-bg);color:var(--crit)}
+.note-i{font-size:13px;border-radius:7px;padding:7px 10px;background:var(--surface-2);color:var(--fg-2);border:1px dashed var(--line)}
+.toast{position:fixed;bottom:calc(18px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:8px;font-size:14px;z-index:60;box-shadow:0 6px 20px rgba(0,0,0,.25);max-width:calc(100% - 32px)}
+.foot{margin:24px 0 40px;font-size:12.5px;color:var(--fg-3);max-width:95ch;line-height:1.55}
+.foot b{color:var(--fg-2)}
+</style>
+
+<div class="band">
+  <div class="wrap band-top">
+    <div class="brand">
+      <img src="data:image/png;base64,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" alt="CRV Industrial">
+      <span class="sep" aria-hidden="true"></span>
+      <div><h1>Painel dos Ônibus</h1><div class="sub">Frota, disponibilidade e preventivas do transporte de funcionários</div></div>
+    </div>
+    <div class="band-meta">Acompanhamento Diário de Ônibus · posição de <b>07/10/2026</b><br>Semanal de <b>01/10 a 07/10</b> · Inspeções da Segurança do Trabalho de <b>08/09 a 30/09</b></div>
+  </div>
+</div>
+
+<div class="wrap">
+  <section class="summary" id="summary" aria-label="Resumo"></section>
+
+  <div class="bar">
+    <div class="small">Clique em qualquer número, barra, ônibus ou linha para ver quem está por trás.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="btnCapa" type="button">Capa para diretoria (PDF)</button><button class="btn primary" id="btnXls" type="button">Exportar Excel</button><button class="btn primary" id="btnPdf" type="button">Gerar PDF</button></div>
+  </div>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" data-tab="geral">Visão geral</button>
+    <button class="tab" role="tab" data-tab="frota">Frotas<span class="ct" id="ctFrota"></span></button>
+    <button class="tab" role="tab" data-tab="disp">Disponibilidade</button>
+    <button class="tab" role="tab" data-tab="prev">Preventivas<span class="ct hot" id="ctPrev"></span></button>
+    <button class="tab" role="tab" data-tab="check">Checklist<span class="ct hot" id="ctCk"></span></button>
+    <button class="tab" role="tab" data-tab="conf">A conferir<span class="ct hot" id="ctConf"></span></button>
+  </nav>
+
+  <section id="v-geral">
+    <div class="lead" id="lead"></div>
+    <div class="legend"><span><i style="background:var(--ok)"></i>Liberado</span><span><i style="background:var(--man)"></i>Em manutenção</span><span><i style="background:var(--crit);border-radius:50%"></i>Ponto de atenção no ônibus</span></div>
+    <div class="cards" id="cards"></div>
+  </section>
+
+  <section id="v-frota" hidden>
+    <div class="panel">
+      <div class="filters" role="search">
+        <div class="fld"><label for="fE">Empresa</label><select id="fE"></select></div>
+        <div class="fld"><label for="fS">Situação</label><select id="fS"><option value="">Todas</option><option value="lib">Liberado</option><option value="man">Em manutenção</option></select></div>
+        <div class="fld"><label for="fV">Vistoria</label><select id="fV"><option value="">Todas</option><option value="venc">Vencida</option><option value="prox">Vence em até 7 dias</option><option value="ok">Em dia</option></select></div>
+        <div class="fld" style="flex-basis:200px"><label for="fB">Buscar</label><input type="search" id="fB" placeholder="Frota, atividade ou rota" autocomplete="off"></div>
+        <button class="btn" id="btnLimpar" type="button">Limpar</button>
+      </div>
+      <div class="tbl-wrap"><table id="tFrota"><thead><tr>
+        <th data-k="f">Frota<span class="ar"></span></th><th data-k="en">Empresa<span class="ar"></span></th><th data-k="sit">Situação<span class="ar"></span></th>
+        <th data-k="at">Atividade<span class="ar"></span></th><th data-k="ida">Rota (ida)<span class="ar"></span></th>
+        <th data-k="pax" class="r">Pass./dia<span class="ar"></span></th><th data-k="cap" class="r">Capac.<span class="ar"></span></th>
+        <th data-k="pv">Próx. vistoria<span class="ar"></span></th><th data-k="l2">Próx. lavagem<span class="ar"></span></th>
+      </tr></thead><tbody></tbody></table></div>
+    </div>
+  </section>
+
+  <section id="v-disp" hidden>
+    <div class="panel">
+      <div class="panel-h"><h2>Disponibilidade por empresa</h2><span class="note">A linha preta marca a meta de 85% que aparece no gráfico semanal</span></div>
+      <div class="panel-b">
+        <div class="legend"><span><i style="background:var(--ok)"></i>Hoje (07/10): liberados ÷ frota</span><span><i style="background:var(--week)"></i>Semana 01 a 07/10, como veio no relatório</span></div>
+        <div class="av" id="av"></div>
+        <p class="small" id="avNote" style="margin:12px 0 0"></p>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-h"><h2>Ônibus parados hoje</h2><span class="note" id="manNote"></span></div>
+      <div class="tbl-wrap"><table id="tMan"><thead><tr><th>Frota</th><th>Empresa</th><th>Motivo informado</th><th class="r">Capac.</th><th>Próx. vistoria</th><th>Situação</th></tr></thead><tbody></tbody></table></div>
+    </div>
+  </section>
+
+  <section id="v-prev" hidden>
+    <div class="pgrid">
+      <div class="panel">
+        <div class="panel-h"><h2>Vistoria (a cada 30 dias)</h2><span class="note">Contagem a partir de 07/10/2026</span></div>
+        <div class="panel-b"><div class="seg" id="segV"></div></div>
+        <div class="tbl-wrap"><table id="tVist"><thead><tr><th>Frota</th><th>Empresa</th><th>Última</th><th>Próxima</th><th>Prazo</th><th>Situação</th></tr></thead><tbody></tbody></table></div>
+      </div>
+      <div class="panel">
+        <div class="panel-h"><h2>Lavagem (semanal)</h2><span class="note">Próxima lavagem de cada ônibus</span></div>
+        <div class="panel-b" id="wash"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="v-check" hidden>
+    <div class="panel"><div class="panel-h"><h2>Inspeções da Segurança do Trabalho</h2><span class="note" id="ckNote"></span></div>
+      <div class="panel-b"><div class="seg" id="segCk" style="grid-template-columns:repeat(4,minmax(0,1fr))"></div><div id="ckAlert" style="display:grid;gap:6px"></div></div>
+    </div>
+    <div style="margin-top:16px"><div class="panel">
+        <div class="panel-h"><h2>O que mais aparece</h2><span class="note">Não conformidades agrupadas pelo painel</span></div>
+        <div class="panel-b" id="ckCats" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:4px 18px"></div>
+      </div>
+    </div>
+    <div style="margin-top:16px"><div class="panel">
+        <div class="panel-h"><h2>Resultado por ônibus</h2><span class="note">Último relatório de cada ônibus</span></div>
+        <div class="tbl-wrap"><table id="tCk"><thead><tr><th>Frota</th><th>Empresa</th><th>Inspeção</th><th>Resultado</th><th class="r">Itens</th><th>Nova inspeção</th><th>No acompanhamento</th></tr></thead><tbody></tbody></table></div>
+      </div>
+      </div>
+  </section>
+
+  <section id="v-conf" hidden>
+    <p class="small" style="margin:0 0 12px">Pontos em que o acompanhamento não fecha ou pede uma decisão. Nada foi corrigido por conta própria: o painel mostra o documento como ele veio.</p>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn" id="btnConfX" type="button">Exportar "A conferir"</button></div>
+    <div class="issues" id="issues"></div>
+  </section>
+
+  <p class="foot"><b>Como ler:</b> tudo vem do "Acompanhamento Diário de Ônibus" de 07/10/2026 (Departamento de Produção Agrícola) e do gráfico de disponibilidade semanal de 01/10 a 07/10. <b>Liberado</b> e <b>Em manutenção</b> são a situação informada no documento. <b>Disponibilidade de hoje</b> = ônibus liberados ÷ frota da empresa. <b>Vistoria vencida</b> = data da próxima vistoria anterior a 07/10/2026. <b>Próxima lavagem</b> é a coluna "Lavagem 2". <b>Checklist</b> = relatórios de inspeção da Segurança do Trabalho enviados em 08/10; o painel usa a capa e a lista de não conformidades de cada relatório (o checklist manuscrito não foi transcrito item a item). O documento não traz placa, motorista, quilometragem, data em que o ônibus entrou em manutenção nem previsão de retorno; por isso o painel não mostra dias parado.</p>
+</div>
+
+<div class="ov" id="ovList" hidden><div class="dlg dlg-wide" role="dialog" aria-modal="true" aria-labelledby="listT">
+  <div class="dlg-h"><h3 id="listT"></h3><div class="small" id="listSub"></div></div>
+  <div id="listItems" style="max-height:60vh;overflow-y:auto"></div>
+  <div class="dlg-f"><span class="sp" id="listCt"></span><button type="button" class="btn" id="listXls">Exportar esta lista (Excel)</button><button type="button" class="btn" data-close>Fechar</button></div>
+</div></div>
+
+<div class="ov" id="ovB" hidden><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="bT">
+  <div class="dlg-h"><h3 id="bT"></h3><div class="small" id="bSub"></div></div>
+  <div class="dlg-b"><div id="bWarn" style="display:grid;gap:6px"></div><div class="ficha" id="bFicha"></div><div id="bIns" style="display:grid;gap:8px"></div></div>
+  <div class="dlg-f"><button type="button" class="btn" data-close>Fechar</button></div>
+</div></div>
+
+<div class="ov" id="ovX" hidden><div class="dlg dlg-wide" role="dialog" aria-modal="true" aria-labelledby="xT">
+  <div class="dlg-h"><h3 id="xT"></h3><div class="small">Escolha o que entra no arquivo.</div></div>
+  <div class="dlg-b">
+    <fieldset class="fs"><legend>Conteúdo</legend>
+      <label class="chk"><input type="checkbox" id="xRes" checked> Resumo por empresa (frota, liberados, manutenção, disponibilidade)</label>
+      <label class="chk"><input type="checkbox" id="xFro" checked> Frota completa (um ônibus por linha)</label>
+      <label class="chk"><input type="checkbox" id="xMan" checked> Ônibus parados e motivo</label>
+      <label class="chk"><input type="checkbox" id="xVis" checked> Preventivas: vistorias e lavagens</label>
+      <label class="chk"><input type="checkbox" id="xIns" checked> Inspeções da Segurança do Trabalho (resultado e não conformidades)</label>
+      <label class="chk"><input type="checkbox" id="xConf"> A conferir</label>
+    </fieldset>
+    <fieldset class="fs cols" id="xEmp"><legend>Empresas</legend></fieldset>
+    <fieldset class="fs cols"><legend>Situação</legend>
+      <label class="chk"><input type="checkbox" id="xLib" checked> Liberados</label>
+      <label class="chk"><input type="checkbox" id="xPar" checked> Em manutenção</label>
+    </fieldset>
+    <div class="small" id="xInfo"></div><div id="xWarn"></div>
+  </div>
+  <div class="dlg-f"><span class="sp" id="xMsg"></span><button type="button" class="btn" id="xAll">Marcar todos</button><button type="button" class="btn" data-close>Cancelar</button><button type="button" class="btn primary" id="xGo">Gerar arquivo</button></div>
+</div></div>
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script>/*__CRV_DADOS_0__*/
+
+// ---------- dados: Acompanhamento Diário de Ônibus, 07/10/2026 ----------
+const REF='2026-10-07', META=85;
+const EMP=['CRUZEIRO DO SUL','G.M.C TRANSPORTE','VERONESE','M.O TRANSPORTE','MARIA GABRIELA'];
+const WEEK={'CRUZEIRO DO SUL':100,'G.M.C TRANSPORTE':10,'J.P TRANSPORTE':70,'M.O TRANSPORTE':93.33,'MARIA GABRIELA':100,'VERONESE':76};
+// [empresa, frota, capacidade, pass/dia, últ. vistoria, próx. vistoria, lavagem 1, lavagem 2, atividade, rota ida, rota volta, situação]
+
+
+
+// ---------- inspeções da Segurança do Trabalho (relatórios RE-SST-016 enviados em 08/10/2026) ----------
+// [frota, data da inspeção, status (lib|pend|int), próxima vistoria/nova inspeção, proprietário, responsável, atividade, não conformidades, conclusão (apto|corrigir|interdicao), arquivo]
+
+const STI={lib:['Liberado para operação','p-lib'],pend:['Liberado com pendências','p-prox'],int:['Interditado','p-int'],sem:['Sem relatório','p-res']};
+const CATS=[['Direção, suspensão, freios e pneus',/DIRE|SUSPENS|FREIO|PNEU|MOLA|AMORTEC|ROLAMENTO|EMBUCHAMENTO|BELETA|DIFERENCIAL|MARCHA R/],
+ ['Tacógrafo e velocímetro',/TACOGRAFO|VELOC/],['Para-brisa e visibilidade',/BRISA|LIMPADOR|PALAS/],['Extintor e para-choque',/EXTINTOR|CHOQUE/],
+ ['Buzina, alarmes e luzes',/BUZINA|SONORO|ALARME|LUZ|ALERTA/],['Bancos, limpeza e conforto',/./]];
+const catOf=s=>{ const u=s.toUpperCase(); return CATS.find(c=>c[1].test(u))[0]; };
+
+// ---------- utilidades ----------
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt = s => s ? s.split('-').reverse().join('/') : '';
+const days = (a,b) => Math.round((Date.parse(a)-Date.parse(b))/864e5);
+const pl = (n,s,p) => `${n} ${n===1?s:p}`;
+const pc = (a,b) => b ? Math.round(a/b*1000)/10 : 0;
+const pcT = v => (Math.round(v*10)/10).toLocaleString('pt-BR',{maximumFractionDigits:1})+'%';
+const DOW=['dom','seg','ter','qua','qui','sex','sáb'];
+const dow = s => DOW[new Date(s+'T12:00:00').getDay()];
+function toast(t){ const el=$('toast'); el.textContent=t; el.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>el.hidden=true,3600); }
+
+const B = RAW.map(r=>{ const b={e:r[0],en:EMP[r[0]],f:r[1],cap:r[2],pax:r[3],uv:r[4],pv:r[5],l1:r[6],l2:r[7],at:r[8],ida:r[9],volta:r[10],sit:r[11]==='L'?'lib':'man'};
+  b.sitT=b.sit==='lib'?'Liberado':'Em manutenção';
+  const m=/^MANUTEN[ÇC][AÃ]O\s*-\s*(.+)$/i.exec(b.at); b.motivo=m?m[1]:'';
+  b.dv=days(b.pv,REF);
+  b.vk=b.dv<0?'venc':b.dv<=7?'prox':'ok';
+  b.vt=b.dv<0?`Vencida há ${pl(-b.dv,'dia','dias')}`:b.dv===0?'Vence hoje':b.dv===1?'Vence amanhã':b.dv<=7?`Vence em ${b.dv} dias`:`Em dia (faltam ${b.dv} dias)`;
+  b.vBad=b.pv<=b.uv; b.vInt=days(b.pv,b.uv);
+  b.lBad=b.l2.slice(0,4)!=='2026';
+  b.over=b.pax>b.cap; b.full=b.pax===b.cap&&b.pax>0;
+  // pontos de atenção do ônibus
+  b.al=[];
+  if(b.sit==='lib'&&b.vk==='venc') b.al.push(['c',`Liberado com vistoria vencida desde ${fmt(b.pv)}.`]);
+  if(b.over) b.al.push(['c',`${b.pax} passageiros por dia para ${b.cap} lugares (${b.pax-b.cap} acima da capacidade).`]);
+  if(b.sit==='lib'&&b.motivo) b.al.push(['w',`Consta como liberado, mas a atividade é "${b.at}" e não há passageiros.`]);
+  if(b.sit==='man'&&!b.motivo) b.al.push(['w','Consta em manutenção, mas o documento não informa o motivo (a atividade mostra a rota).']);
+  if(b.vBad) b.al.push(['w',b.pv===b.uv?'Última e próxima vistoria com a mesma data.':'Próxima vistoria com data anterior à última.']);
+  if(b.lBad) b.al.push(['w',`Lavagens com ano ${b.l1.slice(0,4)}.`]);
+  if(b.sit==='lib'&&b.vk==='prox') b.al.push(['w',`Vistoria ${b.vt.toLowerCase()} (${fmt(b.pv)}).`]);
+  return b; });
+const byF = Object.fromEntries(B.map(b=>[b.f,b]));
+const INSP=INSP_RAW.map(r=>({f:r[0],d:r[1],st:r[2],prox:r[3],own:r[4],resp:r[5],ativ:r[6],nc:r[7],concl:r[8],file:r[9]}));
+B.forEach(b=>{ b.ins=INSP.filter(i=>i.f===b.f).sort((x,y)=>x.d.localeCompare(y.d)); b.seg=b.ins[b.ins.length-1]||null; b.ck=b.seg?b.seg.st:'sem';
+  b.ckVenc=!!(b.seg&&b.seg.st!=='lib'&&b.seg.prox<REF);
+  b.vFix=b.vk==='venc'&&b.seg&&b.seg.prox>REF&&b.seg.st==='lib';
+  const s=b.seg, add=(k,m)=>b.al.unshift([k,m]);
+  if(s&&s.st==='int'&&b.sit==='lib') add('c',`Interditado pela Segurança do Trabalho em ${fmt(s.d)} (${pl(s.nc.length,'não conformidade','não conformidades')}) e não há relatório posterior liberando; no acompanhamento consta liberado${b.pax?` com ${b.pax} passageiros`:''}.`);
+  else if(s&&s.st==='int') add('c',`Interditado pela Segurança do Trabalho em ${fmt(s.d)}.`);
+  if(s&&s.st==='pend'&&b.ckVenc) b.al.push(['w',`Liberado com pendências pela Segurança em ${fmt(s.d)}; a nova inspeção era ${fmt(s.prox)} e não há relatório dela.`]);
+  if(!s) b.al.push(['w','Sem relatório de inspeção da Segurança do Trabalho no envio de 08/10.']);
+  if(b.vFix) b.al.push(['w',`O relatório da Segurança indica a próxima vistoria em ${fmt(s.prox)}; a data do acompanhamento (${fmt(b.pv)}) parece erro de digitação.`]);
+});
+const INT_SEG=B.filter(b=>b.ck==='int'), INT_RODA=INT_SEG.filter(b=>b.sit==='lib'), PEND_V=B.filter(b=>b.ckVenc&&b.ck==='pend'), SEM_INS=B.filter(b=>b.ck==='sem');
+const CK_LIB=B.filter(b=>b.ck==='lib'), CK_PEND=B.filter(b=>b.ck==='pend');
+const LVREAL=()=>LIBVENC.filter(b=>!b.vFix);
+
+const C = EMP.map((n,i)=>{ const bb=B.filter(b=>b.e===i); const lib=bb.filter(b=>b.sit==='lib'); return {i,n,bb,lib,man:bb.filter(b=>b.sit==='man'),venc:bb.filter(b=>b.vk==='venc'),pax:bb.reduce((a,b)=>a+b.pax,0),hoje:pc(lib.length,bb.length),sem:WEEK[n]}; });
+const LIB=B.filter(b=>b.sit==='lib'), MAN=B.filter(b=>b.sit==='man');
+const VENC=B.filter(b=>b.vk==='venc'), PROX=B.filter(b=>b.vk==='prox'), VOK=B.filter(b=>b.vk==='ok');
+const LIBVENC=LIB.filter(b=>b.vk==='venc'), OVER=B.filter(b=>b.over), RODA=LIB.filter(b=>b.pax>0);
+const PAX=B.reduce((a,b)=>a+b.pax,0);
+const sum=(bb,k)=>bb.reduce((a,b)=>a+b[k],0);
+
+// ---------- pontos a conferir ----------
+const ISS=[
+ {sev:'crit',tag:'Segurança do Trabalho',t:`${pl(INT_RODA.length,'ônibus interditado','ônibus interditados')} pela Segurança e liberados no acompanhamento`,
+  d:INT_RODA.map(b=>`${b.f} (${b.en}): interditado em ${fmt(b.seg.d)}, nova inspeção prevista para ${fmt(b.seg.prox)}, hoje com ${b.pax} passageiros`).join('; ')+'. Não veio relatório de nova inspeção liberando esses ônibus. Se houve, precisa ser anexado; se não houve, eles estão rodando interditados.',bb:INT_RODA},
+ {sev:'warn',tag:'Segurança do Trabalho',t:`${pl(PEND_V.length,'ônibus liberado','ônibus liberados')} com pendências e prazo de correção vencido`,
+  d:PEND_V.map(b=>`${b.f} (prazo ${fmt(b.seg.prox)}, ${pl(b.seg.nc.length,'item','itens')})`).join('; ')+'. Não há relatório da nova inspeção, então não dá para saber se os itens foram corrigidos.',bb:PEND_V},
+ {sev:'warn',tag:'Segurança do Trabalho',t:`${pl(SEM_INS.length,'ônibus','ônibus')} sem relatório de inspeção`,
+  d:`Não vieram relatórios de ${SEM_INS.map(b=>b.f).join(', ')}. Entre eles estão ${SEM_INS.filter(b=>b.sit==='lib').map(b=>b.f).join(', ')}, que estão liberados e com a vistoria vencida no acompanhamento.`,bb:SEM_INS},
+ {sev:'info',tag:'Relatórios',t:'Relatórios com conclusão que não bate com a lista de não conformidades',
+  d:'46104, 46111, 46233 e 46234 listam não conformidades (parafusos da janela, velocímetro, extintor super pressurizado, sinal sonoro e para-brisa), mas a conclusão diz que não foram identificadas pendências. 46226 e 46236 estão marcados como "liberado para operação", mas a conclusão pede correção e nova inspeção.',bb:[46104,46111,46233,46234,46226,46236].map(f=>byF[f])},
+ {sev:'info',tag:'Relatórios',t:'Proprietário diferente entre relatório e acompanhamento',
+  d:'46104: relatório diz GMC Transportes; o acompanhamento coloca na M.O Transporte. 46232: relatório e acompanhamento indicam proprietários diferentes.',bb:[byF[46104],byF[46232]]},
+ {sev:'info',tag:'Relatórios',t:'Datas estranhas nos relatórios',
+  d:'46105: inspeção em 19/09 com nova inspeção em 18/09 (dia anterior). 46224: liberado em 18/09 com próxima vistoria em 19/09 (no acompanhamento está 18/10). 46118: a capa diz 18/09/2026 e o texto da página 2 diz 17 de agosto.',bb:[byF[46105],byF[46224],byF[46118]]},
+ {sev:'crit',tag:'Segurança',t:`${pl(LIBVENC.length,'ônibus liberado','ônibus liberados')} com a vistoria vencida`,
+  d:`Estão rodando com a data da próxima vistoria já passada e levam juntos ${sum(LIBVENC,'pax')} passageiros por dia. Em 46126 e 46226 o relatório da Segurança mostra a próxima vistoria em 30/10, então ficam ${LVREAL().length} de fato: ${LVREAL().map(b=>b.f).join(', ')}. Nenhum desses ${LVREAL().length} tem relatório de inspeção no envio da Segurança.`,bb:LIBVENC},
+ {sev:'crit',tag:'Lotação',t:`${pl(OVER.length,'ônibus','ônibus')} com mais passageiros do que lugares`,
+  d:OVER.map(b=>`${b.f} (${b.en}): ${b.pax} passageiros para ${b.cap} lugares`).join('; ')+'. Confirmar se a capacidade ou a contagem de passageiros está certa.',bb:OVER},
+ {sev:'warn',tag:'Situação',t:'46118 está como liberado, mas com atividade de manutenção',
+  d:'A atividade é "MANUTENCAO - CARDAN", sem rota e com 0 passageiros, e a situação veio "Liberado". Se ele estiver parado, são 22 liberados e 8 em manutenção, e não 23 e 7.',bb:[byF[46118]]},
+ {sev:'warn',tag:'Situação',t:'46125 está em manutenção sem motivo informado',
+  d:'A situação é "Manutenção", mas a atividade e a rota mostram a linha Capinópolis–Indústria, e não o defeito. Falta o motivo da parada.',bb:[byF[46125]]},
+ {sev:'warn',tag:'Datas',t:'Datas de vistoria que não fecham',
+  d:'46126 e 46226: última e próxima vistoria em 30/09/2026 no acompanhamento; os relatórios da Segurança confirmam a próxima em 30/10/2026. 46232: próxima em 24/09, anterior à última em 29/09. 46114: intervalo de 24 dias (04/10 a 28/10) em vez de 30.',bb:[byF[46126],byF[46226],byF[46232],byF[46114]]},
+ {sev:'warn',tag:'Datas',t:'46232 com lavagens no ano de 2056',
+  d:'Lavagem 1 em 16/08/2056 e Lavagem 2 em 23/08/2056. O painel deixou esse ônibus fora da agenda de lavagem.',bb:[byF[46232]]},
+ {sev:'warn',tag:'Disponibilidade',t:'J.P Transporte aparece no gráfico semanal, mas não tem ônibus no acompanhamento',
+  d:'O gráfico traz 70% para a J.P Transporte e a lista do dia não tem nenhum veículo dessa empresa. Ou a empresa saiu da frota, ou falta o bloco dela no acompanhamento.',bb:[]},
+ {sev:'warn',tag:'Disponibilidade',t:'A disponibilidade da semana não conversa com a situação do dia',
+  d:'M.O Transporte: 93,33% na semana e hoje 7 de 10 liberados (70%). Maria Gabriela: 100% na semana com o 46232 em manutenção. Veronese: 76% na semana com os 3 liberados hoje. Falta saber como a semanal é calculada (dias liberados ÷ dias do período?) para comparar as duas.',bb:[]},
+ {sev:'info',tag:'G.M.C Transporte',t:'G.M.C com 3 de 4 ônibus parados e vistorias vencidas desde maio',
+  d:'46169 e 46195 têm a próxima vistoria em maio/2026; o 46196 em 19/09. O documento não traz a data em que cada um parou. Vale confirmar há quanto tempo estão fora e se há previsão de retorno.',bb:C[1].man},
+ {sev:'info',tag:'Texto cortado',t:'46195: motivo da manutenção veio incompleto',
+  d:'O campo termina em "VAZAMENTO DE VALVULA DE" e o restante não coube na célula do PDF.',bb:[byF[46195]]},
+ {sev:'info',tag:'O que falta',t:'Informações que o acompanhamento não traz',
+  d:'Placa, motorista, quilometragem, data de entrada em manutenção e previsão de retorno. Com as duas últimas dá para medir dias parado por ônibus e por empresa.',bb:[]},
+];
+
+// ---------- listas e ficha ----------
+const LISTS=[]; let LISTBB=null;
+const reg=(t,sub,bb)=>{ LISTS.push({t,sub,bb}); return LISTS.length-1; };
+const pillS=b=>`<span class="pill p-${b.sit}">${b.sitT}</span>`;
+const pillV=b=>`<span class="pill p-${b.vk}">${esc(b.vt)}</span>`;
+const chip=b=>`<button type="button" class="bus s-${b.sit}${b.al.some(a=>a[0]==='c')?' al':''}" data-bus="${b.f}" title="${esc(b.en)} · ${b.sitT}">${b.f}</button>`;
+function openList(i){ const L=LISTS[i]; LISTBB=L.bb; $('listT').textContent=L.t; $('listSub').textContent=L.sub||'';
+  $('listItems').innerHTML=L.bb.length?L.bb.map(b=>`<button type="button" class="li" data-bus="${b.f}"><span><b class="mono">${b.f}</b> · <span class="nm">${esc(b.en)}</span><span class="meta" style="display:block">${esc(b.at)}${b.pax?` · ${b.pax}/${b.cap} passageiros`:''} · vistoria ${fmt(b.pv)}</span></span><span style="display:grid;gap:4px;justify-items:end">${pillS(b)}${pillV(b)}</span></button>`).join(''):'<div class="empty">Nenhum ônibus nesta lista.</div>';
+  $('listCt').textContent=pl(L.bb.length,'ônibus','ônibus'); $('listXls').hidden=!L.bb.length; $('ovList').hidden=false; }
+function openBus(f){ const b=byF[f]; if(!b) return; $('bT').textContent=`Frota ${b.f}`; $('bSub').textContent=`${b.en} · posição de ${fmt(REF)}`;
+  $('bWarn').innerHTML=b.al.map(a=>`<div class="${a[0]==='c'?'note-c':'note-w'}">${esc(a[1])}</div>`).join('');
+  const lot=b.pax?`${b.pax} de ${b.cap} lugares (${pcT(pc(b.pax,b.cap))})`:`0 de ${b.cap} lugares`;
+  $('bFicha').innerHTML=[['Situação',pillS(b)],['Empresa',esc(b.en)],['Atividade',esc(b.at),1],['Rota de ida',esc(b.ida||'Não informada')],['Rota de volta',esc(b.volta||'Não informada')],
+    ['Passageiros por dia',esc(lot)],['Capacidade',b.cap+' lugares'],['Última vistoria',fmt(b.uv)],['Próxima vistoria',fmt(b.pv)+' '+pillV(b)],
+    ['Última lavagem (Lavagem 1)',fmt(b.l1)],['Próxima lavagem (Lavagem 2)',fmt(b.l2)]].map(x=>`<div${x[2]?' class="w"':''}><span>${x[0]}</span><b>${x[1]}</b></div>`).join('');
+  $('bIns').innerHTML=b.ins.length?b.ins.slice().reverse().map((s,i)=>`<div class="fs" style="gap:6px"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><b style="font-family:var(--f-display);font-size:14px">Inspeção da Segurança · ${fmt(s.d)}${b.ins.length>1&&i>0?' (anterior)':''}</b><span class="pill ${STI[s.st][1]}">${STI[s.st][0]}</span></div>
+      <div class="small">${s.st==='lib'?'Próxima vistoria':'Nova inspeção'}: <b class="mono">${fmt(s.prox)}</b> · Responsável: ${esc(s.resp)}${s.ativ?` · ${esc(s.ativ)}`:''} · Proprietário: ${esc(s.own)}</div>
+      ${s.nc.length?`<ul style="margin:2px 0 0;padding-left:18px;font-size:13.5px;color:var(--fg-2)">${s.nc.map(n=>`<li>${esc(n)}</li>`).join('')}</ul>`:'<div class="small">Nenhuma não conformidade listada.</div>'}
+      <div class="small">Arquivo: ${esc(s.file)}</div></div>`).join(''):'<div class="note-i">Sem relatório de inspeção da Segurança do Trabalho no envio de 08/10.</div>';
+  $('ovB').hidden=false; }
+document.addEventListener('click',e=>{ const t=e.target.closest('[data-bus],[data-list],[data-go]'); if(!t) return;
+  if(t.dataset.bus) openBus(+t.dataset.bus); else if(t.dataset.list!==undefined) openList(+t.dataset.list); else setTab(t.dataset.go); });
+document.querySelectorAll('.ov').forEach(o=>o.addEventListener('click',e=>{ if(e.target===o||e.target.closest('[data-close]')) o.hidden=true; }));
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ const open=[...document.querySelectorAll('.ov')].filter(o=>!o.hidden); if(open.length) open[open.length-1].hidden=true; } });
+
+// ---------- abas ----------
+const TABS=['geral','frota','disp','prev','check','conf'];
+function setTab(t){ CURTAB=t; if($('btnCapa')) $('btnCapa').textContent=t==='geral'?'Capa para diretoria (PDF)':`PDF da aba ${TABNAME[t]}`; TABS.forEach(k=>{ $('v-'+k).hidden=k!==t; }); document.querySelectorAll('.tab').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t)); try{ localStorage.setItem('onibus-tab',t); }catch(e){} }
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
+
+// ---------- visão geral ----------
+function renderSummary(){ const k=(label,v,h,color,li)=>`<button type="button" class="kpi" style="--k:var(--${color})" data-list="${li}"><div class="k">${label}</div><div class="v">${v}</div><div class="h">${h}</div></button>`;
+  $('summary').innerHTML=[
+    k('Frota total',B.length,`${EMP.length} empresas`,'fg-2',reg('Frota total','Todos os ônibus do acompanhamento',B)),
+    k('Liberados',LIB.length,`${pcT(pc(LIB.length,B.length))} da frota`,'ok',reg('Ônibus liberados','Situação informada no documento',LIB)),
+    k('Em manutenção',MAN.length,`${pcT(pc(MAN.length,B.length))} da frota`,'man',reg('Ônibus em manutenção','Situação informada no documento',MAN)),
+    k('Interditados',0,`no acompanhamento · ${INT_SEG.length} pela Segurança`,'crit',reg('Interditados pela Segurança do Trabalho','O acompanhamento de 07/10 não tem nenhum interditado',INT_SEG)),
+    k('Reserva',0,'nenhum hoje','res',reg('Ônibus na reserva','',[])),
+    k('Vistoria vencida',VENC.length,`${LIBVENC.length} deles liberados`,'crit',reg('Vistoria vencida','Próxima vistoria anterior a 07/10/2026',VENC))].join(''); }
+function renderGeral(){
+  const lIR=reg('Interditados pela Segurança e liberados no acompanhamento','',INT_RODA), lPV=reg('Pendências com prazo vencido','',PEND_V); const lRoda=reg('Liberados com passageiros','Ônibus que transportaram gente no dia',RODA), lLV=reg('Liberados com vistoria vencida e sem relatório','',LVREAL()), lPx=reg('Vistorias que vencem até 14/10/2026','',PROX), lOv=reg('Passageiros acima da capacidade','',OVER), lG=reg('G.M.C Transporte','',C[1].bb);
+  $('lead').innerHTML=`
+   <div style="--c:var(--ok)"><h3>Onde estamos</h3><p><b>${LIB.length} de ${B.length} ônibus liberados</b> (${pcT(pc(LIB.length,B.length))}), abaixo da meta de ${META}% do relatório semanal. <button class="lk" data-list="${lRoda}">${RODA.length} rodaram com passageiros</button> e levaram <b>${PAX} pessoas</b> no dia.</p></div>
+   <div style="--c:var(--crit)"><h3>Principal ponto de atenção</h3><p><button class="lk" data-list="${lIR}">${pl(INT_RODA.length,'ônibus interditado','ônibus interditados')} pela Segurança do Trabalho</button> ${INT_RODA.length>1?'aparecem':'aparece'} como liberados, com ${sum(INT_RODA,'pax')} passageiros por dia. Além disso, <button class="lk" data-list="${lLV}">${LVREAL().length} liberados estão com a vistoria vencida e sem relatório</button>, e <button class="lk" data-list="${lOv}">${OVER.length}</button> levam mais passageiros do que lugares.</p></div>
+   <div style="--c:var(--warn)"><h3>O que acompanhar</h3><p><button class="lk" data-list="${lPx}">${pl(PROX.length,'vistoria vence','vistorias vencem')} até 14/10</button>. A <button class="lk" data-list="${lG}">G.M.C</button> tem ${C[1].man.length} de ${C[1].bb.length} ônibus parados e ${pcT(C[1].sem)} de disponibilidade na semana. <button class="lk" data-list="${lPV}">${PEND_V.length} ônibus</button> têm pendências da Segurança com prazo vencido. Há <button class="lk" data-go="conf">${ISS.length} pontos a conferir</button>.</p></div>`;
+  $('cards').innerHTML=C.map(c=>{ const st=(n,l,color,bb,t)=>`<button type="button" class="st${n?'':' zero'}" style="--c:var(--${color})" ${n?`data-list="${reg(`${c.n}: ${t}`,'',bb)}"`:'disabled'}><div class="n">${n}</div><div class="l">${l}</div></button>`;
+    return `<article class="cc"><div class="cc-h"><div><h3>${esc(c.n)}</h3><div class="small">${pl(c.bb.length,'ônibus','ônibus')} · ${c.pax} passageiros/dia</div></div><div class="tot" style="color:var(--${c.hoje>=META?'ok':'man'})">${pcT(c.hoje)}<small>liberados hoje</small></div></div>
+     <div class="fleet">${c.bb.map(chip).join('')}</div>
+     <div class="stats">${st(c.lib.length,'Liberados','ok',c.lib,'liberados')}${st(c.man.length,'Manutenção','man',c.man,'em manutenção')}${st(c.venc.length,'Vistoria vencida','crit',c.venc,'vistoria vencida')}</div>
+     <div class="cc-f"><span>Semana 01 a 07/10: <b style="color:var(--fg-2)">${pcT(c.sem)}</b></span><span>Meta ${META}%</span></div></article>`; }).join(''); }
+
+// ---------- frotas ----------
+let SORT={k:'en',d:1};
+function renderFrota(){ const e=$('fE').value, s=$('fS').value, v=$('fV').value, q=$('fB').value.trim().toLowerCase();
+  let rows=B.filter(b=>(!e||b.e===+e)&&(!s||b.sit===s)&&(!v||b.vk===v)&&(!q||`${b.f} ${b.en} ${b.at} ${b.ida} ${b.volta}`.toLowerCase().includes(q)));
+  rows=[...rows].sort((a,b)=>{ const x=a[SORT.k],y=b[SORT.k]; return (typeof x==='number'?x-y:String(x).localeCompare(String(y),'pt-BR'))*SORT.d||a.e-b.e||a.f-b.f; });
+  $('ctFrota').textContent=rows.length;
+  document.querySelectorAll('#tFrota th[data-k] .ar').forEach(a=>a.textContent=a.parentElement.dataset.k===SORT.k?(SORT.d>0?'↑':'↓'):'');
+  $('tFrota').tBodies[0].innerHTML=rows.length?rows.map(b=>`<tr class="row" data-bus="${b.f}"><td class="mono nm">${b.f}</td><td>${esc(b.en)}</td><td>${pillS(b)}</td><td>${esc(b.at)}</td><td class="small">${esc(b.ida||'')}</td>
+    <td class="r mono"${b.over?' style="color:var(--crit);font-weight:700"':''}>${b.pax}</td><td class="r mono">${b.cap}</td><td><span class="mono">${fmt(b.pv)}</span><br>${pillV(b)}</td><td class="mono">${b.lBad?`<span style="color:var(--warn)">${fmt(b.l2)}</span>`:fmt(b.l2)}</td></tr>`).join(''):'<tr><td colspan="9" class="empty">Nenhum ônibus com esses filtros.</td></tr>'; }
+function initFrota(){ $('fE').innerHTML='<option value="">Todas</option>'+EMP.map((n,i)=>`<option value="${i}">${esc(n)}</option>`).join('');
+  ['fE','fS','fV'].forEach(i=>$(i).onchange=renderFrota); $('fB').oninput=renderFrota;
+  $('btnLimpar').onclick=()=>{ ['fE','fS','fV','fB'].forEach(i=>$(i).value=''); renderFrota(); };
+  document.querySelectorAll('#tFrota th[data-k]').forEach(th=>th.onclick=()=>{ SORT=SORT.k===th.dataset.k?{k:SORT.k,d:-SORT.d}:{k:th.dataset.k,d:1}; renderFrota(); }); }
+
+// ---------- disponibilidade ----------
+function renderDisp(){ const names=Object.keys(WEEK);
+  $('av').innerHTML=names.map(n=>{ const c=C.find(x=>x.n===n); const li=reg(n,c?'Ônibus da empresa':'Sem ônibus no acompanhamento de 07/10',c?c.bb:[]);
+    const bar=(v,color,txt,na)=>`<div class="avb${na?' na':''}"><div class="tr">${na?'':`<i style="width:${Math.max(v,0)}%;--c:var(--${color})"></i>`}</div><div class="vl">${na?'<small>sem ônibus na lista</small>':`${pcT(v)} <small>${txt}</small>`}</div></div>`;
+    return `<button type="button" class="avrow" data-list="${li}"><div class="nm2">${esc(n)}<small>${c?`${c.lib.length} de ${c.bb.length} liberados hoje`:'não aparece no dia 07/10'}</small></div><div class="avbars">${c?bar(c.hoje,'ok','hoje'):bar(0,'ok','',true)}${bar(WEEK[n],'week','semana')}</div></button>`; }).join('');
+  const abaixo=names.filter(n=>WEEK[n]<META);
+  $('avNote').innerHTML=`<b>Leitura:</b> na semana, ${abaixo.length} de ${names.length} empresas ficaram abaixo da meta de ${META}% (${abaixo.map(n=>`${esc(n)} ${pcT(WEEK[n])}`).join(', ')}). O relatório não informa como a disponibilidade semanal é calculada; a de hoje é liberados ÷ frota.`;
+  $('manNote').textContent=`${pl(MAN.length,'ônibus','ônibus')} · ${sum(MAN,'cap')} lugares fora de operação`;
+  $('tMan').tBodies[0].innerHTML=MAN.map(b=>`<tr class="row" data-bus="${b.f}"><td class="mono nm">${b.f}</td><td>${esc(b.en)}</td><td>${b.motivo?esc(b.motivo):'<span style="color:var(--warn);font-weight:600">Não informado</span>'}</td><td class="r mono">${b.cap}</td><td><span class="mono">${fmt(b.pv)}</span> ${pillV(b)}</td><td>${pillS(b)}</td></tr>`).join(''); }
+
+// ---------- preventivas ----------
+function renderPrev(){ $('ctPrev').textContent=VENC.length;
+  const sg=(n,l,color,bb,t)=>`<button type="button" class="sg" style="--c:var(--${color})" data-list="${reg(t,'Contagem a partir de 07/10/2026',bb)}"><div class="n">${n}</div><div class="l">${l}</div></button>`;
+  $('segV').innerHTML=sg(VENC.length,`Vencidas (${LIBVENC.length} liberados, ${VENC.length-LIBVENC.length} em manutenção)`,'crit',VENC,'Vistorias vencidas')+sg(PROX.length,'Vencem em até 7 dias','warn',PROX,'Vistorias que vencem em até 7 dias')+sg(VOK.length,'Em dia','ok',VOK,'Vistorias em dia');
+  $('tVist').tBodies[0].innerHTML=[...B].sort((a,b)=>a.pv.localeCompare(b.pv)||a.f-b.f).map(b=>`<tr class="row" data-bus="${b.f}"><td class="mono nm">${b.f}</td><td>${esc(b.en)}</td><td class="mono">${fmt(b.uv)}</td><td class="mono"${b.vBad?' style="color:var(--warn);font-weight:600"':''}>${fmt(b.pv)}</td><td>${pillV(b)}</td><td>${pillS(b)}</td></tr>`).join('');
+  const ok=B.filter(b=>!b.lBad), ds=[...new Set(ok.map(b=>b.l2))].sort();
+  $('wash').innerHTML=ds.map(d=>{ const bb=ok.filter(b=>b.l2===d); const n=days(d,REF); return `<div class="day"><div class="dt">${fmt(d).slice(0,5)} · ${dow(d)}<small>${n===1?'amanhã':`em ${n} dias`} · ${pl(bb.length,'ônibus','ônibus')}</small></div><div class="fleet">${bb.map(chip).join('')}</div></div>`; }).join('')
+    +`<p class="small" style="margin:10px 0 0">Nenhuma lavagem atrasada: todas as próximas datas são depois de 07/10. ${B.filter(b=>b.l1===REF).length} ônibus foram lavados hoje. ${B.filter(b=>b.lBad).map(b=>`O ${b.f} ficou fora da agenda porque as datas vieram com o ano ${b.l2.slice(0,4)}.`).join(' ')}</p>`; }
+
+// ---------- checklist (inspeções da Segurança) ----------
+function renderCheck(){ const nIns=INSP.length, nB=B.filter(b=>b.seg).length;
+  $('ckNote').textContent=`${nIns} relatórios de ${nB} ônibus · ${SEM_INS.length} sem relatório`;
+  const sg=(n,l,color,bb,t)=>`<button type="button" class="sg" style="--c:var(--${color})" data-list="${reg(t,'Último relatório da Segurança do Trabalho',bb)}"><div class="n">${n}</div><div class="l">${l}</div></button>`;
+  $('segCk').innerHTML=sg(CK_LIB.length,'Liberados para operação','ok',CK_LIB,'Liberados pela Segurança')+sg(CK_PEND.length,'Liberados com pendências','warn',CK_PEND,'Liberados com pendências')+sg(INT_SEG.length,'Interditados','crit',INT_SEG,'Interditados pela Segurança')+sg(SEM_INS.length,'Sem relatório','res',SEM_INS,'Sem relatório de inspeção');
+  $('ckAlert').innerHTML=(INT_RODA.length?`<div class="note-c"><b>${pl(INT_RODA.length,'ônibus interditado','ônibus interditados')} pela Segurança</b> ${INT_RODA.length>1?'aparecem':'aparece'} como liberados hoje: ${INT_RODA.map(b=>`<button class="lk" data-bus="${b.f}">${b.f}</button>`).join(', ')}.</div>`:'')
+    +(PEND_V.length?`<div class="note-w"><b>${PEND_V.length} com pendências e prazo de correção vencido</b>, sem relatório da nova inspeção: ${PEND_V.map(b=>`<button class="lk" data-bus="${b.f}">${b.f}</button>`).join(', ')}.</div>`:'');
+  const ord={int:0,pend:1,lib:2,sem:3};
+  $('tCk').tBodies[0].innerHTML=[...B].sort((a,b)=>ord[a.ck]-ord[b.ck]||a.f-b.f).map(b=>{ const s=b.seg;
+    return `<tr class="row" data-bus="${b.f}"><td class="mono nm">${b.f}</td><td>${esc(b.en)}</td><td class="mono">${s?fmt(s.d):'—'}${b.ins.length>1?`<br><span class="small">${b.ins.length} relatórios</span>`:''}</td><td><span class="pill ${STI[b.ck][1]}">${STI[b.ck][0]}</span></td><td class="r mono">${s?s.nc.length:'—'}</td>
+      <td class="mono"${b.ckVenc?' style="color:var(--crit);font-weight:700"':''}>${s&&s.st!=='lib'?fmt(s.prox):'—'}</td><td>${pillS(b)}${b.pax?` <span class="small">${b.pax} pass.</span>`:''}</td></tr>`; }).join('');
+  const lastNC=B.filter(b=>b.seg).flatMap(b=>b.seg.nc.map(n=>({b,n,c:catOf(n)})));
+  const cats=CATS.map(c=>{ const it=lastNC.filter(x=>x.c===c[0]); const bb=[...new Set(it.map(x=>x.b))]; return {n:c[0],it,bb}; }).filter(c=>c.it.length).sort((a,b)=>b.bb.length-a.bb.length);
+  const mx=Math.max(...cats.map(c=>c.bb.length),1);
+  $('ckCats').innerHTML=cats.map(c=>`<button type="button" class="avrow" style="grid-template-columns:minmax(0,1fr)" data-list="${reg(c.n,`${pl(c.it.length,'item','itens')} nos últimos relatórios`,c.bb)}"><div class="nm2">${esc(c.n)}<small>${pl(c.bb.length,'ônibus','ônibus')} · ${pl(c.it.length,'item','itens')}</small></div><div class="avb"><div class="tr" style="--x:0"><i style="width:${c.bb.length/mx*100}%;--c:var(--${/Direção|Tacógrafo|Extintor/.test(c.n)?'crit':/Buzina|Para-brisa/.test(c.n)?'man':'week'})"></i></div><div class="vl">${c.bb.length} <small>ônibus</small></div></div></button>`).join('')
+    +`<p class="small" style="margin:10px 0 0;grid-column:1/-1">O agrupamento é do painel, feito a partir do texto de cada não conformidade. Para-brisa trincado aparece em ${lastNC.filter(x=>/BRISA/.test(x.n)).length} ônibus.</p>`; }
+
+// ---------- a conferir ----------
+function renderIssues(){ $('ctConf').textContent=ISS.length;
+  $('issues').innerHTML=ISS.map(x=>`<article class="iss ${x.sev}"><div><div class="tg">${esc(x.tag)}</div><h3>${esc(x.t)}</h3><p>${esc(x.d)}</p></div>${x.bb.length?`<button type="button" class="btn" data-list="${reg(x.t,x.tag,x.bb)}">Ver ${pl(x.bb.length,'ônibus','ônibus')}</button>`:''}</article>`).join(''); }
+
+// ---------- PDF e Excel (gerados no próprio painel) ----------
+
+
+
+function toAnsi(s){ const o=[]; for(const ch of String(s??'')){ const c=ch.codePointAt(0); if(c===9||c===10) o.push(32); else if((c>=32&&c<127)||(c>=0xA0&&c<=0xFF)) o.push(c); else if(CP1252[c]) o.push(CP1252[c]); else o.push(63); } return o; }
+const FONT = b => b?'Helvetica-Bold':'Helvetica';
+function tw(s,bold,size){ const w=PDFW[FONT(bold)]; return toAnsi(s).reduce((a,c)=>a+(w[c]||500),0)*size/1000; }
+function fit(s,bold,size,w){ s=String(s??''); if(tw(s,bold,size)<=w) return s; while(s.length>1 && tw(s+'…',bold,size)>w) s=s.slice(0,-1); return s.trimEnd()+'…'; }
+function pdfStr(s){ return '('+toAnsi(s).map(c=> (c===40||c===41||c===92)?'\\'+String.fromCharCode(c) : (c<32||c>126)?'\\'+c.toString(8).padStart(3,'0') : String.fromCharCode(c)).join('')+')'; }
+const rgb = hex => { const n=parseInt(hex.slice(1),16); return [(n>>16)&255,(n>>8)&255,n&255].map(v=>(v/255).toFixed(3)).join(' '); };
+const f2 = n => (Math.round(n*100)/100).toString();
+class MiniPDF {
+  constructor(){ this.W=842; this.H=595; this.pages=[]; }
+  addPage(){ this.cur=[]; this.pages.push(this.cur); }
+  rect(x,y,w,h,fill,stroke,lw){ const Y=this.H-y-h; let s=''; if(fill) s+=`${rgb(fill)} rg `; if(stroke) s+=`${rgb(stroke)} RG ${lw||0.5} w `; s+=`${f2(x)} ${f2(Y)} ${f2(w)} ${f2(h)} re ${fill&&stroke?'B':fill?'f':'S'}`; this.cur.push(s); }
+  line(x1,y1,x2,y2,color,lw){ this.cur.push(`${rgb(color)} RG ${lw} w ${f2(x1)} ${f2(this.H-y1)} m ${f2(x2)} ${f2(this.H-y2)} l S`); }
+  text(s,x,y,o={}){ const size=o.size||9, bold=!!o.bold; let X=x; if(o.align&&o.align!=='left'){ const w=tw(s,bold,size); X=o.align==='right'?x-w:x-w/2; } this.cur.push(`BT /${bold?'F2':'F1'} ${size} Tf ${rgb(o.color||'#15213a')} rg ${f2(X)} ${f2(this.H-y)} Td ${pdfStr(s)} Tj ET`); }
+  image(x,y,w,h){ this.cur.push(`q ${f2(w)} 0 0 ${f2(h)} ${f2(x)} ${f2(this.H-y-h)} cm /Im1 Do Q`); }
+  output(){
+    const enc=new TextEncoder(), chunks=[], offs=[]; let len=0;
+    const push=b=>{ if(typeof b==='string') b=enc.encode(b); chunks.push(b); len+=b.length; };
+    push('%PDF-1.4\n'); push(new Uint8Array([37,226,227,207,211,10]));
+    const obj=(id,parts)=>{ offs[id]=len; push(`${id} 0 obj\n`); (Array.isArray(parts)?parts:[parts]).forEach(push); push('\nendobj\n'); };
+    const img=Uint8Array.from(atob(LOGOJ.b64),c=>c.charCodeAt(0));
+    const n=this.pages.length, kids=[]; for(let i=0;i<n;i++) kids.push(`${7+i*2} 0 R`);
+    obj(1,'<< /Type /Catalog /Pages 2 0 R >>');
+    obj(2,`<< /Type /Pages /Kids [${kids.join(' ')}] /Count ${n} >>`);
+    obj(3,'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');
+    obj(4,'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
+    obj(5,[`<< /Type /XObject /Subtype /Image /Width ${LOGOJ.w} /Height ${LOGOJ.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${img.length} >>\nstream\n`, img, '\nendstream']);
+    obj(6,`<< /Title ${pdfStr(this.title||'Painel dos Ônibus CRV')} /Producer (Painel dos Ônibus CRV) >>`);
+    this.pages.forEach((ops,i)=>{ const cs=ops.join('\n');
+      obj(7+i*2,`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${this.W} ${this.H}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> /XObject << /Im1 5 0 R >> >> /Contents ${8+i*2} 0 R >>`);
+      obj(8+i*2,`<< /Length ${cs.length} >>\nstream\n${cs}\nendstream`); });
+    const total=7+n*2, xref=len;
+    let x=`xref\n0 ${total}\n0000000000 65535 f \n`; for(let i=1;i<total;i++) x+=String(offs[i]).padStart(10,'0')+' 00000 n \n';
+    push(x); push(`trailer\n<< /Size ${total} /Root 1 0 R /Info 6 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
+    const out=new Uint8Array(len); let o=0; chunks.forEach(c=>{ out.set(c,o); o+=c.length; }); return out;
+  }
+}
+const CRCT=(()=>{ const t=new Uint32Array(256); for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c=c&1?0xEDB88320^(c>>>1):c>>>1; t[n]=c>>>0; } return t; })();
+function crc32(b){ let c=0xFFFFFFFF; for(let i=0;i<b.length;i++) c=CRCT[(c^b[i])&255]^(c>>>8); return (c^0xFFFFFFFF)>>>0; }
+function zipStore(files){ // [{name, data:Uint8Array}]
+  const enc=new TextEncoder(), parts=[], cen=[]; let off=0;
+  const u16=n=>[n&255,(n>>8)&255], u32=n=>[n&255,(n>>8)&255,(n>>16)&255,(n>>>24)&255];
+  files.forEach(f=>{ const nm=enc.encode(f.name), crc=crc32(f.data), sz=f.data.length;
+    const lh=new Uint8Array([0x50,0x4b,3,4,...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0x21),...u32(crc),...u32(sz),...u32(sz),...u16(nm.length),...u16(0)]);
+    parts.push(lh,nm,f.data);
+    cen.push(new Uint8Array([0x50,0x4b,1,2,...u16(20),...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0x21),...u32(crc),...u32(sz),...u32(sz),...u16(nm.length),...u16(0),...u16(0),...u16(0),...u16(0),...u32(0),...u32(off)]),nm);
+    off+=lh.length+nm.length+sz; });
+  const cs=cen.reduce((a,c)=>a+c.length,0);
+  const end=new Uint8Array([0x50,0x4b,5,6,...u16(0),...u16(0),...u16(files.length),...u16(files.length),...u32(cs),...u32(off),...u16(0)]);
+  const all=[...parts,...cen,end], out=new Uint8Array(all.reduce((a,c)=>a+c.length,0)); let o=0; all.forEach(c=>{ out.set(c,o); o+=c.length; }); return out;
+}
+const xesc=s=>String(s??'').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const colName=i=>{ let s=''; i++; while(i>0){ const m=(i-1)%26; s=String.fromCharCode(65+m)+s; i=Math.floor((i-1)/26); } return s; };
+const xlDate=s=>{ const [y,m,d]=s.split('-').map(Number); return Math.round((Date.UTC(y,m-1,d)-Date.UTC(1899,11,30))/864e5); };
+// célula: string | number | {d:'YYYY-MM-DD'}
+function sheetXml(head, rows, widths){
+  const cell=(v,r,c,hd)=>{ const ref=colName(c)+(r+1);
+    if(hd) return `<c r="${ref}" s="1" t="inlineStr"><is><t>${xesc(v)}</t></is></c>`;
+    if(v===null||v===undefined||v==='') return '';
+    if(typeof v==='number') return `<c r="${ref}"><v>${v}</v></c>`;
+    if(typeof v==='object'&&v.d) return `<c r="${ref}" s="2"><v>${xlDate(v.d)}</v></c>`;
+    return `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xesc(v)}</t></is></c>`; };
+  const last=colName(head.length-1)+(rows.length+1);
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${widths.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('')}</cols><sheetData><row r="1">${head.map((h,c)=>cell(h,0,c,true)).join('')}</row>${rows.map((row,r)=>`<row r="${r+2}">${row.map((v,c)=>cell(v,r+1,c)).join('')}</row>`).join('')}</sheetData><autoFilter ref="A1:${last}"/></worksheet>`;
+}
+function buildXlsx(sheets){ // [{name, head, rows, widths}]
+  const enc=new TextEncoder(), f=(name,s)=>({name,data:enc.encode(s)});
+  const X='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+  return zipStore([
+    f('[Content_Types].xml',`${X}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sheets.map((s,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`),
+    f('_rels/.rels',`${X}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`),
+    f('xl/workbook.xml',`${X}<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${sheets.map((s,i)=>`<sheet name="${xesc(s.name)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')}</sheets></workbook>`),
+    f('xl/_rels/workbook.xml.rels',`${X}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${sheets.map((s,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('')}<Relationship Id="rId${sheets.length+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`),
+    f('xl/styles.xml',`${X}<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1F2C31"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="14" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`),
+    ...sheets.map((s,i)=>f(`xl/worksheets/sheet${i+1}.xml`,sheetXml(s.head,s.rows,s.widths))),
+  ]);
+}
+const D=s=>s?{d:s}:'';
+
+// ---------- exportação ----------
+let DL=null, XFMT='xlsx';
+
+const FW=[20,9,15,32,28,36,36,11,14,11,14,15,14,26,14,15,70];
+const fRow=b=>[b.en,b.f,b.sitT,b.at,b.motivo,b.ida,b.volta,b.cap,b.pax,pc(b.pax,b.cap),D(b.uv),D(b.pv),b.dv,b.vt,b.lBad?fmt(b.l1):D(b.l1),b.lBad?fmt(b.l2):D(b.l2),b.al.map(a=>a[1]).join(' ')];
+function xSel(){ const es=[...document.querySelectorAll('#xEmp input:checked')].map(i=>+i.value); const l=$('xLib').checked, m=$('xPar').checked;
+  const bb=B.filter(b=>es.includes(b.e)&&(b.sit==='lib'?l:m)); return {es,bb,cs:C.filter(c=>es.includes(c.i)),is:ISS.filter(x=>!x.bb.length||x.bb.some(b=>es.includes(b.e)))}; }
+function xSync(){ const s=xSel(); const any=['xRes','xFro','xMan','xVis','xIns','xConf'].some(i=>$(i).checked);
+  $('xInfo').innerHTML=`${pl(s.es.length,'empresa','empresas')} · <b>${pl(s.bb.length,'ônibus','ônibus')}</b>${$('xConf').checked?` · ${pl(s.is.length,'ponto','pontos')} a conferir`:''}`;
+  $('xWarn').innerHTML=(!any?'<div class="note-w">Marque pelo menos um conteúdo.</div>':'')+(!s.es.length?'<div class="note-w">Marque pelo menos uma empresa.</div>':'')+(!DL?'<div class="note-c">O download de arquivos não está disponível nesta visualização do painel.</div>':'');
+  $('xGo').disabled=!any||!s.es.length||!DL; }
+function openExport(f,onlyConf){ XFMT=f; $('xT').textContent=f==='xlsx'?'Exportar em Excel':'Gerar PDF'; $('xMsg').textContent='';
+  if(onlyConf){ ['xRes','xFro','xMan','xVis','xIns'].forEach(i=>$(i).checked=false); $('xConf').checked=true; }
+  xSync(); $('ovX').hidden=false; }
+const resRows=s=>s.cs.map(c=>[c.n,c.bb.length,c.lib.length,c.man.length,c.hoje,c.sem,c.venc.length,c.pax]);
+const RESHEAD=['Empresa','Frota','Liberados','Em manutenção','Disponibilidade hoje %','Disponibilidade semana %','Vistoria vencida','Passageiros/dia'];
+const manRows=s=>s.bb.filter(b=>b.sit==='man').map(b=>[b.en,b.f,b.motivo||'Não informado',b.cap,D(b.pv),b.vt]);
+const visRows=s=>[...s.bb].sort((a,b)=>a.pv.localeCompare(b.pv)).map(b=>[b.en,b.f,b.sitT,D(b.uv),D(b.pv),b.dv,b.vt,b.lBad?fmt(b.l1):D(b.l1),b.lBad?fmt(b.l2):D(b.l2)]);
+const confRows=s=>s.is.map(x=>[{crit:'Alta',warn:'Média',info:'Informativo'}[x.sev],x.tag,x.t,x.d,x.bb.map(b=>b.f).join(', ')]);
+function makeXlsx(s){ const sh=[];
+  if($('xRes').checked) sh.push({name:'Resumo',head:RESHEAD,widths:[22,9,11,15,22,24,17,16],rows:resRows(s)});
+  if($('xFro').checked) sh.push({name:'Frota',head:FHEAD,widths:FW,rows:s.bb.map(fRow)});
+  if($('xMan').checked) sh.push({name:'Parados',head:['Empresa','Frota','Motivo','Capacidade','Próxima vistoria','Vistoria'],widths:[22,9,34,11,16,26],rows:manRows(s)});
+  if($('xVis').checked) sh.push({name:'Preventivas',head:['Empresa','Frota','Situação','Última vistoria','Próxima vistoria','Dias p/ vistoria','Vistoria','Última lavagem','Próxima lavagem'],widths:[22,9,15,15,16,15,26,15,16],rows:visRows(s)});
+  if($('xIns').checked){ sh.push({name:'Inspeções',head:['Empresa','Frota','Situação no acompanhamento','Data da inspeção','Resultado','Itens','Nova inspeção / próxima vistoria','Prazo vencido','Proprietário no relatório','Responsável','Arquivo'],widths:[20,9,22,15,24,8,22,13,36,16,28],
+      rows:s.bb.flatMap(b=>b.ins.length?b.ins.map(i=>[b.en,b.f,b.sitT,D(i.d),STI[i.st][0],i.nc.length,D(i.prox),i===b.seg&&b.ckVenc?'Sim':'',i.own,i.resp,i.file]):[[b.en,b.f,b.sitT,'','Sem relatório','','','','','','']])});
+    sh.push({name:'Não conformidades',head:['Empresa','Frota','Data da inspeção','Resultado','Não conformidade','Grupo (painel)'],widths:[20,9,15,24,60,32],
+      rows:s.bb.flatMap(b=>b.ins.flatMap(i=>i.nc.map(n=>[b.en,b.f,D(i.d),STI[i.st][0],n,catOf(n)])))}); }
+  if($('xConf').checked) sh.push({name:'A conferir',head:['Gravidade','Tipo','Ponto','Detalhe','Ônibus'],widths:[12,20,60,100,40],rows:confRows(s)});
+  return buildXlsx(sh); }
+function makePdf(s){
+  const doc=new MiniPDF(), M=30, BOT=548, W=782; let y=0; doc.title='Painel dos Ônibus CRV';
+  const head=()=>{ doc.addPage(); const lh=26, lw=lh*LOGOJ.w/LOGOJ.h; doc.image(M,22,lw,lh);
+    doc.text('Ônibus · transporte de funcionários',M+lw+14,36,{size:15,bold:true,color:'#1f2c31'});
+    doc.text(fit(s.es.length===EMP.length?'Todas as empresas':s.cs.map(c=>c.n).join(', '),false,9.5,440),M+lw+14,50,{size:9.5,color:'#46535a'});
+    doc.text(`Posição de ${fmt(REF)}`,842-M,34,{size:8.5,color:'#6a767c',align:'right'});
+    doc.text('RH - Gestão de Pessoas · Unidade Capinópolis',842-M,49,{size:8.5,color:'#6a767c',align:'right'});
+    doc.line(M,60,842-M,60,'#1f2c31',1.2); y=72; };
+  const title=(t,sub)=>{ if(y+60>BOT) head(); doc.text(t,M,y+10,{size:11.5,bold:true,color:'#182226'}); if(sub) doc.text(fit(sub,false,8.5,W-tw(t,true,11.5)-20),M+tw(t,true,11.5)+12,y+10,{size:8.5,color:'#6a767c'}); y+=18; };
+  const table=(cols,rows,colorOf)=>{ const th=()=>{ doc.rect(M,y,W,18,'#1f2c31'); let x=M; cols.forEach(c=>{ doc.text(c.t.toUpperCase(),c.r?x+c.w-5:x+5,y+12,{size:6.8,bold:true,color:'#ffffff',align:c.r?'right':'left'}); x+=c.w; }); y+=18; };
+    th(); rows.forEach((r,ri)=>{ if(y+17>BOT){ head(); th(); } if(ri%2) doc.rect(M,y,W,17,'#f3f5f0'); const col=colorOf&&colorOf(r); if(col) doc.rect(M,y,3,17,col);
+      let x=M; cols.forEach((c,i)=>{ const v=r[i]===null||r[i]===undefined?'':(r[i].d?fmt(r[i].d):String(r[i])); doc.text(fit(v,!!c.b,8,c.w-9),c.r?x+c.w-5:x+6,y+11.5,{size:8,bold:!!c.b,color:'#182226',align:c.r?'right':'left'}); x+=c.w; });
+      doc.line(M,y+17,M+W,y+17,'#d8dcd2',0.4); y+=17; }); y+=16; };
+  const sc=t=>t==='Liberado'?'#2e7d4f':'#c2671a';
+  head();
+  if($('xRes').checked){ const rr=resRows(s); const tb=s.cs.flatMap(c=>c.bb), tl=tb.filter(b=>b.sit==='lib').length;
+    title('Resumo por empresa','Disponibilidade hoje = liberados ÷ frota · semana 01 a 07/10 como veio no relatório');
+    table([{t:'Empresa',w:182,b:1},{t:'Frota',w:60,r:1},{t:'Liberados',w:74,r:1},{t:'Manutenção',w:84,r:1},{t:'Disp. hoje',w:90,r:1},{t:'Disp. semana',w:96,r:1},{t:'Vistoria vencida',w:102,r:1},{t:'Passageiros/dia',w:94,r:1}],
+      [...rr.map(r=>[r[0],r[1],r[2],r[3],pcT(r[4]),pcT(r[5]),r[6],r[7]]),['Total',tb.length,tl,tb.length-tl,pcT(pc(tl,tb.length)),'',tb.filter(b=>b.vk==='venc').length,sum(tb,'pax')]]); }
+  if($('xFro').checked){ title('Frota',pl(s.bb.length,'ônibus','ônibus'));
+    table([{t:'Empresa',w:104},{t:'Frota',w:42,b:1},{t:'Situação',w:74},{t:'Atividade',w:150},{t:'Rota (ida)',w:142},{t:'Pass.',w:34,r:1},{t:'Cap.',w:32,r:1},{t:'Próx. vistoria',w:62},{t:'Vistoria',w:92},{t:'Próx. lav.',w:50}],
+      s.bb.map(b=>[b.en,b.f,b.sitT,b.at,b.ida,b.pax,b.cap,fmt(b.pv),b.vt.replace(/ \(.*/,''),fmt(b.l2)]),r=>sc(r[2])); }
+  if($('xMan').checked){ const rr=manRows(s); title('Ônibus parados',pl(rr.length,'ônibus','ônibus')); if(rr.length) table([{t:'Empresa',w:170},{t:'Frota',w:60,b:1},{t:'Motivo informado',w:270},{t:'Capacidade',w:80,r:1},{t:'Próx. vistoria',w:92},{t:'Vistoria',w:110}],rr,()=>'#c2671a'); else { doc.text('Nenhum ônibus parado na seleção.',M,y+8,{size:9,color:'#6a767c'}); y+=24; } }
+  if($('xVis').checked){ title('Preventivas','Vistoria a cada 30 dias · lavagem semanal');
+    table([{t:'Empresa',w:150},{t:'Frota',w:54,b:1},{t:'Situação',w:92},{t:'Última vistoria',w:88},{t:'Próxima vistoria',w:92},{t:'Prazo',w:132},{t:'Última lavagem',w:86},{t:'Próxima lavagem',w:88}],
+      visRows(s).map(r=>[r[0],r[1],r[2],r[3],r[4],r[6],r[7],r[8]]),r=>/^Vencida/.test(r[5])?'#c3352f':/^Vence/.test(r[5])?'#c79a1f':'#2e7d4f'); }
+  if($('xIns').checked){ const bb=[...s.bb].sort((a,b)=>({int:0,pend:1,lib:2,sem:3})[a.ck]-({int:0,pend:1,lib:2,sem:3})[b.ck]||a.f-b.f);
+    title('Inspeções da Segurança do Trabalho','Último relatório de cada ônibus');
+    table([{t:'Empresa',w:116},{t:'Frota',w:44,b:1},{t:'Inspeção',w:56},{t:'Resultado',w:118},{t:'Itens',w:36,r:1},{t:'Nova inspeção',w:72},{t:'Hoje',w:80},{t:'Principais não conformidades',w:260}],
+      bb.map(b=>[b.en,b.f,b.seg?fmt(b.seg.d):'',STI[b.ck][0],b.seg?b.seg.nc.length:'',b.seg&&b.seg.st!=='lib'?fmt(b.seg.prox)+(b.ckVenc?' (vencida)':''):'',b.sitT,b.seg?b.seg.nc.join('; '):'']),r=>({'Interditado':'#c3352f','Liberado com pendências':'#c79a1f','Liberado para operação':'#2e7d4f'})[r[3]]||'#6b4aa8'); }
+  if($('xConf').checked){ title('A conferir',pl(s.is.length,'ponto','pontos'));
+    s.is.forEach(x=>{ const words=x.d.split(' '), lines=[]; let cur=''; words.forEach(w=>{ if(tw(cur+' '+w,false,8.5)>W-20){ lines.push(cur); cur=w; } else cur=cur?cur+' '+w:w; }); if(cur) lines.push(cur);
+      const hh=20+lines.length*11+6; if(y+hh>BOT) head(); doc.rect(M,y,3,hh-6,{crit:'#c3352f',warn:'#c79a1f',info:'#0f6e7c'}[x.sev]);
+      doc.text(fit(x.t,true,9.5,W-20),M+10,y+11,{size:9.5,bold:true}); lines.forEach((l,i)=>doc.text(l,M+10,y+24+i*11,{size:8.5,color:'#46535a'})); y+=hh+4; }); }
+  const N=doc.pages.length; doc.pages.forEach((ops,i)=>{ doc.cur=ops; doc.line(M,566,842-M,566,'#d8dcd2',0.5); doc.text('Painel dos Ônibus · RH CRV Industrial',M,578,{size:7.5,color:'#6a767c'}); doc.text(`Página ${i+1} de ${N}`,842-M,578,{size:7.5,color:'#6a767c',align:'right'}); });
+  return doc.output(); }
+async function save(name,bytes,msgEl){ try{ if(msgEl) msgEl.textContent='Confirme o download na janela que abrir.'; await DL.save({filename:name,data:bytes}); toast('Arquivo salvo.'); return true; }
+  catch(e){ const c=e&&e.code; const m=c==='declined'?'Download cancelado.':c==='rate_limited'?'Já existe um download aguardando confirmação.':'Não foi possível gerar o arquivo agora.'; if(msgEl) msgEl.textContent=m; else toast(m); return false; } }
+$('btnXls').onclick=()=>openExport('xlsx'); $('btnPdf').onclick=()=>openExport('pdf'); $('btnConfX').onclick=()=>openExport('xlsx',true);
+$('ovX').addEventListener('change',xSync);
+$('xAll').onclick=()=>{ document.querySelectorAll('#ovX input[type=checkbox]').forEach(i=>i.checked=true); xSync(); };
+$('xGo').onclick=async()=>{ if(!DL) return; const s=xSel(); $('xGo').disabled=true;
+  try{ const bytes=XFMT==='xlsx'?makeXlsx(s):makePdf(s); const tag=s.cs.length===1?s.cs[0].n.normalize('NFD').replace(/[^A-Za-z0-9]+/g,'_'):'Geral';
+    if(await save(`Onibus_${tag}_${REF}.${XFMT}`,bytes,$('xMsg'))) $('ovX').hidden=true; }
+  catch(e){ $('xMsg').textContent='Não foi possível gerar o arquivo agora.'; }
+  finally{ $('xGo').disabled=false; } };
+$('listXls').onclick=async()=>{ if(!LISTBB) return; if(!DL){ toast('O download de arquivos não está disponível nesta visualização do painel.'); return; } await save(`Onibus_lista_${REF}.xlsx`,buildXlsx([{name:'Lista',head:FHEAD,widths:FW,rows:LISTBB.map(fRow)}])); };
+
+
+// ---------- capa para a diretoria (1 página, A4 deitado) ----------
+function wrapT(s,size,bold,w){ const out=[]; let cur=''; String(s).split(' ').forEach(x=>{ const n=cur?cur+' '+x:x; if(tw(n,bold,size)>w&&cur){ out.push(cur); cur=x; } else cur=n; }); if(cur) out.push(cur); return out; }
+function makeCapa(){
+  const doc=new MiniPDF(), M=30, W=782; doc.title='Painel dos Ônibus CRV - Capa'; doc.addPage();
+  const K={ok:'#2e7d4f',man:'#c2671a',crit:'#c3352f',res:'#6b4aa8',warn:'#8f6200',fg:'#182226',fg2:'#46535a',fg3:'#6a767c',line:'#d8dcd2',soft:'#f3f5f0',track:'#e6e9e1',week:'#6b4aa8',band:'#1f2c31'};
+  const lh=30, lw=lh*LOGOJ.w/LOGOJ.h; doc.image(M,20,lw,lh);
+  doc.text('Painel dos Ônibus',M+lw+16,36,{size:17,bold:true,color:K.band});
+  doc.text('Transporte de funcionários · frota, disponibilidade e preventivas',M+lw+16,51,{size:9.5,color:K.fg2});
+  doc.text(`Posição de ${fmt(REF)}`,842-M,33,{size:10,bold:true,color:K.fg,align:'right'});
+  doc.text('Semanal: 01/10 a 07/10 · Inspeções SST: 08/09 a 30/09',842-M,48,{size:8.5,color:K.fg3,align:'right'});
+  doc.line(M,62,842-M,62,K.band,1.4);
+  for(let x=M;x<842-M;x+=22) doc.rect(x,64,13,2,'#f2b632');
+  // indicadores
+  const kp=[['FROTA TOTAL',B.length,`${EMP.length} empresas`,K.fg2],['LIBERADOS',LIB.length,`${pcT(pc(LIB.length,B.length))} da frota`,K.ok],['EM MANUTENÇÃO',MAN.length,`${pcT(pc(MAN.length,B.length))} da frota`,K.man],['INTERDITADOS',0,`${INT_SEG.length} pela Segurança do Trabalho`,K.crit],['RESERVA',0,'nenhum hoje',K.res],['VISTORIA VENCIDA',VENC.length,`${LIBVENC.length} deles liberados`,K.crit]];
+  const kw=(W-5*8)/6; kp.forEach((k,i)=>{ const x=M+i*(kw+8), y=78; doc.rect(x,y,kw,60,'#ffffff',K.line,0.6); doc.rect(x,y,4,60,k[3]);
+    doc.text(k[0],x+12,y+15,{size:7.5,bold:true,color:K.fg3}); doc.text(String(k[1]),x+12,y+40,{size:24,bold:true,color:k[3]}); doc.text(k[2],x+12,y+53,{size:8.5,color:K.fg3}); });
+  // três leituras
+  const nums=bb=>bb.map(b=>b.f).join(', ');
+  const blocks=[
+    ['ONDE ESTAMOS',K.ok,`${LIB.length} de ${B.length} ônibus liberados (${pcT(pc(LIB.length,B.length))}),`,`abaixo da meta de ${META}% do relatório semanal. ${RODA.length} rodaram com passageiros e levaram ${PAX} pessoas no dia. ${MAN.length} em manutenção; nenhum interditado ou na reserva no acompanhamento.`],
+    ['PRINCIPAL PONTO DE ATENÇÃO',K.crit,`${pl(INT_RODA.length,'ônibus interditado','ônibus interditados')} pela Segurança do Trabalho rodando`,`${nums(INT_RODA)} constam como liberados, com ${sum(INT_RODA,'pax')} passageiros por dia, sem relatório de nova inspeção. Além disso, ${LVREAL().length} liberados estão com vistoria vencida e sem relatório (${nums(LVREAL())}).`],
+    ['O QUE ACOMPANHAR',K.warn,`${pl(PROX.length,'vistoria vence','vistorias vencem')} até 14/10`,`(${[...PROX].sort((a,b)=>a.pv.localeCompare(b.pv)).map(b=>`${b.f} em ${fmt(b.pv).slice(0,5)}`).join(', ')}). A G.M.C tem ${C[1].man.length} de ${C[1].bb.length} ônibus parados e ${pcT(C[1].sem)} de disponibilidade na semana. ${PEND_V.length} ônibus têm pendências da Segurança com prazo vencido.`]];
+  const bw=(W-2*12)/3, by=154, bh=112;
+  blocks.forEach((b,i)=>{ const x=M+i*(bw+12); doc.rect(x,by,bw,bh,K.soft); doc.rect(x,by,bw,3,b[1]);
+    doc.text(b[0],x+12,by+18,{size:8,bold:true,color:b[1]}); let y=by+33;
+    wrapT(b[2],10,true,bw-24).forEach(l=>{ doc.text(l,x+12,y,{size:10,bold:true,color:K.fg}); y+=13; });
+    wrapT(b[3],9,false,bw-24).forEach(l=>{ doc.text(l,x+12,y,{size:9,color:K.fg2}); y+=12; }); });
+  // empresas
+  doc.text('Situação por empresa',M,288,{size:11.5,bold:true,color:K.fg});
+  doc.text('Verde = liberado · laranja = em manutenção · marcador vermelho = ponto de atenção · linha preta = meta de 85%',M+128,288,{size:8,color:K.fg3});
+  const cw=(W-4*10)/5, cy=298, ch=222;
+  C.forEach((c,i)=>{ const x=M+i*(cw+10); doc.rect(x,cy,cw,ch,'#ffffff',K.line,0.6);
+    doc.text(c.n,x+10,cy+17,{size:9.5,bold:true,color:K.fg});
+    const pcol=c.hoje>=META?K.ok:K.man; doc.text(pcT(c.hoje),x+10,cy+44,{size:22,bold:true,color:pcol});
+    doc.text(`liberados hoje · ${c.lib.length} de ${c.bb.length}`,x+10,cy+56,{size:8,color:K.fg3});
+    c.bb.forEach((b,j)=>{ const col=b.sit==='lib'?K.ok:K.man, bx=x+10+(j%3)*((cw-20)/3), byy=cy+66+Math.floor(j/3)*16, bwid=(cw-20)/3-4;
+      doc.rect(bx,byy,bwid,12,b.sit==='lib'?'#dff0e4':'#fbe9d6',col,0.5); doc.text(String(b.f),bx+bwid/2,byy+8.8,{size:7.5,bold:true,color:col,align:'center'});
+      if(b.al.some(a=>a[0]==='c')) doc.rect(bx+bwid-4,byy-2,5,5,K.crit); });
+    let y=cy+142;
+    [['Em manutenção',c.man.length,c.man.length?K.man:K.fg3],['Vistoria vencida',c.venc.length,c.venc.length?K.crit:K.fg3],['Passageiros/dia',c.pax,K.fg]].forEach(r=>{ doc.text(r[0],x+10,y,{size:8.5,color:K.fg2}); doc.text(String(r[1]),x+cw-10,y,{size:9,bold:true,color:r[2],align:'right'}); y+=12; });
+    const bar=(lbl,v,col,yy)=>{ doc.text(lbl,x+10,yy,{size:7.5,color:K.fg3}); doc.text(pcT(v),x+cw-10,yy,{size:7.5,bold:true,color:K.fg,align:'right'});
+      const tw2=cw-20; doc.rect(x+10,yy+3,tw2,6,K.track); doc.rect(x+10,yy+3,Math.max(tw2*v/100,1),6,col); doc.line(x+10+tw2*META/100,yy+1,x+10+tw2*META/100,yy+11,K.fg,1); };
+    bar('Hoje',c.hoje,K.ok,cy+186); bar('Semana 01 a 07/10',c.sem,K.week,cy+204); });
+  doc.line(M,538,842-M,538,K.line,0.5);
+  doc.text('Fonte: Acompanhamento Diário de Ônibus de 07/10/2026 e gráfico de disponibilidade semanal (Produção Agrícola). Disponibilidade de hoje = liberados ÷ frota.',M,550,{size:7.5,color:K.fg3});
+  doc.text(`Inspeções: relatórios da Segurança do Trabalho enviados em 08/10 (${INSP.length} relatórios, ${B.filter(b=>b.seg).length} ônibus). Os ${ISS.length} pontos a conferir estão no painel.`,M,561,{size:7.5,color:K.fg3});
+  doc.text('RH - Gestão de Pessoas · CRV Industrial · Unidade Capinópolis/MG',842-M,578,{size:7.5,color:K.fg3,align:'right'});
+  return doc.output(); }
+$('btnCapa').onclick=async()=>{ if(!DL){ toast('O download de arquivos não está disponível nesta visualização do painel.'); return; } const tab=CURTAB; try{ const nm=tab==='geral'?'capa_diretoria':TABNAME[tab].normalize('NFD').replace(/[^A-Za-z0-9]+/g,'_'); await save(`Onibus_${nm}_${REF}.pdf`,makeTabPdf(tab)); }catch(e){ toast('Não foi possível gerar o arquivo agora.'); } };
+
+
+// ---------- PDF de cada aba (o que aparece na aba aberta) ----------
+const TABNAME={geral:'Visão geral',frota:'Frotas',disp:'Disponibilidade',prev:'Preventivas',check:'Checklist',conf:'A conferir'};
+let CURTAB='geral';
+function frotaRows(){ const e=$('fE').value, s=$('fS').value, v=$('fV').value, q=$('fB').value.trim().toLowerCase();
+  const rows=B.filter(b=>(!e||b.e===+e)&&(!s||b.sit===s)&&(!v||b.vk===v)&&(!q||`${b.f} ${b.en} ${b.at} ${b.ida} ${b.volta}`.toLowerCase().includes(q)));
+  const f=[]; if(e) f.push(EMP[+e]); if(s) f.push(s==='lib'?'Liberados':'Em manutenção'); if(v) f.push({venc:'Vistoria vencida',prox:'Vistoria vence em até 7 dias',ok:'Vistoria em dia'}[v]); if(q) f.push(`Busca "${$('fB').value.trim()}"`);
+  return {rows:[...rows].sort((a,b)=>{ const x=a[SORT.k],y=b[SORT.k]; return (typeof x==='number'?x-y:String(x).localeCompare(String(y),'pt-BR'))*SORT.d||a.e-b.e||a.f-b.f; }),filtro:f.join(' · ')}; }
+function makeTabPdf(tab){
+  if(tab==='geral') return makeCapa();
+  const doc=new MiniPDF(), M=30, W=782, BOT=548; let y=0; doc.title=`Painel dos Ônibus CRV - ${TABNAME[tab]}`;
+  const K={ok:'#2e7d4f',man:'#c2671a',crit:'#c3352f',res:'#6b4aa8',warn:'#8f6200',amber:'#c79a1f',fg:'#182226',fg2:'#46535a',fg3:'#6a767c',line:'#d8dcd2',soft:'#f3f5f0',track:'#e6e9e1',week:'#6b4aa8',band:'#1f2c31'};
+  const SUB={frota:'Todos os ônibus do acompanhamento, com situação, rota e preventivas',disp:'Disponibilidade por empresa e ônibus parados',prev:'Vistorias (a cada 30 dias) e lavagens (semanal)',check:'Inspeções da Segurança do Trabalho',conf:'Pontos em que os documentos não fecham ou pedem decisão'};
+  const head=()=>{ doc.addPage(); const lh=28, lw=lh*LOGOJ.w/LOGOJ.h; doc.image(M,20,lw,lh);
+    doc.text(`Painel dos Ônibus · ${TABNAME[tab]}`,M+lw+16,35,{size:16,bold:true,color:K.band});
+    doc.text(SUB[tab],M+lw+16,50,{size:9.5,color:K.fg2});
+    doc.text(`Posição de ${fmt(REF)}`,842-M,33,{size:10,bold:true,color:K.fg,align:'right'});
+    doc.text(tab==='check'?'Inspeções SST: 08/09 a 30/09/2026':'Semanal: 01/10 a 07/10/2026',842-M,48,{size:8.5,color:K.fg3,align:'right'});
+    doc.line(M,60,842-M,60,K.band,1.4); for(let x=M;x<842-M;x+=22) doc.rect(x,62,13,2,'#f2b632'); y=76; };
+  const need=h=>{ if(y+h>BOT) head(); };
+  const title=(s,sub)=>{ need(50); doc.text(s,M,y+10,{size:11.5,bold:true,color:K.fg}); if(sub) doc.text(fit(sub,false,8.5,W-tw(s,true,11.5)-20),M+tw(s,true,11.5)+12,y+10,{size:8.5,color:K.fg3}); y+=18; };
+  const boxes=(arr)=>{ const n=arr.length, bw=(W-(n-1)*8)/n; need(56); arr.forEach((k,i)=>{ const x=M+i*(bw+8); doc.rect(x,y,bw,48,'#ffffff',K.line,0.6); doc.rect(x,y,4,48,k[3]);
+      doc.text(k[0],x+12,y+13,{size:7.5,bold:true,color:K.fg3}); doc.text(String(k[1]),x+12,y+33,{size:19,bold:true,color:k[3]}); doc.text(fit(k[2],false,8,bw-20),x+12,y+43,{size:8,color:K.fg3}); }); y+=60; };
+  const table=(cols,rows,colorOf)=>{ const th=()=>{ doc.rect(M,y,W,18,K.band); let x=M; cols.forEach(c=>{ doc.text(c.t.toUpperCase(),c.r?x+c.w-5:x+5,y+12,{size:6.8,bold:true,color:'#ffffff',align:c.r?'right':'left'}); x+=c.w; }); y+=18; };
+    need(40); th(); rows.forEach((r,ri)=>{ if(y+17>BOT){ head(); th(); } if(ri%2) doc.rect(M,y,W,17,K.soft); const col=colorOf&&colorOf(r); if(col) doc.rect(M,y,3,17,col);
+      let x=M; cols.forEach((c,i)=>{ const v=r[i]==null?'':String(r[i]); doc.text(fit(v,!!c.b,8,c.w-9),c.r?x+c.w-5:x+6,y+11.5,{size:8,bold:!!c.b,color:c.cf?c.cf(r):K.fg,align:c.r?'right':'left'}); x+=c.w; });
+      doc.line(M,y+17,M+W,y+17,K.line,0.4); y+=17; }); y+=14; };
+  const para=(s,o={})=>{ const size=o.size||9; wrapT(s,size,!!o.bold,W-(o.ind||0)).forEach(l=>{ need(13); doc.text(l,M+(o.ind||0),y+9,{size,bold:!!o.bold,color:o.color||K.fg2}); y+=size+3.5; }); };
+  const note=(s,col,bg)=>{ const ls=wrapT(s,9,false,W-24); const h=ls.length*12+10; need(h+6); doc.rect(M,y,W,h,bg); doc.rect(M,y,3,h,col); ls.forEach((l,i)=>doc.text(l,M+12,y+14+i*12,{size:9,color:col})); y+=h+8; };
+  const sitC=b=>b.sit==='lib'?K.ok:K.man;
+  head();
+  if(tab==='frota'){ const {rows,filtro}=frotaRows();
+    boxes([['ÔNIBUS LISTADOS',rows.length,filtro||'sem filtro',K.fg2],['LIBERADOS',rows.filter(b=>b.sit==='lib').length,'na lista',K.ok],['EM MANUTENÇÃO',rows.filter(b=>b.sit==='man').length,'na lista',K.man],['PASSAGEIROS/DIA',sum(rows,'pax'),'na lista',K.fg],['VISTORIA VENCIDA',rows.filter(b=>b.vk==='venc').length,'na lista',K.crit]]);
+    title('Frota',filtro?`Filtro: ${filtro}`:'Todos os ônibus');
+    table([{t:'Frota',w:42,b:1},{t:'Empresa',w:96},{t:'Situação',w:72,cf:r=>r[2]==='Liberado'?K.ok:K.man},{t:'Atividade',w:126},{t:'Rota (ida)',w:126},{t:'Pass.',w:34,r:1},{t:'Cap.',w:32,r:1},{t:'Próx. vistoria',w:60},{t:'Vistoria',w:76},{t:'Próx. lav.',w:56},{t:'Segurança',w:62}],
+      rows.map(b=>[b.f,b.en,b.sitT,b.at,b.ida,b.pax,b.cap,fmt(b.pv),b.vt.replace(/ \(.*/,''),b.lBad?'—':fmt(b.l2),STI[b.ck][0].replace('Liberado para operação','Liberado').replace('Liberado com pendências','Pendências')]),
+      r=>r[2]==='Liberado'?K.ok:K.man); }
+  if(tab==='disp'){ boxes([['LIBERADOS HOJE',`${pcT(pc(LIB.length,B.length))}`,`${LIB.length} de ${B.length} ônibus`,K.ok],['EM MANUTENÇÃO',MAN.length,`${sum(MAN,'cap')} lugares fora`,K.man],['META',`${META}%`,'do relatório semanal',K.fg],['ABAIXO DA META NA SEMANA',Object.keys(WEEK).filter(n=>WEEK[n]<META).length,`de ${Object.keys(WEEK).length} empresas`,K.crit]]);
+    title('Disponibilidade por empresa','Verde = hoje (liberados ÷ frota) · roxo = semana 01 a 07/10 · linha preta = meta de 85%');
+    const bx=M+190, bwid=W-190-110;
+    Object.keys(WEEK).forEach(n=>{ const c=C.find(x=>x.n===n); need(44); doc.text(n,M,y+12,{size:9.5,bold:true,color:K.fg}); doc.text(c?`${c.lib.length} de ${c.bb.length} liberados hoje`:'sem ônibus na lista do dia',M,y+24,{size:8,color:K.fg3});
+      const bar=(v,col,yy,lbl,na)=>{ doc.rect(bx,yy,bwid,9,K.track); if(!na){ doc.rect(bx,yy,Math.max(bwid*v/100,1),9,col); } doc.line(bx+bwid*META/100,yy-2,bx+bwid*META/100,yy+11,K.fg,1); doc.text(na?'sem ônibus na lista':`${pcT(v)} ${lbl}`,bx+bwid+8,yy+8,{size:8,bold:!na,color:na?K.fg3:K.fg}); };
+      bar(c?c.hoje:0,K.ok,y+4,'hoje',!c); bar(WEEK[n],K.week,y+18,'semana'); y+=33; });
+    y+=6; para(`Na semana, ${Object.keys(WEEK).filter(n=>WEEK[n]<META).length} empresas ficaram abaixo da meta. O relatório não informa como a disponibilidade semanal é calculada; a de hoje é liberados ÷ frota.`,{size:8.5,color:K.fg3}); y+=8;
+    title('Ônibus parados hoje',`${pl(MAN.length,'ônibus','ônibus')} · ${sum(MAN,'cap')} lugares fora de operação`);
+    table([{t:'Frota',w:60,b:1},{t:'Empresa',w:150},{t:'Motivo informado',w:250,cf:r=>r[2]==='Não informado'?K.warn:K.fg},{t:'Capacidade',w:70,r:1},{t:'Próx. vistoria',w:90},{t:'Vistoria',w:162,cf:()=>K.crit}],
+      MAN.map(b=>[b.f,b.en,b.motivo||'Não informado',b.cap,fmt(b.pv),b.vt]),()=>K.man); }
+  if(tab==='prev'){ boxes([['VISTORIAS VENCIDAS',VENC.length,`${LIBVENC.length} liberados · ${VENC.length-LIBVENC.length} em manutenção`,K.crit],['VENCEM EM ATÉ 7 DIAS',PROX.length,'até 14/10/2026',K.amber],['EM DIA',VOK.length,'vistoria a cada 30 dias',K.ok],['LAVADOS EM 07/10',B.filter(b=>b.l1===REF).length,'nenhuma lavagem atrasada',K.fg]]);
+    title('Vistoria','Ordenado pela próxima data · contagem a partir de 07/10/2026');
+    table([{t:'Frota',w:56,b:1},{t:'Empresa',w:150},{t:'Situação',w:96,cf:r=>r[2]==='Liberado'?K.ok:K.man},{t:'Última vistoria',w:96},{t:'Próxima vistoria',w:100},{t:'Prazo',w:284,cf:r=>/^Vencida/.test(r[5])?K.crit:/^Vence/.test(r[5])?K.warn:K.ok}],
+      [...B].sort((a,b)=>a.pv.localeCompare(b.pv)||a.f-b.f).map(b=>[b.f,b.en,b.sitT,fmt(b.uv),fmt(b.pv),b.vt+(b.vFix?' · relatório SST indica 30/10':'')]),r=>/^Vencida/.test(r[5])?K.crit:/^Vence/.test(r[5])?K.amber:K.ok);
+    const ok=B.filter(b=>!b.lBad), ds=[...new Set(ok.map(b=>b.l2))].sort();
+    title('Lavagem','Próxima lavagem de cada ônibus (coluna Lavagem 2)');
+    table([{t:'Data',w:80,b:1},{t:'Dia',w:60},{t:'Ônibus',w:60,r:1},{t:'Frotas',w:582}],ds.map(d=>{ const bb=ok.filter(b=>b.l2===d); return [fmt(d),dow(d),bb.length,bb.map(b=>b.f).join(', ')]; }));
+    B.filter(b=>b.lBad).forEach(b=>para(`O ${b.f} ficou fora da agenda porque as datas de lavagem vieram com o ano ${b.l2.slice(0,4)}.`,{size:8.5,color:K.fg3})); }
+  if(tab==='check'){ boxes([['LIBERADOS P/ OPERAÇÃO',CK_LIB.length,'último relatório',K.ok],['COM PENDÊNCIAS',CK_PEND.length,`${PEND_V.length} com prazo vencido`,K.amber],['INTERDITADOS',INT_SEG.length,`${INT_RODA.length} liberados no acompanhamento`,K.crit],['SEM RELATÓRIO',SEM_INS.length,`${SEM_INS.filter(b=>b.sit==='lib').length} deles liberados`,K.res]]);
+    if(INT_RODA.length) note(`${pl(INT_RODA.length,'ônibus interditado','ônibus interditados')} pela Segurança aparecem como liberados no acompanhamento de 07/10: ${INT_RODA.map(b=>`${b.f} (interditado em ${fmt(b.seg.d)}, ${b.pax} passageiros/dia)`).join('; ')}. Não há relatório de nova inspeção liberando.`,K.crit,'#fbe6e4');
+    if(PEND_V.length) note(`${PEND_V.length} com pendências e prazo de correção vencido, sem relatório da nova inspeção: ${PEND_V.map(b=>`${b.f} (${fmt(b.seg.prox)})`).join(', ')}.`,K.warn,'#fdf2d4');
+    const lastNC=B.filter(b=>b.seg).flatMap(b=>b.seg.nc.map(n=>({b,n,c:catOf(n)})));
+    const cats=CATS.map(c=>{ const it=lastNC.filter(x=>x.c===c[0]); return {n:c[0],it,bb:[...new Set(it.map(x=>x.b))]}; }).filter(c=>c.it.length).sort((a,b)=>b.bb.length-a.bb.length);
+    title('O que mais aparece','Não conformidades dos últimos relatórios, agrupadas pelo painel');
+    const mx=Math.max(...cats.map(c=>c.bb.length),1), cw=(W-20)/2;
+    cats.forEach((c,i)=>{ const x=M+(i%2)*(cw+20); if(i%2===0) need(30); const yy=y; const col=/Direção|Tacógrafo|Extintor/.test(c.n)?K.crit:/Buzina|Para-brisa/.test(c.n)?K.man:K.week;
+      doc.text(c.n,x,yy+9,{size:9,bold:true,color:K.fg}); doc.text(`${pl(c.bb.length,'ônibus','ônibus')} · ${pl(c.it.length,'item','itens')}`,x+cw,yy+9,{size:8,color:K.fg3,align:'right'});
+      doc.rect(x,yy+13,cw,7,K.track); doc.rect(x,yy+13,cw*c.bb.length/mx,7,col); if(i%2===1||i===cats.length-1) y+=30; });
+    y+=4; title('Resultado por ônibus','Último relatório de cada ônibus');
+    const ord={int:0,pend:1,lib:2,sem:3};
+    table([{t:'Frota',w:44,b:1},{t:'Empresa',w:96},{t:'Inspeção',w:54},{t:'Resultado',w:104,cf:r=>({'Interditado':K.crit,'Liberado com pendências':K.warn,'Liberado para operação':K.ok})[r[3]]||K.res},{t:'Itens',w:32,r:1},{t:'Nova inspeção',w:82,cf:r=>/vencida/.test(r[5])?K.crit:K.fg},{t:'Hoje',w:70},{t:'Não conformidades',w:300}],
+      [...B].sort((a,b)=>ord[a.ck]-ord[b.ck]||a.f-b.f).map(b=>[b.f,b.en,b.seg?fmt(b.seg.d):'—',STI[b.ck][0],b.seg?b.seg.nc.length:'—',b.seg&&b.seg.st!=='lib'?fmt(b.seg.prox)+(b.ckVenc?' vencida':''):'—',b.sitT+(b.pax?` · ${b.pax}`:''),b.seg?b.seg.nc.join('; '):'']),
+      r=>({'Interditado':K.crit,'Liberado com pendências':K.amber,'Liberado para operação':K.ok})[r[3]]||K.res); }
+  if(tab==='conf'){ boxes([['ALTA',ISS.filter(x=>x.sev==='crit').length,'segurança e lotação',K.crit],['MÉDIA',ISS.filter(x=>x.sev==='warn').length,'situação, datas, prazos',K.amber],['INFORMATIVO',ISS.filter(x=>x.sev==='info').length,'relatórios e dados faltantes',K.fg2]]);
+    title('Pontos a conferir',pl(ISS.length,'ponto','pontos'));
+    ISS.forEach(x=>{ const ls=wrapT(x.d,8.5,false,W-24), bl=x.bb.length?wrapT(`Ônibus: ${x.bb.map(b=>b.f).join(', ')}`,8,true,W-24):[]; const hh=30+ls.length*11+bl.length*10+4; need(hh+4);
+      const col={crit:K.crit,warn:K.amber,info:'#0f6e7c'}[x.sev]; doc.rect(M,y,3,hh-4,col);
+      doc.text(x.tag.toUpperCase(),M+10,y+9,{size:7,bold:true,color:col}); doc.text(fit(x.t,true,9.5,W-20),M+10,y+21,{size:9.5,bold:true,color:K.fg});
+      ls.forEach((l,i)=>doc.text(l,M+10,y+33+i*11,{size:8.5,color:K.fg2})); bl.forEach((l,i)=>doc.text(l,M+10,y+33+ls.length*11+i*10,{size:8,bold:true,color:K.fg3})); y+=hh+4; }); }
+  const N=doc.pages.length; doc.pages.forEach((ops,i)=>{ doc.cur=ops; doc.line(M,566,842-M,566,K.line,0.5); doc.text(`Painel dos Ônibus · ${TABNAME[tab]} · RH CRV Industrial`,M,578,{size:7.5,color:K.fg3}); doc.text(`Página ${i+1} de ${N}`,842-M,578,{size:7.5,color:K.fg3,align:'right'}); });
+  return doc.output(); }
+
+// ---------- início ----------
+$('xEmp').insertAdjacentHTML('beforeend',C.map(c=>`<label class="chk"><input type="checkbox" value="${c.i}" id="xe${c.i}" checked> ${esc(c.n)}</label>`).join(''));
+renderSummary(); renderGeral(); initFrota(); renderFrota(); renderDisp(); renderPrev(); renderCheck(); renderIssues(); $('ctCk').textContent=INT_RODA.length+PEND_V.length;
+let T0='geral'; try{ const t=localStorage.getItem('onibus-tab'); if(TABS.includes(t)) T0=t; }catch(e){}
+setTab(T0);
+(async()=>{ try{ DL = await window.claude?.use?.('downloads') ?? null; }catch(e){ DL=null; } })();
+</script>
+
+</body></html>

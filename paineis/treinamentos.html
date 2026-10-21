@@ -1,0 +1,938 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Treinamentos CRV 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: cabeçalho institucional CRV com quatro visões (Gestão, Treinamentos aplicados, Setores, Controle do RH); filtros sobrepostos ao cabeçalho; todo número abre a lista de treinamentos por trás dele num painel lateral com exportação. */
+:root{
+  --bg:#F3F5F9; --surface:#FFFFFF; --surface-2:#EEF2F8; --line:#DCE2EC; --line-2:#C6CFDD;
+  --ink:#14213A; --ink-2:#4A5873; --ink-3:#6F7C93;
+  --brand:#1F4A9A; --brand-2:#2F63C4; --brand-soft:#E3EBFA;
+  --ok:#1E8A55; --ok-soft:#E1F3E9;
+  --warn:#A86200; --warn-soft:#FBEFD9;
+  --bad:#C2372E; --bad-soft:#FAE3E1;
+  --neutral:#8691A6; --neutral-soft:#ECEFF4;
+  --bar:#2F63C4; --bar-fut:#C9D3E3; --on-bar:#FFFFFF;
+  --shadow:0 1px 2px rgba(20,33,58,.06),0 4px 14px rgba(20,33,58,.05);
+  --f-display:"Archivo","Segoe UI",system-ui,sans-serif;
+  --f-body:"Source Sans 3","Segoe UI",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0E1524; --surface:#162034; --surface-2:#1C2840; --line:#27344F; --line-2:#34446A;
+  --ink:#E7ECF5; --ink-2:#AAB6CC; --ink-3:#8794AD;
+  --brand:#7FA6F0; --brand-2:#9BBBF5; --brand-soft:#1E2D4D;
+  --ok:#4CC28A; --ok-soft:#163528; --warn:#E3A43C; --warn-soft:#3A2B12;
+  --bad:#EE6F65; --bad-soft:#3D1D1C; --neutral:#8E9AB2; --neutral-soft:#232F47;
+  --bar:#6EA2F0; --bar-fut:#34446A; --on-bar:#0E1524; --shadow:0 1px 2px rgba(0,0,0,.3);
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E1524; --surface:#162034; --surface-2:#1C2840; --line:#27344F; --line-2:#34446A;
+  --ink:#E7ECF5; --ink-2:#AAB6CC; --ink-3:#8794AD;
+  --brand:#7FA6F0; --brand-2:#9BBBF5; --brand-soft:#1E2D4D;
+  --ok:#4CC28A; --ok-soft:#163528; --warn:#E3A43C; --warn-soft:#3A2B12;
+  --bad:#EE6F65; --bad-soft:#3D1D1C; --neutral:#8E9AB2; --neutral-soft:#232F47;
+  --bar:#6EA2F0; --bar-fut:#34446A; --on-bar:#0E1524; --shadow:0 1px 2px rgba(0,0,0,.3);
+  color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45}
+.wrap{max-width:1320px;margin:0 auto;padding-inline:clamp(16px,3vw,32px);padding-block:0 48px}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--brand-2);outline-offset:2px}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--ink-3)}
+
+/* Cabeçalho */
+.top{background:linear-gradient(120deg,#163A7D 0%,#1F4A9A 55%,#2C5FB8 100%);color:#fff;position:relative;overflow:hidden}
+.top::after{content:"";position:absolute;inset:0;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.045) 0 2px,transparent 2px 14px);pointer-events:none}
+.top .wrap{display:flex;flex-wrap:wrap;align-items:center;gap:16px 28px;padding-block:26px 66px;position:relative;z-index:1}
+.logo-card{background:#fff;border-radius:14px;padding:10px 14px;box-shadow:0 6px 20px rgba(5,20,50,.25);display:flex}
+.logo{height:54px;width:auto;display:block}
+.ttl{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
+.eyebrow{font-size:12px;letter-spacing:.16em;text-transform:uppercase;font-weight:700;color:rgba(255,255,255,.78)}
+.ttl h1{font-size:clamp(22px,3vw,32px);font-weight:800;color:#fff;letter-spacing:-.02em}
+.ttl p{margin:0;color:rgba(255,255,255,.82);font-size:14.5px}
+.topact{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.ref{font-size:12px;color:rgba(255,255,255,.78);display:flex;flex-direction:column;align-items:flex-end;line-height:1.3;text-transform:uppercase;letter-spacing:.08em}
+.ref b{font-family:var(--f-mono);font-weight:600;color:#fff;font-size:15px;letter-spacing:0}
+.tabs{flex-basis:100%;display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.tab{background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.28);color:#fff;border-radius:10px;padding:9px 18px;font-weight:700;font-size:14.5px;cursor:pointer}
+.tab:hover{background:rgba(255,255,255,.2)}
+.tab[aria-selected="true"]{background:#fff;color:#163A7D;border-color:#fff;box-shadow:0 4px 14px rgba(5,20,50,.25)}
+.lift{margin-top:-44px;position:relative;z-index:2}
+
+/* Botões e campos */
+.btn{border:1px solid var(--line-2);background:var(--surface);border-radius:8px;padding:8px 14px;font-weight:600;cursor:pointer;white-space:nowrap;min-height:38px;display:inline-flex;align-items:center;gap:8px}
+.btn:hover{border-color:var(--brand-2)}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:var(--surface)}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--ink-2)}
+.btn.sm{min-height:32px;padding:5px 11px;font-size:13.5px}
+.btn[disabled]{opacity:.55;cursor:wait}
+.top .btn{background:#fff;border-color:#fff;color:#163A7D;box-shadow:0 4px 14px rgba(5,20,50,.25)}
+.btn svg{width:16px;height:16px}
+.filters{display:flex;flex-wrap:wrap;gap:12px;align-items:end;padding:16px 18px;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 10px 30px rgba(20,40,90,.10)}
+.fld{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1 1 170px;max-width:280px}
+.fld label{font-size:12px;font-weight:600;color:var(--ink-2);letter-spacing:.02em}
+.fld input,.fld select{background:var(--surface);border:1px solid var(--line-2);border-radius:8px;padding:8px 10px;min-height:38px;width:100%}
+.fld.grow{flex:2 1 240px;max-width:380px}
+.fnote{flex-basis:100%;margin:0;font-size:13px;color:var(--ink-3)}
+.banner{margin-top:14px;padding:12px 16px;border-radius:12px;background:var(--warn-soft);border:1px solid var(--warn);font-size:14.5px;display:flex;gap:12px;align-items:flex-start}
+.banner svg{width:20px;height:20px;flex:none;color:var(--warn);margin-top:1px}
+
+/* Indicadores */
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;margin-top:16px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:2px;position:relative;overflow:hidden;box-shadow:var(--shadow);min-width:0;text-align:left;cursor:pointer}
+.kpi:hover{border-color:var(--brand-2)}
+.kpi::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--k,var(--brand))}
+.kpi .lbl{font-size:13px;color:var(--ink-2);font-weight:600}
+.kpi .val{font-family:var(--f-display);font-size:34px;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums;color:var(--ink)}
+.kpi .sub{font-size:13px;color:var(--ink-3);margin-top:2px}
+.kpi.static{cursor:default}.kpi.static:hover{border-color:var(--line)}
+@media (max-width:1100px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:640px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpi .val{font-size:26px}}
+
+.read{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin-top:16px;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
+.read div{padding:16px 20px;min-width:0;border-left:1px solid var(--line)}
+.read div:first-child{border-left:0}
+.read h3{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--brand);margin-bottom:6px}
+.read p{margin:0;font-size:14.5px}
+.read ul{margin:0;padding-left:18px;font-size:14.5px;display:flex;flex-direction:column;gap:4px}
+@media (max-width:900px){.read{grid-template-columns:minmax(0,1fr)}.read div{border-left:0;border-top:1px solid var(--line)}.read div:first-child{border-top:0}}
+
+/* Cartões */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);min-width:0;display:flex;flex-direction:column;overflow:hidden;margin-top:16px}
+.card-h{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:16px 20px 10px;flex-wrap:wrap}
+.card-h h2{font-size:17px;font-weight:700;display:flex;align-items:center;gap:10px}
+.card-h h2::before{content:"";width:4px;height:18px;border-radius:2px;background:var(--brand-2)}
+.card-h .hint{font-size:13px;color:var(--ink-3)}
+.card-b{padding:4px 20px 18px;min-width:0}
+.g2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
+.g32{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px;align-items:start}
+.g64{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:1100px){.g64{grid-template-columns:minmax(0,1fr);gap:0}}
+@media (max-width:980px){.g2,.g32{grid-template-columns:minmax(0,1fr);gap:0}}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--ink-2);margin-bottom:8px}
+.legend span{display:inline-flex;align-items:center;gap:7px}
+.legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.legend i.meta{height:0;border-top:2.5px solid var(--ink);border-radius:0;width:16px}
+.legend i.dash{height:0;border-top:2.5px dashed var(--ink);border-radius:0;width:18px}
+.legend i.ln{height:0;border-top:3px solid var(--bar);border-radius:0;width:18px}
+.legend i.hat{background:repeating-linear-gradient(135deg,var(--bar) 0 2px,transparent 2px 5px);border:1px solid var(--bar)}
+.chart-scroll{overflow-x:auto}
+.chart-scroll svg{display:block;width:100%;min-width:560px;height:auto}
+svg text{fill:var(--ink-2);font-family:var(--f-body)}
+svg text.v{fill:var(--ink);font-weight:700}
+svg text.m{fill:var(--ink-3)}
+.band{cursor:pointer}
+.band:hover .hl,.band:focus-visible .hl{opacity:1}
+.hl{opacity:0;fill:var(--surface-2)}
+
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.chip{border:1px solid var(--line-2);background:var(--surface);border-radius:99px;padding:5px 12px;font-size:13px;font-weight:600;cursor:pointer;color:var(--ink-2)}
+.chip:hover{border-color:var(--brand-2)}
+.chip[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:var(--surface)}
+.chip b{font-family:var(--f-mono);font-weight:600;margin-left:4px}
+.tgl{display:inline-flex;gap:8px;align-items:center;font-size:13.5px;color:var(--ink-2);cursor:pointer}
+.tgl input{accent-color:var(--brand);width:16px;height:16px}
+
+.hbars{display:flex;flex-direction:column;gap:4px}
+.hb{display:grid;grid-template-columns:minmax(110px,190px) minmax(0,1fr) 124px;gap:10px;align-items:center;font-size:13.5px;background:none;border:0;padding:5px 6px;border-radius:8px;text-align:left;width:100%;cursor:pointer}
+.hb:hover{background:var(--surface-2)}
+.hb .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink);font-weight:600}
+.hb .trk{height:14px;display:block}
+.hb .trk i{display:block;height:100%;min-width:3px;border-radius:0 4px 4px 0;background:var(--bar)}
+.hb .tt{text-align:right;color:var(--ink-3);font-size:12.5px;white-space:nowrap}
+.hb .tt b{color:var(--ink);font-family:var(--f-mono);font-weight:600;font-size:13.5px}
+@media (max-width:560px){.hb{grid-template-columns:minmax(0,1fr) 116px}.hb .nm{grid-column:1/-1}}
+
+/* Tabelas */
+.tbl-wrap{overflow:auto;border-top:1px solid var(--line)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{background:var(--surface-2);text-align:left;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2);font-weight:700;padding:10px 12px;white-space:nowrap}
+th[data-k]{cursor:pointer;user-select:none}
+th[data-k]:hover{color:var(--brand)}
+th .ar{font-size:10px;margin-left:4px;opacity:.75}
+td{padding:9px 12px;border-top:1px solid var(--line);vertical-align:middle;white-space:nowrap}
+td.w{white-space:normal;min-width:240px}
+td.r,th.r{text-align:right}
+td.r{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+tr.tot td{font-weight:700;background:var(--surface-2)}
+tbody tr.go{cursor:pointer}
+tbody tr.go:hover{background:var(--surface-2)}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:99px;font-size:12.5px;font-weight:600;white-space:nowrap}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.p-ok{background:var(--ok-soft);color:var(--ok)}
+.p-warn{background:var(--warn-soft);color:var(--warn)}
+.p-bad{background:var(--bad-soft);color:var(--bad)}
+.p-neu{background:var(--neutral-soft);color:var(--ink-2)}
+.p-info{background:var(--brand-soft);color:var(--brand)}
+.pills{display:flex;flex-wrap:wrap;gap:4px}
+.cnt{display:inline-block;font-family:var(--f-mono);font-size:12px;background:var(--brand-soft);color:var(--brand);border-radius:6px;padding:1px 6px;margin-left:6px;font-weight:600}
+
+/* Mapa setor × mês */
+.heat td,.heat th{padding:0;border:0}
+.heat th{background:none;padding:6px 4px;text-align:center}
+.heat th.s{text-align:left;padding-left:20px}
+.heat td.s{padding:4px 10px 4px 20px;font-weight:600;font-size:13.5px}
+.heat td.c{padding:2px}
+.heat button{width:100%;min-width:42px;height:30px;border:0;border-radius:6px;font-family:var(--f-mono);font-size:12.5px;cursor:pointer;background:var(--h);color:var(--ink)}
+.heat button.hi{color:var(--on-bar);font-weight:600}
+.heat button:hover{outline:2px solid var(--ink);outline-offset:-2px}
+.heat .z{display:block;text-align:center;color:var(--line-2);font-size:12px}
+.heat td.t{padding:4px 20px 4px 10px;text-align:right;font-family:var(--f-mono);font-weight:600}
+
+/* Controle */
+.todo{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:16px}
+.td{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 16px;text-align:left;cursor:pointer;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:2px;border-top:4px solid var(--c);min-width:0}
+.td:hover{background:var(--surface-2)}
+.td b{font-family:var(--f-display);font-size:32px;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums;color:var(--ink)}
+.td span{font-weight:700;font-size:14.5px}
+.td small{color:var(--ink-3);font-size:13px}
+@media (max-width:900px){.todo{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.ql{display:flex;flex-direction:column}
+.qrow{display:grid;grid-template-columns:64px minmax(0,1fr) 16px;gap:14px;align-items:center;padding:12px 20px;border:0;border-top:1px solid var(--line);background:none;text-align:left;cursor:pointer;width:100%}
+.qrow:hover{background:var(--surface-2)}
+.qrow b{font-family:var(--f-display);font-size:24px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums}
+.qrow span{display:flex;flex-direction:column;min-width:0}
+.qrow span strong{font-weight:700;font-size:14.5px}
+.qrow span small{color:var(--ink-3);font-size:13px}
+.qrow svg{width:16px;height:16px;color:var(--ink-3)}
+.tbar{display:flex;flex-wrap:wrap;gap:12px;align-items:end;padding:0 20px 12px}
+.tbar .sp{flex:1}
+.more{display:flex;justify-content:center;padding:14px}
+.empty{padding:28px 18px;text-align:center;color:var(--ink-3);white-space:normal}
+
+/* Painel lateral de detalhe */
+.ovl{position:fixed;inset:0;background:rgba(10,16,30,.5);display:flex;justify-content:flex-end;z-index:40}
+.drawer{background:var(--surface);width:min(1140px,100%);height:100%;display:flex;flex-direction:column;border-left:1px solid var(--line);box-shadow:-20px 0 50px rgba(5,20,50,.25)}
+.drawer header{padding:18px 20px 12px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
+.drawer .dh{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.drawer h2{font-size:19px}
+.drawer .dsub{margin:2px 0 0;color:var(--ink-2);font-size:14px}
+.dstats{display:flex;flex-wrap:wrap;gap:8px 22px;font-size:13.5px;color:var(--ink-2)}
+.dstats b{font-family:var(--f-mono);color:var(--ink);font-size:15px;margin-right:4px}
+.dact{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.dbody{flex:1;overflow:auto}
+.dbody .tbl-wrap{border-top:0;overflow:visible}
+.dbody th{position:sticky;top:0;z-index:1}
+.dbody td.w{min-width:200px}
+.msg{font-size:13.5px;padding:8px 12px;border-radius:8px;background:var(--surface-2);color:var(--ink-2)}
+.msg.err{background:var(--bad-soft);color:var(--bad)}
+
+/* Exportação */
+.povl{position:fixed;inset:0;background:rgba(10,16,30,.5);display:flex;align-items:center;justify-content:center;z-index:45;padding:16px}
+.pbox{background:var(--surface);border-radius:16px;width:min(580px,100%);max-height:100%;overflow:auto;padding:22px;display:flex;flex-direction:column;gap:14px;box-shadow:0 20px 50px rgba(5,20,50,.35)}
+.pbox h2{font-size:20px}
+.pbox p{margin:0;color:var(--ink-2);font-size:14px}
+.popts{display:flex;flex-direction:column;gap:6px}
+.popt{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--line-2);border-radius:10px;padding:9px 12px;cursor:pointer}
+.popt:has(input:checked){border-color:var(--brand-2);background:var(--brand-soft)}
+.popt input{margin-top:4px;accent-color:var(--brand)}
+.popt span{display:flex;flex-direction:column}
+.popt small{color:var(--ink-2);font-size:13px}
+.pfoot{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+
+.tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--bg);padding:9px 11px;border-radius:8px;font-size:12.5px;line-height:1.45;z-index:50;max-width:260px;box-shadow:var(--shadow)}
+.tip b{font-family:var(--f-display);display:block;margin-bottom:2px;font-size:13px}
+.tip i{display:block;font-style:normal;opacity:.7;margin-top:3px}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;z-index:60;box-shadow:var(--shadow)}
+.foot{margin-top:28px;color:var(--ink-3);font-size:13px;display:flex;flex-wrap:wrap;gap:6px 18px;justify-content:space-between}
+@media (max-width:640px){
+  .top .wrap{padding-block:18px 60px;gap:12px}
+  .logo{height:40px}.logo-card{padding:7px 10px}
+  .ttl{flex-basis:100%}.ttl p{display:none}
+  .topact{flex-basis:100%;justify-content:space-between}
+  .ref{align-items:flex-start}
+  .tab{flex:1 1 44%;padding:9px 10px}
+  .fld,.fld.grow{max-width:none;flex-basis:100%}
+}
+</style>
+
+<div class="top">
+  <div class="wrap">
+    <div class="logo-card"><img class="logo" id="logoImg" src="__CRV_BASE__img/logo-crv-2.png" alt="CRV Industrial — Unidade Capinópolis"></div>
+    <div class="ttl">
+      <span class="eyebrow">Treinamento &amp; Desenvolvimento · RH</span>
+      <h1>Indicador e Cronograma de Treinamentos 2026</h1>
+      <p>Meta, realizado, treinamentos aplicados, setores e o controle do que falta lançar.</p>
+    </div>
+    <div class="topact">
+      <div class="ref"><span>Último treinamento lançado</span><b id="refUlt">—</b><span style="margin-top:4px">Base atualizada em</span><b id="refBase">—</b></div>
+      <button class="btn" id="btnExport" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>Exportar</button>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Visões do painel">
+      <button type="button" role="tab" class="tab" data-v="gestao" aria-selected="true">Visão da gestão</button>
+      <button type="button" role="tab" class="tab" data-v="aplicados" aria-selected="false">Treinamentos aplicados</button>
+      <button type="button" role="tab" class="tab" data-v="setores" aria-selected="false">Setores</button>
+      <button type="button" role="tab" class="tab" data-v="controle" aria-selected="false">Controle do RH</button>
+    </nav>
+  </div>
+</div>
+
+<main class="wrap">
+  <div class="filters lift">
+    <div class="fld"><label for="fSetor">Setor</label><select id="fSetor"><option value="">Todos os setores</option></select></div>
+    <div class="fld"><label for="fTipo">Tipo de treinamento</label><select id="fTipo"><option value="">Coletivo e individual</option><option value="0">Coletivo</option><option value="1">Individual</option></select></div>
+    <button class="btn ghost" id="btnLimpar" type="button">Limpar filtros</button>
+    <p class="fnote" id="fNote" hidden>A meta é geral da unidade. Com filtro de setor ou tipo, o painel mostra os volumes, sem comparar com a meta.</p>
+  </div>
+  <div class="banner" id="banner" hidden></div>
+
+  <!-- GESTÃO -->
+  <section id="v-gestao" class="view">
+    <section class="kpis" id="kpis" aria-label="Indicadores"></section>
+    <section class="read" id="read" aria-label="Leitura dos dados"></section>
+    <section class="card">
+      <div class="card-h"><h2 id="hMes">Meta × realizado por mês</h2><span class="hint">Clique em um mês para ver os treinamentos</span></div>
+      <div class="card-b"><div class="legend" id="lgMes"></div><div class="chart-scroll" id="chMes"></div></div>
+    </section>
+    <section class="card">
+      <div class="card-h"><h2 id="hAcum">Acumulado no ano</h2><span class="hint">Soma mês a mês, até o último mês com lançamento</span></div>
+      <div class="card-b"><div class="legend" id="lgAcum"></div><div class="chart-scroll" id="chAcum"></div></div>
+    </section>
+    <div class="g2">
+      <section class="card"><div class="card-h"><h2>Participações por mês</h2><span class="hint">Soma de colaboradores treinados</span></div><div class="card-b"><div class="chart-scroll" id="chPart"></div></div></section>
+      <section class="card"><div class="card-h"><h2>Horas / homem por mês</h2><span class="hint">Carga horária × nº de treinados</span></div><div class="card-b"><div class="chart-scroll" id="chHH"></div></div></section>
+    </div>
+    <div class="g32">
+      <section class="card">
+        <div class="card-h"><h2>Por setor</h2><div class="chips" id="setMetric" role="group" aria-label="Medida"></div></div>
+        <div class="card-b"><div class="hbars" id="chSetor"></div></div>
+      </section>
+      <section class="card">
+        <div class="card-h"><h2>Coletivo × individual</h2><span class="hint">Treinamentos realizados</span></div>
+        <div class="card-b"><div class="hbars" id="chTipo"></div></div>
+        <div class="card-h" style="padding-top:6px"><h2>Temas mais frequentes</h2><span class="hint">10 primeiros · clique para abrir</span></div>
+        <div class="tbl-wrap"><table id="tTemas"></table></div>
+      </section>
+    </div>
+  </section>
+
+  <!-- APLICADOS -->
+  <section id="v-aplicados" class="view" hidden>
+    <section class="kpis" id="apKpis" aria-label="Resumo dos treinamentos aplicados"></section>
+    <div class="g2">
+      <section class="card"><div class="card-h"><h2>Carga horária das turmas</h2><span class="hint">Nº de registros por faixa</span></div><div class="card-b"><div class="hbars" id="chCarga"></div></div></section>
+      <section class="card"><div class="card-h"><h2>Dia da semana</h2><span class="hint">Quando os treinamentos acontecem</span></div><div class="card-b"><div class="hbars" id="chDia"></div></div></section>
+    </div>
+    <section class="card" id="apCard">
+      <div class="card-h"><h2>Treinamentos aplicados</h2><span class="hint" id="apHint"></span></div>
+      <div class="tbar">
+        <div class="fld grow"><label for="apBusca">Buscar treinamento</label><input id="apBusca" type="search" placeholder="Ex.: integração, Bonsucro, fadiga" autocomplete="off"></div>
+        <div class="fld"><label for="apMes">Mês</label><select id="apMes"><option value="">Todos os meses</option></select></div>
+        <div class="fld"><label for="apCarga">Carga horária</label><select id="apCarga"><option value="">Todas</option></select></div>
+        <div class="fld"><label for="apEfic">Eficácia</label><select id="apEfic"><option value="">Todas</option><option value="ok">Avaliada</option><option value="pend">Pendente</option></select></div>
+      </div>
+      <div class="tbar">
+        <div class="chips" role="group" aria-label="Forma de ver" id="apView">
+          <button type="button" class="chip" data-view="lista" aria-pressed="true">Lista por data</button>
+          <button type="button" class="chip" data-view="tema" aria-pressed="false">Por treinamento</button>
+        </div>
+        <label class="tgl" id="apGroupWrap"><input type="checkbox" id="apGroup" checked>Juntar registros iguais do mesmo dia</label>
+        <span class="sp"></span>
+        <button class="btn sm" type="button" data-exp="xlsx" data-what="ap">Excel</button>
+        <button class="btn sm" type="button" data-exp="pdf" data-what="ap">PDF</button>
+      </div>
+      <div class="tbl-wrap"><table id="tAp"></table></div>
+      <div class="more"><button class="btn" id="apMais" type="button" hidden>Mostrar mais</button></div>
+    </section>
+  </section>
+
+  <!-- SETORES -->
+  <section id="v-setores" class="view" hidden>
+    <section class="card">
+      <div class="card-h"><h2>Resumo por setor</h2><span class="hint">Clique no setor para ver os treinamentos · clique no título da coluna para ordenar</span></div>
+      <div class="tbl-wrap"><table id="tSet"></table></div>
+    </section>
+    <section class="card">
+      <div class="card-h"><h2>Setor × mês</h2><span class="hint">Treinamentos realizados · cor mais forte = mais treinamentos</span></div>
+      <div class="tbl-wrap" style="padding:8px 0 14px"><table class="heat" id="tHeat"></table></div>
+    </section>
+  </section>
+
+  <!-- CONTROLE -->
+  <section id="v-controle" class="view" hidden>
+    <section class="todo" id="todo" aria-label="Pendências"></section>
+    <div class="g64">
+      <section class="card">
+        <div class="card-h"><h2>Mês a mês</h2><span class="hint" id="hMesTbl"></span></div>
+        <div class="tbl-wrap"><table id="tMes"></table></div>
+      </section>
+      <section class="card">
+        <div class="card-h"><h2>Pendências por setor</h2><span class="hint">Falta lançar · eficácia pendente · a realizar</span></div>
+        <div class="tbl-wrap" style="max-height:520px"><table id="tPend"></table></div>
+      </section>
+    </div>
+    <section class="card">
+      <div class="card-h"><h2>Qualidade dos lançamentos</h2><span class="hint">Pontos para conferir na planilha · clique para ver as linhas</span></div>
+      <div class="ql" id="ql"></div>
+    </section>
+    <section class="card" id="cronCard">
+      <div class="card-h"><h2>Cronograma completo</h2><span class="hint" id="cronHint"></span></div>
+      <div class="tbar">
+        <div class="fld grow"><label for="fBusca">Buscar treinamento</label><input id="fBusca" type="search" placeholder="Ex.: integração, Bonsucro, NR" autocomplete="off"></div>
+        <div class="fld"><label for="fMes">Mês previsto</label><select id="fMes"><option value="">Todos os meses</option></select></div>
+        <span class="sp"></span>
+        <button class="btn sm" type="button" data-exp="xlsx" data-what="cron">Excel</button>
+        <button class="btn sm" type="button" data-exp="pdf" data-what="cron">PDF</button>
+      </div>
+      <div class="tbar"><div class="chips" id="sitChips" role="group" aria-label="Situação"></div></div>
+      <div class="tbl-wrap"><table id="tCron"></table></div>
+      <div class="more"><button class="btn" id="btnMais" type="button" hidden>Mostrar mais</button></div>
+    </section>
+  </section>
+
+  <div class="foot">
+    <span>Fonte: planilha “Indicador e Cronograma CRV 2026” (RE.0940.18 A e RE.0940.11A). “Linha” é o número da linha no Excel. Realizado = treinamento com data lançada.</span>
+    <span>CRV Industrial · Unidade Capinópolis · T&amp;D e RH</span>
+  </div>
+</main>
+
+<div class="ovl" id="ovl" hidden>
+  <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="dTitle">
+    <header>
+      <div class="dh"><div><h2 id="dTitle">—</h2><p class="dsub" id="dSub"></p></div><button class="btn ghost" type="button" id="dClose" aria-label="Fechar">✕</button></div>
+      <div class="dstats" id="dStats"></div>
+      <div class="dact"><button class="btn sm" type="button" data-exp="xlsx" data-what="det">Excel</button><button class="btn sm" type="button" data-exp="pdf" data-what="det">PDF</button><button class="btn sm ghost" type="button" id="dAct" hidden></button></div>
+    </header>
+    <div class="dbody"><div class="tbl-wrap"><table id="tDet"></table></div><div class="more"><button class="btn" id="dMais" type="button" hidden>Mostrar mais</button></div></div>
+  </aside>
+</div>
+
+<div class="povl" id="expOvl" hidden>
+  <div class="pbox" role="dialog" aria-modal="true" aria-labelledby="eTitle">
+    <h2 id="eTitle">Exportar</h2>
+    <p>Marque o que vai no arquivo. A exportação respeita os filtros de setor e tipo aplicados agora: <b id="eFilt"></b></p>
+    <div class="popts" id="eOpts"></div>
+    <div class="pfoot"><button class="btn ghost" type="button" id="eCancel">Cancelar</button><button class="btn" type="button" data-exp="pdf" data-what="sel">Gerar PDF</button><button class="btn primary" type="button" data-exp="xlsx" data-what="sel">Gerar Excel</button></div>
+  </div>
+</div>
+<div id="tip" class="tip" hidden></div>
+<div id="toast" class="toast" hidden></div>
+
+<script>/*__CRV_DADOS_0__*/
+
+
+(() => {
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const nf = (v, d = 0) => Number(v).toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
+const pct = v => nf(v * 100) + "%";
+const br = s => { if (!s) return "—"; const [y, m, d] = s.split("-"); return `${d}/${m}/${y}`; };
+const MES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+const MS = MES.map(m => m.slice(0, 3).toLowerCase());
+const TIPO = ["Coletivo", "Individual"];
+const DIAS = ["Segunda","Terça","Quarta","Quinta","Sexta","Sábado","Domingo"];
+const FAIXAS = [["Até 1 hora", h => h <= 1], ["Mais de 1h até 2h", h => h > 1 && h <= 2], ["Mais de 2h até 4h", h => h > 2 && h <= 4], ["Mais de 4h até 8h", h => h > 4 && h <= 8], ["Mais de 8 horas", h => h > 8]];
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+const sn = i => { const s = DATA.setores[i]; return s.length <= 3 ? s : cap(s); };
+const list = a => a.length <= 1 ? a.join("") : a.slice(0, -1).join(", ") + " e " + a[a.length - 1];
+const hrs = h => { if (h == null) return "—"; const H = Math.floor(h + 1e-9), M = Math.round((h - H) * 60); return H ? H + "h" + (M ? String(M).padStart(2, "0") : "") : M + " min"; };
+const sum = (a, f) => a.reduce((t, x) => t + f(x), 0);
+const dayOf = s => { const [y, m, d] = s.split("-").map(Number); return (new Date(y, m - 1, d).getDay() + 6) % 7; };
+const dnum = s => { const [y, m, d] = s.split("-").map(Number); return Date.UTC(y, m - 1, d) / 864e5; };
+
+const [ry, rm] = DATA.ref.split("-").map(Number);
+const ended = m => DATA.ano < ry || (DATA.ano === ry && m < rm - 1);
+const ROWS = DATA.rows.map(r => {
+  const o = { row: r[0], t: r[1], tipo: r[2], s: r[3], m: r[4], d: r[5], n: r[6], h: r[7], e: r[8] };
+  o.real = !!o.d;
+  o.hh = o.real && o.n != null && o.h != null ? o.n * o.h : 0;
+  o.pend = !o.real && ended(o.m);
+  o.fut = !o.real && !o.pend;
+  o.efic = o.real && !o.e;
+  o.mesDif = o.real && Number(o.d.slice(5, 7)) - 1 !== o.m;
+  o.semDado = o.real && (o.n == null || o.h == null);
+  o.lag = o.real && o.e ? dnum(o.e) - dnum(o.d) : null;
+  o.tipoInc = o.real && o.n != null && ((o.tipo === 0 && o.n === 1) || (o.tipo === 1 && o.n > 1));
+  o.U = o.t.toUpperCase();
+  return o;
+});
+/* nomes parecidos: mesmo conjunto de palavras escrito de formas diferentes */
+const STOP = new Set(["DE","DA","DO","DAS","DOS","E","A","O","EM","NA","NO","PARA","COM","TREINAMENTO","CURSO"]);
+const nkey = t => [...new Set(t.normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().replace(/[^A-Z0-9]+/g, " ").trim().split(" ").filter(w => w && !STOP.has(w)))].sort().join(" ");
+(() => { const g = {}; ROWS.forEach(r => { r.nk = nkey(r.t); (g[r.nk] || (g[r.nk] = new Set())).add(r.t); }); ROWS.forEach(r => { r.dupName = g[r.nk].size > 1; }); })();
+
+const F = { setor: "", tipo: "", metric: "n" };
+const AP = { q: "", mes: "", carga: "", efic: "", view: "lista", group: true, sort: { k: "d", d: 1 }, limit: 100 };
+const CR = { q: "", mes: "", sit: "todos", limit: 100 };
+const ST_SORT = { k: "n", d: -1 };
+const base = () => ROWS.filter(r => (F.setor === "" || r.s === +F.setor) && (F.tipo === "" || r.tipo === +F.tipo));
+const filtered = () => F.setor !== "" || F.tipo !== "";
+const filtroTxt = () => (F.setor === "" ? "todos os setores" : sn(+F.setor)) + ", " + (F.tipo === "" ? "coletivo e individual" : TIPO[+F.tipo].toLowerCase());
+
+function months(rows) {
+  const M = MES.map((nm, i) => ({ i, nm, meta: DATA.metas[i], prev: 0, real: 0, pend: 0, fut: 0, part: 0, hh: 0, efic: 0 }));
+  rows.forEach(r => { const m = M[r.m]; m.prev++; if (r.real) { m.real++; m.part += r.n || 0; m.hh += r.hh; if (r.efic) m.efic++; } else if (r.pend) m.pend++; else m.fut++; });
+  M.forEach(m => { m.st = !m.prev ? "sem" : (m.real && !m.pend && !m.fut) ? "fechado" : m.pend ? "pendente" : (m.i === rm - 1 && DATA.ano === ry) ? "andamento" : "futuro"; });
+  return M;
+}
+function span(idx) {
+  if (!idx.length) return "";
+  const contig = idx.every((v, k) => k === 0 || v === idx[k - 1] + 1);
+  return contig && idx.length > 1 ? `${MS[idx[0]]}–${MS[idx[idx.length - 1]]}` : list(idx.map(i => MS[i]));
+}
+const sitOf = r => r.pend ? "Falta lançar" : r.fut ? "A realizar" : "Realizado";
+const pills = r => { const p = [[sitOf(r), r.pend ? "p-bad" : r.fut ? "p-neu" : "p-ok"]];
+  if (r.efic) p.push(["Eficácia pendente", "p-warn"]); if (r.mesDif) p.push(["Mês ≠ data", "p-warn"]); if (r.semDado) p.push(["Falta dado", "p-bad"]);
+  return `<span class="pills">${p.map(x => `<span class="pill ${x[1]}">${x[0]}</span>`).join("")}</span>`; };
+
+/* ---------- Tooltip e toast ---------- */
+const tip = $("#tip");
+function bindTips(root) {
+  root.querySelectorAll("[data-tip]").forEach(el => {
+    if (el._tip) return; el._tip = 1;
+    el.addEventListener("mousemove", ev => {
+      tip.innerHTML = el.dataset.tip; tip.hidden = false;
+      const w = tip.offsetWidth, h = tip.offsetHeight;
+      tip.style.left = Math.min(window.innerWidth - w - 8, Math.max(8, ev.clientX + 14)) + "px";
+      tip.style.top = Math.max(8, ev.clientY - h - 12) + "px";
+    });
+    el.addEventListener("mouseleave", () => { tip.hidden = true; });
+  });
+}
+let toastT; const toast = m => { const t = $("#toast"); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 3200); };
+
+/* ---------- Ações de clique: registro por id ---------- */
+let ACT = {}, actN = 0;
+const act = fn => { const id = "a" + (++actN); ACT[id] = fn; return `data-act="${id}"`; };
+document.addEventListener("click", e => { const el = e.target.closest("[data-act]"); if (el && ACT[el.dataset.act]) { tip.hidden = true; ACT[el.dataset.act](); } });
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") { if (!$("#expOvl").hidden) $("#expOvl").hidden = true; else if (!$("#ovl").hidden) closeDetail(); }
+  if ((e.key === "Enter" || e.key === " ") && e.target.matches?.("g[data-act],tr[data-act]")) { e.preventDefault(); e.target.dispatchEvent(new MouseEvent("click", { bubbles: true })); }
+});
+
+/* ---------- Painel lateral ---------- */
+let DET = { title: "", sub: "", rows: [], limit: 150 };
+function openDetail(title, sub, rows, action, keep) {
+  DET = { title, sub, rows: keep ? rows.slice() : rows.slice().sort((a, b) => (a.d || "9999-" + String(a.m).padStart(2, "0")).localeCompare(b.d || "9999-" + String(b.m).padStart(2, "0")) || a.row - b.row), limit: 150 };
+  $("#dTitle").textContent = title; $("#dSub").textContent = sub || "";
+  const real = rows.filter(r => r.real), nr = rows.length - real.length;
+  $("#dStats").innerHTML = `<span><b>${nf(rows.length)}</b>${rows.length === 1 ? "linha" : "linhas"} do cronograma</span><span><b>${nf(real.length)}</b>realizados</span>` + (nr ? `<span><b>${nf(nr)}</b>sem data lançada</span>` : "") +
+    `<span><b>${nf(sum(real, r => r.n || 0))}</b>participações</span><span><b>${nf(sum(real, r => r.hh))}</b>horas / homem</span><span><b>${nf(new Set(rows.map(r => r.t)).size)}</b>temas</span>`;
+  const b = $("#dAct"); b.hidden = !action; if (action) { b.textContent = action.label; b.onclick = () => { closeDetail(); action.fn(); }; }
+  renderDetail(); $("#ovl").hidden = false; $(".dbody").scrollTop = 0; $("#dClose").focus();
+}
+function renderDetail() {
+  const r = DET.rows;
+  $("#tDet").innerHTML = `<thead><tr><th class="r">Linha</th><th>Data</th><th>Treinamento</th><th>Setor</th><th>Tipo</th><th class="r">Treinados</th><th class="r">Carga</th><th>Eficácia</th><th>Situação</th></tr></thead><tbody>` +
+    (r.slice(0, DET.limit).map(x => `<tr><td class="r muted">${x.row}</td><td class="num">${x.d ? br(x.d) : `<span class="muted">prev. ${MS[x.m]}</span>`}</td><td class="w">${esc(x.t)}</td><td>${esc(sn(x.s))}</td><td>${TIPO[x.tipo]}</td><td class="r">${x.n == null ? "—" : nf(x.n)}</td><td class="r">${hrs(x.h)}</td><td class="num">${br(x.e)}</td><td>${pills(x)}</td></tr>`).join("") || `<tr><td colspan="9" class="empty">Nenhum treinamento neste recorte.</td></tr>`) + `</tbody>`;
+  const left = r.length - DET.limit; $("#dMais").hidden = left <= 0; if (left > 0) $("#dMais").textContent = `Mostrar mais ${nf(Math.min(150, left))} (faltam ${nf(left)})`;
+}
+function closeDetail() { $("#ovl").hidden = true; }
+$("#dClose").onclick = closeDetail;
+$("#ovl").addEventListener("click", e => { if (e.target.id === "ovl") closeDetail(); });
+$("#dMais").onclick = () => { DET.limit += 150; renderDetail(); };
+
+/* ---------- Gráficos ---------- */
+const axis = (v, n) => { v = Math.max(v, 1); const raw = v / n, p = Math.pow(10, Math.floor(Math.log10(raw))), q = raw / p, step = (q <= 1 ? 1 : q <= 2 ? 2 : q <= 2.5 ? 2.5 : q <= 5 ? 5 : 10) * p, k = Math.ceil(v / step); return { max: k * step, ticks: Array.from({ length: k + 1 }, (_, i) => i * step) }; };
+const topRound = (x, y, w, h, r) => { r = Math.min(r, h, w / 2); return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`; };
+const kfmt = v => v >= 1000 ? nf(v / 1000, v % 1000 ? 1 : 0) + "k" : nf(v);
+const openMonth = (rows, m, onlyReal) => openDetail(`${m.nm} de ${DATA.ano}`, onlyReal ? "Treinamentos realizados no mês" : "Tudo o que está no cronograma para o mês", rows.filter(r => r.m === m.i && (!onlyReal || r.real)));
+
+function chartMeta(rows, M, withMeta) {
+  const W = 860, H = 310, L = 44, R = 10, T = 26, B = 30, pw = W - L - R, ph = H - T - B;
+  const ax = axis(Math.max(...M.map(m => Math.max(m.prev, withMeta ? m.meta : 0))), 5), max = ax.max;
+  const y = v => T + ph - (v / max) * ph, band = pw / 12, bw = band * 0.5;
+  let g = `<defs><pattern id="hat" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="var(--surface)"/><rect width="2.4" height="6" fill="var(--bar)"/></pattern></defs>`;
+  ax.ticks.forEach(v => { g += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L - 8}" y="${y(v) + 4}" text-anchor="end" font-size="11.5" class="m">${nf(v)}</text>`; });
+  M.forEach(m => {
+    const x0 = L + band * m.i, x = x0 + (band - bw) / 2, yb = y(0);
+    const upper = m.pend + m.fut, hr = (m.real / max) * ph, hu = (upper / max) * ph;
+    let s = `<rect class="hl" x="${x0 + 2}" y="${T - 14}" width="${band - 4}" height="${ph + 14}" rx="6"/>`;
+    if (m.real) s += upper ? `<rect x="${x}" y="${yb - hr}" width="${bw}" height="${hr}" fill="var(--bar)"/>` : `<path d="${topRound(x, yb - hr, bw, hr, 4)}" fill="var(--bar)"/>`;
+    if (upper) { const gap = m.real ? 2 : 0, h2 = Math.max(hu - gap, 2); s += `<path d="${topRound(x, yb - hr - gap - h2, bw, h2, 4)}" fill="${m.pend ? "url(#hat)" : "var(--bar-fut)"}" stroke="${m.pend ? "var(--bar)" : "none"}" stroke-width="1"/>`; }
+    const top = yb - hr - (upper ? hu : 0);
+    if (m.prev) s += `<text x="${x + bw / 2}" y="${top - 6}" text-anchor="middle" font-size="12.5" class="${upper ? "m" : "v"}">${nf(upper ? m.prev : m.real)}</text>`;
+    if (withMeta) { const ym = y(m.meta); s += `<line x1="${x - 7}" x2="${x + bw + 7}" y1="${ym}" y2="${ym}" stroke="var(--surface)" stroke-width="5"/><line x1="${x - 7}" x2="${x + bw + 7}" y1="${ym}" y2="${ym}" stroke="var(--ink)" stroke-width="2.5" stroke-linecap="round"/>`;
+      if (m.meta > m.real + upper) s += `<text x="${x + bw / 2}" y="${ym - 7}" text-anchor="middle" font-size="11.5" class="m">meta ${nf(m.meta)}</text>`; }
+    s += `<text x="${x0 + band / 2}" y="${H - 9}" text-anchor="middle" font-size="12.5">${MS[m.i]}</text>`;
+    const t = `<b>${m.nm}</b>` + (withMeta ? `Meta: ${nf(m.meta)}<br>` : "") + `Realizados: ${nf(m.real)}` + (withMeta && m.real ? ` (${pct(m.real / m.meta)} da meta)` : "") +
+      (m.pend ? `<br>Previstos sem lançamento: ${nf(m.pend)}` : "") + (m.fut ? `<br>Previstos a realizar: ${nf(m.fut)}` : "") + `<i>Clique para ver a lista</i>`;
+    g += `<g class="band" tabindex="0" role="button" aria-label="${m.nm}: ${m.real} realizados" data-tip="${esc(t)}" ${act(() => openMonth(rows, m))}>${s}<rect x="${x0}" y="${T - 14}" width="${band}" height="${ph + 14 + B}" fill="transparent"/></g>`;
+  });
+  g += `<line x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}" stroke="var(--line-2)" stroke-width="1"/>`;
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Treinamentos por mês: realizado, previsto e meta">${g}</svg>`;
+}
+function chartAcum(rows, M, withMeta) {
+  const W = 860, H = 270, L = 50, R = 64, T = 22, B = 30, pw = W - L - R, ph = H - T - B;
+  let a = 0, b = 0; const lastReal = Math.max(-1, ...M.filter(m => m.real).map(m => m.i));
+  const cm = M.map(m => (a += m.meta)), cr = M.map(m => (b += m.real));
+  const ax = axis(Math.max(withMeta ? cm[11] : 0, cr[11]), 4), max = ax.max, y = v => T + ph - (v / max) * ph, band = pw / 12, x = i => L + band * i + band / 2;
+  let g = "";
+  ax.ticks.forEach(v => { g += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${L - 8}" y="${y(v) + 4}" text-anchor="end" font-size="11.5" class="m">${nf(v)}</text>`; });
+  if (withMeta) g += `<path d="${cm.map((v, i) => (i ? "L" : "M") + x(i) + "," + y(v)).join("")}" fill="none" stroke="var(--ink)" stroke-width="2" stroke-dasharray="5 4"/><text x="${x(11) + 8}" y="${y(cm[11]) + 4}" font-size="12" class="m">${nf(cm[11])}</text>`;
+  if (lastReal >= 0) {
+    const pts = cr.slice(0, lastReal + 1);
+    g += `<path d="${pts.map((v, i) => (i ? "L" : "M") + x(i) + "," + y(v)).join("")}" fill="none" stroke="var(--bar)" stroke-width="2.5" stroke-linejoin="round"/>`;
+    pts.forEach((v, i) => { g += `<circle cx="${x(i)}" cy="${y(v)}" r="${i === lastReal ? 5 : 3.5}" fill="var(--bar)" stroke="var(--surface)" stroke-width="2"/>`; });
+    const ly = y(pts[lastReal]) + (withMeta && cm[lastReal] > pts[lastReal] ? 20 : -12);
+    g += `<text x="${x(lastReal)}" y="${ly}" text-anchor="middle" font-size="13" class="v">${nf(pts[lastReal])}</text>`;
+  }
+  M.forEach(m => {
+    const t = `<b>Até ${m.nm.toLowerCase()}</b>` + (withMeta ? `Meta acumulada: ${nf(cm[m.i])}<br>` : "") + (m.i <= lastReal ? `Realizado acumulado: ${nf(cr[m.i])}` + (withMeta ? ` (${pct(cr[m.i] / cm[m.i])})` : "") : "Sem lançamento a partir daqui") + `<i>Clique para ver o mês</i>`;
+    g += `<g class="band" tabindex="0" role="button" aria-label="Acumulado até ${m.nm}" data-tip="${esc(t)}" ${act(() => openMonth(rows, m))}><rect class="hl" x="${L + band * m.i + 2}" y="${T - 10}" width="${band - 4}" height="${ph + 10}" rx="6" style="fill-opacity:.6"/><rect x="${L + band * m.i}" y="${T - 10}" width="${band}" height="${ph + 10 + B}" fill="transparent"/><text x="${x(m.i)}" y="${H - 9}" text-anchor="middle" font-size="12.5">${MS[m.i]}</text></g>`;
+  });
+  g += `<line x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}" stroke="var(--line-2)"/>`;
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Meta e realizado acumulados no ano">${g}</svg>`;
+}
+function chartSimple(rows, M, key, label) {
+  const W = 560, H = 230, L = 46, R = 8, T = 22, B = 28, pw = W - L - R, ph = H - T - B;
+  const ax = axis(Math.max(...M.map(m => m[key])), 3), max = ax.max, y = v => T + ph - (v / max) * ph, band = pw / 12, bw = band * 0.56;
+  let g = "";
+  ax.ticks.forEach(v => { g += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${L - 8}" y="${y(v) + 4}" text-anchor="end" font-size="11.5" class="m">${kfmt(v)}</text>`; });
+  M.forEach(m => {
+    const x0 = L + band * m.i, x = x0 + (band - bw) / 2, h = (m[key] / max) * ph;
+    let s = `<rect class="hl" x="${x0 + 1}" y="${T - 12}" width="${band - 2}" height="${ph + 12}" rx="5"/>`;
+    if (m[key] > 0) s += `<path d="${topRound(x, y(0) - h, bw, h, 4)}" fill="var(--bar)"/><text x="${x + bw / 2}" y="${y(0) - h - 5}" text-anchor="middle" font-size="11" class="v">${m[key] >= 1000 ? nf(m[key] / 1000, 1) + "k" : nf(m[key])}</text>`;
+    s += `<text x="${x0 + band / 2}" y="${H - 8}" text-anchor="middle" font-size="12">${MS[m.i]}</text>`;
+    const t = `<b>${m.nm}</b>${label}: ${nf(m[key])}` + (m.real ? `<br>Treinamentos realizados: ${nf(m.real)}` : m.prev ? `<br>Sem lançamento neste mês` : "") + `<i>Clique para ver a lista</i>`;
+    g += `<g class="band" tabindex="0" role="button" aria-label="${m.nm}: ${nf(m[key])}" data-tip="${esc(t)}" ${act(() => openMonth(rows, m, true))}>${s}<rect x="${x0}" y="${T - 12}" width="${band}" height="${ph + 12 + B}" fill="transparent"/></g>`;
+  });
+  g += `<line x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}" stroke="var(--line-2)"/>`;
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${label} por mês">${g}</svg>`;
+}
+const hbar = (nm, val, mx, right, fn, tipHtml, color) => `<button type="button" class="hb" ${act(fn)}${tipHtml ? ` data-tip="${esc(tipHtml)}"` : ""}><span class="nm">${esc(nm)}</span><span class="trk"><i style="width:${mx ? val / mx * 100 : 0}%${color ? ";background:" + color : ""}"></i></span><span class="tt">${right}</span></button>`;
+
+/* ---------- Agregações ---------- */
+function bySetor(rows) {
+  const g = {};
+  rows.forEach(r => { const a = g[r.s] || (g[r.s] = { s: r.s, nm: sn(r.s), n: 0, part: 0, hh: 0, col: 0, efic: 0, pend: 0, fut: 0, temas: new Set(), rows: [] });
+    a.rows.push(r); if (r.real) { a.n++; a.part += r.n || 0; a.hh += r.hh; if (r.tipo === 0) a.col++; if (r.efic) a.efic++; a.temas.add(r.t); } else if (r.pend) a.pend++; else a.fut++; });
+  return Object.values(g).map(a => ({ ...a, nt: a.temas.size, med: a.n ? a.part / a.n : 0, pcol: a.n ? a.col / a.n : 0, pef: a.n ? (a.n - a.efic) / a.n : 0 }));
+}
+function byTema(rows) {
+  const g = {};
+  rows.forEach(r => { const a = g[r.t] || (g[r.t] = { t: r.t, n: 0, part: 0, hh: 0, sets: new Set(), hs: {}, d0: null, d1: null, rows: [] });
+    a.rows.push(r); a.n++; a.part += r.n || 0; a.hh += r.hh; a.sets.add(r.s); if (r.h != null) a.hs[r.h] = (a.hs[r.h] || 0) + 1;
+    if (r.d) { if (!a.d0 || r.d < a.d0) a.d0 = r.d; if (!a.d1 || r.d > a.d1) a.d1 = r.d; } });
+  return Object.values(g).map(a => { const hk = Object.entries(a.hs).sort((x, y) => y[1] - x[1])[0]; return { ...a, ns: a.sets.size, h: hk ? +hk[0] : null }; });
+}
+
+/* ---------- Visão da gestão ---------- */
+const kpi = (lbl, val, sub, color, fn) => fn ? `<button type="button" class="kpi" style="--k:${color}" ${act(fn)}><span class="lbl">${lbl}</span><span class="val">${val}</span><span class="sub">${sub}</span></button>` : `<div class="kpi static" style="--k:${color}"><span class="lbl">${lbl}</span><span class="val">${val}</span><span class="sub">${sub}</span></div>`;
+function renderGestao(rows, M) {
+  const flt = filtered();
+  const real = rows.filter(r => r.real), part = sum(real, r => r.n || 0), hh = sum(real, r => r.hh);
+  const closed = M.filter(m => m.st === "fechado"), cReal = sum(closed, m => m.real), cMeta = sum(closed, m => m.meta);
+  const efPend = real.filter(r => r.efic), pend = sum(M, m => m.pend);
+  const pm = cMeta ? cReal / cMeta : null, cset = new Set(closed.map(m => m.i));
+  $("#kpis").innerHTML =
+    kpi("Treinamentos realizados", nf(real.length), `de ${nf(rows.length)} linhas no cronograma`, "var(--brand)", () => openDetail("Treinamentos realizados", "Todos os que têm data lançada", real)) +
+    (flt ? kpi("Meta atingida", "—", "a meta é geral, sem recorte", "var(--neutral)")
+         : kpi("Meta atingida", pm == null ? "—" : pct(pm), closed.length ? `${span(closed.map(m => m.i))}: ${nf(cReal)} de ${nf(cMeta)}` : "nenhum mês com lançamento completo", pm == null ? "var(--neutral)" : pm >= 1 ? "var(--ok)" : "var(--warn)", () => openDetail("Meses com lançamento completo", `Base do indicador de meta: ${span(closed.map(m => m.i))}`, real.filter(r => cset.has(r.m))))) +
+    kpi("Participações", nf(part), real.length ? `média de ${nf(part / real.length, 1)} por treinamento` : "sem lançamentos", "var(--brand)", () => openDetail("Participações", "Nº de treinados em cada treinamento realizado", real)) +
+    kpi("Horas / homem", nf(hh), flt ? "carga horária × treinados" : `${nf(hh / DATA.media, 1)} h por colaborador (base ${nf(DATA.media)})`, "var(--brand)", () => openDetail("Horas / homem", "Carga horária × nº de treinados de cada treinamento realizado", real)) +
+    kpi("Eficácia avaliada", real.length ? pct((real.length - efPend.length) / real.length) : "—", efPend.length ? `${nf(efPend.length)} sem data de eficácia` : "todas avaliadas", efPend.length ? "var(--warn)" : "var(--ok)", () => openDetail("Eficácia pendente", "Realizados sem data de eficácia", efPend));
+
+  const below = closed.filter(m => m.real < m.meta), pendM = M.filter(m => m.pend);
+  const sAgg = bySetor(rows).sort((a, b) => b.n - a.n), topS = sAgg[0];
+  const onde = flt
+    ? `No recorte selecionado: ${nf(real.length)} treinamentos realizados, ${nf(part)} participações e ${nf(hh)} horas / homem.`
+    : `${nf(real.length)} treinamentos realizados, com ${nf(part)} participações e ${nf(hh)} horas / homem.` + (closed.length ? ` Nos meses com lançamento completo (${span(closed.map(m => m.i))}), a meta foi atingida em ${pct(pm)}.` : "");
+  const at = [];
+  if (!flt && below.length) at.push(`${cap(list(below.map(m => m.nm.toLowerCase())))} ${below.length > 1 ? "ficaram" : "ficou"} abaixo da meta (${below.map(m => pct(m.real / m.meta)).join(", ")}).`);
+  if (pendM.length) at.push(`${nf(pend)} treinamentos previstos em ${list(pendM.map(m => m.nm.toLowerCase()))} ainda sem lançamento. Enquanto não forem lançados, esses meses não entram no resultado.`);
+  if (F.setor === "" && topS && real.length) at.push(`${topS.nm} concentra ${pct(topS.n / real.length)} dos treinamentos realizados.`);
+  if (!at.length) at.push("Sem pontos de atenção neste recorte.");
+  const ac = [];
+  if (pendM.length) ac.push(`Lançamento de ${list(pendM.map(m => m.nm.toLowerCase()))}.`);
+  if (!flt) ac.push("% da meta mês a mês, com atenção à tendência do segundo semestre.");
+  const efM = M.filter(m => m.efic).sort((a, b) => b.efic - a.efic)[0];
+  if (efM) ac.push(`Avaliação de eficácia: ${nf(efPend.length)} pendentes, ${nf(efM.efic)} em ${efM.nm.toLowerCase()}.`);
+  const futN = sum(M, m => m.fut); if (futN) ac.push(`${nf(futN)} treinamentos previstos até dezembro.`);
+  $("#read").innerHTML = `<div><h3>Onde estamos</h3><p>${onde}</p></div><div><h3>Ponto de atenção</h3><ul>${at.map(t => `<li>${t}</li>`).join("")}</ul></div><div><h3>O que acompanhar</h3><ul>${ac.map(t => `<li>${t}</li>`).join("")}</ul></div>`;
+
+  $("#hMes").textContent = flt ? "Treinamentos por mês" : "Meta × realizado por mês";
+  $("#lgMes").innerHTML = `<span><i style="background:var(--bar)"></i>Realizado</span>` + (pend ? `<span><i class="hat"></i>Previsto sem lançamento</span>` : "") + (M.some(m => m.fut) ? `<span><i style="background:var(--bar-fut)"></i>Previsto a realizar</span>` : "") + (flt ? "" : `<span><i class="meta"></i>Meta do mês</span>`);
+  $("#chMes").innerHTML = chartMeta(rows, M, !flt);
+  $("#hAcum").textContent = flt ? "Realizado acumulado no ano" : "Meta × realizado acumulados no ano";
+  $("#lgAcum").innerHTML = `<span><i class="ln"></i>Realizado acumulado</span>` + (flt ? "" : `<span><i class="dash"></i>Meta acumulada</span>`);
+  $("#chAcum").innerHTML = chartAcum(rows, M, !flt);
+  $("#chPart").innerHTML = chartSimple(rows, M, "part", "Participações");
+  $("#chHH").innerHTML = chartSimple(rows, M, "hh", "Horas / homem");
+
+  const ML = { n: "Treinamentos", part: "Participações", hh: "Horas / homem" };
+  $("#setMetric").innerHTML = Object.keys(ML).map(k => `<button type="button" class="chip" aria-pressed="${F.metric === k}" ${act(() => { F.metric = k; render(); })}>${ML[k]}</button>`).join("");
+  const arr = sAgg.filter(x => x.n).sort((a, b) => b[F.metric] - a[F.metric]);
+  const tot = sum(arr, x => x[F.metric]) || 1, show = arr.slice(0, 12), rest = arr.slice(12), mx = Math.max(...arr.map(x => x[F.metric]), 1);
+  let h = show.map(x => hbar(x.nm, x[F.metric], mx, `<b>${nf(x[F.metric])}</b> · ${pct(x[F.metric] / tot)}`, () => openSetor(x), `<b>${esc(x.nm)}</b>Treinamentos: ${nf(x.n)}<br>Participações: ${nf(x.part)}<br>Horas / homem: ${nf(x.hh)}<i>Clique para ver a lista</i>`)).join("");
+  if (rest.length) { const v = sum(rest, x => x[F.metric]); h += hbar(`Outros ${rest.length} setores`, v, mx, `<b>${nf(v)}</b> · ${pct(v / tot)}`, () => openDetail(`Outros ${rest.length} setores`, list(rest.map(x => x.nm)), rest.flatMap(x => x.rows.filter(r => r.real))), "", "var(--neutral)"); }
+  $("#chSetor").innerHTML = h || `<div class="empty">Sem treinamentos realizados neste recorte.</div>`;
+
+  const tp = [0, 1].map(t => { const x = real.filter(r => r.tipo === t); return { t, x, n: x.length, part: sum(x, r => r.n || 0) }; }), tmx = Math.max(tp[0].n, tp[1].n, 1);
+  $("#chTipo").innerHTML = tp.map(x => hbar(TIPO[x.t], x.n, tmx, `<b>${nf(x.n)}</b> · ${nf(x.part)} partic.`, () => openDetail(`Treinamentos ${TIPO[x.t].toLowerCase()}s`, "Realizados", x.x))).join("");
+
+  const tops = byTema(real).sort((a, b) => b.n - a.n || b.part - a.part).slice(0, 10);
+  $("#tTemas").innerHTML = `<thead><tr><th>Treinamento</th><th class="r">Turmas</th><th class="r">Partic.</th><th class="r">Horas / homem</th></tr></thead><tbody>` +
+    (tops.map(x => `<tr class="go" tabindex="0" ${act(() => openTema(x.t, rows))}><td class="w">${esc(x.t)}</td><td class="r">${nf(x.n)}</td><td class="r">${nf(x.part)}</td><td class="r">${nf(x.hh)}</td></tr>`).join("") || `<tr><td colspan="4" class="empty">Sem dados.</td></tr>`) + `</tbody>`;
+}
+const openSetor = x => openDetail(x.nm, "Tudo o que está no cronograma para o setor", x.rows, F.setor === "" ? { label: "Filtrar o painel por este setor", fn: () => { F.setor = String(x.s); $("#fSetor").value = F.setor; render(); } } : null);
+const openTema = (t, rows) => openDetail(t, "Todas as turmas deste treinamento", rows.filter(r => r.t === t));
+
+/* ---------- Treinamentos aplicados ---------- */
+function apRows(rows) {
+  const q = AP.q.trim().toUpperCase();
+  return rows.filter(r => r.real && (AP.mes === "" || r.m === +AP.mes) && (!q || r.U.includes(q)) && (AP.carga === "" || (r.h != null && FAIXAS[+AP.carga][1](r.h))) && (AP.efic === "" || (AP.efic === "pend") === r.efic));
+}
+function apGroups(rs) {
+  if (!AP.group) return rs.map(r => ({ t: r.t, d: r.d, s: r.s, tipo: r.tipo, h: r.h, n: r.n || 0, hh: r.hh, e: r.e, ep: r.efic ? 1 : 0, c: 1, rows: [r] }));
+  const g = new Map();
+  rs.forEach(r => { const k = r.t + "|" + r.d + "|" + r.s + "|" + r.tipo + "|" + r.h; let a = g.get(k); if (!a) g.set(k, a = { t: r.t, d: r.d, s: r.s, tipo: r.tipo, h: r.h, n: 0, hh: 0, e: r.e, ep: 0, c: 0, rows: [] });
+    a.rows.push(r); a.c++; a.n += r.n || 0; a.hh += r.hh; if (r.efic) a.ep++; if (r.e && (!a.e || r.e > a.e)) a.e = r.e; });
+  return [...g.values()];
+}
+const cmp = (a, b) => a == null ? 1 : b == null ? -1 : typeof a === "string" ? a.localeCompare(b, "pt-BR") : a - b;
+const th = (k, lbl, cur, cls) => `<th data-k="${k}"${cls ? ` class="${cls}"` : ""}>${lbl}${cur.k === k ? `<span class="ar">${cur.d > 0 ? "▲" : "▼"}</span>` : ""}</th>`;
+function renderAplicados(rows) {
+  const rs = apRows(rows), part = sum(rs, r => r.n || 0), hh = sum(rs, r => r.hh), temas = new Set(rs.map(r => r.t)).size, dias = new Set(rs.map(r => r.d)).size;
+  $("#apKpis").innerHTML =
+    kpi("Registros de treinamento", nf(rs.length), `${nf(apGroupsCount(rs))} turmas, juntando iguais do mesmo dia`, "var(--brand)") +
+    kpi("Temas diferentes", nf(temas), "nomes de treinamento distintos", "var(--brand)") +
+    kpi("Participações", nf(part), rs.length ? `média de ${nf(part / rs.length, 1)} por registro` : "—", "var(--brand)") +
+    kpi("Horas / homem", nf(hh), part ? `${nf(hh / part, 1)} h por participação` : "—", "var(--brand)") +
+    kpi("Dias com treinamento", nf(dias), dias ? `média de ${nf(rs.length / dias, 1)} registros por dia` : "—", "var(--brand)");
+  const fx = FAIXAS.map(([nm, f], i) => ({ nm, i, x: rs.filter(r => r.h != null && f(r.h)) })), fmx = Math.max(...fx.map(a => a.x.length), 1);
+  $("#chCarga").innerHTML = fx.map(a => hbar(a.nm, a.x.length, fmx, `<b>${nf(a.x.length)}</b> · ${rs.length ? pct(a.x.length / rs.length) : "0%"}`, () => openDetail(`Carga horária: ${a.nm.toLowerCase()}`, "Treinamentos aplicados nesta faixa", a.x))).join("");
+  const dx = DIAS.map((nm, i) => ({ nm, x: rs.filter(r => dayOf(r.d) === i) })), dmx = Math.max(...dx.map(a => a.x.length), 1);
+  $("#chDia").innerHTML = dx.map(a => hbar(a.nm, a.x.length, dmx, `<b>${nf(a.x.length)}</b> · ${rs.length ? pct(a.x.length / rs.length) : "0%"}`, () => openDetail(`Treinamentos de ${a.nm.toLowerCase()}`, "Aplicados neste dia da semana", a.x))).join("");
+
+  document.querySelectorAll("#apView .chip").forEach(c => c.setAttribute("aria-pressed", String(c.dataset.view === AP.view)));
+  $("#apGroupWrap").hidden = AP.view !== "lista";
+  let n = 0;
+  if (AP.view === "lista") {
+    const g = apGroups(rs); n = g.length;
+    const key = { d: x => x.d, t: x => x.t, s: x => sn(x.s), tipo: x => x.tipo, n: x => x.n, h: x => x.h, hh: x => x.hh, e: x => x.e }[AP.sort.k] || (x => x.d);
+    g.sort((a, b) => AP.sort.d * cmp(key(a), key(b)) || a.rows[0].row - b.rows[0].row);
+    AP._out = g;
+    $("#apHint").textContent = `${nf(g.length)} ${AP.group ? "turmas" : "registros"} · ${nf(rs.length)} linhas do cronograma`;
+    $("#tAp").innerHTML = `<thead><tr>${th("d", "Data", AP.sort)}${th("t", "Treinamento", AP.sort)}${th("s", "Setor", AP.sort)}${th("tipo", "Tipo", AP.sort)}${th("n", "Treinados", AP.sort, "r")}${th("h", "Carga", AP.sort, "r")}${th("hh", "Horas / homem", AP.sort, "r")}${th("e", "Eficácia", AP.sort)}</tr></thead><tbody>` +
+      (g.slice(0, AP.limit).map(x => `<tr class="go" tabindex="0" ${act(() => openDetail(x.t, `${br(x.d)} · ${sn(x.s)} · ${TIPO[x.tipo]}`, x.rows))}><td class="num">${br(x.d)}</td><td class="w">${esc(x.t)}${x.c > 1 ? `<span class="cnt" title="${x.c} linhas iguais no cronograma">${x.c} linhas</span>` : ""}</td><td>${esc(sn(x.s))}</td><td>${TIPO[x.tipo]}</td><td class="r">${nf(x.n)}</td><td class="r">${hrs(x.h)}</td><td class="r">${nf(x.hh, x.hh % 1 ? 1 : 0)}</td><td>${x.ep ? `<span class="pill p-warn">${x.ep === x.c ? "Pendente" : x.ep + " pendentes"}</span>` : `<span class="num">${br(x.e)}</span>`}</td></tr>`).join("") || `<tr><td colspan="8" class="empty">Nenhum treinamento aplicado com esses filtros.</td></tr>`) + `</tbody>`;
+  } else {
+    const g = byTema(rs); n = g.length;
+    const sk = ["t", "n", "part", "hh", "h", "ns", "d0", "d1"].includes(AP.sort.k) ? AP.sort : { k: "n", d: -1 };
+    g.sort((a, b) => sk.d * cmp(a[sk.k], b[sk.k]) || b.part - a.part);
+    AP._out = g;
+    $("#apHint").textContent = `${nf(g.length)} treinamentos diferentes · ${nf(rs.length)} linhas do cronograma`;
+    $("#tAp").innerHTML = `<thead><tr>${th("t", "Treinamento", sk)}${th("n", "Registros", sk, "r")}${th("part", "Participações", sk, "r")}${th("hh", "Horas / homem", sk, "r")}${th("h", "Carga usual", sk, "r")}${th("ns", "Setores", sk)}${th("d0", "Primeira", sk)}${th("d1", "Última", sk)}</tr></thead><tbody>` +
+      (g.slice(0, AP.limit).map(x => { const ss = [...x.sets].map(sn); return `<tr class="go" tabindex="0" ${act(() => openDetail(x.t, "Todas as aplicações deste treinamento", x.rows))}><td class="w">${esc(x.t)}</td><td class="r">${nf(x.n)}</td><td class="r">${nf(x.part)}</td><td class="r">${nf(x.hh, x.hh % 1 ? 1 : 0)}</td><td class="r">${hrs(x.h)}</td><td>${esc(ss.slice(0, 2).join(", "))}${ss.length > 2 ? ` <span class="muted">+${ss.length - 2}</span>` : ""}</td><td class="num">${br(x.d0)}</td><td class="num">${br(x.d1)}</td></tr>`; }).join("") || `<tr><td colspan="8" class="empty">Nenhum treinamento aplicado com esses filtros.</td></tr>`) + `</tbody>`;
+  }
+  const left = n - AP.limit; $("#apMais").hidden = left <= 0; if (left > 0) $("#apMais").textContent = `Mostrar mais ${nf(Math.min(100, left))} (faltam ${nf(left)})`;
+}
+const apGroupsCount = rs => new Set(rs.map(r => r.t + "|" + r.d + "|" + r.s + "|" + r.tipo + "|" + r.h)).size;
+
+/* ---------- Setores ---------- */
+function renderSetores(rows) {
+  const A = bySetor(rows), k = ST_SORT.k;
+  A.sort((a, b) => ST_SORT.d * cmp(a[k], b[k]) || b.n - a.n);
+  const T = { n: sum(A, a => a.n), part: sum(A, a => a.part), hh: sum(A, a => a.hh), pend: sum(A, a => a.pend), fut: sum(A, a => a.fut), efic: sum(A, a => a.efic), col: sum(A, a => a.col) };
+  $("#tSet").innerHTML = `<thead><tr>${th("nm", "Setor", ST_SORT)}${th("n", "Realizados", ST_SORT, "r")}${th("part", "Participações", ST_SORT, "r")}${th("hh", "Horas / homem", ST_SORT, "r")}${th("med", "Média por turma", ST_SORT, "r")}${th("pcol", "% coletivo", ST_SORT, "r")}${th("nt", "Temas", ST_SORT, "r")}${th("pef", "Eficácia", ST_SORT, "r")}${th("pend", "Falta lançar", ST_SORT, "r")}${th("fut", "A realizar", ST_SORT, "r")}</tr></thead><tbody>` +
+    A.map(a => `<tr class="go" tabindex="0" ${act(() => openSetor(a))}><td><b>${esc(a.nm)}</b></td><td class="r">${nf(a.n)}</td><td class="r">${nf(a.part)}</td><td class="r">${nf(a.hh)}</td><td class="r">${a.n ? nf(a.med, 1) : "—"}</td><td class="r">${a.n ? pct(a.pcol) : "—"}</td><td class="r">${nf(a.nt)}</td><td class="r">${a.n ? pct(a.pef) : "—"}</td><td class="r">${a.pend || "—"}</td><td class="r">${a.fut || "—"}</td></tr>`).join("") +
+    `<tr class="tot"><td>Total</td><td class="r">${nf(T.n)}</td><td class="r">${nf(T.part)}</td><td class="r">${nf(T.hh)}</td><td class="r">${T.n ? nf(T.part / T.n, 1) : "—"}</td><td class="r">${T.n ? pct(T.col / T.n) : "—"}</td><td class="r"></td><td class="r">${T.n ? pct((T.n - T.efic) / T.n) : "—"}</td><td class="r">${nf(T.pend)}</td><td class="r">${nf(T.fut)}</td></tr></tbody>`;
+  const H = bySetor(rows).filter(a => a.n).sort((a, b) => b.n - a.n);
+  const cell = {}; let mx = 1;
+  H.forEach(a => a.rows.forEach(r => { if (r.real) { const c = cell[a.s + "-" + r.m] || (cell[a.s + "-" + r.m] = []); c.push(r); mx = Math.max(mx, c.length); } }));
+  $("#tHeat").innerHTML = `<thead><tr><th class="s">Setor</th>${MS.map(m => `<th>${m}</th>`).join("")}<th class="r" style="padding-right:20px">Total</th></tr></thead><tbody>` +
+    (H.map(a => `<tr><td class="s">${esc(a.nm)}</td>${MES.map((nm, i) => { const c = cell[a.s + "-" + i]; if (!c) return `<td class="c"><span class="z">·</span></td>`; const p = Math.round(10 + 82 * Math.sqrt(c.length / mx));
+      return `<td class="c"><button type="button" class="${p > 52 ? "hi" : ""}" style="--h:color-mix(in srgb,var(--bar) ${p}%,var(--surface))" aria-label="${esc(a.nm)}, ${nm}: ${c.length} treinamentos" ${act(() => openDetail(`${a.nm} · ${nm}`, "Treinamentos realizados", c))}>${c.length}</button></td>`; }).join("")}<td class="t">${nf(a.n)}</td></tr>`).join("") || `<tr><td colspan="14" class="empty">Sem treinamentos realizados neste recorte.</td></tr>`) + `</tbody>`;
+}
+
+/* ---------- Controle do RH ---------- */
+const SIT = {
+  todos: ["Todos", () => true], pend: ["Falta lançar", r => r.pend], efic: ["Eficácia pendente", r => r.efic], conf: ["Conferir mês × data", r => r.mesDif],
+  dado: ["Sem nº treinados ou carga", r => r.semDado], fut: ["A realizar", r => r.fut], real: ["Realizados", r => r.real]
+};
+const ST = { fechado: ["Completo", "p-ok"], pendente: ["Falta lançar", "p-bad"], andamento: ["Em andamento", "p-info"], futuro: ["A realizar", "p-neu"], sem: ["Sem previsão", "p-neu"] };
+const CHEV = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>`;
+function renderControle(rows, M) {
+  const flt = filtered(), by = k => rows.filter(SIT[k][1]), pendM = M.filter(m => m.pend);
+  const conf = rows.filter(r => r.mesDif || r.semDado);
+  $("#todo").innerHTML =
+    `<button type="button" class="td" style="--c:var(--bad)" ${act(() => openDetail("Falta lançar", "Previstos em meses já encerrados, ainda sem data", by("pend")))}><b>${nf(by("pend").length)}</b><span>Falta lançar</span><small>${pendM.length ? "Previstos em " + list(pendM.map(m => m.nm.toLowerCase())) + ", sem data" : "Nenhum mês encerrado com pendência"}</small></button>` +
+    `<button type="button" class="td" style="--c:var(--warn)" ${act(() => openDetail("Eficácia pendente", "Realizados sem data de eficácia", by("efic")))}><b>${nf(by("efic").length)}</b><span>Eficácia pendente</span><small>Realizados sem data de eficácia</small></button>` +
+    `<button type="button" class="td" style="--c:var(--warn)" ${act(() => openDetail("Linhas para conferir", "Mês previsto diferente da data, ou sem nº de treinados / carga", conf))}><b>${nf(conf.length)}</b><span>Linhas para conferir</span><small>Mês previsto diferente da data, ou sem nº de treinados</small></button>` +
+    `<button type="button" class="td" style="--c:var(--brand-2)" ${act(() => openDetail("A realizar", "Previstos do mês atual até dezembro", by("fut")))}><b>${nf(by("fut").length)}</b><span>A realizar</span><small>Previstos do mês atual até dezembro</small></button>`;
+
+  $("#hMesTbl").textContent = flt ? "Recorte filtrado, sem meta · clique no mês" : "% da meta = realizados ÷ meta do mês · clique no mês";
+  const T = M.reduce((a, m) => { a.meta += m.meta; a.prev += m.prev; a.real += m.real; a.efic += m.efic; return a; }, { meta: 0, prev: 0, real: 0, efic: 0 });
+  $("#tMes").innerHTML = `<thead><tr><th>Mês</th>${flt ? "" : `<th class="r">Meta</th>`}<th class="r">Previstos</th><th class="r">Realizados</th><th class="r">Sem data</th>${flt ? "" : `<th class="r">% meta</th>`}<th class="r">Eficácia</th><th>Situação</th></tr></thead><tbody>` +
+    M.map(m => `<tr class="go" tabindex="0" ${act(() => openMonth(rows, m))}><td>${m.nm}</td>${flt ? "" : `<td class="r">${nf(m.meta)}</td>`}<td class="r">${nf(m.prev)}</td><td class="r">${nf(m.real)}</td><td class="r">${m.prev - m.real ? nf(m.prev - m.real) : "—"}</td>${flt ? "" : `<td class="r">${m.real ? pct(m.real / m.meta) : "—"}</td>`}<td class="r">${m.real ? pct((m.real - m.efic) / m.real) : "—"}</td><td><span class="pill ${ST[m.st][1]}">${ST[m.st][0]}</span></td></tr>`).join("") +
+    `<tr class="tot"><td>Total</td>${flt ? "" : `<td class="r">${nf(T.meta)}</td>`}<td class="r">${nf(T.prev)}</td><td class="r">${nf(T.real)}</td><td class="r">${nf(T.prev - T.real)}</td>${flt ? "" : `<td class="r"></td>`}<td class="r">${T.real ? pct((T.real - T.efic) / T.real) : "—"}</td><td></td></tr></tbody>`;
+
+  const pa = bySetor(rows).filter(a => a.pend || a.efic || a.fut).sort((a, b) => b.pend - a.pend || b.efic - a.efic || b.fut - a.fut);
+  $("#tPend").innerHTML = `<thead><tr><th>Setor</th><th class="r">Lançar</th><th class="r">Eficácia</th><th class="r">Realizar</th></tr></thead><tbody>` +
+    (pa.map(x => `<tr class="go" tabindex="0" ${act(() => openDetail(`Pendências · ${x.nm}`, "Falta lançar, eficácia pendente e a realizar", x.rows.filter(r => r.pend || r.efic || r.fut)))}><td>${esc(x.nm)}</td><td class="r">${x.pend || "—"}</td><td class="r">${x.efic || "—"}</td><td class="r">${x.fut || "—"}</td></tr>`).join("") || `<tr><td colspan="4" class="empty">Nenhuma pendência neste recorte.</td></tr>`) + `</tbody>`;
+
+  const real = rows.filter(r => r.real), withE = real.filter(r => r.lag != null);
+  const Q = [
+    [withE.filter(r => r.lag === 0), "Eficácia com a mesma data do treinamento", withE.length ? `${pct(withE.filter(r => r.lag === 0).length / withE.length)} das eficácias lançadas. Vale confirmar se a avaliação é mesmo feita no dia.` : ""],
+    [withE.filter(r => r.lag < 0), "Eficácia com data anterior ao treinamento", "Provável erro de digitação em uma das datas."],
+    [rows.filter(r => r.mesDif), "Mês previsto diferente do mês da data", "O indicador conta pelo mês da coluna PREVISÃO."],
+    [rows.filter(r => r.tipoInc), "Tipo que não bate com o nº de treinados", "Coletivo com 1 treinado, ou individual com mais de 1."],
+    [rows.filter(r => r.semDado), "Realizado sem nº de treinados ou sem carga horária", "Fica fora das participações e das horas / homem."],
+    [rows.filter(r => r.dupName), "Mesmo treinamento escrito de formas diferentes", "Nomes com as mesmas palavras em outra ordem ou pontuação. Padronizar melhora o ranking de temas.", true]
+  ];
+  $("#ql").innerHTML = Q.map(([x, t, s, k]) => `<button type="button" class="qrow" ${act(() => openDetail(t, s, k ? x.slice().sort((a, b) => a.nk.localeCompare(b.nk) || a.t.localeCompare(b.t) || a.row - b.row) : x, null, k))}><b>${nf(x.length)}</b><span><strong>${t}</strong><small>${s}</small></span>${CHEV}</button>`).join("");
+  void 0;
+  renderCron(rows);
+}
+function cronRows(rows) { const q = CR.q.trim().toUpperCase(); return rows.filter(r => (CR.mes === "" || r.m === +CR.mes) && (!q || r.U.includes(q))); }
+function renderCron(rows) {
+  const pre = cronRows(rows);
+  $("#sitChips").innerHTML = Object.keys(SIT).map(k => `<button type="button" class="chip" aria-pressed="${CR.sit === k}" ${act(() => { CR.sit = k; CR.limit = 100; renderCron(base()); })}>${SIT[k][0]}<b>${nf(pre.filter(SIT[k][1]).length)}</b></button>`).join("");
+  const out = pre.filter(SIT[CR.sit][1]); CR._out = out;
+  $("#cronHint").textContent = `${nf(out.length)} de ${nf(rows.length)} linhas`;
+  $("#tCron").innerHTML = `<thead><tr><th class="r">Linha</th><th>Treinamento</th><th>Setor</th><th>Tipo</th><th>Previsão</th><th>Data</th><th class="r">Treinados</th><th class="r">Carga</th><th>Eficácia</th><th>Situação</th></tr></thead><tbody>` +
+    (out.slice(0, CR.limit).map(r => `<tr><td class="r muted">${r.row}</td><td class="w">${esc(r.t)}</td><td>${esc(sn(r.s))}</td><td>${TIPO[r.tipo]}</td><td>${MES[r.m]}</td><td class="num">${br(r.d)}</td><td class="r">${r.n == null ? "—" : nf(r.n)}</td><td class="r">${hrs(r.h)}</td><td class="num">${br(r.e)}</td><td>${pills(r)}</td></tr>`).join("") || `<tr><td colspan="10" class="empty">Nenhuma linha com esses filtros.</td></tr>`) + `</tbody>`;
+  const left = out.length - CR.limit; $("#btnMais").hidden = left <= 0; if (left > 0) $("#btnMais").textContent = `Mostrar mais ${nf(Math.min(100, left))} (faltam ${nf(left)})`;
+}
+
+/* ---------- Exportação (Excel e PDF) ---------- */
+let downloads = null;
+const loadScript = src => new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = () => rej(new Error("script")); document.head.appendChild(s); });
+async function need(test, urls) { for (const u of urls) { if (test()) return; try { await loadScript(u); } catch (e) {} } if (!test()) throw new Error("lib"); }
+const LISTA_HEAD = ["Linha", "Treinamento", "Setor", "Tipo", "Previsão", "Data", "Nº treinados", "Carga (h)", "Horas/homem", "Eficácia", "Situação"];
+const listaBody = rs => rs.map(r => [r.row, r.t, sn(r.s), TIPO[r.tipo], MES[r.m], r.d ? br(r.d) : "", r.n ?? "", r.h ?? "", r.real ? r.hh : "", r.e ? br(r.e) : "", [sitOf(r), r.efic ? "eficácia pendente" : "", r.mesDif ? "mês diferente da data" : "", r.semDado ? "falta dado" : ""].filter(Boolean).join("; ")]);
+const secLista = (name, rs) => ({ name, head: LISTA_HEAD, body: listaBody(rs), wch: [7, 60, 22, 11, 11, 11, 12, 10, 12, 11, 30], wrap: 1 });
+function secMes(rows) { const M = months(rows), flt = filtered();
+  return { name: "Mês a mês", head: ["Mês", ...(flt ? [] : ["Meta"]), "Previstos", "Realizados", "Sem data", ...(flt ? [] : ["% da meta"]), "Participações", "Horas/homem", "% eficácia avaliada", "Situação"],
+    body: M.map(m => [m.nm, ...(flt ? [] : [m.meta]), m.prev, m.real, m.prev - m.real, ...(flt ? [] : [m.real ? Math.round(m.real / m.meta * 1000) / 10 : ""]), m.part, m.hh, m.real ? Math.round((m.real - m.efic) / m.real * 1000) / 10 : "", ST[m.st][0]]), wch: [12, 8, 10, 11, 9, 10, 13, 12, 18, 16] }; }
+function secSetor(rows) { const A = bySetor(rows).sort((a, b) => b.n - a.n);
+  return { name: "Por setor", head: ["Setor", "Realizados", "Participações", "Horas/homem", "Média por turma", "% coletivo", "Temas", "% eficácia avaliada", "Falta lançar", "A realizar"],
+    body: A.map(a => [a.nm, a.n, a.part, a.hh, a.n ? Math.round(a.med * 10) / 10 : "", a.n ? Math.round(a.pcol * 1000) / 10 : "", a.nt, a.n ? Math.round(a.pef * 1000) / 10 : "", a.pend, a.fut]), wch: [26, 11, 13, 12, 15, 11, 8, 18, 12, 11] }; }
+function secTema(rs, name) { const g = byTema(rs).sort((a, b) => b.n - a.n || b.part - a.part);
+  return { name: name || "Por treinamento", head: ["Treinamento", "Registros", "Participações", "Horas/homem", "Carga usual (h)", "Setores", "Primeira data", "Última data"],
+    body: g.map(x => [x.t, x.n, x.part, x.hh, x.h ?? "", [...x.sets].map(sn).join(", "), x.d0 ? br(x.d0) : "", x.d1 ? br(x.d1) : ""]), wch: [60, 10, 13, 12, 14, 34, 13, 13], wrap: 0 }; }
+function secTurmas(g) { return { name: "Treinamentos aplicados", head: ["Data", "Treinamento", "Setor", "Tipo", "Nº treinados", "Carga (h)", "Horas/homem", "Eficácia", "Linhas no cronograma"],
+  body: g.map(x => [br(x.d), x.t, sn(x.s), TIPO[x.tipo], x.n, x.h ?? "", x.hh, x.ep ? (x.ep === x.c ? "pendente" : x.ep + " pendentes") : (x.e ? br(x.e) : ""), x.rows.map(r => r.row).join(", ")]), wch: [11, 60, 22, 11, 12, 10, 12, 12, 22], wrap: 1 }; }
+const EXP = [
+  ["mes", "Resumo mês a mês", "Meta, previstos, realizados, participações, horas / homem e eficácia", rows => secMes(rows), true],
+  ["setor", "Resumo por setor", "Uma linha por setor, com todos os indicadores", rows => secSetor(rows), true],
+  ["tema", "Resumo por treinamento", "Uma linha por nome de treinamento aplicado", rows => secTema(rows.filter(r => r.real)), true],
+  ["aplic", "Treinamentos aplicados", "Todos os realizados: data, treinamento, setor, tipo, treinados, carga e eficácia", rows => secLista("Aplicados", rows.filter(r => r.real)), true],
+  ["pend", "Falta lançar", "Previstos em meses encerrados, ainda sem data", rows => secLista("Falta lançar", rows.filter(r => r.pend)), false],
+  ["efic", "Eficácia pendente", "Realizados sem data de eficácia", rows => secLista("Eficácia pendente", rows.filter(r => r.efic)), false],
+  ["fut", "A realizar", "Previstos do mês atual até dezembro", rows => secLista("A realizar", rows.filter(r => r.fut)), false],
+  ["cron", "Cronograma completo", "Todas as linhas do cronograma", rows => secLista("Cronograma", rows), false]
+];
+$("#eOpts").innerHTML = EXP.map(e => `<label class="popt"><input type="checkbox" id="ex-${e[0]}" value="${e[0]}"${e[4] ? " checked" : ""}><span><b>${e[1]}</b><small>${e[2]}</small></span></label>`).join("");
+function sectionsFor(what) {
+  const rows = base();
+  if (what === "det") return { title: DET.title, sub: DET.sub, file: slug(DET.title), secs: [secLista("Treinamentos", DET.rows)] };
+  if (what === "cron") return { title: "Cronograma de treinamentos", sub: `Situação: ${SIT[CR.sit][0]}` + (CR.mes !== "" ? ` · ${MES[+CR.mes]}` : "") + (CR.q ? ` · busca "${CR.q}"` : ""), file: "cronograma-treinamentos", secs: [secLista("Cronograma", CR._out || [])] };
+  if (what === "ap") { const rs = apRows(rows); const sub = [AP.mes !== "" ? MES[+AP.mes] : "todos os meses", AP.carga !== "" ? FAIXAS[+AP.carga][0].toLowerCase() : "", AP.efic ? (AP.efic === "pend" ? "eficácia pendente" : "eficácia avaliada") : "", AP.q ? `busca "${AP.q}"` : ""].filter(Boolean).join(" · ");
+    return { title: "Treinamentos aplicados", sub, file: "treinamentos-aplicados", secs: AP.view === "tema" ? [secTema(rs)] : AP.group ? [secTurmas(AP._out || apGroups(rs))] : [secLista("Aplicados", rs)] }; }
+  const sel = EXP.filter(e => $("#ex-" + e[0]).checked);
+  return { title: "Indicador e Cronograma de Treinamentos " + DATA.ano, sub: "", file: "treinamentos-crv", secs: sel.map(e => e[3](rows)) };
+}
+const slug = s => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 50) || "lista";
+async function buildXlsx(x) {
+  await need(() => window.XLSX, ["https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js", "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"]);
+  const wb = XLSX.utils.book_new(), used = new Set();
+  x.secs.forEach(s => {
+    const info = [[x.title + (x.secs.length > 1 || s.name !== x.title ? " · " + s.name : "")], [`CRV Industrial · filtros: ${filtroTxt()}` + (x.sub ? " · " + x.sub : "") + ` · base de ${br(DATA.ref)} · ${s.body.length} linhas`], []];
+    const ws = XLSX.utils.aoa_to_sheet([...info, s.head, ...s.body]);
+    ws["!cols"] = (s.wch || s.head.map(() => 14)).map(w => ({ wch: w }));
+    ws["!autofilter"] = { ref: XLSX.utils.encode_range({ s: { r: 3, c: 0 }, e: { r: 3 + s.body.length, c: s.head.length - 1 } }) };
+    let nm = s.name.replace(/[\\/?*[\]:]/g, " ").slice(0, 31); while (used.has(nm)) nm = nm.slice(0, 28) + " 2"; used.add(nm);
+    XLSX.utils.book_append_sheet(wb, ws, nm);
+  });
+  return new Blob([XLSX.write(wb, { bookType: "xlsx", type: "array" })]);
+}
+const pdfTxt = s => String(s ?? "").replace(/≠/g, "diferente de").replace(/×/g, "x").replace(/[–—]/g, "-").replace(/[“”]/g, '"').replace(/·/g, "|");
+let logoData;
+async function getLogo() { if (logoData !== undefined) return logoData; try { const b = await (await fetch("__CRV_BASE__img/logo-crv-2.png")).blob(); logoData = await new Promise((res, rej) => { const f = new FileReader(); f.onload = () => res(f.result); f.onerror = rej; f.readAsDataURL(b); }); } catch (e) { logoData = null; } return logoData; }
+async function buildPdf(x) {
+  await need(() => window.jspdf?.jsPDF?.API?.autoTable, ["https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js", "https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"]);
+  const doc = new window.jspdf.jsPDF({ orientation: "landscape", unit: "mm", format: "a4" }), W = doc.internal.pageSize.getWidth(), Hh = doc.internal.pageSize.getHeight(), Mg = 10;
+  const logo = await getLogo();
+  doc.setFillColor(22, 58, 125); doc.rect(0, 0, W, 24, "F");
+  if (logo) { try { doc.setFillColor(255, 255, 255); doc.roundedRect(Mg, 4, 44, 16, 2, 2, "F"); doc.addImage(logo, "PNG", Mg + 2, 5.5, 40, 13.3); } catch (e) {} }
+  doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(14); doc.text(pdfTxt(x.title).slice(0, 95), Mg + 50, 11);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.text(pdfTxt(`Filtros: ${filtroTxt()}` + (x.sub ? " | " + x.sub : "") + ` | base de ${br(DATA.ref)}`).slice(0, 170), Mg + 50, 17);
+  let y = 30;
+  x.secs.forEach((s, i) => {
+    if (y > Hh - 40) { doc.addPage(); y = 14; }
+    doc.setTextColor(20, 33, 58); doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.text(pdfTxt(s.name), Mg, y);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(111, 124, 147); doc.text(`${s.body.length} linhas`, W - Mg, y, { align: "right" });
+    const wide = s.head.indexOf("Treinamento");
+    doc.autoTable({ startY: y + 2.5, head: [s.head.map(pdfTxt)], body: s.body.length ? s.body.map(r => r.map(v => typeof v === "number" ? (Number.isInteger(v) ? String(v) : v.toLocaleString("pt-BR", { maximumFractionDigits: 2 })) : pdfTxt(v))) : [[{ content: "Nenhum registro.", colSpan: s.head.length, styles: { halign: "center", fontStyle: "italic" } }]],
+      margin: { left: Mg, right: Mg, top: 12, bottom: 12 }, styles: { font: "helvetica", fontSize: 7.5, cellPadding: 1.4, overflow: "linebreak", textColor: [20, 33, 58], lineColor: [220, 226, 236], lineWidth: 0.1 },
+      headStyles: { fillColor: [31, 74, 154], textColor: 255, fontStyle: "bold", fontSize: 7.5 }, alternateRowStyles: { fillColor: [243, 245, 249] },
+      columnStyles: wide >= 0 ? { [wide]: { cellWidth: s.head.length > 9 ? 78 : 95 } } : {} });
+    y = doc.lastAutoTable.finalY + 10;
+  });
+  const n = doc.getNumberOfPages();
+  for (let p = 1; p <= n; p++) { doc.setPage(p); doc.setFontSize(7.5); doc.setTextColor(111, 124, 147); doc.text("CRV Industrial | Unidade Capinópolis | T&D e RH", Mg, Hh - 5); doc.text(`Página ${p} de ${n}`, W - Mg, Hh - 5, { align: "right" }); }
+  return doc.output("blob");
+}
+async function doExport(fmt, what, btn) {
+  if (!downloads) return toast("Para baixar o arquivo, abra o painel pelo Claude com a sua conta.");
+  const x = sectionsFor(what);
+  if (!x.secs.length) return toast("Marque pelo menos um item para exportar.");
+  const old = btn.textContent; btn.disabled = true; btn.textContent = "Gerando…";
+  try {
+    const blob = fmt === "xlsx" ? await buildXlsx(x) : await buildPdf(x);
+    await downloads.save({ filename: `${x.file}-${DATA.ref}.${fmt}`, data: blob });
+    toast(fmt === "xlsx" ? "Excel gerado" : "PDF gerado"); if (what === "sel") $("#expOvl").hidden = true;
+  } catch (e) {
+    const c = e && e.code;
+    if (c === "declined") toast("Exportação cancelada.");
+    else if (c === "rate_limited") toast("Já existe um arquivo aguardando confirmação. Conclua e tente de novo.");
+    else if (e && e.message === "lib") toast("Não foi possível carregar o gerador de arquivos. Verifique a conexão e tente de novo.");
+    else toast("Não foi possível gerar o arquivo neste ambiente.");
+  } finally { btn.disabled = false; btn.textContent = old; }
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-exp]"); if (b) doExport(b.dataset.exp, b.dataset.what, b); });
+$("#btnExport").onclick = () => { $("#eFilt").textContent = filtroTxt() + "."; $("#expOvl").hidden = false; };
+$("#eCancel").onclick = () => { $("#expOvl").hidden = true; };
+$("#expOvl").addEventListener("click", e => { if (e.target.id === "expOvl") $("#expOvl").hidden = true; });
+
+/* ---------- Geral ---------- */
+const VIEWS = ["gestao", "aplicados", "setores", "controle"];
+function render() {
+  ACT = {}; actN = 0;
+  const rows = base(), M = months(rows), flt = filtered();
+  $("#fNote").hidden = !flt;
+  const pendM = M.filter(m => m.pend), pend = sum(pendM, m => m.pend);
+  const b = $("#banner"); b.hidden = !pend;
+  if (pend) b.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/></svg><span><b>${cap(list(pendM.map(m => m.nm.toLowerCase())))}: ${nf(pend)} treinamentos previstos ainda sem lançamento.</b> Os resultados consideram só o que tem data lançada no cronograma.</span>`;
+  renderGestao(rows, M); renderAplicados(rows); renderSetores(rows); renderControle(rows, M);
+  bindTips(document);
+}
+function setView(v, push) {
+  if (!VIEWS.includes(v)) v = "gestao";
+  VIEWS.forEach(k => { $("#v-" + k).hidden = k !== v; });
+  document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", String(t.dataset.v === v)));
+  if (push) { try { history.replaceState(null, "", "#" + v); } catch (e) {} }
+}
+const last = ROWS.reduce((a, r) => r.d && r.d > a ? r.d : a, "");
+$("#refUlt").textContent = br(last); $("#refBase").textContent = br(DATA.ref);
+$("#fSetor").innerHTML += DATA.setores.map((s, i) => [sn(i), i]).sort((a, b) => a[0].localeCompare(b[0], "pt-BR")).map(([s, i]) => `<option value="${i}">${esc(s)}</option>`).join("");
+const mOpts = MES.map((m, i) => `<option value="${i}">${m}</option>`).join(""); $("#fMes").innerHTML += mOpts; $("#apMes").innerHTML += mOpts;
+$("#apCarga").innerHTML += FAIXAS.map((f, i) => `<option value="${i}">${f[0]}</option>`).join("");
+$("#fSetor").addEventListener("change", e => { F.setor = e.target.value; AP.limit = CR.limit = 100; render(); });
+$("#fTipo").addEventListener("change", e => { F.tipo = e.target.value; AP.limit = CR.limit = 100; render(); });
+$("#btnLimpar").addEventListener("click", () => { F.setor = F.tipo = ""; Object.assign(AP, { q: "", mes: "", carga: "", efic: "", limit: 100 }); Object.assign(CR, { q: "", mes: "", sit: "todos", limit: 100 }); ["#fSetor", "#fTipo", "#fMes", "#fBusca", "#apBusca", "#apMes", "#apCarga", "#apEfic"].forEach(s => $(s).value = ""); render(); });
+const reAp = () => { AP.limit = 100; render(); };
+$("#apBusca").addEventListener("input", e => { AP.q = e.target.value; reAp(); });
+$("#apMes").addEventListener("change", e => { AP.mes = e.target.value; reAp(); });
+$("#apCarga").addEventListener("change", e => { AP.carga = e.target.value; reAp(); });
+$("#apEfic").addEventListener("change", e => { AP.efic = e.target.value; reAp(); });
+$("#apGroup").addEventListener("change", e => { AP.group = e.target.checked; reAp(); });
+$("#apView").addEventListener("click", e => { const b = e.target.closest("[data-view]"); if (b) { AP.view = b.dataset.view; AP.sort = AP.view === "tema" ? { k: "n", d: -1 } : { k: "d", d: 1 }; reAp(); } });
+$("#tAp").addEventListener("click", e => { const h = e.target.closest("th[data-k]"); if (h) { const k = h.dataset.k; AP.sort = { k, d: AP.sort.k === k ? -AP.sort.d : (["t", "s", "d", "d0", "d1", "tipo"].includes(k) ? 1 : -1) }; reAp(); } });
+$("#tSet").addEventListener("click", e => { const h = e.target.closest("th[data-k]"); if (h) { const k = h.dataset.k; ST_SORT.d = ST_SORT.k === k ? -ST_SORT.d : (k === "nm" ? 1 : -1); ST_SORT.k = k; render(); } });
+$("#apMais").addEventListener("click", () => { AP.limit += 100; render(); });
+$("#fMes").addEventListener("change", e => { CR.mes = e.target.value; CR.limit = 100; renderCron(base()); });
+$("#fBusca").addEventListener("input", e => { CR.q = e.target.value; CR.limit = 100; renderCron(base()); });
+$("#btnMais").addEventListener("click", () => { CR.limit += 100; renderCron(base()); });
+document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => setView(t.dataset.v, true)));
+setView((location.hash || "").slice(1), false);
+render();
+if (window.claude && window.claude.use) window.claude.use("downloads").then(d => { downloads = d; }).catch(() => {});
+})();
+</script>
+
+</body></html>
