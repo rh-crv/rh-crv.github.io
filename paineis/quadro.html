@@ -1,4 +1,11 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style><style>
+.hst{margin-top:18px;border-top:2px solid var(--line,#e0e5ef);padding-top:14px}
+.hst h3{margin:0 0 10px;font-size:16px}
+.hst h3 .sm{font-weight:400;margin-left:6px}
+.hp{border:1px solid var(--line,#e0e5ef);border-radius:10px;margin-bottom:10px;overflow:hidden}
+.hpc{padding:9px 12px;background:var(--soft,rgba(0,0,0,.03))}
+.hpt{width:100%}
+</style></head><body>
 <title>Quadro Geral CRV</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap">
@@ -559,6 +566,7 @@ button.tile:hover,button.act:hover{transform:translateY(-2px);box-shadow:var(--s
     <div class="tile scroll">
       <table class="nom"><thead><tr id="nh"></tr></thead><tbody id="nb"></tbody></table>
       <div class="more"><button class="btn2" id="more">Mostrar mais</button></div>
+      <div id="hist"></div>
     </div>
     <p class="foot">Clique em uma linha para ver o resumo e abrir a ficha completa. Marque a caixa ao lado do nome para escolher quem sai nos relatórios e nas exportações; sem ninguém marcado, sai a lista inteira do filtro. Os filtros de setor, seção, contrato e situação no alto da página valem também aqui. A lista filtrada pode ser baixada em Excel, em PDF ou como fichas individuais.</p>
   </section>
@@ -726,7 +734,7 @@ const days=s=>s?Math.floor((REF-new Date(s+'T00:00:00'))/864e5):null;
 D.forEach(r=>{r.t=days(r[ADM]);r.k=(r[NOME]+' '+r[MAT]+' '+r[FUN]).toLowerCase()});
 const dbr=s=>s?s.slice(8)+'/'+s.slice(5,7)+'/'+s.slice(0,4):'—';
 const casa=t=>{if(t<0)return 'inicia em '+(-t)+(t==-1?' dia':' dias');const m=Math.floor(t/30.44);return m<1?t+' dias':m<12?m+(m==1?' mês':' meses'):Math.floor(m/12)+(m<24?' ano':' anos')+(m%12?' e\u00a0'+m%12+'\u00a0m':'')};
-D.forEach((r,i)=>r.x=X[i]);
+D.forEach((r,i)=>{r.x=X[i];const c=(r.x&&r.x[11])||'';r.k+=' '+c+' '+c.replace(/\D/g,'')});
 const BLQ={};D.forEach(r=>r.bq=BLQ[r[MAT]]||null);
 const GEST=new Map();D.forEach(r=>r.gs=GEST.get(r[MAT])||null);
 const ACID=new Map();D.forEach(r=>r.ac=ACID.get(r[MAT])||null);const ACS=new Set();D.forEach(r=>r.as=ACS.has(r[MAT]));
@@ -871,7 +879,43 @@ function nominal(){
     let h='<tr class="r" data-m="'+r[MAT]+'">'+ckTd(r)+'<td data-l="Colaborador"><span class="nm">'+esc(r[NOME])+'</span>'+gTag(r)+'<div class="sm">Matrícula '+r[MAT]+'</div>'+bqTag(r)+'</td><td data-l="Função">'+esc(r[FUN])+'</td><td data-l="Setor / seção">'+esc(r[AREA])+'<div class="sm">'+esc(r.dl)+'</div></td><td data-l="Gestão / frente">'+(r[GES]?esc(r[GES]):'<span class="sm">não classificada</span>')+'</td><td data-l="Contrato"><span class="tag'+(r[CON]=='Experiência'?' rec':'')+'">'+esc(r[CON])+'</span></td><td data-l="Admissão" class="dt">'+dbr(r[ADM])+'</td><td data-l="Tempo de casa" class="dt">'+casa(r.t)+'</td><td data-l="Situação"><span class="pill"><i style="background:'+(r[SIT]=='Ativo'?'var(--s3)':'var(--amber)')+'"></i>'+r[SIT]+'</span></td></tr>';
     if(st.open==r[MAT])h+='<tr class="det"><td colspan="9"><div class="dgrid"><div><span>Idade</span>'+r[AGE]+' anos</div><div><span>Cidade</span>'+esc(r[CID]||'—')+'</div>'+(r[SET]?'<div><span>Código do setor</span>'+esc(r[SET])+'</div>':'')+'<div><span>Centro de custo</span>'+esc(r[CC]||'—')+'</div>'+(r[ESP]?'<div><span>Especialidade</span>'+esc(r[ESP])+'</div>':'')+(r[FER]?'<div><span>Férias</span>'+(r[FER]=='Férias Vencidas'?'<span class="warn">Período vencido</span>':esc(r[FER]))+(r[LIM]?'<div class="sm">limite '+dbr(r[LIM])+'</div>':'')+'</div>':'')+''+(r[MOT]?'<div><span>CNH</span>'+(r[CNHV]?(cv?'<span class="warn">Vencida em '+dbr(r[CNHV])+'</span>':'Válida até '+dbr(r[CNHV]))+(r[CNHC]?' · cat. '+esc(r[CNHC]):''):'<span class="warn">Sem CNH no cadastro</span>')+'</div>':'')+'</div><button class="lnk" data-f="'+r[MAT]+'">Abrir ficha completa</button></td></tr>';
     return h}).join('')||'<tr><td colspan="9" class="empty">Nenhum colaborador com esses filtros.</td></tr>';
-  selUI();$('more').hidden=R.length<=st.n;$('more').textContent='Mostrar mais ('+nf(R.length-st.n)+' restantes)';
+  selUI();hist();$('more').hidden=R.length<=st.n;$('more').textContent='Mostrar mais ('+nf(R.length-st.n)+' restantes)';
+}
+
+/* ---------- histórico nas três empresas (busca por nome ou CPF) ---------- */
+const sodig=s=>String(s==null?'':s).replace(/\D/g,'');
+const semac=s=>String(s==null?'':s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+const CPFD=(typeof CPFM!=='undefined')?CPFM:{};
+const fcpf=c=>{c=sodig(c);if(!c)return '';c=c.padStart(11,'0');return c.slice(0,3)+'.'+c.slice(3,6)+'.'+c.slice(6,9)+'-'+c.slice(9)};
+const cpfDe=r=>r.dm?(r.em==='CRV (5)'?(CPFD[r[MAT]]||''):''):((r.x&&r.x[11])||'');
+let HALL=null;
+function hist(){
+  const el=$('hist');if(!el)return;
+  const q=st.q.trim(),qd=sodig(q),qn=semac(q);
+  if(q.length<3){el.innerHTML='';return}
+  if(!HALL)HALL=D.concat(DM).map(r=>({r,c:sodig(cpfDe(r)),n:semac(r[NOME])}));
+  const porCpf=qd.length>=5&&qd.length===q.replace(/[\s.\-\/]/g,'').length;
+  let hits=HALL.filter(h=>porCpf?h.c.includes(qd):h.n.includes(qn));
+  if(!hits.length){el.innerHTML='<div class="hst"><h3>Histórico nas três empresas</h3><p class="sm">Ninguém encontrado com "'+esc(q)+'" nas bases de CRV, APFO e CAPFO.</p></div>';return}
+  // agrupa por pessoa: CPF quando existe; sem CPF, pelo nome
+  const G=new Map();
+  hits.forEach(h=>{const k=h.c?('c'+h.c.padStart(11,'0')):('n'+h.n);if(!G.has(k))G.set(k,{c:h.c,n:h.r[NOME],L:[]});G.get(k).L.push(h.r)});
+  // quem não tem CPF (APFO/CAPFO) e tem o mesmo nome de alguém com CPF entra junto, marcado
+  for(const [k,g] of [...G]){if(k[0]!=='n')continue;const alvo=[...G.values()].find(x=>x.c&&semac(x.n)===k.slice(1));if(alvo){g.L.forEach(r=>r.semCpf=1);alvo.L.push(...g.L);G.delete(k)}}
+  const P=[...G.values()].sort((a,b)=>semac(a.n)<semac(b.n)?-1:1);
+  const lim=30;
+  const sit=r=>r.dm?'<span class="pill"><i style="background:var(--mut,#999)"></i>Desligado</span>':'<span class="pill"><i style="background:'+(r[SIT]=='Ativo'?'var(--s3)':'var(--amber)')+'"></i>'+esc(r[SIT])+'</span>';
+  el.innerHTML='<div class="hst"><h3>Histórico nas três empresas <span class="sm">'+nf(P.length)+(P.length==1?' pessoa':' pessoas')+' · '+nf(hits.length)+(hits.length==1?' passagem':' passagens')+' (inclui desligados)</span></h3>'+
+    P.slice(0,lim).map(g=>{
+      const L=g.L.slice().sort((a,b)=>(a[ADM]||'')<(b[ADM]||'')?-1:1);
+      const emps=[...new Set(L.map(r=>r.em))];
+      return '<div class="hp"><div class="hpc"><b>'+esc(g.n)+'</b>'+(g.c?' <span class="sm">CPF '+fcpf(g.c)+'</span>':' <span class="sm">sem CPF na base</span>')+
+        ' <span class="sm">· '+L.length+(L.length==1?' passagem':' passagens')+' · '+emps.map(esc).join(', ')+'</span></div>'+
+        '<table class="nom hpt"><thead><tr><th>Empresa</th><th>Matrícula</th><th>Função</th><th>Setor / seção</th><th>Admissão</th><th>Saída</th><th>Tempo</th><th>Situação</th></tr></thead><tbody>'+
+        L.map(r=>'<tr><td data-l="Empresa">'+esc(r.em)+(r.semCpf?'<div class="sm">mesmo nome, sem CPF</div>':'')+'</td><td data-l="Matrícula">'+r[MAT]+'</td><td data-l="Função">'+esc(r[FUN])+'</td><td data-l="Setor / seção">'+esc(r[AREA]||'')+'<div class="sm">'+esc(r.dl||r[DEP]||'')+'</div></td><td data-l="Admissão" class="dt">'+dbr(r[ADM])+'</td><td data-l="Saída" class="dt">'+(r.dm&&r[20]?dbr(r[20]):'—')+'</td><td data-l="Tempo" class="dt">'+(r.t!=null?casa(r.t):'—')+'</td><td data-l="Situação">'+sit(r)+'</td></tr>').join('')+
+        '</tbody></table></div>'}).join('')+
+    (P.length>lim?'<p class="sm">Mostrando '+lim+' de '+nf(P.length)+' pessoas. Digite mais do nome (ou o CPF) para achar quem você procura.</p>':'')+
+    '<p class="sm">Busca pelo nome ou pelo CPF. Para CRV o CPF vem da Base Geral; para APFO e CAPFO a base de desligados não traz CPF, então a ligação é feita pelo nome.</p></div>';
 }
 const v=x=>x===''||x==null?'—':esc(x);
 const brl=n=>n===''?'—':'R$ '+n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
