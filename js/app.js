@@ -1,0 +1,859 @@
+/* =====================================================================
+   App Gestão de Pessoas CRV
+   Login + perfis (Supabase) · frentes do Fluxograma do RH · painéis
+   ===================================================================== */
+(() => {
+'use strict';
+
+const CFG = window.CRV_CONFIG;
+const sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true, storageKey: 'crv-gp-sessao' }
+});
+
+/* ---------- identidade visual das frentes ---------- */
+const FRENTES = {
+  'Quadro e movimentação':         { cor:'#24427c', ic:'pessoas',   desc:'Quadro, admissões, rescisões e experiência' },
+  'Atração e perfil':              { cor:'#1f8a8a', ic:'lupa',      desc:'Currículos, seleção e perfil' },
+  'Frequência e férias':           { cor:'#e9a23b', ic:'calendario',desc:'Absenteísmo, férias e sanções' },
+  'Benefícios':                    { cor:'#2e8a57', ic:'presente',  desc:'VA, plano de saúde, odonto e farmácia' },
+  'Jovem Aprendiz':                { cor:'#7a4fb5', ic:'capelo',    desc:'Programa Conexão Aprendiz' },
+  'Treinamento e liderança':       { cor:'#d4573f', ic:'trofeu',    desc:'T&D, pesquisas e lideranças' },
+  'Ocorrências, risco e jurídico': { cor:'#a1341f', ic:'alerta',    desc:'RD, fadiga, processos e ouvidorias' },
+  'Atendimento':                   { cor:'#4a6a8a', ic:'balcao',    desc:'Recepção do RH' },
+  'RH externo':                    { cor:'#8a7a2e', ic:'onibus',    desc:'Alojamentos e ônibus' },
+  'Outros controles':              { cor:'#5d6a85', ic:'pasta',     desc:'Controles complementares' }
+};
+const ORDEM_FRENTES = Object.keys(FRENTES);
+const PALETA = ['#24427c','#2e8a57','#e9a23b','#d4573f','#1f8a8a','#7a4fb5','#8a7a2e','#4a6a8a','#c46a9a','#3f7fbf'];
+const ICONES = {
+  pessoas:'<path d="M16 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4zM8 12a3 3 0 1 0-3-3 3 3 0 0 0 3 3zm8 1c-2.7 0-8 1.3-8 4v3h16v-3c0-2.7-5.3-4-8-4zM8 14c-.3 0-.7 0-1.1.1A4.9 4.9 0 0 1 9 17v3H0v-2.5C0 15.6 4.3 14 8 14z"/>',
+  lupa:'<path d="M10 2a8 8 0 0 1 6.3 12.9l5.4 5.4-1.4 1.4-5.4-5.4A8 8 0 1 1 10 2zm0 2a6 6 0 1 0 0 12 6 6 0 0 0 0-12z"/>',
+  calendario:'<path d="M7 2h2v2h6V2h2v2h3a1 1 0 0 1 1 1v15a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3zm12 7H5v10h14zM7 11h4v4H7z"/>',
+  presente:'<path d="M20 7h-2.2A3 3 0 0 0 12 3.8 3 3 0 0 0 6.2 7H4a1 1 0 0 0-1 1v3h18V8a1 1 0 0 0-1-1zM9 5a1 1 0 0 1 1 1v1H9a1 1 0 0 1 0-2zm6 0a1 1 0 0 1 0 2h-1V6a1 1 0 0 1 1-1zM4 13v7a1 1 0 0 0 1 1h6v-8zm9 0v8h6a1 1 0 0 0 1-1v-7z"/>',
+  capelo:'<path d="M12 3 1 9l11 6 9-4.9V17h2V9zm-6 9.2V16c0 1.7 2.7 3 6 3s6-1.3 6-3v-3.8l-6 3.3z"/>',
+  trofeu:'<path d="M17 4V2H7v2H3v3a4 4 0 0 0 4 4h.3A5 5 0 0 0 11 13.9V17H8v2h8v-2h-3v-3.1a5 5 0 0 0 3.7-2.9h.3a4 4 0 0 0 4-4V4zM5 7V6h2v3a2 2 0 0 1-2-2zm14 0a2 2 0 0 1-2 2V6h2z"/>',
+  alerta:'<path d="M12 2 1 21h22zm1 15h-2v-2h2zm0-4h-2V9h2z"/>',
+  balcao:'<path d="M12 2a5 5 0 0 1 5 5v1h1a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-1.3A5 5 0 0 1 12 17v1h3v2H9v-2h3v-1a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V7a3 3 0 0 0-3-3z"/>',
+  onibus:'<path d="M4 16c0 .9.4 1.7 1 2.2V20a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1h8v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1.8c.6-.5 1-1.3 1-2.2V6c0-3.5-3.6-4-8-4S4 2.5 4 6zm3.5 1A1.5 1.5 0 1 1 9 15.5 1.5 1.5 0 0 1 7.5 17zm9 0a1.5 1.5 0 1 1 1.5-1.5 1.5 1.5 0 0 1-1.5 1.5zM18 11H6V6h12z"/>',
+  pasta:'<path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8z"/>',
+  planilha:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zm-1 7V3.5L18.5 9zM8 13h3v2H8zm5 0h3v2h-3zm-5 4h3v2H8zm5 0h3v2h-3z"/>'
+};
+const svg = (nome, cor='currentColor') => `<svg viewBox="0 0 24 24" fill="${cor}" aria-hidden="true">${ICONES[nome]||ICONES.pasta}</svg>`;
+
+/* ---------- estado ---------- */
+const E = { sessao:null, perfil:null, paineis:[], metas:{}, base:null, view:null, instalarEvt:null };
+
+/* ---------- utilidades ---------- */
+const $ = (s, el=document) => el.querySelector(s);
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const normal = s => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+const fmtData = iso => { if(!iso) return '—'; const d=new Date(iso); return d.toLocaleDateString('pt-BR')+' às '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); };
+const fmtNum = n => Number(n||0).toLocaleString('pt-BR');
+const iniciais = n => String(n||'?').split(/\s+/).filter(Boolean).slice(0,2).map(p=>p[0]).join('').toUpperCase();
+const usuarioParaEmail = u => normal(u).replace(/\s+/g,'.').replace(/[^a-z0-9._-]/g,'') + '@' + CFG.DOMINIO_LOGIN;
+const ehAdmin = () => E.perfil?.papel === 'admin';
+const nomePapel = p => ({admin:'Administrador', editor:'Editor', leitor:'Leitor'}[p] || p);
+
+function toast(msg, erro=false){
+  const t = document.createElement('div');
+  t.className = 'toast' + (erro?' erro-t':'');
+  t.textContent = msg;
+  $('#toast').appendChild(t);
+  setTimeout(()=>t.remove(), erro?6000:3200);
+}
+
+function traduzErro(e){
+  const m = (e?.message || String(e||'')).toLowerCase();
+  if (m.includes('invalid login')) return 'Usuário ou senha incorretos.';
+  if (m.includes('already registered') || m.includes('already been registered') || m.includes('duplicate key')) return 'Esse usuário já existe. Escolha outro nome de usuário.';
+  if (m.includes('password should be at least') || m.includes('weak')) return 'A senha precisa ter pelo menos 6 caracteres.';
+  if (m.includes('email not confirmed')) return 'Login ainda não liberado. No Supabase, desative a opção "Confirm email" (veja o passo a passo).';
+  if (m.includes('signups not allowed') || m.includes('signup is disabled')) return 'Cadastro desativado no Supabase. Ative "Allow new users to sign up" (veja o passo a passo).';
+  if (m.includes('rate limit')) return 'Muitas tentativas seguidas. Aguarde alguns minutos e tente de novo.';
+  if (m.includes('failed to fetch') || m.includes('network')) return 'Sem conexão com o servidor. Verifique a internet.';
+  if (m.includes('row-level security') || m.includes('permission denied')) return 'Você não tem permissão para essa ação.';
+  if (m.includes('relation') && m.includes('does not exist')) return 'O banco ainda não foi preparado. Rode o arquivo SQL no Supabase (passo a passo).';
+  return e?.message || 'Algo deu errado. Tente novamente.';
+}
+
+/* ---------- modal ---------- */
+function abrirModal({titulo, corpo, pe='', largo=false, aoAbrir}){
+  const raiz = $('#modal-raiz');
+  raiz.innerHTML = `<div class="modal-fundo"><div class="modal ${largo?'largo':''}" role="dialog" aria-modal="true">
+    <div class="modal-cab"><h3>${esc(titulo)}</h3><button class="x" aria-label="Fechar">&times;</button></div>
+    <div class="modal-corpo">${corpo}</div>${pe?`<div class="modal-pe">${pe}</div>`:''}</div></div>`;
+  const fundo = $('.modal-fundo', raiz);
+  $('.x', raiz).onclick = fecharModal;
+  fundo.addEventListener('mousedown', ev => { if (ev.target === fundo) fecharModal(); });
+  if (aoAbrir) aoAbrir($('.modal', raiz));
+}
+function fecharModal(){ $('#modal-raiz').innerHTML = ''; }
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape') fecharModal(); });
+
+/* =====================================================================
+   INÍCIO / AUTENTICAÇÃO
+   ===================================================================== */
+async function iniciar(){
+  const { data } = await sb.auth.getSession();
+  E.sessao = data.session;
+  if (!E.sessao) return telaLogin();
+  await entrarNoApp();
+}
+
+async function entrarNoApp(){
+  try {
+    const uid = E.sessao.user.id;
+    const { data: perfil, error } = await sb.from('perfis').select('*').eq('user_id', uid).maybeSingle();
+    if (error) throw error;
+    if (!perfil || !perfil.ativo) return telaSemAcesso(!perfil ? 'semperfil' : 'inativo');
+    E.perfil = perfil;
+    await carregarCatalogo();
+    window.addEventListener('hashchange', rota);
+    rota();
+  } catch(e){
+    $('#app').innerHTML = `<div class="login-fundo"><div class="login-card"><img class="logo" src="img/logo-crv.png" alt="CRV Industrial">
+      <div class="erro" style="margin-top:18px">${esc(traduzErro(e))}</div>
+      <button class="btn cheio" id="b-sair">Voltar ao login</button></div></div>`;
+    $('#b-sair').onclick = sair;
+  }
+}
+
+async function carregarCatalogo(){
+  const [p, m] = await Promise.all([
+    sb.from('paineis').select('*').order('ordem'),
+    sb.from('bases').select('painel,arquivo,linhas,atualizado_em,atualizado_por')
+  ]);
+  if (p.error) throw p.error;
+  E.paineis = p.data || [];
+  E.metas = {};
+  (m.data || []).forEach(r => E.metas[r.painel] = r);
+}
+
+function podeVer(p){ if (!E.perfil) return false; if (ehAdmin()) return true; return p.nivel !== 'restrito' && (E.perfil.frentes||[]).includes(p.frente); }
+function podeEditar(p){ if (!E.perfil) return false; if (ehAdmin()) return true; return E.perfil.papel === 'editor' && p.nivel !== 'restrito' && (E.perfil.frentes||[]).includes(p.frente); }
+
+function telaLogin(modo='entrar', msg=''){
+  const primeiro = modo === 'primeiro';
+  $('#app').innerHTML = `
+  <div class="login-fundo"><form class="login-card" id="f-login" autocomplete="on">
+    <img class="logo" src="img/logo-crv.png" alt="CRV Industrial">
+    <h1>Gestão de Pessoas</h1>
+    <div class="faixa-cana"></div>
+    <p class="sub">${primeiro ? 'Primeiro acesso: crie o usuário administrador do app.' : 'Entre com o usuário e a senha liberados pelo RH.'}</p>
+    ${msg ? `<div class="${msg.startsWith('✓')?'ok':'erro'}">${esc(msg.replace(/^✓\s*/,''))}</div>` : ''}
+    <div id="msg"></div>
+    ${primeiro ? `<div class="campo"><label for="i-nome">Seu nome</label><input id="i-nome" required autocomplete="name"></div>` : ''}
+    <div class="campo"><label for="i-usuario">Usuário</label><input id="i-usuario" required autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="ex.: scarlatt"></div>
+    <div class="campo"><label for="i-senha">Senha</label><input id="i-senha" type="password" required minlength="6" autocomplete="${primeiro?'new-password':'current-password'}"></div>
+    ${primeiro ? `<div class="campo"><label for="i-senha2">Repita a senha</label><input id="i-senha2" type="password" required minlength="6" autocomplete="new-password"></div>` : ''}
+    <button class="btn prim cheio" id="b-entrar" type="submit">${primeiro ? 'Criar administrador' : 'Entrar'}</button>
+    <div style="text-align:center;margin-top:16px">
+      <button type="button" class="link" id="b-modo">${primeiro ? 'Já tenho usuário — entrar' : 'Primeiro acesso do administrador'}</button>
+    </div>
+  </form></div>`;
+  $('#b-modo').onclick = () => telaLogin(primeiro ? 'entrar' : 'primeiro');
+  $('#f-login').onsubmit = async ev => {
+    ev.preventDefault();
+    const b = $('#b-entrar'); b.disabled = true; b.textContent = 'Aguarde...';
+    const usuario = $('#i-usuario').value.trim();
+    const senha = $('#i-senha').value;
+    const mostrarErro = t => { $('#msg').innerHTML = `<div class="erro">${esc(t)}</div>`; b.disabled=false; b.textContent = primeiro?'Criar administrador':'Entrar'; };
+    try {
+      if (primeiro) {
+        if (senha !== $('#i-senha2').value) return mostrarErro('As senhas não conferem.');
+        const nome = $('#i-nome').value.trim();
+        const { data, error } = await sb.auth.signUp({ email: usuarioParaEmail(usuario), password: senha, options:{ data:{ nome, usuario } } });
+        if (error) throw error;
+        if (!data.session) return mostrarErro('Usuário criado, mas o login ainda está bloqueado. No Supabase, desative "Confirm email" e entre normalmente.');
+        const r = await sb.rpc('reivindicar_admin', { p_usuario: normal(usuario), p_nome: nome });
+        if (r.error) throw r.error;
+        if (!r.data) { await sb.auth.signOut(); return telaLogin('entrar', 'Já existe um administrador. Peça a ele para liberar seu acesso.'); }
+        E.sessao = data.session;
+        return entrarNoApp();
+      }
+      const { data, error } = await sb.auth.signInWithPassword({ email: usuarioParaEmail(usuario), password: senha });
+      if (error) throw error;
+      E.sessao = data.session;
+      entrarNoApp();
+    } catch(e){ mostrarErro(traduzErro(e)); }
+  };
+}
+
+function telaSemAcesso(tipo){
+  $('#app').innerHTML = `<div class="login-fundo"><div class="login-card">
+    <img class="logo" src="img/logo-crv.png" alt="CRV Industrial"><div class="faixa-cana" style="margin-top:16px"></div>
+    <h1>${tipo==='inativo' ? 'Acesso desativado' : 'Acesso ainda não liberado'}</h1>
+    <p class="sub">${tipo==='inativo' ? 'Seu usuário está desativado. Fale com o RH.' : 'Seu usuário existe, mas ainda não tem permissões. Fale com o administrador do app.'}</p>
+    <button class="btn cheio" id="b-sair">Sair</button></div></div>`;
+  $('#b-sair').onclick = sair;
+}
+
+async function sair(){ await sb.auth.signOut(); E.sessao=null; E.perfil=null; location.hash=''; telaLogin(); }
+
+/* =====================================================================
+   ESTRUTURA (topo + rotas)
+   ===================================================================== */
+function moldura(conteudo){
+  const p = E.perfil;
+  $('#app').innerHTML = `
+  <header class="topo"><div class="topo-in">
+    <img class="logo" src="img/logo-crv.png" alt="CRV Industrial" id="t-logo">
+    <div class="titulo"><b>Gestão de Pessoas</b><span>CRV Industrial · Unidade Capinópolis</span></div>
+    <div class="esp"></div>
+    <div class="usuario menu-usuario">
+      <span class="chip-papel">${esc(nomePapel(p.papel))}</span>
+      <button class="btn peq" id="b-menu" aria-haspopup="true"><span class="nome-u">${esc(p.nome.split(' ')[0])}</span> ▾</button>
+      <div class="menu-pop oculto" id="menu-pop">
+        <div class="nome">${esc(p.nome)}<br><small>@${esc(p.usuario)}</small></div>
+        <button data-ir="#/">Início</button>
+        ${ehAdmin() ? '<button data-ir="#/admin">Administração</button>' : ''}
+        <button data-ir="#/conta">Minha conta</button>
+        <button id="m-instalar">Instalar o app</button>
+        <button id="m-sair">Sair</button>
+      </div>
+    </div>
+  </div></header>
+  <main class="pagina" id="pagina">${conteudo}</main>`;
+  $('#t-logo').onclick = () => location.hash = '#/';
+  const pop = $('#menu-pop');
+  $('#b-menu').onclick = ev => { ev.stopPropagation(); pop.classList.toggle('oculto'); };
+  document.addEventListener('click', () => pop.classList.add('oculto'), { once:true });
+  pop.querySelectorAll('[data-ir]').forEach(b => b.onclick = () => location.hash = b.dataset.ir);
+  $('#m-sair').onclick = sair;
+  $('#m-instalar').onclick = instalarApp;
+}
+
+function rota(){
+  if (!E.perfil) return;
+  fecharModal();
+  const h = location.hash || '#/';
+  if (h.startsWith('#/p/')) return telaPainel(decodeURIComponent(h.slice(4)));
+  if (h === '#/admin' && ehAdmin()) return telaAdmin();
+  if (h === '#/conta') return telaConta();
+  telaInicio();
+}
+
+/* =====================================================================
+   INÍCIO — frentes e painéis
+   ===================================================================== */
+function telaInicio(){
+  const visiveis = E.paineis.filter(podeVer);
+  const grupos = {};
+  visiveis.forEach(p => (grupos[p.frente] = grupos[p.frente] || []).push(p));
+  const frentes = Object.keys(grupos).sort((a,b) => (ORDEM_FRENTES.indexOf(a)+1||99) - (ORDEM_FRENTES.indexOf(b)+1||99));
+  const hora = new Date().getHours();
+  const saud = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
+  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+
+  moldura(`
+    ${!standalone ? `<div class="instalar" id="faixa-instalar"><p><b>Instale o app</b> no celular ou no computador para abrir direto, como um aplicativo.</p><button class="btn prim peq" id="b-inst">Instalar</button><button class="link" id="b-inst-x" aria-label="Fechar">fechar</button></div>` : ''}
+    <div class="boas">
+      <div><h2>${saud}, ${esc(E.perfil.nome.split(' ')[0])}</h2><p>${visiveis.length} painéis liberados para você em ${frentes.length} frentes.</p></div>
+      <input class="busca-global" id="busca" type="search" placeholder="Buscar painel...">
+    </div>
+    ${frentes.length ? `<div class="frentes" id="frentes">${frentes.map(f => cartaoFrente(f, grupos[f])).join('')}</div>`
+      : `<div class="cartao vazio"><h3>Nenhum painel liberado</h3><p>Peça ao administrador para liberar as frentes que você usa.</p></div>`}
+  `);
+  if ($('#b-inst')) {
+    try { if (localStorage.getItem('crv-inst-x')) $('#faixa-instalar').remove(); } catch(_){}
+    $('#b-inst') && ($('#b-inst').onclick = instalarApp);
+    $('#b-inst-x') && ($('#b-inst-x').onclick = () => { $('#faixa-instalar').remove(); try{localStorage.setItem('crv-inst-x','1')}catch(_){} });
+  }
+  document.querySelectorAll('[data-painel]').forEach(b => b.onclick = () => location.hash = '#/p/' + encodeURIComponent(b.dataset.painel));
+  $('#busca')?.addEventListener('input', ev => {
+    const q = normal(ev.target.value);
+    document.querySelectorAll('.painel-item').forEach(b => b.classList.toggle('oculto', q && !normal(b.dataset.nome).includes(q)));
+    document.querySelectorAll('.frente').forEach(f => f.classList.toggle('oculto', !f.querySelector('.painel-item:not(.oculto)')));
+  });
+}
+
+function cartaoFrente(f, lista){
+  const cfg = FRENTES[f] || FRENTES['Outros controles'];
+  return `<section class="frente">
+    <div class="frente-cab"><div class="frente-ic" style="background:${cfg.cor}">${svg(cfg.ic,'#fff')}</div>
+      <div><h3>${esc(f)}</h3><small>${esc(cfg.desc)}</small></div></div>
+    <div class="paineis">${lista.map(p => {
+      const m = E.metas[p.id];
+      const info = m ? `${fmtNum(m.linhas)} registros · atualizado ${new Date(m.atualizado_em).toLocaleDateString('pt-BR')}` : 'Sem dados ainda';
+      return `<button class="painel-item" data-painel="${esc(p.id)}" data-nome="${esc(p.nome)}">
+        <div class="pn"><b>${esc(p.nome)}</b><small>${esc(info)}</small></div>
+        <span class="selo ${p.nivel}">${p.nivel}</span><span class="seta">›</span></button>`;
+    }).join('')}</div></section>`;
+}
+
+/* =====================================================================
+   PAINEL
+   ===================================================================== */
+async function telaPainel(id){
+  const p = E.paineis.find(x => x.id === id);
+  if (!p || !podeVer(p)) { toast('Painel não encontrado ou sem acesso.', true); location.hash = '#/'; return; }
+  const cfg = FRENTES[p.frente] || FRENTES['Outros controles'];
+  moldura(`<div class="trilha"><button data-ir="#/">Início</button> › <span>${esc(p.frente)}</span> › <b>${esc(p.nome)}</b></div>
+    <div class="cartao vazio"><div class="spinner" style="margin:0 auto"></div><p>Carregando dados...</p></div>`);
+  document.querySelector('.trilha [data-ir]').onclick = () => location.hash = '#/';
+
+  const { data, error } = await sb.from('bases').select('*').eq('painel', id).maybeSingle();
+  if (error) { $('#pagina').innerHTML += `<div class="erro">${esc(traduzErro(error))}</div>`; return; }
+
+  E.view = { p, cfg, base: data, filtro: null, busca: '', ordem: null, limite: 100, agrupar: null };
+  if (data) {
+    E.view.agrupar = escolherAgrupamento(data.colunas, data.dados);
+  }
+  desenharPainel();
+}
+
+function desenharPainel(){
+  const v = E.view, p = v.p, b = v.base;
+  const editar = podeEditar(p);
+  const cab = `<div class="trilha"><button data-ir="#/">Início</button> › <span>${esc(p.frente)}</span> › <b>${esc(p.nome)}</b></div>
+  <div class="painel-cab">
+    <div class="barra-cor" style="background:${v.cfg.cor}"></div>
+    <div><h2>${esc(p.nome)}</h2>
+      <div class="meta">${b ? `${esc(b.arquivo||'Planilha')} · atualizado em ${fmtData(b.atualizado_em)}${b.atualizado_por?` por ${esc(b.atualizado_por)}`:''}` : 'Ainda sem dados carregados'}
+      · <span class="selo ${p.nivel}">${p.nivel}</span></div></div>
+    <div class="acoes">
+      ${b ? `<button class="btn azul" id="b-exportar">Exportar</button>` : ''}
+      ${editar ? `<button class="btn prim" id="b-enviar">${b ? 'Atualizar planilha' : 'Enviar planilha'}</button>` : ''}
+    </div>
+  </div>`;
+
+  if (!b || !b.dados?.length) {
+    $('#pagina').innerHTML = cab + `<div class="cartao vazio">${svg('planilha')}
+      <h3>Nenhum dado neste painel ainda</h3>
+      <p>${editar ? 'Envie a planilha deste controle (Excel ou CSV). O app lê, organiza e libera para quem tem acesso.' : 'O RH ainda não carregou a base deste painel.'}</p>
+      ${editar ? '<button class="btn prim" id="b-enviar2">Enviar planilha</button>' : ''}</div>`;
+    ligarCabPainel();
+    $('#b-enviar2') && ($('#b-enviar2').onclick = () => escolherArquivo());
+    return;
+  }
+
+  const linhas = linhasVisiveis();
+  const col = v.agrupar;
+  const idx = b.colunas.indexOf(col);
+  const contagem = {};
+  if (idx >= 0) {
+    linhasFiltradasSemGrupo().forEach(r => { const k = vazioParaTraco(r[idx]); contagem[k] = (contagem[k]||0) + 1; });
+  }
+  const ordenado = Object.entries(contagem).sort((a,b)=>b[1]-a[1]);
+  const max = ordenado[0]?.[1] || 1;
+  const candidatos = colunasAgrupaveis(b.colunas, b.dados);
+
+  const kpis = kpisAutomaticos(b);
+
+  $('#pagina').innerHTML = cab + `
+  <div class="kpis">
+    <button class="kpi" style="--cor:${v.cfg.cor}" id="k-total"><small>Total de registros</small><b>${fmtNum(b.dados.length)}</b><span>clique para ver todos</span></button>
+    ${kpis.map((k,i)=>`<button class="kpi" style="--cor:${PALETA[(i+1)%PALETA.length]}" data-kcol="${esc(k.col)}" data-kval="${esc(k.val)}"><small>${esc(k.rotulo)}</small><b>${fmtNum(k.n)}</b><span>${esc(k.sub)}</span></button>`).join('')}
+  </div>
+  <div class="grade2">
+    <div class="cartao">
+      <div class="cartao-cab"><h3>Distribuição</h3>
+        <select id="s-agrupar" aria-label="Agrupar por">${candidatos.map(c=>`<option ${c===col?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
+      <div class="barras">${ordenado.map(([k,n],i)=>`
+        <button class="barra ${v.filtro && v.filtro.val===k ? 'ativa':''}" data-val="${esc(k)}" title="Ver quem está em ${esc(k)}">
+          <span class="rot">${esc(k)}</span><span class="trilho"><span class="enche" style="width:${Math.max(2,n/max*100)}%;background:${PALETA[i%PALETA.length]}"></span></span><span class="val">${fmtNum(n)}</span>
+        </button>`).join('') || '<p class="vazio">Sem colunas para agrupar.</p>'}</div>
+    </div>
+    <div class="cartao">
+      <div class="cartao-cab"><h3>${v.filtro ? 'Quem está em' : 'Registros'}</h3>
+        ${v.filtro ? `<span class="filtro-ativo">${esc(v.filtro.col)}: ${esc(v.filtro.val)} <button id="b-limpa" aria-label="Limpar filtro">&times;</button></span>` : ''}
+        <input class="busca" id="i-busca" type="search" placeholder="Buscar nome, matrícula..." value="${esc(v.busca)}"></div>
+      <div class="tabela-env"><table class="tab"><thead><tr>${b.colunas.map((c,i)=>`<th data-i="${i}">${esc(c)}${v.ordem?.i===i?(v.ordem.asc?' ▲':' ▼'):''}</th>`).join('')}</tr></thead>
+        <tbody>${linhas.slice(0, v.limite).map((r)=>`<tr data-r="${b.dados.indexOf(r)}">${b.colunas.map((_,i)=>`<td>${esc(r[i])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+      <div class="rodape-tab"><span>${fmtNum(linhas.length)} de ${fmtNum(b.dados.length)} registros · clique em uma linha para abrir a ficha</span>
+        ${linhas.length > v.limite ? '<button class="btn peq borda" id="b-mais">Mostrar mais</button>' : ''}</div>
+    </div>
+  </div>`;
+  ligarCabPainel();
+
+  $('#k-total').onclick = () => { v.filtro=null; v.busca=''; desenharPainel(); };
+  document.querySelectorAll('[data-kcol]').forEach(k => k.onclick = () => { v.agrupar = k.dataset.kcol; v.filtro = { col:k.dataset.kcol, val:k.dataset.kval }; v.limite=100; desenharPainel(); });
+  $('#s-agrupar').onchange = ev => { v.agrupar = ev.target.value; v.filtro = null; desenharPainel(); };
+  document.querySelectorAll('.barra').forEach(bt => bt.onclick = () => {
+    const val = bt.dataset.val;
+    v.filtro = (v.filtro && v.filtro.val === val) ? null : { col: v.agrupar, val };
+    v.limite = 100; desenharPainel();
+  });
+  $('#b-limpa') && ($('#b-limpa').onclick = () => { v.filtro = null; desenharPainel(); });
+  let tempo;
+  $('#i-busca').oninput = ev => { clearTimeout(tempo); tempo = setTimeout(()=>{ v.busca = ev.target.value; v.limite=100; desenharPainel(); const i=$('#i-busca'); i.focus(); i.setSelectionRange(i.value.length,i.value.length); }, 250); };
+  document.querySelectorAll('th[data-i]').forEach(th => th.onclick = () => { const i=+th.dataset.i; v.ordem = (v.ordem?.i===i) ? {i, asc:!v.ordem.asc} : {i, asc:true}; desenharPainel(); });
+  document.querySelectorAll('tbody tr').forEach(tr => tr.onclick = () => abrirFicha(b.dados[+tr.dataset.r]));
+  $('#b-mais') && ($('#b-mais').onclick = () => { v.limite += 200; desenharPainel(); });
+}
+
+function ligarCabPainel(){
+  document.querySelector('.trilha [data-ir]').onclick = () => location.hash = '#/';
+  $('#b-enviar') && ($('#b-enviar').onclick = () => escolherArquivo());
+  $('#b-exportar') && ($('#b-exportar').onclick = abrirExportar);
+}
+
+const vazioParaTraco = x => (x === null || x === undefined || String(x).trim() === '') ? '(em branco)' : String(x).trim();
+
+function linhasFiltradasSemGrupo(){
+  const v = E.view, b = v.base;
+  const q = normal(v.busca);
+  return q ? b.dados.filter(r => r.some(c => normal(c).includes(q))) : b.dados;
+}
+function linhasVisiveis(){
+  const v = E.view, b = v.base;
+  let L = linhasFiltradasSemGrupo();
+  if (v.filtro) { const i = b.colunas.indexOf(v.filtro.col); L = L.filter(r => vazioParaTraco(r[i]) === v.filtro.val); }
+  if (v.ordem) {
+    const i = v.ordem.i, s = v.ordem.asc ? 1 : -1;
+    L = [...L].sort((a,c) => {
+      const x=a[i], y=c[i];
+      const nx = typeof x==='number'?x:parseFloat(String(x).replace(/\./g,'').replace(',','.'));
+      const ny = typeof y==='number'?y:parseFloat(String(y).replace(/\./g,'').replace(',','.'));
+      if (!isNaN(nx) && !isNaN(ny) && /^[\d.,\s-]+$/.test(String(x)) && /^[\d.,\s-]+$/.test(String(y))) return (nx-ny)*s;
+      const dx = dataBR(x), dy = dataBR(y);
+      if (dx && dy) return (dx-dy)*s;
+      return String(x??'').localeCompare(String(y??''),'pt-BR')*s;
+    });
+  }
+  return L;
+}
+function dataBR(s){ const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(s||'')); return m ? new Date(+m[3], +m[2]-1, +m[1]).getTime() : null; }
+
+function colunasAgrupaveis(colunas, dados){
+  return colunas.filter((c,i) => {
+    const set = new Set();
+    for (const r of dados) { set.add(vazioParaTraco(r[i])); if (set.size > 80) return false; }
+    return set.size >= 2 || dados.length < 3;
+  });
+}
+function escolherAgrupamento(colunas, dados){
+  const cand = colunasAgrupaveis(colunas, dados);
+  const pref = ['departamento','setor','area','situacao','status','funcao','cargo','frente','tipo','motivo','unidade'];
+  for (const p of pref) { const c = cand.find(x => normal(x).includes(p)); if (c) return c; }
+  return cand[0] || colunas[0];
+}
+function kpisAutomaticos(b){
+  // Destaques automáticos: a coluna de situação/status (se existir) mostra os 3 maiores grupos
+  const i = b.colunas.findIndex(c => /situa|status/.test(normal(c)));
+  if (i < 0) return [];
+  const cont = {};
+  b.dados.forEach(r => { const k = vazioParaTraco(r[i]); cont[k]=(cont[k]||0)+1; });
+  return Object.entries(cont).sort((a,c)=>c[1]-a[1]).slice(0,3)
+    .map(([val,n]) => ({ col:b.colunas[i], val, n, rotulo: val, sub: `${b.colunas[i]} · ${Math.round(n/b.dados.length*100)}%` }));
+}
+
+/* ---------- ficha individual ---------- */
+function abrirFicha(r){
+  const b = E.view.base;
+  const iNome = b.colunas.findIndex(c => /^nome|colaborador|funcionario/.test(normal(c)));
+  const titulo = iNome >= 0 ? r[iNome] : 'Ficha do registro';
+  abrirModal({
+    titulo, largo:true,
+    corpo: `<div class="ficha">${b.colunas.map((c,i)=>`<div><small>${esc(c)}</small><span>${esc(r[i]) || '—'}</span></div>`).join('')}</div>`,
+    pe: `<button class="btn borda" id="f-fechar">Fechar</button><button class="btn azul" id="f-pdf">Baixar ficha em PDF</button>`,
+    aoAbrir: () => {
+      $('#f-fechar').onclick = fecharModal;
+      $('#f-pdf').onclick = () => {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ unit:'pt', format:'a4' });
+        cabecalhoPDF(doc, E.view.p.nome + ' — Ficha', titulo);
+        doc.autoTable({ startY: 110, head:[['Campo','Informação']], body: b.colunas.map((c,i)=>[c, String(r[i]??'')]),
+          styles:{ fontSize:9, cellPadding:4 }, headStyles:{ fillColor:[36,66,124] }, columnStyles:{0:{fontStyle:'bold',cellWidth:170}} });
+        rodapePDF(doc);
+        baixar(doc.output('blob'), `Ficha - ${String(titulo).slice(0,60)}.pdf`);
+      };
+    }
+  });
+}
+
+/* ---------- exportar (Excel / PDF, escolhendo o que exportar) ---------- */
+function abrirExportar(){
+  const v = E.view, b = v.base, vis = linhasVisiveis();
+  abrirModal({
+    titulo: 'Exportar ' + v.p.nome,
+    corpo: `
+      <p style="margin-top:0;color:var(--mut)">Escolha quais linhas e quais colunas vão no arquivo.</p>
+      <div class="campo"><label>Linhas</label>
+        <select id="x-linhas">
+          <option value="vis">O que estou vendo agora (${fmtNum(vis.length)}${v.filtro?` · ${esc(v.filtro.val)}`:''}${v.busca?' · com busca':''})</option>
+          <option value="tudo">Todos os registros (${fmtNum(b.dados.length)})</option>
+        </select></div>
+      <div class="campo"><label>Colunas <button type="button" class="link" id="x-todas">marcar todas</button> · <button type="button" class="link" id="x-nenhuma">desmarcar todas</button></label>
+        <div class="checks">${b.colunas.map((c,i)=>`<label><input type="checkbox" value="${i}" checked> ${esc(c)}</label>`).join('')}</div></div>`,
+    pe: `<button class="btn borda" id="x-cancelar">Cancelar</button><button class="btn prim" id="x-xlsx">Excel</button><button class="btn azul" id="x-pdf">PDF</button>`,
+    aoAbrir: m => {
+      const marcadas = () => [...m.querySelectorAll('.checks input:checked')].map(x=>+x.value);
+      $('#x-todas').onclick = () => m.querySelectorAll('.checks input').forEach(x=>x.checked=true);
+      $('#x-nenhuma').onclick = () => m.querySelectorAll('.checks input').forEach(x=>x.checked=false);
+      $('#x-cancelar').onclick = fecharModal;
+      const pegar = () => {
+        const cols = marcadas();
+        if (!cols.length) { toast('Marque pelo menos uma coluna.', true); return null; }
+        const L = $('#x-linhas').value === 'tudo' ? b.dados : vis;
+        return { cols, cab: cols.map(i=>b.colunas[i]), corpo: L.map(r => cols.map(i => r[i] ?? '')) };
+      };
+      const nomeArq = () => `${v.p.nome}${v.filtro?' - '+v.filtro.val:''} - ${new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')}`;
+      $('#x-xlsx').onclick = () => {
+        const d = pegar(); if (!d) return;
+        const ws = XLSX.utils.aoa_to_sheet([d.cab, ...d.corpo]);
+        ws['!cols'] = d.cab.map(c => ({ wch: Math.min(40, Math.max(10, String(c).length + 2)) }));
+        const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Dados');
+        const bin = XLSX.write(wb, { bookType:'xlsx', type:'array' });
+        baixar(new Blob([bin], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), nomeArq() + '.xlsx');
+        registrar(v.p.id, 'exportou Excel', `${d.corpo.length} linhas`);
+        fecharModal();
+      };
+      $('#x-pdf').onclick = () => {
+        const d = pegar(); if (!d) return;
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ unit:'pt', format:'a4', orientation: d.cab.length > 6 ? 'landscape' : 'portrait' });
+        cabecalhoPDF(doc, v.p.nome, v.filtro ? `${v.filtro.col}: ${v.filtro.val}` : `${d.corpo.length} registros`);
+        doc.autoTable({ startY:110, head:[d.cab], body:d.corpo.map(r=>r.map(x=>String(x))),
+          styles:{ fontSize: d.cab.length > 10 ? 6.5 : 8, cellPadding:3, overflow:'linebreak' }, headStyles:{ fillColor:[36,66,124] },
+          alternateRowStyles:{ fillColor:[242,244,249] } });
+        rodapePDF(doc);
+        baixar(doc.output('blob'), nomeArq() + '.pdf');
+        registrar(v.p.id, 'exportou PDF', `${d.corpo.length} linhas`);
+        fecharModal();
+      };
+    }
+  });
+}
+
+function baixar(blob, nome){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = nome.replace(/[\\/:*?"<>|]/g, '-');
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 4000);
+}
+
+let LOGO_DATAURL = null;
+function prepararLogo(){
+  const img = new Image();
+  img.onload = () => { const c = document.createElement('canvas'); c.width=img.width; c.height=img.height; c.getContext('2d').drawImage(img,0,0); LOGO_DATAURL = c.toDataURL('image/png'); };
+  img.src = 'img/logo-crv.png';
+}
+function cabecalhoPDF(doc, titulo, sub){
+  const w = doc.internal.pageSize.getWidth();
+  doc.setFillColor(16,33,63); doc.rect(0,0,w,80,'F');
+  doc.setFillColor(46,138,87); doc.rect(0,80,w/3,4,'F');
+  doc.setFillColor(233,162,59); doc.rect(w/3,80,w/3,4,'F');
+  doc.setFillColor(212,87,63); doc.rect(2*w/3,80,w/3,4,'F');
+  if (LOGO_DATAURL) { doc.setFillColor(255,255,255); doc.roundedRect(24,18,140,46,4,4,'F'); doc.addImage(LOGO_DATAURL,'PNG',30,22,128,38); }
+  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(15);
+  doc.text(String(titulo), 184, 40);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9.5);
+  doc.text(`${sub || ''}  ·  Gestão de Pessoas CRV  ·  gerado em ${new Date().toLocaleString('pt-BR')}`, 184, 58);
+  doc.setTextColor(20,33,61);
+}
+function rodapePDF(doc){
+  const n = doc.getNumberOfPages(), w = doc.internal.pageSize.getWidth(), h = doc.internal.pageSize.getHeight();
+  for (let i=1;i<=n;i++){ doc.setPage(i); doc.setFontSize(8); doc.setTextColor(93,106,133);
+    doc.text(`Documento interno · uso restrito do RH · por ${E.perfil.nome}`, 24, h-16); doc.text(`${i}/${n}`, w-40, h-16); }
+}
+
+/* ---------- enviar planilha ---------- */
+function escolherArquivo(){
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = '.xlsx,.xls,.xlsm,.csv';
+  inp.onchange = () => inp.files[0] && lerPlanilha(inp.files[0]);
+  inp.click();
+}
+
+async function lerPlanilha(arquivo){
+  try {
+    const buf = await arquivo.arrayBuffer();
+    const wb = XLSX.read(buf, { type:'array', cellDates:true });
+    const abas = wb.SheetNames.filter(n => { const ws = wb.Sheets[n]; return ws && ws['!ref']; });
+    if (!abas.length) return toast('A planilha está vazia.', true);
+    if (abas.length === 1) return prepararEnvio(arquivo.name, wb.Sheets[abas[0]], abas[0]);
+    abrirModal({
+      titulo: 'Qual aba da planilha?',
+      corpo: `<p style="margin-top:0;color:var(--mut)">O arquivo <b>${esc(arquivo.name)}</b> tem ${abas.length} abas. Escolha a que tem a base deste painel.</p>
+        <div class="checks">${abas.map(a=>`<label><input type="radio" name="aba" value="${esc(a)}"> ${esc(a)}</label>`).join('')}</div>`,
+      pe: `<button class="btn borda" id="a-c">Cancelar</button><button class="btn prim" id="a-ok">Continuar</button>`,
+      aoAbrir: m => {
+        m.querySelector('input[name=aba]').checked = true;
+        $('#a-c').onclick = fecharModal;
+        $('#a-ok').onclick = () => { const a = m.querySelector('input[name=aba]:checked').value; fecharModal(); prepararEnvio(arquivo.name, wb.Sheets[a], a); };
+      }
+    });
+  } catch(e){ toast('Não consegui ler esse arquivo: ' + e.message, true); }
+}
+
+function valorCelula(x){
+  if (x instanceof Date) {
+    if (isNaN(x)) return '';
+    // corrige fuso: datas do Excel chegam à meia-noite UTC
+    const d = new Date(x.getTime() + 12*3600*1000);
+    return d.toLocaleDateString('pt-BR', { timeZone:'UTC' });
+  }
+  if (typeof x === 'number') return Math.round(x*100)/100;
+  return String(x ?? '').trim();
+}
+
+function prepararEnvio(nomeArquivo, ws, aba){
+  const bruto = XLSX.utils.sheet_to_json(ws, { header:1, raw:true, defval:'', blankrows:false });
+  if (!bruto.length) return toast('A aba escolhida está vazia.', true);
+  // linha de cabeçalho = a que tem mais textos preenchidos entre as 20 primeiras
+  let iCab = 0, melhor = -1;
+  bruto.slice(0,20).forEach((r,i) => { const n = r.filter(c => typeof c === 'string' && c.trim()).length; if (n > melhor) { melhor = n; iCab = i; } });
+  const cabBruto = bruto[iCab].map(c => String(valorCelula(c)));
+  const usados = {};
+  let colunas = cabBruto.map((c,i) => { let n = c || `Coluna ${i+1}`; if (usados[n]) n = `${n} (${++usados[n]})`; else usados[n] = 1; return n; });
+  let dados = bruto.slice(iCab+1).map(r => colunas.map((_,i) => valorCelula(r[i])))
+    .filter(r => r.some(c => c !== '' && c !== null));
+  // remove colunas totalmente vazias
+  const manter = colunas.map((c,i) => dados.some(r => r[i] !== '' ) || !/^Coluna \d+$/.test(c));
+  colunas = colunas.filter((_,i)=>manter[i]);
+  dados = dados.map(r => r.filter((_,i)=>manter[i]));
+  if (!dados.length) return toast('Não encontrei linhas de dados abaixo do cabeçalho.', true);
+
+  const p = E.view.p;
+  const atual = E.view.base;
+  const kb = Math.round(JSON.stringify(dados).length/1024);
+  abrirModal({
+    titulo: 'Conferir antes de salvar', largo:true,
+    corpo: `<div class="ok">Li <b>${fmtNum(dados.length)} linhas</b> e <b>${colunas.length} colunas</b> da aba "${esc(aba)}" (${esc(nomeArquivo)}).</div>
+      ${atual ? `<p style="color:var(--mut)">A base atual tem ${fmtNum(atual.linhas)} linhas e será <b>substituída</b> por esta.</p>` : ''}
+      <p style="margin:8px 0 6px;font-weight:600">Primeiras linhas:</p>
+      <div class="tabela-env" style="max-height:280px"><table class="tab"><thead><tr>${colunas.map(c=>`<th>${esc(c)}</th>`).join('')}</tr></thead>
+      <tbody>${dados.slice(0,8).map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+      ${kb > 5000 ? `<div class="erro" style="margin-top:12px">Arquivo grande (${fmtNum(kb)} KB). Pode demorar para salvar.</div>` : ''}`,
+    pe: `<button class="btn borda" id="e-c">Cancelar</button><button class="btn prim" id="e-ok">Salvar no app</button>`,
+    aoAbrir: () => {
+      $('#e-c').onclick = fecharModal;
+      $('#e-ok').onclick = async () => {
+        const bt = $('#e-ok'); bt.disabled = true; bt.textContent = 'Salvando...';
+        const reg = { painel:p.id, arquivo:nomeArquivo, colunas, dados, linhas:dados.length,
+          atualizado_em:new Date().toISOString(), atualizado_por:E.perfil.nome };
+        const { error } = await sb.from('bases').upsert(reg);
+        if (error) { bt.disabled=false; bt.textContent='Salvar no app'; return toast(traduzErro(error), true); }
+        registrar(p.id, 'atualizou a base', `${nomeArquivo} · ${dados.length} linhas`);
+        fecharModal(); toast('Base atualizada. Todos com acesso já veem os dados novos.');
+        E.metas[p.id] = { painel:p.id, arquivo:nomeArquivo, linhas:dados.length, atualizado_em:reg.atualizado_em, atualizado_por:reg.atualizado_por };
+        E.view.base = reg; E.view.filtro = null; E.view.agrupar = escolherAgrupamento(colunas, dados);
+        desenharPainel();
+      };
+    }
+  });
+}
+
+async function registrar(painel, acao, detalhe){
+  try { await sb.from('historico').insert({ painel, acao, detalhe, usuario: E.perfil?.nome }); } catch(_){}
+}
+
+/* =====================================================================
+   ADMINISTRAÇÃO
+   ===================================================================== */
+let abaAdmin = 'usuarios';
+async function telaAdmin(){
+  moldura(`<div class="trilha"><button data-ir="#/">Início</button> › <b>Administração</b></div>
+    <div class="abas">
+      <button class="aba ${abaAdmin==='usuarios'?'ativa':''}" data-aba="usuarios">Usuários e acessos</button>
+      <button class="aba ${abaAdmin==='paineis'?'ativa':''}" data-aba="paineis">Painéis e frentes</button>
+      <button class="aba ${abaAdmin==='historico'?'ativa':''}" data-aba="historico">Histórico</button>
+    </div><div id="admin-corpo" class="cartao"><div class="spinner" style="margin:20px auto"></div></div>`);
+  document.querySelector('.trilha [data-ir]').onclick = () => location.hash = '#/';
+  document.querySelectorAll('[data-aba]').forEach(b => b.onclick = () => { abaAdmin = b.dataset.aba; telaAdmin(); });
+  if (abaAdmin === 'usuarios') return adminUsuarios();
+  if (abaAdmin === 'paineis') return adminPaineis();
+  return adminHistorico();
+}
+
+const frentesExistentes = () => [...new Set(E.paineis.map(p=>p.frente))].sort((a,b)=>(ORDEM_FRENTES.indexOf(a)+1||99)-(ORDEM_FRENTES.indexOf(b)+1||99));
+
+async function adminUsuarios(){
+  const { data, error } = await sb.from('perfis').select('*').order('nome');
+  const c = $('#admin-corpo');
+  if (error) { c.innerHTML = `<div class="erro">${esc(traduzErro(error))}</div>`; return; }
+  c.innerHTML = `<div class="cartao-cab"><h3>${data.length} usuário(s)</h3><button class="btn prim" id="u-novo">+ Novo usuário</button></div>
+    <p style="color:var(--mut);margin-top:0;font-size:13px"><b>Administrador</b> vê e mexe em tudo · <b>Editor</b> vê e atualiza as frentes liberadas · <b>Leitor</b> só consulta as frentes liberadas. Painéis <span class="selo restrito">restrito</span> são só de administradores.</p>
+    ${data.map((u,i)=>`<div class="linha-u ${u.ativo?'':'inativo'}">
+      <div class="av" style="background:${PALETA[i%PALETA.length]}">${esc(iniciais(u.nome))}</div>
+      <div class="info"><b>${esc(u.nome)}</b> ${u.ativo?'':'<small>(desativado)</small>'}<br><small>@${esc(u.usuario)} · ${esc(nomePapel(u.papel))}${u.papel==='admin'?' · todas as frentes':` · ${u.frentes?.length ? esc(u.frentes.join(', ')) : 'nenhuma frente liberada'}`}</small></div>
+      <button class="btn peq borda" data-edit="${esc(u.user_id)}">Editar</button>
+      <button class="btn peq borda" data-senha="${esc(u.user_id)}">Nova senha</button>
+    </div>`).join('')}`;
+  $('#u-novo').onclick = () => formUsuario(null, data);
+  c.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => formUsuario(data.find(u=>u.user_id===b.dataset.edit), data));
+  c.querySelectorAll('[data-senha]').forEach(b => b.onclick = () => formSenha(data.find(u=>u.user_id===b.dataset.senha)));
+}
+
+function formUsuario(u, todos){
+  const novo = !u;
+  const frentes = frentesExistentes();
+  abrirModal({
+    titulo: novo ? 'Novo usuário' : 'Editar ' + u.nome,
+    corpo: `<div id="u-msg"></div>
+      <div class="campo"><label>Nome completo</label><input id="u-nome" value="${esc(u?.nome||'')}" required></div>
+      ${novo ? `<div class="campo"><label>Usuário (para entrar no app)</label><input id="u-user" autocapitalize="none" spellcheck="false" placeholder="ex.: maria.silva"><small style="color:var(--mut)">Sem espaços e sem acentos. A pessoa não precisa ter e-mail.</small></div>
+      <div class="campo"><label>Senha inicial</label><input id="u-senha" type="text" minlength="6" placeholder="mínimo 6 caracteres"><small style="color:var(--mut)">Passe a senha para a pessoa. Ela pode trocar depois em "Minha conta".</small></div>` : `<p style="color:var(--mut);margin-top:0">Usuário: <b>@${esc(u.usuario)}</b></p>`}
+      <div class="campo"><label>Perfil</label><select id="u-papel">
+        ${['leitor','editor','admin'].map(p=>`<option value="${p}" ${(u?.papel||'leitor')===p?'selected':''}>${nomePapel(p)}</option>`).join('')}</select></div>
+      <div class="campo" id="u-frentes-box"><label>Frentes liberadas</label>
+        <div class="checks">${frentes.map(f=>`<label><input type="checkbox" value="${esc(f)}" ${(u?.frentes||[]).includes(f)?'checked':''}> ${esc(f)}</label>`).join('')}</div></div>
+      ${!novo ? `<div class="campo"><label><input type="checkbox" id="u-ativo" ${u.ativo?'checked':''}> Usuário ativo (desmarque para bloquear o acesso)</label></div>` : ''}`,
+    pe: `<button class="btn borda" id="u-c">Cancelar</button><button class="btn prim" id="u-ok">${novo?'Criar usuário':'Salvar'}</button>`,
+    aoAbrir: m => {
+      const atualizaFrentes = () => $('#u-frentes-box').classList.toggle('oculto', $('#u-papel').value === 'admin');
+      $('#u-papel').onchange = atualizaFrentes; atualizaFrentes();
+      $('#u-c').onclick = fecharModal;
+      $('#u-ok').onclick = async () => {
+        const bt = $('#u-ok'); const erro = t => { $('#u-msg').innerHTML = `<div class="erro">${esc(t)}</div>`; bt.disabled=false; bt.textContent = novo?'Criar usuário':'Salvar'; };
+        const nome = $('#u-nome').value.trim();
+        const papel = $('#u-papel').value;
+        const fr = papel === 'admin' ? [] : [...m.querySelectorAll('.checks input:checked')].map(x=>x.value);
+        if (!nome) return erro('Informe o nome.');
+        bt.disabled = true; bt.textContent = 'Salvando...';
+        try {
+          if (novo) {
+            const usuario = normal($('#u-user').value).replace(/\s+/g,'.').replace(/[^a-z0-9._-]/g,'');
+            const senha = $('#u-senha').value;
+            if (!usuario) return erro('Informe o usuário.');
+            if (senha.length < 6) return erro('A senha precisa ter pelo menos 6 caracteres.');
+            if (todos.some(x => x.usuario === usuario)) return erro('Esse usuário já existe.');
+            // cria o login sem desconectar o administrador
+            const temp = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_KEY, { auth:{ persistSession:false, autoRefreshToken:false, detectSessionInUrl:false, storageKey:'crv-gp-temp' } });
+            const { data, error } = await temp.auth.signUp({ email: usuarioParaEmail(usuario), password: senha, options:{ data:{ nome, usuario } } });
+            if (error) throw error;
+            if (!data.user || (data.user.identities && data.user.identities.length === 0)) return erro('Esse usuário já existe.');
+            const r = await sb.from('perfis').insert({ user_id:data.user.id, usuario, nome, papel, frentes:fr });
+            if (r.error) throw r.error;
+            registrar(null, 'criou usuário', `${nome} (@${usuario}) · ${nomePapel(papel)}`);
+            fecharModal();
+            abrirModal({ titulo:'Usuário criado', corpo:`<div class="ok">Acesso de <b>${esc(nome)}</b> liberado.</div>
+              <p>Passe estes dados para a pessoa:</p>
+              <div class="ficha"><div><small>Endereço do app</small><span>${esc(location.origin + location.pathname)}</span></div>
+              <div><small>Usuário</small><span>${esc(usuario)}</span></div><div><small>Senha</small><span>${esc(senha)}</span></div></div>`,
+              pe:`<button class="btn prim" id="ok-f">Pronto</button>`, aoAbrir:()=>{$('#ok-f').onclick=()=>{fecharModal(); adminUsuarios();};} });
+          } else {
+            const ativo = $('#u-ativo').checked;
+            const adminsAtivos = todos.filter(x => x.papel==='admin' && x.ativo && x.user_id !== u.user_id).length;
+            if (u.papel === 'admin' && (papel !== 'admin' || !ativo) && adminsAtivos === 0) return erro('Precisa existir pelo menos um administrador ativo.');
+            const r = await sb.from('perfis').update({ nome, papel, frentes:fr, ativo }).eq('user_id', u.user_id);
+            if (r.error) throw r.error;
+            registrar(null, 'alterou acesso', `${nome} · ${nomePapel(papel)}${ativo?'':' · desativado'}`);
+            fecharModal(); toast('Acesso atualizado.');
+            if (u.user_id === E.perfil.user_id) { E.perfil = { ...E.perfil, nome, papel, frentes:fr, ativo }; if (papel !== 'admin') { location.hash = '#/'; return; } }
+            adminUsuarios();
+          }
+        } catch(e){ erro(traduzErro(e)); }
+      };
+    }
+  });
+}
+
+function formSenha(u){
+  abrirModal({
+    titulo: 'Nova senha para ' + u.nome,
+    corpo: `<div id="s-msg"></div><div class="campo"><label>Nova senha</label><input id="s-nova" type="text" minlength="6" placeholder="mínimo 6 caracteres"></div>
+      <p style="color:var(--mut);font-size:13px">Use quando a pessoa esquecer a senha. Depois ela pode trocar em "Minha conta".</p>`,
+    pe: `<button class="btn borda" id="s-c">Cancelar</button><button class="btn prim" id="s-ok">Salvar senha</button>`,
+    aoAbrir: () => {
+      $('#s-c').onclick = fecharModal;
+      $('#s-ok').onclick = async () => {
+        const s = $('#s-nova').value;
+        if (s.length < 6) { $('#s-msg').innerHTML = '<div class="erro">A senha precisa ter pelo menos 6 caracteres.</div>'; return; }
+        const { error } = await sb.rpc('admin_redefinir_senha', { p_user: u.user_id, p_senha: s });
+        if (error) { $('#s-msg').innerHTML = `<div class="erro">${esc(traduzErro(error))}</div>`; return; }
+        registrar(null, 'redefiniu senha', u.nome);
+        fecharModal(); toast('Senha redefinida. Passe a nova senha para ' + u.nome.split(' ')[0] + '.');
+      };
+    }
+  });
+}
+
+function adminPaineis(){
+  const c = $('#admin-corpo');
+  const frentes = frentesExistentes();
+  c.innerHTML = `<div class="cartao-cab"><h3>Painéis do app</h3></div>
+    <p style="color:var(--mut);margin-top:0;font-size:13px">Mude a frente ou o nível de acesso de cada painel. <b>Restrito</b>: só administradores. <b>Controlado</b>: quem tiver a frente liberada. <b>Geral</b>: também quem tiver a frente liberada (dado operacional).</p>
+    <div class="tabela-env" style="max-height:none"><table class="tab"><thead><tr><th>Painel</th><th>Frente</th><th>Nível</th><th>Base</th><th></th></tr></thead><tbody>
+    ${E.paineis.map(p=>{ const m=E.metas[p.id]; return `<tr data-id="${esc(p.id)}" style="cursor:default">
+      <td><b>${esc(p.nome)}</b></td>
+      <td><select class="p-frente">${[...new Set([...frentes, ...ORDEM_FRENTES])].map(f=>`<option ${f===p.frente?'selected':''}>${esc(f)}</option>`).join('')}</select></td>
+      <td><select class="p-nivel">${['geral','controlado','restrito'].map(n=>`<option ${n===p.nivel?'selected':''}>${n}</option>`).join('')}</select></td>
+      <td>${m ? `${fmtNum(m.linhas)} linhas · ${new Date(m.atualizado_em).toLocaleDateString('pt-BR')}` : '—'}</td>
+      <td>${m ? '<button class="btn peq perigo p-apagar">Apagar base</button>' : ''}</td></tr>`; }).join('')}
+    </tbody></table></div>`;
+  c.querySelectorAll('tr[data-id]').forEach(tr => {
+    const id = tr.dataset.id;
+    const salvar = async (campo, valor) => {
+      const { error } = await sb.from('paineis').update({ [campo]: valor }).eq('id', id);
+      if (error) return toast(traduzErro(error), true);
+      const p = E.paineis.find(x=>x.id===id); p[campo] = valor;
+      registrar(id, 'alterou painel', `${campo}: ${valor}`); toast('Painel atualizado.');
+    };
+    tr.querySelector('.p-frente').onchange = ev => salvar('frente', ev.target.value);
+    tr.querySelector('.p-nivel').onchange = ev => salvar('nivel', ev.target.value);
+    const ap = tr.querySelector('.p-apagar');
+    if (ap) ap.onclick = async () => {
+      if (!confirm('Apagar a base deste painel? Os dados saem do app (a planilha original continua no seu computador).')) return;
+      const { error } = await sb.from('bases').delete().eq('painel', id);
+      if (error) return toast(traduzErro(error), true);
+      delete E.metas[id]; registrar(id, 'apagou a base', ''); toast('Base apagada.'); adminPaineis();
+    };
+  });
+}
+
+async function adminHistorico(){
+  const c = $('#admin-corpo');
+  const { data, error } = await sb.from('historico').select('*').order('feito_em', { ascending:false }).limit(200);
+  if (error) { c.innerHTML = `<div class="erro">${esc(traduzErro(error))}</div>`; return; }
+  const nomeP = id => E.paineis.find(p=>p.id===id)?.nome || '—';
+  c.innerHTML = `<div class="cartao-cab"><h3>Últimas ações</h3></div>
+    ${data.length ? `<div class="tabela-env"><table class="tab"><thead><tr><th>Quando</th><th>Quem</th><th>Ação</th><th>Painel</th><th>Detalhe</th></tr></thead><tbody>
+    ${data.map(h=>`<tr style="cursor:default"><td>${fmtData(h.feito_em)}</td><td>${esc(h.usuario)}</td><td>${esc(h.acao)}</td><td>${esc(h.painel?nomeP(h.painel):'—')}</td><td>${esc(h.detalhe)}</td></tr>`).join('')}
+    </tbody></table></div>` : '<p class="vazio">Nenhuma ação registrada ainda.</p>'}`;
+}
+
+/* =====================================================================
+   MINHA CONTA
+   ===================================================================== */
+function telaConta(){
+  const p = E.perfil;
+  moldura(`<div class="trilha"><button data-ir="#/">Início</button> › <b>Minha conta</b></div>
+    <div class="cartao" style="max-width:520px">
+      <div class="cartao-cab"><h3>${esc(p.nome)}</h3><span class="chip-papel">${esc(nomePapel(p.papel))}</span></div>
+      <p style="color:var(--mut);margin-top:0">Usuário: <b>@${esc(p.usuario)}</b><br>Frentes: ${p.papel==='admin' ? 'todas' : (p.frentes?.length ? esc(p.frentes.join(', ')) : 'nenhuma')}</p>
+      <hr style="border:0;border-top:1px solid var(--line);margin:16px 0">
+      <h3 style="font-size:15px">Trocar minha senha</h3><div id="c-msg"></div>
+      <div class="campo"><label>Nova senha</label><input id="c-s1" type="password" minlength="6" autocomplete="new-password"></div>
+      <div class="campo"><label>Repita a nova senha</label><input id="c-s2" type="password" minlength="6" autocomplete="new-password"></div>
+      <button class="btn prim" id="c-ok">Salvar nova senha</button>
+    </div>`);
+  document.querySelector('.trilha [data-ir]').onclick = () => location.hash = '#/';
+  $('#c-ok').onclick = async () => {
+    const a = $('#c-s1').value, b = $('#c-s2').value;
+    const msg = (t, ok) => $('#c-msg').innerHTML = `<div class="${ok?'ok':'erro'}">${esc(t)}</div>`;
+    if (a.length < 6) return msg('A senha precisa ter pelo menos 6 caracteres.');
+    if (a !== b) return msg('As senhas não conferem.');
+    const { error } = await sb.auth.updateUser({ password: a });
+    if (error) return msg(traduzErro(error));
+    msg('Senha alterada.', true); $('#c-s1').value = $('#c-s2').value = '';
+  };
+}
+
+/* =====================================================================
+   INSTALAR (PWA)
+   ===================================================================== */
+window.addEventListener('beforeinstallprompt', ev => { ev.preventDefault(); E.instalarEvt = ev; });
+async function instalarApp(){
+  if (E.instalarEvt) { E.instalarEvt.prompt(); await E.instalarEvt.userChoice; E.instalarEvt = null; return; }
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  abrirModal({
+    titulo: 'Instalar o app',
+    corpo: ios
+      ? `<ol><li>Abra este endereço no <b>Safari</b>.</li><li>Toque no botão <b>Compartilhar</b> (quadrado com seta para cima).</li><li>Escolha <b>Adicionar à Tela de Início</b> e confirme.</li></ol>`
+      : `<p><b>Computador (Chrome ou Edge):</b> clique no ícone de instalar na barra de endereço (um monitor com seta) ou no menu ⋮ → <b>Instalar Gestão de Pessoas CRV</b>.</p>
+         <p><b>Celular Android (Chrome):</b> menu ⋮ → <b>Instalar app</b> ou <b>Adicionar à tela inicial</b>.</p>`,
+    pe: `<button class="btn prim" id="i-ok">Entendi</button>`,
+    aoAbrir: () => $('#i-ok').onclick = fecharModal
+  });
+}
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(()=>{}));
+}
+
+sb.auth.onAuthStateChange((evento) => { if (evento === 'SIGNED_OUT' && E.perfil) { E.perfil = null; telaLogin(); } });
+prepararLogo();
+iniciar();
+})();
