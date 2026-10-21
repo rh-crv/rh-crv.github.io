@@ -384,16 +384,18 @@ function blocoFrente(f, lista){
 const SUBACOES = {
   quadro:   [{ acao:'ent', nome:'Entrevista de desligamento' }],
   ouvidorias: [{ acao:'nova', nome:'Cadastrar ouvidoria' }],
-  rd:       [{ acao:'aut', nome:'Autorização de desconto' }, { acao:'hist', nome:'Histórico de autorizações' }],
+  rd:       [{ acao:'novo', nome:'Cadastrar RD' }, { acao:'aut', nome:'Autorização de desconto' }, { acao:'hist', nome:'Histórico de autorizações' }],
+  fadiga:   [{ acao:'novo', nome:'Cadastrar ocorrência' }],
   farmacia: [{ acao:'aut', nome:'Autorização de desconto' }, { acao:'hist', nome:'Histórico de autorizações' }]
 };
-function fecharJanelasAut(w){ try { w.document.querySelectorAll('.aut-fundo,.ent-fundo,.of-fundo').forEach(x => x.remove()); } catch(_){} }
+function fecharJanelasAut(w){ try { w.document.querySelectorAll('.aut-fundo,.ent-fundo,.of-fundo,.nv-fundo').forEach(x => x.remove()); } catch(_){} }
 function executarAcao(acao){
   const f = document.getElementById('modelo-frame');
   const w = f && f.contentWindow;
   if (acao === 'aut' && w && typeof w.CRV_AUTORIZACAO === 'function') { fecharJanelasAut(w); w.CRV_AUTORIZACAO(); return true; }
   if (acao === 'hist' && w && typeof w.CRV_AUT_HIST === 'function') { fecharJanelasAut(w); w.CRV_AUT_HIST(); return true; }
   if (acao === 'ent' && w && typeof w.CRV_ENTREVISTA === 'function') { fecharJanelasAut(w); w.CRV_ENTREVISTA(); return true; }
+  if (acao === 'novo' && w && typeof w.CRV_NOVO === 'function') { fecharJanelasAut(w); w.CRV_NOVO(); return true; }
   if (acao === 'nova' && w && typeof w.CRV_OUV_NOVA === 'function') { fecharJanelasAut(w); w.CRV_OUV_NOVA(); return true; }
   return false;
 }
@@ -796,7 +798,13 @@ async function telaModelo(p, cfg, acao){
     window.CRV_QUEM = E.perfil.nome;
     window.__CRV_PAINEL = window.CRV_PONTE.criar({ sb, painel: p.id, perfil: () => E.perfil, quem: () => E.perfil.nome,
       podeEditar: () => podeEditar(p), ehAdmin: () => ehAdmin() });
-    const html = montarModelo(tpl, d.conteudo, d.referencia, p);
+    let novos = [];
+    if (PAINEIS_COM_NOVOS.includes(p.id)) {
+      const r = await sb.from('registros').select('doc_id,dados').eq('painel', p.id).eq('colecao', 'novos').range(0, 4999);
+      if (!r.error) novos = (r.data || []).filter(x => x.dados && !x.dados.excluida).map(x => ({ _id: x.doc_id, dados: x.dados }));
+    }
+    window.CRV_RECARREGAR = () => { if (location.hash.startsWith('#/p/' + encodeURIComponent(p.id))) telaPainel(p.id); };
+    const html = montarModelo(tpl, d.conteudo, d.referencia, p, novos);
     const url = URL.createObjectURL(new Blob([html], { type:'text/html' }));
     area.className = 'modelo-area';
     area.innerHTML = `<iframe id="modelo-frame" title="${esc(p.nome)}" src="${url}"></iframe>`;
@@ -886,11 +894,12 @@ function cssCapa(p){
   return `<style id="crv-capa">${r}</style>`;
 }
 
-function montarModelo(tpl, conteudo, referencia, p){
+const PAINEIS_COM_NOVOS = ['rd', 'fadiga'];
+function montarModelo(tpl, conteudo, referencia, p, novos){
   const nomeOk = n => /^[A-Za-z_$][\w$]*$/.test(n);
   const base = location.href.split('#')[0].replace(/[^/]*$/, '');
   let html = tpl.split('__CRV_REFBR__').join(fmtRef(referencia)).split('__CRV_BASE__').join(base);
-  const ponte = `<script>${window.CRV_PONTE.scriptPainel()}<\/script>`;
+  const ponte = `<script>${window.CRV_PONTE.scriptPainel()}<\/script>` + (novos ? `<script>window.CRV_NOVOS=${jsValor(novos)};<\/script>` : '');
   // visual compacto: capa mais baixa e títulos menores em todos os painéis
   const compacto = `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@400;500;600;700&display=swap">
   <style id="crv-padrao">
