@@ -713,6 +713,31 @@ fillSel();render();
 .aut-hist th{position:sticky;top:0;background:#f7f9fc;text-align:left;padding:6px 8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:#5d6a85}
 .aut-hist td{padding:6px 8px;border-top:1px solid #eef1f5}
 .s2{grid-column:span 2}.s3{grid-column:span 3}.s4{grid-column:span 4}.s5{grid-column:span 5}.s6{grid-column:span 6}.s8{grid-column:span 8}.s12{grid-column:1/-1}
+.aut-hbar{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;padding:12px 18px;border-bottom:1px solid #e0e5ef;background:#fafbfd}
+.aut-hbar .aut-c{min-width:120px}
+.aut-hbar .cresce{flex:1;min-width:180px}
+.aut-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:12px 18px 0}
+.aut-kpi{border:1px solid #e0e5ef;border-radius:10px;padding:9px 12px}
+.aut-kpi small{display:block;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#5d6a85}
+.aut-kpi b{font-size:19px;color:#14213d}
+.aut-meses{display:grid;grid-template-columns:repeat(12,1fr);gap:4px;padding:12px 18px 0;align-items:end}
+.aut-mes{border:0;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;font:inherit;padding:0;color:#5d6a85;font-size:10.5px}
+.aut-mes i{display:block;width:100%;max-width:34px;background:#cfe3d7;border-radius:4px 4px 0 0;min-height:2px}
+.aut-mes.on i{background:#2e8a57}.aut-mes.on{color:#14213d;font-weight:700}
+.aut-mes em{font-style:normal;font-size:10px;color:#33415c;white-space:nowrap}
+.aut-htab{padding:12px 18px;max-height:52vh;overflow:auto}
+.aut-htab table{width:100%;border-collapse:collapse;font-size:12px}
+.aut-htab th{position:sticky;top:0;background:#f7f9fc;text-align:left;padding:7px 8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:#5d6a85;z-index:1}
+.aut-htab td{padding:7px 8px;border-top:1px solid #eef1f5;vertical-align:top}
+.aut-htab tr.exc td{color:#9aa3b5;text-decoration:line-through}
+.aut-htab tr.exc td.acoes{text-decoration:none}
+.aut-htab td.acoes{white-space:nowrap;text-align:right}
+.aut-mini{border:1px solid #d5dbe6;background:#fff;border-radius:7px;padding:4px 9px;font-size:11.5px;cursor:pointer;font-weight:600;color:#14213d}
+.aut-mini.perigo{border-color:#e7b8b0;color:#a3301c}
+.aut-mini.perigo.conf{background:#a3301c;color:#fff;border-color:#a3301c}
+.aut-ref{max-width:260px;color:#5d6a85;font-size:11.5px}
+.aut-btn.sec{background:rgba(255,255,255,.16);color:#fff;margin-left:8px}
+@media (max-width:700px){.aut-kpis{grid-template-columns:repeat(2,1fr)}.aut-meses em{display:none}}
 @media (max-width:700px){.aut-corpo>*{grid-column:1/-1!important}}
 </style>
 <script>
@@ -807,7 +832,7 @@ function abrir(rdPre){
     <div class="aut-c s3"><label>Cargo</label><input id="a-rhcargo" value="${escA(rh.cargo)}"></div>
     <div class="aut-c s2"><label>Matrícula RH</label><input id="a-rhmat" value="${escA(rh.mat)}"></div>
     <div class="aut-c s12"><label style="display:flex;gap:6px;align-items:center;text-transform:none;letter-spacing:0;font-size:13px;color:#14213d;font-weight:500"><input type="checkbox" id="a-2via" checked> Gerar também a 2ª via (funcionário) no mesmo PDF</label></div>
-    <div class="aut-sec">Autorizações já emitidas</div>
+    <div class="aut-sec" style="display:flex;align-items:center;gap:8px">Últimas autorizações emitidas<button type="button" class="aut-mini" id="a-verhist" style="margin-left:auto;text-transform:none;letter-spacing:0">Ver histórico completo</button></div>
     <div class="aut-hist" id="a-hist"><p style="padding:8px;margin:0;color:#5d6a85">Carregando…</p></div>
    </div>
    <div class="aut-pe"><span class="esp" id="a-msg"></span><button class="aut-b sec" id="a-cancel">Cancelar</button><button class="aut-b pri" id="a-gerar">Gerar PDF</button></div>
@@ -920,11 +945,12 @@ function abrir(rdPre){
   const listar=async()=>{
     const h=el('a-hist');
     if(!DB){h.innerHTML='<p style="padding:8px;margin:0;color:#5d6a85">O registro das autorizações não está disponível nesta visualização.</p>';return}
-    try{const s=await DB.collection('autorizacoes').get();const L=s.docs.map(d=>d.data()).sort((a,b)=>(b.emitidoEm||'')<(a.emitidoEm||'')?-1:1);
+    try{const s=await DB.collection('autorizacoes').get();const L=s.docs.map(d=>d.data()).filter(a=>!a.excluida).sort((a,b)=>(b.emitidoEm||'')<(a.emitidoEm||'')?-1:1).slice(0,5);
       h.innerHTML=L.length?`<table><thead><tr><th>Emitida em</th><th>RD</th><th>Colaborador</th><th>Valor</th><th>Parcelas</th><th>Por</th></tr></thead><tbody>${L.map(a=>`<tr><td>${escA(new Date(a.emitidoEm).toLocaleDateString('pt-BR'))}</td><td>${escA(a.rd||'—')}</td><td>${escA(a.nome)} · ${escA(a.mat)}</td><td>R$ ${escA(a.valor)}</td><td>${escA(a.parcelas)}× de ${escA(a.vpar)}</td><td>${escA(a.por||'')}</td></tr>`).join('')}</tbody></table>`:'<p style="padding:8px;margin:0;color:#5d6a85">Nenhuma autorização emitida ainda.</p>';
     }catch(e){h.innerHTML='<p style="padding:8px;margin:0;color:#8a2a1a">Não consegui ler o histórico.</p>'}
   };
   listar();
+  el('a-verhist').onclick=()=>{fechar();abrirHist()};
 
   if(rdPre&&el('a-rd')){el('a-rd').value=rdPre;puxarRd()}
 
@@ -944,10 +970,151 @@ function abrir(rdPre){
       const DL=window.claude&&window.claude.use?await window.claude.use('downloads'):null;
       if(DL)await DL.save({filename:nomeArq,data:bytes});
       else{const u=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));const a=document.createElement('a');a.href=u;a.download=nomeArq;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},4000)}
-      if(DB){try{await DB.collection('autorizacoes').add({rd:d.rd,mat:d.mat,nome:d.nome,valor:moeda(d.valor),parcelas:d.par,vpar:moeda(d.vpar),inicio:MESES[d.mes]+'/'+d.ano,tipo:d.tipo,referente:d.ref,emitidoEm:new Date().toISOString(),por:(window.parent&&window.parent.CRV_QUEM)||''});listar()}catch(_){}}
+      if(DB){try{await DB.collection('autorizacoes').add({rd:d.rd,mat:d.mat,nome:d.nome,valor:moeda(d.valor),parcelas:d.par,vpar:moeda(d.vpar),inicio:MESES[d.mes]+'/'+d.ano,tipo:d.tipo,referente:d.ref,emitidoEm:new Date().toISOString(),por:(window.parent&&window.parent.CRV_QUEM)||'',
+        origem:MODO,valorN:d.valor,vparN:d.vpar,mesIni:d.mes,anoIni:+d.ano,doc:{rd:d.rd,mat:d.mat,nome:d.nome,func:d.func,setor:d.setor,valor:d.valor,par:d.par,vpar:d.vpar,mes:d.mes,ano:d.ano,ref:d.ref,tipo:d.tipo,data:d.data,rhNome:d.rhNome,rhCargo:d.rhCargo,rhMat:d.rhMat,duas:d.duas}});listar()}catch(_){}}
       msg.style.color='#1d5c3a';msg.textContent='PDF gerado. Imprima e colha a assinatura do colaborador.';
     }catch(e){console.error(e);msg.style.color='#8a2a1a';msg.textContent='Não consegui gerar o PDF: '+(e.message||e)}
   };
+}
+
+/* ---------- Histórico de autorizações (por mês / ano, valores, excluir) ---------- */
+const MES3=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const valorDe=a=>{const v=typeof a.valorN==='number'?a.valorN:num(a.valor);return isNaN(v)?0:v};
+const iniDe=a=>{
+  if(typeof a.mesIni==='number'&&a.anoIni)return{m:a.mesIni,y:+a.anoIni};
+  const mm=String(a.inicio||'').split('/');const m=MESES.indexOf((mm[0]||'').toUpperCase());return m>=0?{m,y:+mm[1]}:null;
+};
+const emiDe=a=>{const d=new Date(a.emitidoEm);return isNaN(d)?null:{m:d.getMonth(),y:d.getFullYear(),d}};
+async function abrirHist(){
+  const H=document.createElement('div');H.className='aut-fundo';
+  const hoje=new Date();
+  const st={base:'emi',ano:hoje.getFullYear(),mes:-1,busca:'',exc:false};
+  try{Object.assign(st,JSON.parse(localStorage.getItem('crv-aut-hist')||'{}'),{mes:-1,busca:''})}catch(_){}
+  H.innerHTML=`<div class="aut-modal" role="dialog" aria-modal="true" style="max-width:1100px">
+   <div class="aut-cab"><h3>Histórico de autorizações de desconto<small>${MODO==='farmacia'?'Controle de Farmácia':'Registro de Danos'} · por mês e ano · valores · excluir as emitidas por engano</small></h3>
+     <button type="button" class="aut-mini" id="h-nova">+ Nova autorização</button><button class="aut-x" aria-label="Fechar">×</button></div>
+   <div class="aut-hbar">
+     <div class="aut-c"><label>Considerar</label><select id="h-base"><option value="emi">Data de emissão</option><option value="ini">Início do desconto</option></select></div>
+     <div class="aut-c"><label>Ano</label><select id="h-ano"></select></div>
+     <div class="aut-c"><label>Mês</label><select id="h-mes"><option value="-1">Todos</option>${MESES.map((m,i)=>`<option value="${i}">${m.charAt(0)+m.slice(1).toLowerCase()}</option>`).join('')}</select></div>
+     <div class="aut-c cresce"><label>Buscar</label><input id="h-busca" placeholder="Nome, matrícula ou nº da RD"></div>
+     <label style="display:flex;gap:6px;align-items:center;font-size:12.5px;padding-bottom:7px"><input type="checkbox" id="h-exc"> Mostrar excluídas</label>
+     <button type="button" class="aut-mini" id="h-xls" style="margin-bottom:3px">Excel</button>
+     <button type="button" class="aut-mini" id="h-pdf" style="margin-bottom:3px">PDF</button>
+   </div>
+   <div class="aut-kpis" id="h-kpis"></div>
+   <div class="aut-meses" id="h-meses"></div>
+   <div class="aut-htab" id="h-tab"><p style="color:#5d6a85">Carregando…</p></div>
+   <div class="aut-pe"><span class="esp" id="h-msg"></span><button class="aut-b sec" id="h-fechar">Fechar</button></div>
+  </div>`;
+  document.body.appendChild(H);
+  const g=id=>H.querySelector('#'+id);
+  const fechar=()=>H.remove();
+  H.querySelector('.aut-x').onclick=fechar;g('h-fechar').onclick=fechar;
+  H.addEventListener('mousedown',e=>{if(e.target===H)fechar()});
+  g('h-nova').onclick=()=>{fechar();abrir()};
+  if(!DB){g('h-tab').innerHTML='<p style="color:#5d6a85">O registro das autorizações não está disponível nesta visualização.</p>';return}
+  let TODAS=[];
+  const guardar=()=>{try{localStorage.setItem('crv-aut-hist',JSON.stringify({base:st.base,ano:st.ano,exc:st.exc}))}catch(_){}};
+  const per=a=>st.base==='ini'?iniDe(a):emiDe(a);
+  const doAno=()=>TODAS.filter(a=>(st.exc||!a.excluida)&&(()=>{const p=per(a);return p&&p.y===+st.ano})());
+  const filtradas=()=>{
+    const q=st.busca.trim().toUpperCase();
+    return doAno().filter(a=>(st.mes<0||per(a).m===st.mes)&&(!q||[a.nome,a.mat,a.rd].some(x=>String(x||'').toUpperCase().includes(q))));
+  };
+  const desenhar=()=>{
+    const anos=[...new Set(TODAS.map(a=>(per(a)||{}).y).filter(Boolean).concat([hoje.getFullYear()]))].sort((a,b)=>b-a);
+    if(!anos.includes(+st.ano))st.ano=anos[0];
+    g('h-ano').innerHTML=anos.map(y=>`<option${y===+st.ano?' selected':''}>${y}</option>`).join('');
+    g('h-base').value=st.base;g('h-mes').value=String(st.mes);g('h-exc').checked=st.exc;
+    const A=doAno().filter(a=>!a.excluida), L=filtradas(), Lv=L.filter(a=>!a.excluida);
+    const tot=Lv.reduce((s,a)=>s+valorDe(a),0);
+    const pessoas=new Set(Lv.map(a=>a.mat)).size;
+    const excl=TODAS.filter(a=>a.excluida&&(()=>{const p=per(a);return p&&p.y===+st.ano})()).length;
+    g('h-kpis').innerHTML=`<div class="aut-kpi"><small>Autorizações ${st.mes<0?'em '+st.ano:'em '+MES3[st.mes]+'/'+st.ano}</small><b>${Lv.length}</b></div>
+      <div class="aut-kpi"><small>Valor total</small><b>R$ ${moeda(tot)}</b></div>
+      <div class="aut-kpi"><small>Colaboradores</small><b>${pessoas}</b></div>
+      <div class="aut-kpi"><small>Excluídas no ano</small><b>${excl}</b></div>`;
+    // barras por mês do ano
+    const pm=MES3.map((_,m)=>A.filter(a=>per(a).m===m)), mx=Math.max(1,...pm.map(x=>x.reduce((s,a)=>s+valorDe(a),0)));
+    g('h-meses').innerHTML=pm.map((x,m)=>{const v=x.reduce((s,a)=>s+valorDe(a),0);return `<button type="button" class="aut-mes${st.mes===m?' on':''}" data-m="${m}" title="${MES3[m]}/${st.ano}: ${x.length} autorização(ões) · R$ ${moeda(v)}"><em>${v?(v>=1000?(v/1000).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mil':moeda(v)):''}</em><i style="height:${Math.round(v/mx*54)+2}px"></i>${MES3[m]}${x.length?' ('+x.length+')':''}</button>`}).join('');
+    g('h-meses').querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{const m=+b.dataset.m;st.mes=st.mes===m?-1:m;desenhar()});
+    if(!L.length){g('h-tab').innerHTML=`<p style="color:#5d6a85">Nenhuma autorização ${st.mes<0?'em '+st.ano:'em '+MES3[st.mes]+'/'+st.ano}${st.busca?' para essa busca':''}.</p>`;return}
+    const L2=L.slice().sort((a,b)=>(b.emitidoEm||'')<(a.emitidoEm||'')?-1:1);
+    g('h-tab').innerHTML=`<table><thead><tr><th>Emitida em</th>${MODO==='rd'?'<th>RD</th>':''}<th>Colaborador</th><th>Valor</th><th>Parcelas</th><th>Início</th><th>Referente a</th><th>Por</th><th></th></tr></thead><tbody>${
+      L2.map(a=>{const e=emiDe(a),i=iniDe(a);return `<tr class="${a.excluida?'exc':''}" data-id="${escA(a._id)}">
+        <td>${e?escA(e.d.toLocaleDateString('pt-BR')):''}</td>${MODO==='rd'?`<td>${escA(a.rd||'—')}</td>`:''}
+        <td><b>${escA(a.nome)}</b><br><span style="color:#5d6a85">${escA(a.mat)}</span></td>
+        <td><b>R$ ${moeda(valorDe(a))}</b></td><td>${escA(a.parcelas)}× de ${escA(a.vpar)}</td>
+        <td>${i?MES3[i.m]+'/'+i.y:escA(a.inicio||'')}</td>
+        <td class="aut-ref">${escA(a.referente||'')}${a.excluida?`<br><span style="color:#a3301c;text-decoration:none;display:inline-block">Excluída${a.excluidaPor?' por '+escA(a.excluidaPor):''}${a.excluidaEm?' em '+escA(new Date(a.excluidaEm).toLocaleDateString('pt-BR')):''}${a.motivo?' · '+escA(a.motivo):''}</span>`:''}</td>
+        <td>${escA(a.por||'')}</td>
+        <td class="acoes">${a.excluida?`<button type="button" class="aut-mini" data-ac="volta">Restaurar</button>`:`${a.doc?'<button type="button" class="aut-mini" data-ac="pdf">Reimprimir</button> ':''}<button type="button" class="aut-mini perigo" data-ac="exc">Excluir</button>`}</td></tr>`}).join('')
+    }</tbody><tfoot><tr><td colspan="${MODO==='rd'?3:2}" style="font-weight:700;padding:8px">Total (${Lv.length})</td><td colspan="6" style="font-weight:700;padding:8px">R$ ${moeda(tot)}</td></tr></tfoot></table>`;
+    g('h-tab').querySelectorAll('[data-ac]').forEach(b=>b.onclick=()=>acao(b));
+  };
+  const acao=async b=>{
+    const tr=b.closest('tr'),id=tr.dataset.id,a=TODAS.find(x=>x._id===id);if(!a)return;
+    const msg=g('h-msg');
+    if(b.dataset.ac==='exc'){
+      if(!b.classList.contains('conf')){
+        b.classList.add('conf');b.textContent='Confirmar exclusão';
+        const cel=b.parentElement;const inp=document.createElement('input');inp.placeholder='Motivo (opcional)';inp.className='h-mot';inp.style.cssText='display:block;margin:6px 0 0 auto;width:170px;border:1px solid #d5dbe6;border-radius:6px;padding:4px 6px;font:inherit;font-size:11.5px';cel.appendChild(inp);inp.focus();
+        setTimeout(()=>{if(b.isConnected&&b.classList.contains('conf')){b.classList.remove('conf');b.textContent='Excluir';inp.remove()}},12000);
+        return;
+      }
+      const mot=(b.parentElement.querySelector('.h-mot')||{}).value||'';
+      try{await DB.collection('autorizacoes').doc(id).update({excluida:true,excluidaEm:new Date().toISOString(),excluidaPor:(window.parent&&window.parent.CRV_QUEM)||'',motivo:mot.trim()});
+        Object.assign(a,{excluida:true,excluidaEm:new Date().toISOString(),excluidaPor:(window.parent&&window.parent.CRV_QUEM)||'',motivo:mot.trim()});
+        msg.style.color='#1d5c3a';msg.textContent=`Autorização de ${a.nome} excluída. Ela continua guardada em "Mostrar excluídas", se precisar restaurar.`;desenhar();
+      }catch(e){msg.style.color='#8a2a1a';msg.textContent='Não consegui excluir: '+(e.message||'sem permissão para editar este painel.')}
+    }else if(b.dataset.ac==='volta'){
+      try{await DB.collection('autorizacoes').doc(id).update({excluida:false,restauradaEm:new Date().toISOString()});a.excluida=false;msg.style.color='#1d5c3a';msg.textContent='Autorização restaurada.';desenhar()}
+      catch(e){msg.style.color='#8a2a1a';msg.textContent='Não consegui restaurar: '+(e.message||'sem permissão.')}
+    }else if(b.dataset.ac==='pdf'){
+      try{msg.style.color='#5d6a85';msg.textContent='Gerando o PDF…';const d=a.doc;const bytes=await gerarPdf(d);
+        const nomeArq=`Autorizacao de desconto${MODO==='farmacia'?' farmacia':''} - ${String(d.nome).split(' ')[0]} ${d.mat}${d.rd?' - RD '+d.rd:''}.pdf`;
+        await salvarArq(nomeArq,bytes,'application/pdf');msg.style.color='#1d5c3a';msg.textContent='PDF gerado de novo.'}
+      catch(e){msg.style.color='#8a2a1a';msg.textContent='Não consegui gerar o PDF: '+(e.message||e)}
+    }
+  };
+  const linhasExp=()=>filtradas().filter(a=>!a.excluida).sort((a,b)=>(a.emitidoEm||'')<(b.emitidoEm||'')?-1:1).map(a=>{const e=emiDe(a),i=iniDe(a);return{
+    'Emitida em':e?e.d.toLocaleDateString('pt-BR'):'',...(MODO==='rd'?{'RD':a.rd||''}:{}),'Matrícula':a.mat,'Colaborador':a.nome,'Valor (R$)':valorDe(a),'Parcelas':+a.parcelas||a.parcelas,'Valor da parcela':a.vpar,'Início do desconto':i?MES3[i.m]+'/'+i.y:a.inicio||'','Tipo':a.tipo||'','Referente a':a.referente||'','Emitida por':a.por||''}});
+  const titulo=()=>`Autorizações de desconto${MODO==='farmacia'?' - Farmácia':' - RD'} ${st.mes<0?st.ano:MES3[st.mes]+'-'+st.ano}`;
+  g('h-xls').onclick=async()=>{
+    const X=window.XLSX||(window.parent&&window.parent.XLSX);const msg=g('h-msg');
+    if(!X){msg.textContent='Gerador de Excel indisponível.';return}
+    const L=linhasExp();if(!L.length){msg.textContent='Nada para exportar com esse filtro.';return}
+    const ws=X.utils.json_to_sheet(L);ws['!cols']=Object.keys(L[0]).map(k=>({wch:Math.min(50,Math.max(10,k.length+2,...L.map(r=>String(r[k]).length)))}));
+    const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,'Autorizações');
+    const out=X.write(wb,{bookType:'xlsx',type:'array'});
+    await salvarArq(titulo()+'.xlsx',new Uint8Array(out),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  };
+  g('h-pdf').onclick=async()=>{
+    const J=(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF);const msg=g('h-msg');
+    const L=linhasExp();if(!L.length){msg.textContent='Nada para exportar com esse filtro.';return}
+    const doc=new J({orientation:'landscape',unit:'mm',format:'a4'});
+    if(typeof doc.autoTable!=='function'){msg.textContent='Gerador de tabela em PDF indisponível.';return}
+    const tot=L.reduce((s,r)=>s+r['Valor (R$)'],0);
+    doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text(titulo(),14,15);
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text(`${L.length} autorização(ões) · total R$ ${moeda(tot)} · considerando ${st.base==='ini'?'o início do desconto':'a data de emissão'}`,14,21);
+    const cols=Object.keys(L[0]);
+    doc.autoTable({startY:25,head:[cols],body:L.map(r=>cols.map(c=>c==='Valor (R$)'?moeda(r[c]):String(r[c]))),foot:[cols.map((c,k)=>k===0?'Total':c==='Valor (R$)'?moeda(tot):'')],
+      styles:{fontSize:7.5,cellPadding:1.6},headStyles:{fillColor:[29,92,58]},footStyles:{fillColor:[238,241,245],textColor:20,fontStyle:'bold'},margin:{left:10,right:10}});
+    await salvarArq(titulo()+'.pdf',new Uint8Array(doc.output('arraybuffer')),'application/pdf');
+  };
+  g('h-base').onchange=e=>{st.base=e.target.value;st.mes=-1;guardar();desenhar()};
+  g('h-ano').onchange=e=>{st.ano=+e.target.value;st.mes=-1;guardar();desenhar()};
+  g('h-mes').onchange=e=>{st.mes=+e.target.value;desenhar()};
+  g('h-exc').onchange=e=>{st.exc=e.target.checked;guardar();desenhar()};
+  let tb=null;g('h-busca').oninput=e=>{clearTimeout(tb);tb=setTimeout(()=>{st.busca=e.target.value;desenhar()},200)};
+  try{const s=await DB.collection('autorizacoes').get();TODAS=s.docs.map(d=>Object.assign({_id:d.id},d.data()));desenhar()}
+  catch(e){g('h-tab').innerHTML='<p style="color:#8a2a1a">Não consegui ler o histórico.</p>'}
+}
+async function salvarArq(nome,bytes,tipo){
+  const DL=window.claude&&window.claude.use?await window.claude.use('downloads'):null;
+  if(DL)return DL.save({filename:nome,data:bytes});
+  const u=URL.createObjectURL(new Blob([bytes],{type:tipo}));const a=document.createElement('a');a.href=u;a.download=nome;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},4000);
 }
 
 /* ---------- PDF no modelo RE.0150.09 ---------- */
@@ -1025,9 +1192,11 @@ function montarBotao(){
   if(!alvo||document.querySelector('.aut-btn'))return;
   const b=document.createElement('button');b.className='aut-btn';b.type='button';b.textContent='Autorização de desconto';
   b.onclick=()=>abrir();alvo.appendChild(b);
+  const h=document.createElement('button');h.className='aut-btn sec';h.type='button';h.textContent='Histórico';h.title='Histórico de autorizações de desconto';
+  h.onclick=()=>abrirHist();alvo.appendChild(h);
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',montarBotao);else montarBotao();
-window.CRV_AUTORIZACAO=abrir;
+window.CRV_AUTORIZACAO=abrir;window.CRV_AUT_HIST=abrirHist;
 })();
 </script>
 <!-- ===== fim: autorização de desconto ===== -->

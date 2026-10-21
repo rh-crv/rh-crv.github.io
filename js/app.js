@@ -376,13 +376,15 @@ function blocoFrente(f, lista){
    ===================================================================== */
 // opções que aparecem abaixo do painel no menu (seta)
 const SUBACOES = {
-  rd:       [{ acao:'aut', nome:'Autorização de desconto' }],
-  farmacia: [{ acao:'aut', nome:'Autorização de desconto' }]
+  rd:       [{ acao:'aut', nome:'Autorização de desconto' }, { acao:'hist', nome:'Histórico de autorizações' }],
+  farmacia: [{ acao:'aut', nome:'Autorização de desconto' }, { acao:'hist', nome:'Histórico de autorizações' }]
 };
+function fecharJanelasAut(w){ try { w.document.querySelectorAll('.aut-fundo').forEach(x => x.remove()); } catch(_){} }
 function executarAcao(acao){
   const f = document.getElementById('modelo-frame');
   const w = f && f.contentWindow;
-  if (acao === 'aut' && w && typeof w.CRV_AUTORIZACAO === 'function') { w.CRV_AUTORIZACAO(); return true; }
+  if (acao === 'aut' && w && typeof w.CRV_AUTORIZACAO === 'function') { fecharJanelasAut(w); w.CRV_AUTORIZACAO(); return true; }
+  if (acao === 'hist' && w && typeof w.CRV_AUT_HIST === 'function') { fecharJanelasAut(w); w.CRV_AUT_HIST(); return true; }
   return false;
 }
 async function telaPainel(id, acao){
