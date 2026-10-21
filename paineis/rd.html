@@ -676,4 +676,300 @@ $('foot').textContent='Fonte: planilha RDs_2026 (aba RD\'_2026), com '+R.length+
 fillSel();render();
 </script>
 
+
+<!-- ===== Autorização de desconto (RE.0150.09) — gerada a partir da RD ===== -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&display=swap">
+<style>
+.aut-btn{margin-left:auto;background:#e9a23b;color:#2b1d00;border:0;border-radius:8px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap}
+.aut-btn:hover{filter:brightness(1.05)}
+.aut-fundo{position:fixed;inset:0;background:rgba(10,20,40,.55);z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;overflow:auto}
+.aut-modal{background:#fff;color:#14213d;border-radius:12px;width:100%;max-width:880px;box-shadow:0 20px 60px rgba(0,0,0,.35);font-size:13px}
+.aut-cab{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid #e0e5ef}
+.aut-cab h3{margin:0;font-size:16px;flex:1}
+.aut-cab small{color:#5d6a85;font-weight:400;display:block;font-size:11.5px}
+.aut-x{background:none;border:0;font-size:24px;cursor:pointer;color:#5d6a85;line-height:1}
+.aut-corpo{padding:14px 18px;display:grid;grid-template-columns:repeat(12,1fr);gap:10px 12px}
+.aut-c{display:flex;flex-direction:column;gap:4px}
+.aut-c label{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#5d6a85}
+.aut-c input,.aut-c select,.aut-c textarea{border:1px solid #d5dbe6;border-radius:7px;padding:7px 9px;font:inherit;background:#f7f9fc;color:#14213d}
+.aut-c input:focus,.aut-c select:focus,.aut-c textarea:focus{outline:none;border-color:#2e8a57;background:#fff}
+.aut-c textarea{resize:vertical;min-height:52px}
+.aut-sec{grid-column:1/-1;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#2e8a57;border-bottom:1px solid #e0e5ef;padding-bottom:4px;margin-top:6px}
+.aut-info{grid-column:1/-1;background:#f2f5fa;border-radius:8px;padding:8px 10px;font-size:12.5px;color:#33415c;min-height:20px}
+.aut-info.ok{background:#e9f5ee;color:#1d5c3a}.aut-info.av{background:#fdf1da;color:#8a5a00}.aut-info.er{background:#fdecea;color:#8a2a1a}
+.aut-tipos{display:flex;gap:16px;flex-wrap:wrap;padding-top:4px}
+.aut-tipos label{display:flex;gap:6px;align-items:center;font-size:13px;text-transform:none;letter-spacing:0;color:#14213d;font-weight:500}
+.aut-chips{display:flex;gap:6px;flex-wrap:wrap}
+.aut-chip{border:1px solid #d5dbe6;background:#fff;border-radius:999px;padding:4px 10px;font-size:12px;cursor:pointer}
+.aut-chip.on{background:#14213d;color:#fff;border-color:#14213d}
+.aut-pe{display:flex;gap:8px;justify-content:flex-end;align-items:center;padding:12px 18px;border-top:1px solid #e0e5ef;flex-wrap:wrap}
+.aut-pe .esp{flex:1;color:#5d6a85;font-size:12px}
+.aut-b{border:0;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer;font-size:13px}
+.aut-b.sec{background:#eef1f5;color:#14213d}.aut-b.pri{background:#2e8a57;color:#fff}
+.aut-hist{grid-column:1/-1;max-height:180px;overflow:auto;border:1px solid #e0e5ef;border-radius:8px}
+.aut-hist table{width:100%;border-collapse:collapse;font-size:12px}
+.aut-hist th{position:sticky;top:0;background:#f7f9fc;text-align:left;padding:6px 8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:#5d6a85}
+.aut-hist td{padding:6px 8px;border-top:1px solid #eef1f5}
+.s2{grid-column:span 2}.s3{grid-column:span 3}.s4{grid-column:span 4}.s5{grid-column:span 5}.s6{grid-column:span 6}.s8{grid-column:span 8}.s12{grid-column:1/-1}
+@media (max-width:700px){.aut-corpo>*{grid-column:1/-1!important}}
+</style>
+<script>
+(function(){
+'use strict';
+const $q=(s,el=document)=>el.querySelector(s);
+const escA=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const MESES=['JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
+const brData=s=>s?s.split('-').reverse().join('/'):'';
+const num=v=>{if(v==null||v==='')return NaN;if(typeof v==='number')return v;let t=String(v).replace(/[R$\s]/g,'');if(t.includes(','))t=t.replace(/\./g,'').replace(',','.');return parseFloat(t)};
+const moeda=n=>isNaN(n)?'':n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+/* valor por extenso (reais e centavos) */
+function extenso(v){
+  const U=['','UM','DOIS','TRÊS','QUATRO','CINCO','SEIS','SETE','OITO','NOVE','DEZ','ONZE','DOZE','TREZE','QUATORZE','QUINZE','DEZESSEIS','DEZESSETE','DEZOITO','DEZENOVE'];
+  const DZ=['','','VINTE','TRINTA','QUARENTA','CINQUENTA','SESSENTA','SETENTA','OITENTA','NOVENTA'];
+  const C=['','CENTO','DUZENTOS','TREZENTOS','QUATROCENTOS','QUINHENTOS','SEISCENTOS','SETECENTOS','OITOCENTOS','NOVECENTOS'];
+  const ate999=n=>{if(n===0)return'';if(n===100)return'CEM';const c=Math.floor(n/100),r=n%100,p=[];if(c)p.push(C[c]);if(r<20){if(r)p.push(U[r])}else{p.push(DZ[Math.floor(r/10)]+(r%10?' E '+U[r%10]:''))}return p.join(' E ')};
+  const inteiro=n=>{if(n===0)return'ZERO';const g=[[1e9,'BILHÃO','BILHÕES'],[1e6,'MILHÃO','MILHÕES'],[1e3,'MIL','MIL']];const p=[];let rest=n;
+    for(const [d,s,pl] of g){const q=Math.floor(rest/d);if(q){p.push(d===1e3&&q===1?'MIL':ate999(q)+' '+(q===1?s:pl));rest%=d}}
+    if(rest)p.push(ate999(rest));
+    if(p.length>1){const ult=p[p.length-1];const r=n%1000;if(r&&(r<100||r%100===0))p[p.length-1]='E '+ult}
+    return p.join(p.length>1?' ':'').replace(/ E E /g,' E ')};
+  v=Math.round(v*100)/100;const r=Math.floor(v),c=Math.round((v-r)*100);
+  let s='';
+  if(r){s=inteiro(r)+(r===1?' REAL':(r%1e6===0?' DE REAIS':' REAIS'))}
+  if(c){s+=(s?' E ':'')+ate999(c)+(c===1?' CENTAVO':' CENTAVOS')}
+  return s||'ZERO REAIS';
+}
+
+/* dados do painel */
+const LINHAS=(typeof R!=='undefined')?R:[];
+const FUNC=(typeof EMP!=='undefined')?EMP:{};
+const FATOS=(typeof FATO!=='undefined')?FATO:{};
+const porRd=n=>LINHAS.filter(r=>String(r.rd)===String(n).trim());
+
+let DB=null;
+(async()=>{try{DB=window.claude&&window.claude.use?await window.claude.use('db'):null}catch(e){DB=null}})();
+
+const CFG_KEY='crv-aut-rh';
+const cfgRH=()=>{try{return Object.assign({nome:'Michelle Patricia Alves Pereira',cargo:'COORDENADORA DE RH',mat:'334'},JSON.parse(localStorage.getItem(CFG_KEY)||'{}'))}catch(_){return{nome:'Michelle Patricia Alves Pereira',cargo:'COORDENADORA DE RH',mat:'334'}}};
+
+function abrir(rdPre){
+  const hoje=new Date(),mesSeg=new Date(hoje.getFullYear(),hoje.getMonth()+1,1);
+  const rh=cfgRH();
+  const anos=[hoje.getFullYear()-1,hoje.getFullYear(),hoje.getFullYear()+1];
+  const f=document.createElement('div');f.className='aut-fundo';
+  f.innerHTML=`<div class="aut-modal" role="dialog" aria-modal="true">
+   <div class="aut-cab"><h3>Autorização de desconto<small>Modelo RE.0150.09 · versão 02 · preenche a partir da RD e da matrícula</small></h3><button class="aut-x" aria-label="Fechar">&times;</button></div>
+   <div class="aut-corpo">
+    <div class="aut-sec">Registro de dano</div>
+    <div class="aut-c s3"><label>Nº da RD</label><input id="a-rd" inputmode="numeric" placeholder="ex.: 963"></div>
+    <div class="aut-c s9" style="grid-column:span 9"><label>Colaboradores desta RD</label><div class="aut-chips" id="a-chips"><span style="color:#5d6a85;font-size:12px;padding-top:5px">Digite o número da RD para puxar a data, o fato e quem está envolvido.</span></div></div>
+    <div class="aut-info" id="a-rdinfo">—</div>
+    <div class="aut-sec">Colaborador</div>
+    <div class="aut-c s3"><label>Matrícula</label><input id="a-mat" inputmode="numeric"></div>
+    <div class="aut-c s9" style="grid-column:span 9"><label>Nome</label><input id="a-nome"></div>
+    <div class="aut-c s6"><label>Função</label><input id="a-func"></div>
+    <div class="aut-c s6"><label>Setor</label><input id="a-setor"></div>
+    <div class="aut-info" id="a-matinfo">Digite a matrícula para puxar nome, função e setor.</div>
+    <div class="aut-sec">Valores</div>
+    <div class="aut-c s3"><label>Valor total (R$)</label><input id="a-valor" inputmode="decimal" placeholder="0,00"></div>
+    <div class="aut-c s2"><label>Parcelas</label><input id="a-par" type="number" min="1" max="60" value="1"></div>
+    <div class="aut-c s3"><label>Valor da parcela (R$)</label><input id="a-vpar" inputmode="decimal"></div>
+    <div class="aut-c s2"><label>A partir de</label><select id="a-mes">${MESES.map((m,i)=>`<option value="${i}" ${i===mesSeg.getMonth()?'selected':''}>${m.charAt(0)+m.slice(1).toLowerCase()}</option>`).join('')}</select></div>
+    <div class="aut-c s2"><label>Ano</label><select id="a-ano">${anos.map(a=>`<option ${a===mesSeg.getFullYear()?'selected':''}>${a}</option>`).join('')}</select></div>
+    <div class="aut-info" id="a-valinfo">—</div>
+    <div class="aut-sec">Referente a</div>
+    <div class="aut-c s12"><label>Descrição (sai no documento)</label><textarea id="a-ref" maxlength="260"></textarea></div>
+    <div class="aut-c s12"><label>Tipo</label><div class="aut-tipos">
+      <label><input type="radio" name="a-tipo" value="MAU USO" checked> Mau uso</label>
+      <label><input type="radio" name="a-tipo" value="SUMIÇO"> Sumiço</label>
+      <label><input type="radio" name="a-tipo" value="AQUISIÇÃO"> Aquisição</label>
+      <label><input type="radio" name="a-tipo" value="OUTROS"> Outros</label></div></div>
+    <div class="aut-sec">Assinatura e emissão</div>
+    <div class="aut-c s3"><label>Data do documento</label><input id="a-data" type="date" value="${hoje.toISOString().slice(0,10)}"></div>
+    <div class="aut-c s4"><label>Responsável do RH</label><input id="a-rhnome" value="${escA(rh.nome)}"></div>
+    <div class="aut-c s3"><label>Cargo</label><input id="a-rhcargo" value="${escA(rh.cargo)}"></div>
+    <div class="aut-c s2"><label>Matrícula RH</label><input id="a-rhmat" value="${escA(rh.mat)}"></div>
+    <div class="aut-c s12"><label style="display:flex;gap:6px;align-items:center;text-transform:none;letter-spacing:0;font-size:13px;color:#14213d;font-weight:500"><input type="checkbox" id="a-2via" checked> Gerar também a 2ª via (funcionário) no mesmo PDF</label></div>
+    <div class="aut-sec">Autorizações já emitidas</div>
+    <div class="aut-hist" id="a-hist"><p style="padding:8px;margin:0;color:#5d6a85">Carregando…</p></div>
+   </div>
+   <div class="aut-pe"><span class="esp" id="a-msg"></span><button class="aut-b sec" id="a-cancel">Cancelar</button><button class="aut-b pri" id="a-gerar">Gerar PDF</button></div>
+  </div>`;
+  document.body.appendChild(f);
+  const el=id=>$q('#'+id,f);
+  const fechar=()=>f.remove();
+  $q('.aut-x',f).onclick=fechar; el('a-cancel').onclick=fechar;
+  f.addEventListener('mousedown',e=>{if(e.target===f)fechar()});
+
+  /* matrícula → dados do colaborador */
+  const puxarMat=()=>{
+    const m=el('a-mat').value.trim(),c=FUNC[m];
+    const i=el('a-matinfo');
+    if(!m){i.className='aut-info';i.textContent='Digite a matrícula para puxar nome, função e setor.';return}
+    if(!c){i.className='aut-info av';i.textContent='Matrícula não encontrada na base. Preencha nome, função e setor à mão.';return}
+    el('a-nome').value=c[0];el('a-func').value=c[1];el('a-setor').value=c[2];
+    i.className='aut-info '+(c[3]==='Desligado'?'av':'ok');
+    i.textContent=c[3]==='Desligado'?'Colaborador desligado: o desconto será na rescisão.':`${c[3]} · admitido em ${brData(c[4])}`;
+  };
+  el('a-mat').addEventListener('change',puxarMat);el('a-mat').addEventListener('keyup',e=>{if(e.key==='Enter')puxarMat()});
+
+  /* nº da RD → data, fato, envolvidos e valores */
+  let rdSel=null;
+  const usarLinha=r=>{
+    rdSel=r;
+    el('a-chips').querySelectorAll('.aut-chip').forEach(b=>b.classList.toggle('on',b.dataset.m==String(r.mat)));
+    if(r.mat){el('a-mat').value=r.mat;puxarMat()}
+    const fx=FATOS[String(r.rd)]||{};
+    const v=num(r.val);if(!isNaN(v)&&v>0){el('a-valor').value=moeda(v)}
+    const p=parseInt(r.par,10);if(p>0)el('a-par').value=p;
+    if(r.md){const mm=String(r.md).match(/(\d{4})-(\d{2})/)||String(r.md).match(/(\d{2})\/(\d{4})/);if(mm){const ano=mm[1].length===4?mm[1]:mm[2],mes=mm[1].length===4?mm[2]:mm[1];el('a-mes').value=String(+mes-1);if([...el('a-ano').options].some(o=>o.value==ano))el('a-ano').value=ano}}
+    const resumo=fx.resumo||fx.fato||'';
+    el('a-ref').value=`RD Nº ${r.rd} DE ${brData(r.ds)}${resumo?' - '+String(resumo).toUpperCase():''}`.slice(0,260);
+    const info=el('a-rdinfo');
+    info.className='aut-info ok';
+    info.innerHTML=`<b>RD ${escA(r.rd)}</b> · ${escA(brData(r.ds))} · ${escA(r.ger||'')}${r.acao?' · ação: '+escA(r.acao):''}${fx.fato?'<br><b>Fato:</b> '+escA(fx.fato):''}${r.obs?'<br><b>Obs.:</b> '+escA(r.obs):''}${!fx.fato?'<br><span style="color:#8a5a00">A descrição do fato ainda não está na base do painel — escreva o resumo no campo "Referente a".</span>':''}`;
+    calc();
+  };
+  const puxarRd=()=>{
+    const n=el('a-rd').value.trim(),L=porRd(n),ch=el('a-chips');
+    if(!n){return}
+    if(!L.length){ch.innerHTML='';el('a-rdinfo').className='aut-info er';el('a-rdinfo').textContent=`RD ${n} não encontrada na base do painel.`;return}
+    ch.innerHTML=L.map(r=>`<button class="aut-chip" data-m="${escA(r.mat)}">${escA(r.n||'(sem colaborador)')}${r.mat?' · '+escA(r.mat):''}</button>`).join('');
+    ch.querySelectorAll('.aut-chip').forEach((b,i)=>b.onclick=()=>usarLinha(L[i]));
+    usarLinha(L[0]);
+  };
+  el('a-rd').addEventListener('change',puxarRd);el('a-rd').addEventListener('keyup',e=>{if(e.key==='Enter')puxarRd()});
+
+  /* valores */
+  let vparManual=false;
+  const calc=()=>{
+    const v=num(el('a-valor').value),p=Math.max(1,parseInt(el('a-par').value,10)||1);
+    if(!vparManual&&!isNaN(v))el('a-vpar').value=moeda(Math.round(v/p*100)/100);
+    const vp=num(el('a-vpar').value),i=el('a-valinfo');
+    if(isNaN(v)){i.className='aut-info';i.textContent='—';return}
+    const dif=Math.round((v-vp*p)*100)/100;
+    i.className='aut-info'+(Math.abs(dif)>=0.01?' av':' ok');
+    i.innerHTML=`R$ ${moeda(v)} (${extenso(v)})`+(Math.abs(dif)>=0.01?`<br>${p} × ${moeda(vp)} = ${moeda(vp*p)} · diferença de R$ ${moeda(dif)} (ajuste na última parcela)`:'');
+  };
+  el('a-valor').addEventListener('input',()=>{vparManual=false;calc()});
+  el('a-par').addEventListener('input',()=>{vparManual=false;calc()});
+  el('a-vpar').addEventListener('input',()=>{vparManual=true;calc()});
+
+  /* histórico */
+  const listar=async()=>{
+    const h=el('a-hist');
+    if(!DB){h.innerHTML='<p style="padding:8px;margin:0;color:#5d6a85">O registro das autorizações não está disponível nesta visualização.</p>';return}
+    try{const s=await DB.collection('autorizacoes').get();const L=s.docs.map(d=>d.data()).sort((a,b)=>(b.emitidoEm||'')<(a.emitidoEm||'')?-1:1);
+      h.innerHTML=L.length?`<table><thead><tr><th>Emitida em</th><th>RD</th><th>Colaborador</th><th>Valor</th><th>Parcelas</th><th>Por</th></tr></thead><tbody>${L.map(a=>`<tr><td>${escA(new Date(a.emitidoEm).toLocaleDateString('pt-BR'))}</td><td>${escA(a.rd||'—')}</td><td>${escA(a.nome)} · ${escA(a.mat)}</td><td>R$ ${escA(a.valor)}</td><td>${escA(a.parcelas)}× de ${escA(a.vpar)}</td><td>${escA(a.por||'')}</td></tr>`).join('')}</tbody></table>`:'<p style="padding:8px;margin:0;color:#5d6a85">Nenhuma autorização emitida ainda.</p>';
+    }catch(e){h.innerHTML='<p style="padding:8px;margin:0;color:#8a2a1a">Não consegui ler o histórico.</p>'}
+  };
+  listar();
+
+  if(rdPre){el('a-rd').value=rdPre;puxarRd()}
+
+  el('a-gerar').onclick=async()=>{
+    const msg=el('a-msg');
+    const d={rd:el('a-rd').value.trim(),mat:el('a-mat').value.trim(),nome:el('a-nome').value.trim().toUpperCase(),func:el('a-func').value.trim().toUpperCase(),setor:el('a-setor').value.trim().toUpperCase(),
+      valor:num(el('a-valor').value),par:Math.max(1,parseInt(el('a-par').value,10)||1),vpar:num(el('a-vpar').value),mes:+el('a-mes').value,ano:el('a-ano').value,
+      ref:el('a-ref').value.trim().toUpperCase(),tipo:(f.querySelector('input[name=a-tipo]:checked')||{}).value||'OUTROS',data:el('a-data').value,
+      rhNome:el('a-rhnome').value.trim(),rhCargo:el('a-rhcargo').value.trim().toUpperCase(),rhMat:el('a-rhmat').value.trim(),duas:el('a-2via').checked};
+    const falta=[!d.nome&&'nome',!d.mat&&'matrícula',isNaN(d.valor)&&'valor',isNaN(d.vpar)&&'valor da parcela',!d.ref&&'"referente a"'].filter(Boolean);
+    if(falta.length){msg.style.color='#8a2a1a';msg.textContent='Falta preencher: '+falta.join(', ')+'.';return}
+    try{localStorage.setItem(CFG_KEY,JSON.stringify({nome:d.rhNome,cargo:d.rhCargo,mat:d.rhMat}))}catch(_){}
+    msg.style.color='#5d6a85';msg.textContent='Gerando o PDF…';
+    try{
+      const bytes=await gerarPdf(d);
+      const nomeArq=`Autorizacao de desconto - ${d.nome.split(' ')[0]} ${d.mat}${d.rd?' - RD '+d.rd:''}.pdf`;
+      const DL=window.claude&&window.claude.use?await window.claude.use('downloads'):null;
+      if(DL)await DL.save({filename:nomeArq,data:bytes});
+      else{const u=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));const a=document.createElement('a');a.href=u;a.download=nomeArq;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},4000)}
+      if(DB){try{await DB.collection('autorizacoes').add({rd:d.rd,mat:d.mat,nome:d.nome,valor:moeda(d.valor),parcelas:d.par,vpar:moeda(d.vpar),inicio:MESES[d.mes]+'/'+d.ano,tipo:d.tipo,referente:d.ref,emitidoEm:new Date().toISOString(),por:(window.parent&&window.parent.CRV_QUEM)||''});listar()}catch(_){}}
+      msg.style.color='#1d5c3a';msg.textContent='PDF gerado. Imprima e colha a assinatura do colaborador.';
+    }catch(e){console.error(e);msg.style.color='#8a2a1a';msg.textContent='Não consegui gerar o PDF: '+(e.message||e)}
+  };
+}
+
+/* ---------- PDF no modelo RE.0150.09 ---------- */
+async function imgData(url){const r=await fetch(url);const b=await r.blob();return await new Promise(ok=>{const fr=new FileReader();fr.onload=()=>ok(fr.result);fr.readAsDataURL(b)})}
+async function assinaturaImg(texto){
+  try{await document.fonts.load('600 64px "Dancing Script"')}catch(_){}
+  const c=document.createElement('canvas'),x=c.getContext('2d');
+  x.font='600 64px "Dancing Script", "Brush Script MT", cursive';
+  const w=Math.ceil(x.measureText(texto).width)+20;c.width=w;c.height=90;
+  x.font='600 64px "Dancing Script", "Brush Script MT", cursive';x.fillStyle='#1b2a52';x.textBaseline='middle';x.fillText(texto,10,48);
+  return {src:c.toDataURL('image/png'),w,h:90};
+}
+async function gerarPdf(d){
+  const J=(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF);
+  if(!J)throw new Error('gerador de PDF indisponível');
+  const doc=new J({unit:'mm',format:'a4'});
+  let logo=null;try{logo=await imgData('__CRV_BASE__img/logo-crv.png')}catch(_){}
+  const ass=d.rhNome?await assinaturaImg(d.rhNome):null;
+  const dt=d.data?new Date(d.data+'T12:00:00'):new Date();
+  const local=`Capinópolis-MG, ${String(dt.getDate()).padStart(2,'0')} / ${MESES[dt.getMonth()]} / ${dt.getFullYear()}`;
+  const parTxt=d.par>1?`PARCELAR EM ${d.par} X  DE ${moeda(d.vpar)} ( A PARTIR DE ${MESES[d.mes]} DE ${d.ano})`:`DESCONTO EM PARCELA ÚNICA ( EM ${MESES[d.mes]} DE ${d.ano})`;
+  const vias=d.duas?['1ª Via : Empresa','2ª Via : Funcionário']:['1ª Via : Empresa'];
+  vias.forEach((via,pi)=>{
+    if(pi)doc.addPage();
+    const L=12,Rr=198,W=Rr-L;
+    doc.setDrawColor(0);doc.setLineWidth(0.5);doc.rect(9,9,192,150);
+    /* cabeçalho */
+    doc.setLineWidth(0.25);
+    const y0=12,rh=5.5;
+    doc.rect(L,y0,W,rh*4);doc.line(L+45,y0,L+45,y0+rh*4);doc.line(L+143,y0,L+143,y0+rh*4);
+    for(let i=1;i<4;i++){doc.line(L+45,y0+rh*i,Rr,y0+rh*i)}
+    doc.setFillColor(210,210,210);doc.rect(L+45,y0+rh*2,98,rh,'FD');
+    if(logo){try{doc.addImage(logo,'PNG',L+4,y0+2.5,37,12)}catch(_){}}
+    doc.setFont('helvetica','bold');doc.setFontSize(6);doc.setTextColor(30,70,140);doc.text('UNIDADE CAPINÓPOLIS',L+22.5,y0+19.5,{align:'center'});
+    doc.setTextColor(0);doc.setFontSize(9);
+    const mid=L+45+49,dir=L+143+(W-143)/2;
+    doc.setFont('helvetica','normal');doc.text('Sistema de Gestão Integrada',mid,y0+3.9,{align:'center'});doc.text('Registro',mid,y0+rh+3.9,{align:'center'});
+    doc.setFont('helvetica','bold');doc.text('AUTORIZAÇÃO DE DESCONTO',mid,y0+rh*2+3.9,{align:'center'});
+    doc.setFont('helvetica','normal');doc.text('Periodicidade: Sempre que houver desconto',mid,y0+rh*3+3.9,{align:'center'});
+    ['Código: RE. 0150.09','Versão: 02','Data : 03/02/2023','Página: 1 de 1'].forEach((t,i)=>doc.text(t,dir,y0+rh*i+3.9,{align:'center'}));
+    /* corpo */
+    const by=y0+rh*4+5;doc.rect(L,by,W,86);
+    doc.line(L,by+7,Rr,by+7);doc.line(L+142,by,L+142,by+7);
+    doc.setFontSize(9.5);
+    doc.setFont('helvetica','normal');doc.text('Eu:',L+3,by+4.8);
+    doc.setFont('helvetica','bold');doc.text(d.nome,L+14,by+4.8,{maxWidth:100});
+    doc.setFont('helvetica','normal');doc.text('Matrícula:',L+108,by+4.8);
+    doc.setFont('helvetica','bold');doc.text(String(d.mat),L+124,by+4.8);
+    doc.text(via,L+142+(W-142)/2,by+4.8,{align:'center'});
+    let y=by+12.5;
+    doc.setFont('helvetica','normal');doc.text('Função:',L+2,y);doc.setFont('helvetica','bold');doc.text(d.func,L+15,y,{maxWidth:90});
+    doc.setFont('helvetica','normal');doc.text('Setor:',L+108,y);doc.setFont('helvetica','bold');doc.text(d.setor,L+124,y,{maxWidth:60});
+    doc.setFont('helvetica','normal');doc.setFontSize(10);
+    y+=7;doc.text('autorizo a empresa CRV INDUSTRIAL LTDA a descontar no meu',L+2,y);
+    y+=7;const txtValor=`pagamento ou rescisão de contrato, o valor de R$ ${moeda(d.valor)} (${extenso(d.valor)})`;
+    const lv=doc.splitTextToSize(txtValor,W-4);doc.text(lv,L+2,y);y+=lv.length*4.6+3;
+    doc.text(parTxt,L+W/2,y,{align:'center'});
+    y+=7;const lr=doc.splitTextToSize('referente a: '+d.ref,W-4);doc.text(lr.slice(0,3),L+2,y);y+=Math.min(lr.length,3)*4.6+5;
+    const tipos=['MAU USO','SUMIÇO','AQUISIÇÃO','OUTROS'],xs=[L+2,L+48,L+96,L+146];
+    tipos.forEach((t,i)=>{const mk=d.tipo===t;doc.text('(        )  '+t,xs[i],y);if(mk){doc.setFont('helvetica','bold');doc.text('X',xs[i]+4.2,y);doc.setFont('helvetica','normal')}});
+    y+=11;doc.text(local,L+W/2,y,{align:'center'});
+    y+=14;doc.setLineWidth(0.2);doc.line(L+W/2-42,y,L+W/2+42,y);doc.setFontSize(9.5);doc.text('Assinatura do funcionário',L+W/2,y+4.5,{align:'center'});
+    /* assinatura RH */
+    const ry=by+86+16;doc.line(L+W/2-36,ry,L+W/2+36,ry);
+    if(ass){const h=7,w=ass.w/ass.h*h;try{doc.addImage(ass.src,'PNG',L+W/2-w/2+4,ry+0.5,w,h)}catch(_){}}
+    if(d.rhMat){doc.setFont('helvetica','bolditalic');doc.setFontSize(9);doc.text(String(d.rhMat),L+W/2-46,ry+5.5)}
+    doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.text(d.rhCargo,L+W/2,ry+10.5,{align:'center'});
+  });
+  return new Uint8Array(doc.output('arraybuffer'));
+}
+
+/* botão no topo do painel */
+function montarBotao(){
+  const alvo=document.querySelector('header .hin')||document.querySelector('header');
+  if(!alvo||document.querySelector('.aut-btn'))return;
+  const b=document.createElement('button');b.className='aut-btn';b.type='button';b.textContent='Autorização de desconto';
+  b.onclick=()=>abrir();alvo.appendChild(b);
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',montarBotao);else montarBotao();
+window.CRV_AUTORIZACAO=abrir;
+})();
+</script>
+<!-- ===== fim: autorização de desconto ===== -->
+
 </body></html>

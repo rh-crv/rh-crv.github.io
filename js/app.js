@@ -748,6 +748,7 @@ async function telaModelo(p, cfg){
   }
   try {
     // ponte: o que o painel pedir ao "Claude" (salvar anotações, baixar arquivos...) vem para o app
+    window.CRV_QUEM = E.perfil.nome;
     window.__CRV_PAINEL = window.CRV_PONTE.criar({ sb, painel: p.id, perfil: () => E.perfil, quem: () => E.perfil.nome,
       podeEditar: () => podeEditar(p), ehAdmin: () => ehAdmin() });
     const html = montarModelo(tpl, d.conteudo, d.referencia, p);
