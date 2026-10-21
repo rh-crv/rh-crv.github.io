@@ -730,7 +730,7 @@ async function telaModelo(p, cfg){
     // ponte: o que o painel pedir ao "Claude" (salvar anotações, baixar arquivos...) vem para o app
     window.__CRV_PAINEL = window.CRV_PONTE.criar({ sb, painel: p.id, perfil: () => E.perfil, quem: () => E.perfil.nome,
       podeEditar: () => podeEditar(p), ehAdmin: () => ehAdmin() });
-    const html = montarModelo(tpl, d.conteudo, d.referencia);
+    const html = montarModelo(tpl, d.conteudo, d.referencia, p);
     const url = URL.createObjectURL(new Blob([html], { type:'text/html' }));
     area.className = 'modelo-area';
     area.innerHTML = `<iframe id="modelo-frame" title="${esc(p.nome)}" src="${url}"></iframe>`;
@@ -744,7 +744,40 @@ function jsValor(v){
     .replace(/\{"\$crv":"(NaN|Infinity|-Infinity|undefined)"\}/g, '$1');
 }
 
-function montarModelo(tpl, conteudo, referencia){
+// cores da capa por frente (tons escuros, para o texto branco continuar legível)
+const CAPA = {
+  'Quadro e movimentação':         ['#0b3a47','#15647d'],
+  'Atração e perfil':              ['#0d4747','#1b7470'],
+  'Frequência e férias':           ['#4a300b','#80561a'],
+  'Jovem Aprendiz':                ['#2f1f5a','#53398f'],
+  'Treinamento e liderança':       ['#5a2317','#94432b'],
+  'Ocorrências, risco e jurídico': ['#4a1420','#7c2536'],
+  'Atendimento':                   ['#283a4b','#40607b'],
+  'RH externo':                    ['#363c18','#5d6427']
+};
+// como cada painel azul pinta a capa (os demais já têm cor própria: Unimed, Uniodonto, Sanções, Sysprocard…)
+const CAPA_MODO = {
+  vars:  ['absenteismo','absenteismo-gestao','admissoes','jovem','processos','quadro','rd','rescisoes'],
+  band:  ['alojamentos','ferias','recepcao'],
+  hd:    ['experiencia','ouvidorias'],
+  hero:  ['curriculos'],
+  top:   ['crachas','treinamentos','conexao'],
+  header:['perfil','lideres']
+};
+function cssCapa(p){
+  const c = p && CAPA[p.frente]; if (!c) return '';
+  const [a, b] = c, g = `linear-gradient(120deg,${a},${b})`, m = Object.keys(CAPA_MODO).find(k => CAPA_MODO[k].includes(p.id));
+  if (!m) return '';
+  const r = { vars:`:root,body{--hd1:${a}!important;--hd2:${b}!important}`,
+              band:`:root,body{--band:${a}!important;--band-2:${b}!important}`,
+              hd:`:root,body{--hd:${a}!important}header{background:${g}!important}`,
+              hero:`:root,body{--hero:${a}!important;--hero-2:${b}!important}`,
+              top:`.top{background:${g}!important}`,
+              header:`body>header,header{background:${g}!important}` }[m];
+  return `<style id="crv-capa">${r}</style>`;
+}
+
+function montarModelo(tpl, conteudo, referencia, p){
   const nomeOk = n => /^[A-Za-z_$][\w$]*$/.test(n);
   const base = location.href.split('#')[0].replace(/[^/]*$/, '');
   let html = tpl.split('__CRV_REFBR__').join(fmtRef(referencia)).split('__CRV_BASE__').join(base);
@@ -773,7 +806,8 @@ function montarModelo(tpl, conteudo, referencia){
     .ttl p,.hero p,.top p.lead,.top .sub,.hero .sub{font-size:13px!important;margin-top:2px!important}
   </style>`;
   html = /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, m => m + ponte) : ponte + html;
-  html = /<\/head>/i.test(html) ? html.replace(/<\/head>/i, m => compacto + m) : html + compacto;
+  const capa = cssCapa(p);
+  html = /<\/head>/i.test(html) ? html.replace(/<\/head>/i, m => compacto + capa + m) : html + compacto + capa;
 
   if (conteudo && conteudo.blocos) {               // formato 2: vários blocos por script
     for (const b of conteudo.blocos) {
