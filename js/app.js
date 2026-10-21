@@ -236,7 +236,7 @@ function moldura(conteudo){
       </nav>
       <div class="lat-pe">
         <div class="lat-av">${esc(iniciais(p.nome))}</div>
-        <div class="lat-quem"><b>${esc(p.nome)}</b><span>${esc(nomePapel(p.papel))}</span></div>
+        <div class="lat-quem"><b>${esc(p.nome)}</b><span>${esc(nomePapel(p.papel))} · v${esc(CFG.VERSAO)}</span></div>
         <button class="lat-sair" id="m-sair" title="Sair">${svg('sair')}</button>
       </div>
     </aside>
@@ -728,7 +728,10 @@ async function telaModelo(p, cfg){
   if (d.conteudo && d.conteudo.arquivo) {
     const { data: arq, error: ea } = await sb.storage.from('arquivos').download(`${p.id}/${d.conteudo.arquivo}`);
     if (ea || !arq) { area.innerHTML = `<div class="erro">Não consegui abrir os dados deste painel. Carregue o arquivo de dados de novo.</div>`; $('#m-meta').textContent=''; return; }
-    d.conteudo = JSON.parse(await arq.text());
+    const texto = d.conteudo.arquivo.endsWith('.gz')
+      ? await new Response(arq.stream().pipeThrough(new DecompressionStream('gzip'))).text()
+      : await arq.text();
+    d.conteudo = JSON.parse(texto);
   }
   $('#m-meta').innerHTML = `Dados de <b>${fmtRef(d.referencia)}</b> · atualizado em ${fmtData(d.atualizado_em)}${d.atualizado_por?' por '+esc(d.atualizado_por):''} · <span class="selo ${p.nivel}">${p.nivel}</span>`;
   try {
@@ -829,7 +832,7 @@ async function carregarPacotes(arquivos, esperado){
             if (i.zip) { const q = await enviarZip(i.f, i.painel, t => st.textContent = t); st.innerHTML = `<span style="color:var(--cane)">✓ ${q} arquivos</span>`; ok++; continue; }
             await salvarPacote(i.pac, i.f, t => st.textContent = t);
             st.innerHTML = '<span style="color:var(--cane)">✓ salvo</span>'; ok++;
-          } catch(e){ st.innerHTML = `<span style="color:var(--coral)">${esc(traduzErro(e))}</span>`; }
+          } catch(e){ console.error(e); st.innerHTML = `<span style="color:var(--coral)">${esc(traduzErro(e))}<br><small>${esc((e && (e.message || e.error || e.statusCode)) || String(e))}</small></span>`; }
         }
         bt.textContent = 'Concluído'; $('#pk-c').disabled = false; $('#pk-c').textContent = 'Fechar';
         $('#pk-c').onclick = () => { fecharModal(); rota(); };
@@ -846,15 +849,22 @@ async function salvarPacote(pac, f, progresso){
   if (kb > 1500) {
     // arquivo grande: guarda o conteúdo como arquivo protegido (o banco recusa registros muito grandes)
     progresso && progresso(`enviando ${fmtNum(kb)} KB…`);
-    const blob = new Blob([JSON.stringify(conteudo)], { type:'application/json' });
-    const { error: e0 } = await sb.storage.from('arquivos').upload(`${pac.painel}/_dados.json`, blob, { contentType:'application/json', upsert:true });
-    if (e0) throw e0;
-    conteudo = { arquivo: '_dados.json' };
+    // compacta antes de enviar (12 MB viram ~1-2 MB)
+    let blob = new Blob([JSON.stringify(conteudo)], { type:'application/json' });
+    let nome = '_dados.json';
+    if (window.CompressionStream) {
+      blob = await new Response(blob.stream().pipeThrough(new CompressionStream('gzip'))).blob();
+      nome = '_dados.json.gz';
+    }
+    progresso && progresso(`enviando ${fmtNum(Math.round(blob.size/1024))} KB…`);
+    const { error: e0 } = await sb.storage.from('arquivos').upload(`${pac.painel}/${nome}`, blob, { contentType:'application/octet-stream', upsert:true });
+    if (e0) throw new Error('Envio do arquivo: ' + (e0.message || e0.error || JSON.stringify(e0)));
+    conteudo = { arquivo: nome };
   }
   const reg = { painel:pac.painel, referencia:pac.referencia, conteudo, tamanho_kb:kb, atualizado_em:new Date().toISOString(), atualizado_por:E.perfil.nome };
   progresso && progresso('salvando…');
   const { error } = await sb.from('pacotes').upsert(reg);
-  if (error) throw error;
+  if (error) throw new Error('Registro do painel: ' + (error.message || JSON.stringify(error)));
   // anotações que vieram do Claude: entram só se ainda não existirem no app (nunca sobrescreve o que já foi feito aqui)
   const regs = pac.registros || [];
   let lote = [], tam = 0, feitos = 0;
