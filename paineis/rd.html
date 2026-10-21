@@ -828,13 +828,12 @@ function abrir(rdPre){
     i.className='aut-info';i.textContent='Buscando no Quadro de Colaboradores…';
     const c=await buscarColab(m);
     if(el('a-mat').value.trim().replace(/^0+(?=\d)/,'')!==m)return;
-    if(!c){i.className='aut-info av';i.textContent='Matrícula não encontrada no Quadro de Colaboradores. Confira o número ou preencha nome, função e setor à mão.';el('a-nome').value='';el('a-func').value='';el('a-setor').value='';return}
+    if(!c){i.className='aut-info av';i.textContent='Matrícula não encontrada na empresa 5 (CRV) do Quadro de Colaboradores. Confira o número ou preencha nome, função e setor à mão.';el('a-nome').value='';el('a-func').value='';el('a-setor').value='';return}
     el('a-nome').value=c.nome;el('a-func').value=c.funcao;el('a-setor').value=c.setor;
     const des=c.situacao==='Desligado';
     i.className='aut-info '+(des?'av':'ok');
     i.innerHTML=`<b>${escA(c.situacao)}</b>${c.empresa?' · '+escA(c.empresa):''}${c.admissao?' · admitido em '+escA(brData(c.admissao)):''}${c.deslig?' · desligado em '+escA(brData(c.deslig)):''}`+
       (des?'<br>Colaborador desligado: o desconto será na rescisão.':'')+
-      (c.empresa&&!/CRV/i.test(c.empresa)?'<br>Atenção: esta matrícula é de outra empresa ('+escA(c.empresa)+'). Confira se é a pessoa certa.':'')+
       `<br><span style="opacity:.75">Fonte: ${escA(c.fonte)}</span>`;
     if(MODO==='farmacia')comprasDC(m);
     if(MODO==='rd')rdsDaMat(m);

@@ -825,12 +825,9 @@ window.CRV_QUADRO = async function(){
     if (!dados || !Array.isArray(dados.D)) return null;
     const M = {};
     const txt = v => String(v == null ? '' : v).trim();
-    // desligados: CRV primeiro, depois as outras empresas; o desligamento mais recente vence
-    const DM = (dados.DM || []).slice().sort((a, b) => {
-      const ca = /CRV/i.test(a[21]) ? 1 : 0, cb = /CRV/i.test(b[21]) ? 1 : 0;
-      if (ca !== cb) return ca - cb;
-      return String(a[20] || '') < String(b[20] || '') ? -1 : 1;
-    });
+    // só a empresa 5 (CRV); entre desligados, o desligamento mais recente vence
+    const DM = (dados.DM || []).filter(r => /\(5\)\s*$/.test(String(r[21] || '')) || /^CRV\b/i.test(String(r[21] || '')))
+      .sort((a, b) => String(a[20] || '') < String(b[20] || '') ? -1 : 1);
     DM.forEach(r => { M[txt(r[0])] = { nome:txt(r[1]), funcao:txt(r[2]), setor:txt(r[3]), situacao:'Desligado', admissao:txt(r[9]), deslig:txt(r[20]), empresa:txt(r[21]).replace(/\s*\(\d+\)$/, '') }; });
     dados.D.forEach(r => { M[txt(r[0])] = { nome:txt(r[1]), funcao:txt(r[2]), setor:txt(r[3]), situacao:txt(r[8]) || 'Ativo', admissao:txt(r[9]), deslig:'', empresa:'CRV' }; });
     _quadroBase = { mapa:M, referencia:d.referencia || '' }; _quadroBaseRef = chave;
