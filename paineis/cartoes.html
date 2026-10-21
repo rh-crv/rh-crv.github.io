@@ -47,6 +47,9 @@ td{padding:8px 10px;border-top:1px solid var(--line);vertical-align:top}td .sm{f
 .mini.pri{background:var(--acc);border-color:var(--acc);color:#fff}
 .more{display:block;margin:10px auto 0}
 .foot{color:var(--mut);font-size:12px;margin-top:14px}
+.verif{background:#fff7e6;border:2px solid #e9a23b;border-radius:12px;padding:12px 16px;margin-bottom:14px}
+.verif h2{margin:0 0 2px;font-size:16px;color:#7a4a00}.verif .sub{margin:0 0 8px;font-size:12.5px;color:#7a5a20}
+.verif table{background:#fff;border-radius:8px;overflow:hidden}.verif td,.verif th{font-size:13px}
 .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#1d2433;color:#fff;padding:9px 14px;border-radius:8px;font-size:13px;z-index:50}
 .selb{display:flex;gap:8px;align-items:center;background:var(--accbg);border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:13px;flex-wrap:wrap}
 @media (max-width:900px){.read{grid-template-columns:1fr}.read>div+div{border-left:0;border-top-width:3px}.grid2{grid-template-columns:1fr}}
@@ -59,6 +62,7 @@ td{padding:8px 10px;border-top:1px solid var(--line);vertical-align:top}td .sm{f
   <div class="hacts"><button class="btn" id="bX">Excel</button><button class="btn" id="bP">PDF</button></div>
 </div></header>
 <main>
+  <section class="verif" id="verif" hidden></section>
   <section class="read" id="read"></section>
   <section class="kpis" id="kpis"></section>
   <section class="grid2">
@@ -130,9 +134,16 @@ const limAtual=r=>r.lim!=null&&r.lim>0.05?Number(r.lim):null;
 function difLim(r){if(T!=='convenio'||r.k!=='ok')return'';const a=limAtual(r),g=regra(r).v;if(a==null)return'';return a>g+0.05?'acima':a<g-0.05?'abaixo':'certo'}
 
 /* ---------- pedidos marcados no app ---------- */
-let DB=null,PED={},podeEd=true;
+let DB=null,PED={},podeEd=true,VER={};
 async function lerPedidos(){try{if(!(window.claude&&window.claude.use))return;DB=await window.claude.use('db');const s=await DB.collection('pedidos').get();PED={};s.docs.forEach(d=>{const x=d.data();if(!x.desfeito)PED[d.id]=x});
-  if(T==='convenio'){const e=await DB.collection('excecoes').get();e.docs.forEach(d=>{EXC[d.id]=d.data()})}render()}catch(_){}}
+  if(T==='convenio'){const e=await DB.collection('excecoes').get();e.docs.forEach(d=>{EXC[d.id]=d.data()});const v=await DB.collection('verificados').get();v.docs.forEach(d=>{VER[d.id]=d.data()})}render()}catch(_){}}
+async function verificar(m,ok){
+  if(!DB){toast('Não dá para salvar nesta visualização.');return}
+  const nota=ok?(prompt0(m)||''):'';
+  try{const x={ok,em:new Date().toISOString(),por:(window.parent&&window.parent.CRV_QUEM)||'',nota};await DB.collection('verificados').doc(m).set(x);VER[m]=x;toast(ok?'Marcado como verificado.':'Voltou para a lista a verificar.');render()}
+  catch(e){toast('Não consegui salvar: '+((e&&e.message)||'sem permissão.'))}
+}
+function prompt0(m){const i=document.querySelector('[data-nota="'+m+'"]');return i?i.value.trim():''}
 async function excecao(m,on){
   if(!DB){toast('Não dá para salvar nesta visualização.');return}
   try{const x={on,em:new Date().toISOString(),por:(window.parent&&window.parent.CRV_QUEM)||''};await DB.collection('excecoes').doc(m).set(x);EXC[m]=x;toast(on?'Exceção de R$ 540 registrada.':'Exceção retirada.');render()}
@@ -181,6 +192,19 @@ function render(){
   $('read').innerHTML=`<div><h3>Onde estamos</h3><p>${T==='convenio'?`<b>${nf(aOk)} de ${nf(A.length)}</b> ${grupo} (${pc(aOk,A.length)}) estão com o convênio liberado. ${nf(n('bloq'))} têm o cartão emitido sem convênio liberado e <b>${nf(n('falta'))}</b> ainda não têm cartão.`:`<b>${nf(aOk)} de ${nf(A.length)}</b> ${grupo} (${pc(aOk,A.length)}) têm o cartão ativo.${T==='premium'?' '+PREM_TXT:''}`}${top?` Departamento com mais pendências: <b>${esc(top[0])}</b> (${nf(top[1])}).`:''}</p></div>
    <div><h3>Ponto de atenção</h3><p>${att.length?att.join('; ')+'.':'Nenhum cartão ativo de quem já saiu da empresa.'}</p></div>
    <div><h3>O que fazer</h3><p>${faz.length?faz.join('. ')+'.':'Nada pendente.'} Use “Marcar pedido” na lista para acompanhar o que já foi solicitado.</p></div>`;
+  /* destaque: limites acima da regra para verificar */
+  if(T==='convenio'){
+    const AV=R.filter(r=>difLim(r)==='acima');
+    const pend=AV.filter(r=>!(VER[r.mat]&&VER[r.mat].ok)),feitos=AV.filter(r=>VER[r.mat]&&VER[r.mat].ok);
+    $('verif').hidden=!AV.length;
+    $('verif').innerHTML=AV.length?`<h2>⚠ A verificar: limite acima da regra (${pend.length}${feitos.length?' · '+feitos.length+' já verificado'+(feitos.length>1?'s':''):''})</h2>
+      <p class="sub">Liberados com limite maior que o permitido e que não estão nas exceções. Confira e marque como verificado (pode anotar o que foi visto).</p>
+      <div class="tab"><table><thead><tr><th>Colaborador</th><th>Departamento</th><th>Limite atual</th><th>Regra</th><th>Por que está aqui</th><th></th></tr></thead><tbody>${AV.sort((a,b)=>(VER[a.mat]&&VER[a.mat].ok?1:0)-(VER[b.mat]&&VER[b.mat].ok?1:0)).map(r=>{const g=regra(r),v=VER[r.mat]&&VER[r.mat].ok?VER[r.mat]:null;
+        const pq=limAtual(r)===1080&&!r.aloj?'Tem R$ 1.080 mas não está na base de alojamento de '+br(C.alojRef):g.v===180&&limAtual(r)===200?'É da Indústria (regra R$ 180) e tem R$ 200':'Limite maior que a faixa da regra';
+        return `<tr style="${v?'opacity:.55':''}"><td><b>${esc(r.N)}</b><div class="sm">${esc(r.mat)} · ${esc(r.F)}</div></td><td>${esc(tc(r.dep))}</td><td><b>${moeda(limAtual(r))}</b></td><td>${moeda(g.v)}</td><td>${esc(pq)}${v?`<div class="sm">Verificado em ${br(v.em)}${v.por?' por '+esc(String(v.por).split(' ')[0]):''}${v.nota?' · '+esc(v.nota):''}</div>`:''}</td>
+          <td style="text-align:right;white-space:nowrap">${v?`<button class="mini" data-ver="${esc(r.mat)}" data-ok="0">Desfazer</button>`:`<input data-nota="${esc(r.mat)}" placeholder="Anotação (opcional)" style="border:1px solid var(--line);border-radius:6px;padding:4px 6px;font:inherit;font-size:12px;width:150px"> <button class="mini pri" data-ver="${esc(r.mat)}" data-ok="1">Verificado</button>`}</td></tr>`}).join('')}</tbody></table></div>`:'';
+    $('verif').querySelectorAll('[data-ver]').forEach(b=>b.onclick=()=>verificar(b.dataset.ver,b.dataset.ok==='1'));
+  }
   /* kpis */
   $('kpis').innerHTML=ORD.filter(k=>k==='ok'||n(k)).map(k=>{const v=n(k);const pd=PEDE.has(k)?R.filter(r=>r.k===k&&PED[r.mat]).length:0;
     const s=k==='ok'?pc(v,A.length)+' do público do cartão':k==='afast'?R.filter(r=>r.k==='afast'&&r.card==='Ativo').length+' com cartão ativo':pd?pd+' já pedidos · '+(v-pd)+' a fazer':CATS[k].acao;
