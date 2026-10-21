@@ -36,6 +36,11 @@ const ICONES = {
   balcao:'<path d="M12 2a5 5 0 0 1 5 5v1h1a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-1.3A5 5 0 0 1 12 17v1h3v2H9v-2h3v-1a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V7a3 3 0 0 0-3-3z"/>',
   onibus:'<path d="M4 16c0 .9.4 1.7 1 2.2V20a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1h8v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1.8c.6-.5 1-1.3 1-2.2V6c0-3.5-3.6-4-8-4S4 2.5 4 6zm3.5 1A1.5 1.5 0 1 1 9 15.5 1.5 1.5 0 0 1 7.5 17zm9 0a1.5 1.5 0 1 1 1.5-1.5 1.5 1.5 0 0 1-1.5 1.5zM18 11H6V6h12z"/>',
   pasta:'<path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8z"/>',
+  casa:'<path d="M12 3 2 12h3v8h6v-6h2v6h6v-8h3z"/>',
+  engrenagem:'<path d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.6 7.6 0 0 0-1.7-1L15 3h-4l-.3 2.9a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.6 7.6 0 0 0 1.7 1L11 21h4l.3-2.9a7.6 7.6 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 3.5-3.5 3.5 3.5 0 0 1-3.5 3.5z"/>',
+  usuario:'<path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5zm0 2c-3.3 0-10 1.7-10 5v3h20v-3c0-3.3-6.7-5-10-5z"/>',
+  baixar:'<path d="M11 3h2v9.2l3.3-3.3 1.4 1.4L12 16l-5.7-5.7 1.4-1.4 3.3 3.3zM4 18h16v2H4z"/>',
+  sair:'<path d="M10 3H4a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h6v-2H5V5h5zm6.6 4.6L15.2 9l2 2H9v2h8.2l-2 2 1.4 1.4L21 12z"/>',
   planilha:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zm-1 7V3.5L18.5 9zM8 13h3v2H8zm5 0h3v2h-3zm-5 4h3v2H8zm5 0h3v2h-3z"/>'
 };
 const svg = (nome, cor='currentColor') => `<svg viewBox="0 0 24 24" fill="${cor}" aria-hidden="true">${ICONES[nome]||ICONES.pasta}</svg>`;
@@ -119,14 +124,16 @@ async function entrarNoApp(){
 }
 
 async function carregarCatalogo(){
-  const [p, m] = await Promise.all([
+  const [p, m, k] = await Promise.all([
     sb.from('paineis').select('*').order('ordem'),
-    sb.from('bases').select('painel,arquivo,linhas,atualizado_em,atualizado_por')
+    sb.from('bases').select('painel,arquivo,linhas,atualizado_em,atualizado_por'),
+    sb.from('pacotes').select('painel,referencia,atualizado_em,atualizado_por')
   ]);
   if (p.error) throw p.error;
   E.paineis = p.data || [];
   E.metas = {};
   (m.data || []).forEach(r => E.metas[r.painel] = r);
+  (k.data || []).forEach(r => E.metas[r.painel] = { ...r, linhas:null });
 }
 
 function podeVer(p){ if (!E.perfil) return false; if (ehAdmin()) return true; return p.nivel !== 'restrito' && (E.perfil.frentes||[]).includes(p.frente); }
@@ -195,32 +202,66 @@ async function sair(){ await sb.auth.signOut(); E.sessao=null; E.perfil=null; lo
    ===================================================================== */
 function moldura(conteudo){
   const p = E.perfil;
+  const h = location.hash || '#/';
+  const atual = h.startsWith('#/p/') ? decodeURIComponent(h.slice(4)) : null;
+  const visiveis = E.paineis.filter(podeVer);
+  const grupos = {};
+  visiveis.forEach(x => (grupos[x.frente] = grupos[x.frente] || []).push(x));
+  const frentes = Object.keys(grupos).sort((a,b) => (ORDEM_FRENTES.indexOf(a)+1||99) - (ORDEM_FRENTES.indexOf(b)+1||99));
+  let abertas = {};
+  try { abertas = JSON.parse(localStorage.getItem('crv-menu-abertas') || '{}'); } catch(_){}
+  const frenteAtual = atual ? E.paineis.find(x => x.id === atual)?.frente : null;
+  if (frenteAtual) abertas[frenteAtual] = true;
+
   $('#app').innerHTML = `
-  <header class="topo"><div class="topo-in">
-    <img class="logo" src="img/logo-crv.png" alt="CRV Industrial" id="t-logo">
-    <div class="titulo"><b>Gestão de Pessoas</b><span>CRV Industrial · Unidade Capinópolis</span></div>
-    <div class="esp"></div>
-    <div class="usuario menu-usuario">
-      <span class="chip-papel">${esc(nomePapel(p.papel))}</span>
-      <button class="btn peq" id="b-menu" aria-haspopup="true"><span class="nome-u">${esc(p.nome.split(' ')[0])}</span> ▾</button>
-      <div class="menu-pop oculto" id="menu-pop">
-        <div class="nome">${esc(p.nome)}<br><small>@${esc(p.usuario)}</small></div>
-        <button data-ir="#/">Início</button>
-        ${ehAdmin() ? '<button data-ir="#/admin">Administração</button>' : ''}
-        <button data-ir="#/conta">Minha conta</button>
-        <button id="m-instalar">Instalar o app</button>
-        <button id="m-sair">Sair</button>
+  <div class="casca">
+    <aside class="lateral" id="lateral">
+      <div class="lat-topo">
+        <img class="logo" src="img/logo-crv.png" alt="CRV Industrial" id="t-logo">
+        <div class="lat-tit"><b>Gestão de Pessoas</b><span>Unidade Capinópolis</span></div>
       </div>
+      <nav class="lat-nav">
+        <button class="lat-item ${h==='#/'||h===''?'ativo':''}" data-ir="#/">${svg('casa')}<span>Início</span></button>
+        <div class="lat-sec">Frentes</div>
+        ${frentes.map(f => { const cfg = FRENTES[f] || FRENTES['Outros controles']; return `
+          <div class="lat-grupo ${abertas[f]?'aberto':''}" data-frente="${esc(f)}">
+            <button class="lat-frente"><span class="lat-ic" style="background:${cfg.cor}">${svg(cfg.ic,'#fff')}</span><span class="lat-nome">${esc(f)}</span><span class="lat-seta">›</span></button>
+            <div class="lat-sub">${grupos[f].map(x => `<button class="lat-painel ${x.id===atual?'ativo':''}" data-ir="#/p/${encodeURIComponent(x.id)}" style="--cor:${cfg.cor}">${esc(x.nome)}${x.nivel==='restrito'?' <i class="cad" title="Restrito">●</i>':''}</button>`).join('')}</div>
+          </div>`; }).join('')}
+        <div class="lat-sec">Conta</div>
+        ${ehAdmin() ? `<button class="lat-item ${h==='#/admin'?'ativo':''}" data-ir="#/admin">${svg('engrenagem')}<span>Administração</span></button>` : ''}
+        <button class="lat-item ${h==='#/conta'?'ativo':''}" data-ir="#/conta">${svg('usuario')}<span>Minha conta</span></button>
+        <button class="lat-item" id="m-instalar">${svg('baixar')}<span>Instalar o app</span></button>
+      </nav>
+      <div class="lat-pe">
+        <div class="lat-av">${esc(iniciais(p.nome))}</div>
+        <div class="lat-quem"><b>${esc(p.nome)}</b><span>${esc(nomePapel(p.papel))}</span></div>
+        <button class="lat-sair" id="m-sair" title="Sair">${svg('sair')}</button>
+      </div>
+    </aside>
+    <div class="veu" id="veu"></div>
+    <div class="conteudo">
+      <header class="barra-movel">
+        <button class="hamb" id="b-hamb" aria-label="Abrir menu"><span></span><span></span><span></span></button>
+        <img class="logo" src="img/logo-crv.png" alt="CRV Industrial">
+        <b>Gestão de Pessoas</b>
+      </header>
+      <main class="pagina" id="pagina">${conteudo}</main>
     </div>
-  </div></header>
-  <main class="pagina" id="pagina">${conteudo}</main>`;
-  $('#t-logo').onclick = () => location.hash = '#/';
-  const pop = $('#menu-pop');
-  $('#b-menu').onclick = ev => { ev.stopPropagation(); pop.classList.toggle('oculto'); };
-  document.addEventListener('click', () => pop.classList.add('oculto'), { once:true });
-  pop.querySelectorAll('[data-ir]').forEach(b => b.onclick = () => location.hash = b.dataset.ir);
+  </div>`;
+  const lat = $('#lateral'), veu = $('#veu');
+  const fechar = () => { lat.classList.remove('aberta'); veu.classList.remove('ativo'); };
+  $('#b-hamb').onclick = () => { lat.classList.add('aberta'); veu.classList.add('ativo'); };
+  veu.onclick = fechar;
+  $('#t-logo').onclick = () => { fechar(); location.hash = '#/'; };
+  lat.querySelectorAll('[data-ir]').forEach(b => b.onclick = () => { fechar(); if (location.hash === b.dataset.ir) rota(); else location.hash = b.dataset.ir; });
+  lat.querySelectorAll('.lat-frente').forEach(b => b.onclick = () => {
+    const g = b.parentElement; g.classList.toggle('aberto');
+    abertas[g.dataset.frente] = g.classList.contains('aberto');
+    try { localStorage.setItem('crv-menu-abertas', JSON.stringify(abertas)); } catch(_){}
+  });
   $('#m-sair').onclick = sair;
-  $('#m-instalar').onclick = instalarApp;
+  $('#m-instalar').onclick = () => { fechar(); instalarApp(); };
 }
 
 function rota(){
@@ -274,7 +315,7 @@ function cartaoFrente(f, lista){
       <div><h3>${esc(f)}</h3><small>${esc(cfg.desc)}</small></div></div>
     <div class="paineis">${lista.map(p => {
       const m = E.metas[p.id];
-      const info = m ? `${fmtNum(m.linhas)} registros · atualizado ${new Date(m.atualizado_em).toLocaleDateString('pt-BR')}` : 'Sem dados ainda';
+      const info = m ? (m.linhas == null ? `Dados de ${fmtRef(m.referencia)}` : `${fmtNum(m.linhas)} registros`) + ` · atualizado ${new Date(m.atualizado_em).toLocaleDateString('pt-BR')}` : 'Sem dados ainda';
       return `<button class="painel-item" data-painel="${esc(p.id)}" data-nome="${esc(p.nome)}">
         <div class="pn"><b>${esc(p.nome)}</b><small>${esc(info)}</small></div>
         <span class="selo ${p.nivel}">${p.nivel}</span><span class="seta">›</span></button>`;
@@ -288,6 +329,7 @@ async function telaPainel(id){
   const p = E.paineis.find(x => x.id === id);
   if (!p || !podeVer(p)) { toast('Painel não encontrado ou sem acesso.', true); location.hash = '#/'; return; }
   const cfg = FRENTES[p.frente] || FRENTES['Outros controles'];
+  if (MODELOS[id]) return telaModelo(p, cfg);
   moldura(`<div class="trilha"><button data-ir="#/">Início</button> › <span>${esc(p.frente)}</span> › <b>${esc(p.nome)}</b></div>
     <div class="cartao vazio"><div class="spinner" style="margin:0 auto"></div><p>Carregando dados...</p></div>`);
   document.querySelector('.trilha [data-ir]').onclick = () => location.hash = '#/';
@@ -641,6 +683,101 @@ async function registrar(painel, acao, detalhe){
 }
 
 /* =====================================================================
+   PAINÉIS COMPLETOS (mesmo visual dos painéis do Claude)
+   O código do painel fica no GitHub (sem dados). Os dados ficam no
+   Supabase, protegidos, e são juntados só na hora de abrir.
+   ===================================================================== */
+const MODELOS = {
+  quadro: 'paineis/quadro.html'
+};
+
+const fmtRef = r => r ? r.split('-').reverse().join('/') : '—';
+
+async function telaModelo(p, cfg){
+  const editar = podeEditar(p);
+  moldura(`<div class="trilha"><button data-ir="#/">Início</button> › <span>${esc(p.frente)}</span> › <b>${esc(p.nome)}</b></div>
+    <div class="painel-cab compacto">
+      <div class="barra-cor" style="background:${cfg.cor}"></div>
+      <div><h2>${esc(p.nome)}</h2><div class="meta" id="m-meta">Carregando…</div></div>
+      <div class="acoes">${editar ? '<button class="btn prim" id="b-pacote">Atualizar dados</button>' : ''}</div>
+    </div>
+    <div id="modelo-area" class="cartao vazio"><div class="spinner" style="margin:0 auto"></div><p>Abrindo o painel…</p></div>`);
+  document.querySelector('.trilha [data-ir]').onclick = () => location.hash = '#/';
+  $('#b-pacote') && ($('#b-pacote').onclick = () => escolherPacote(p));
+
+  const [pac, tpl] = await Promise.all([
+    sb.from('pacotes').select('referencia,conteudo,atualizado_em,atualizado_por').eq('painel', p.id).maybeSingle(),
+    fetch(MODELOS[p.id] + '?v=' + CFG.VERSAO, { cache:'no-cache' }).then(r => r.ok ? r.text() : Promise.reject(new Error('Arquivo do painel não encontrado no GitHub (' + MODELOS[p.id] + ').'))).catch(e => ({ erro:e }))
+  ]);
+  const area = $('#modelo-area');
+  if (!area) return;
+  if (pac.error) { area.innerHTML = `<div class="erro">${esc(traduzErro(pac.error))}</div>`; $('#m-meta').textContent=''; return; }
+  if (tpl.erro) { area.innerHTML = `<div class="erro">${esc(tpl.erro.message)}</div>`; $('#m-meta').textContent=''; return; }
+  const d = pac.data;
+  if (!d) {
+    $('#m-meta').innerHTML = `Ainda sem dados · <span class="selo ${p.nivel}">${p.nivel}</span>`;
+    area.innerHTML = `${svg('planilha')}<h3>Este painel ainda não tem dados</h3>
+      <p>${editar ? 'Clique em <b>Atualizar dados</b> e escolha o arquivo de dados deste painel.' : 'O RH ainda não carregou os dados deste painel.'}</p>`;
+    return;
+  }
+  $('#m-meta').innerHTML = `Dados de <b>${fmtRef(d.referencia)}</b> · atualizado em ${fmtData(d.atualizado_em)}${d.atualizado_por?' por '+esc(d.atualizado_por):''} · <span class="selo ${p.nivel}">${p.nivel}</span>`;
+  try {
+    const html = montarModelo(tpl, d.conteudo, d.referencia);
+    const url = URL.createObjectURL(new Blob([html], { type:'text/html' }));
+    area.className = 'modelo-area';
+    area.innerHTML = `<iframe id="modelo-frame" title="${esc(p.nome)}" src="${url}"></iframe>`;
+    $('#modelo-frame').onload = () => setTimeout(() => URL.revokeObjectURL(url), 2000);
+  } catch(e){ area.innerHTML = `<div class="erro">Não consegui montar o painel: ${esc(e.message)}</div>`; }
+}
+
+function montarModelo(tpl, conteudo, referencia){
+  const seguro = v => JSON.stringify(v).replace(/</g,'\\u003c').replace(/\u2028/g,'\\u2028').replace(/\u2029/g,'\\u2029');
+  const nomes = (conteudo.nomes || Object.keys(conteudo.dados || {})).filter(n => /^[A-Z][A-Z0-9_]*$/.test(n));
+  const js = [
+    // os painéis usam "window.claude.use('downloads')" para baixar arquivos: aqui isso vira download normal
+    `window.claude={use:async n=>n==='downloads'?{save:async o=>{const b=new Blob([o.data]);const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=o.filename;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},4000);return true}}:null};`,
+    `const CRV_REF=${seguro(referencia)};`,
+    ...nomes.map(n => `const ${n}=${seguro(conteudo.dados[n])};`)
+  ].join('\n');
+  const refBR = fmtRef(referencia);
+  if (!tpl.includes('/*__CRV_DADOS__*/')) throw new Error('arquivo do painel sem o ponto de dados');
+  return tpl.split('__CRV_REFBR__').join(refBR).replace('/*__CRV_DADOS__*/', () => js);
+}
+
+function escolherPacote(p){
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = '.json,application/json';
+  inp.onchange = async () => {
+    const f = inp.files[0]; if (!f) return;
+    let pac;
+    try { pac = JSON.parse(await f.text()); } catch(_) { return toast('Esse arquivo não é um arquivo de dados do app.', true); }
+    if (pac.tipo !== 'crv-pacote' || !pac.dados) return toast('Esse arquivo não é um arquivo de dados do app.', true);
+    if (pac.painel !== p.id) return toast(`Esse arquivo é do painel "${pac.painel}", não deste.`, true);
+    const kb = Math.round(f.size/1024);
+    abrirModal({
+      titulo: 'Atualizar dados de ' + p.nome,
+      corpo: `<div class="ok">Arquivo <b>${esc(f.name)}</b> · dados de <b>${fmtRef(pac.referencia)}</b> · ${fmtNum(kb)} KB</div>
+        <p style="color:var(--mut)">Os dados atuais deste painel serão substituídos. Todos com acesso passam a ver a versão nova.</p>`,
+      pe: `<button class="btn borda" id="pk-c">Cancelar</button><button class="btn prim" id="pk-ok">Salvar no app</button>`,
+      aoAbrir: () => {
+        $('#pk-c').onclick = fecharModal;
+        $('#pk-ok').onclick = async () => {
+          const bt = $('#pk-ok'); bt.disabled = true; bt.textContent = 'Enviando… (pode levar alguns segundos)';
+          const reg = { painel:p.id, referencia:pac.referencia, conteudo:{ nomes:pac.nomes, dados:pac.dados }, tamanho_kb:kb,
+            atualizado_em:new Date().toISOString(), atualizado_por:E.perfil.nome };
+          const { error } = await sb.from('pacotes').upsert(reg);
+          if (error) { bt.disabled=false; bt.textContent='Salvar no app'; return toast(traduzErro(error), true); }
+          E.metas[p.id] = { painel:p.id, arquivo:f.name, linhas:null, atualizado_em:reg.atualizado_em, atualizado_por:reg.atualizado_por, referencia:pac.referencia };
+          registrar(p.id, 'atualizou os dados', `${f.name} · dados de ${fmtRef(pac.referencia)}`);
+          fecharModal(); toast('Dados atualizados.'); telaPainel(p.id);
+        };
+      }
+    });
+  };
+  inp.click();
+}
+
+/* =====================================================================
    ADMINISTRAÇÃO
    ===================================================================== */
 let abaAdmin = 'usuarios';
@@ -771,8 +908,8 @@ function adminPaineis(){
       <td><b>${esc(p.nome)}</b></td>
       <td><select class="p-frente">${[...new Set([...frentes, ...ORDEM_FRENTES])].map(f=>`<option ${f===p.frente?'selected':''}>${esc(f)}</option>`).join('')}</select></td>
       <td><select class="p-nivel">${['geral','controlado','restrito'].map(n=>`<option ${n===p.nivel?'selected':''}>${n}</option>`).join('')}</select></td>
-      <td>${m ? `${fmtNum(m.linhas)} linhas · ${new Date(m.atualizado_em).toLocaleDateString('pt-BR')}` : '—'}</td>
-      <td>${m ? '<button class="btn peq perigo p-apagar">Apagar base</button>' : ''}</td></tr>`; }).join('')}
+      <td>${m ? `${m.linhas==null ? 'dados de '+fmtRef(m.referencia) : fmtNum(m.linhas)+' linhas'} · ${new Date(m.atualizado_em).toLocaleDateString('pt-BR')}` : '—'}</td>
+      <td>${m ? '<button class="btn peq perigo p-apagar">Apagar dados</button>' : ''}</td></tr>`; }).join('')}
     </tbody></table></div>`;
   c.querySelectorAll('tr[data-id]').forEach(tr => {
     const id = tr.dataset.id;
@@ -787,7 +924,8 @@ function adminPaineis(){
     const ap = tr.querySelector('.p-apagar');
     if (ap) ap.onclick = async () => {
       if (!confirm('Apagar a base deste painel? Os dados saem do app (a planilha original continua no seu computador).')) return;
-      const { error } = await sb.from('bases').delete().eq('painel', id);
+      const tabela = MODELOS[id] ? 'pacotes' : 'bases';
+      const { error } = await sb.from(tabela).delete().eq('painel', id);
       if (error) return toast(traduzErro(error), true);
       delete E.metas[id]; registrar(id, 'apagou a base', ''); toast('Base apagada.'); adminPaineis();
     };
