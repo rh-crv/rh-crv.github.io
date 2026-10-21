@@ -750,15 +750,15 @@ function montarModelo(tpl, conteudo, referencia){
   let html = tpl.split('__CRV_REFBR__').join(fmtRef(referencia)).split('__CRV_BASE__').join(base);
   const ponte = `<script>${window.CRV_PONTE.scriptPainel()}<\/script>`;
   // visual compacto: capa mais baixa e títulos menores em todos os painéis
-  const compacto = `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  const compacto = `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@400;500;600;700&display=swap">
   <style id="crv-padrao">
-    /* padrão visual do app: mesma fonte em todos os painéis, letras ~10% menores */
-    :root{--f-body:'Inter',system-ui,sans-serif!important;--f-disp:'Inter',system-ui,sans-serif!important;--f-display:'Inter',system-ui,sans-serif!important;
-      --display:'Inter',system-ui,sans-serif!important;--font-display:'Inter',system-ui,sans-serif!important;--font-body:'Inter',system-ui,sans-serif!important;
-      --body:'Inter',system-ui,sans-serif!important;--font:'Inter',system-ui,sans-serif!important;--f-head:'Inter',system-ui,sans-serif!important;
-      --f-mono:'Inter',system-ui,sans-serif!important;--font-mono:'Inter',system-ui,sans-serif!important}
+    /* padrão visual do app: IBM Plex Sans Condensed em todos os painéis, letras ~10% menores */
+    :root{--f-body:'IBM Plex Sans Condensed','Arial Narrow',system-ui,sans-serif!important;--f-disp:'IBM Plex Sans Condensed','Arial Narrow',system-ui,sans-serif!important;--f-display:'IBM Plex Sans Condensed','Arial Narrow',system-ui,sans-serif!important;
+      --display:'IBM Plex Sans Condensed','Arial Narrow',system-ui,sans-serif!important;--font-display:'IBM Plex Sans Condensed','Arial Narrow',system-ui,sans-serif!important;--font-body:'IBM Plex Sans Condensed','Arial Narrow',system-ui,sans-serif!important;
+      --body:'IBM Plex Sans Condensed','Arial Narrow',system-ui,sans-serif!important;--font:'IBM Plex Sans Condensed','Arial Narrow',system-ui,sans-serif!important;--f-head:'IBM Plex Sans Condensed','Arial Narrow',system-ui,sans-serif!important;
+      --f-mono:'IBM Plex Sans Condensed','Arial Narrow',system-ui,sans-serif!important;--font-mono:'IBM Plex Sans Condensed','Arial Narrow',system-ui,sans-serif!important}
     html{zoom:.9}
-    body{font-family:'Inter',system-ui,sans-serif!important;font-variant-numeric:tabular-nums;letter-spacing:0!important;-webkit-font-smoothing:antialiased}
+    body{font-family:'IBM Plex Sans Condensed','Arial Narrow',system-ui,sans-serif!important;font-variant-numeric:tabular-nums;letter-spacing:0!important;-webkit-font-smoothing:antialiased}
     body h1,body h2,body h3,body .ttl,body .eyebrow{letter-spacing:-.005em!important;font-stretch:100%!important}
     body h2{font-size:17px!important}
     body h3{font-size:14.5px!important}
