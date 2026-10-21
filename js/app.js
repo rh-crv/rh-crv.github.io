@@ -200,6 +200,7 @@ async function sair(){ await sb.auth.signOut(); E.sessao=null; E.perfil=null; lo
 /* =====================================================================
    ESTRUTURA (topo + rotas)
    ===================================================================== */
+function menuRecolhido(){ try { return !!localStorage.getItem('crv-menu-recolhido'); } catch(_) { return false; } }
 function moldura(conteudo){
   window.CRV_PONTE && window.CRV_PONTE.limpar();
   const p = E.perfil;
@@ -216,7 +217,8 @@ function moldura(conteudo){
 
   $('#app').innerHTML = `
   <div class="casca">
-    <aside class="lateral" id="lateral">
+    <aside class="lateral ${menuRecolhido() ? 'recolhida' : ''}" id="lateral">
+      <button class="lat-recolher" id="b-recolher" title="Recolher / abrir o menu" aria-label="Recolher menu">‹</button>
       <div class="lat-topo">
         <img class="logo" src="img/logo-crv.png" alt="CRV Industrial" id="t-logo">
         <div class="lat-tit"><b>Gestão de Pessoas</b><span>Unidade Capinópolis</span></div>
@@ -251,6 +253,7 @@ function moldura(conteudo){
     </div>
   </div>`;
   const lat = $('#lateral'), veu = $('#veu');
+  $('#b-recolher').onclick = () => { lat.classList.toggle('recolhida'); try { localStorage.setItem('crv-menu-recolhido', lat.classList.contains('recolhida') ? '1' : ''); } catch(_){} };
   const fechar = () => { lat.classList.remove('aberta'); veu.classList.remove('ativo'); };
   $('#b-hamb').onclick = () => { lat.classList.add('aberta'); veu.classList.add('ativo'); };
   veu.onclick = fechar;
@@ -699,11 +702,10 @@ const fmtRef = r => r ? r.split('-').reverse().join('/') : '—';
 
 async function telaModelo(p, cfg){
   const editar = podeEditar(p);
-  moldura(`<div class="trilha"><button data-ir="#/">Início</button> › <span>${esc(p.frente)}</span> › <b>${esc(p.nome)}</b></div>
-    <div class="painel-cab compacto">
-      <div class="barra-cor" style="background:${cfg.cor}"></div>
-      <div><h2>${esc(p.nome)}</h2><div class="meta" id="m-meta">Carregando…</div></div>
-      <div class="acoes">${editar ? '<button class="btn prim" id="b-pacote">Atualizar dados</button>' : ''}</div>
+  moldura(`<div class="barra-painel" style="--cor:${cfg.cor}">
+      <div class="bp-esq"><span class="trilha"><button data-ir="#/">Início</button> › ${esc(p.frente)} ›</span> <b>${esc(p.nome)}</b>
+        <span class="meta" id="m-meta">Carregando…</span></div>
+      <div class="bp-dir">${editar ? '<button class="btn prim peq" id="b-pacote">Atualizar dados</button>' : ''}</div>
     </div>
     ${AVISOS[p.id] ? `<div class="aviso-painel">${esc(AVISOS[p.id])}</div>` : ''}
     <div id="modelo-area" class="cartao vazio"><div class="spinner" style="margin:0 auto"></div><p>Abrindo o painel…</p></div>`);
@@ -733,7 +735,7 @@ async function telaModelo(p, cfg){
       : await arq.text();
     d.conteudo = JSON.parse(texto);
   }
-  $('#m-meta').innerHTML = `Dados de <b>${fmtRef(d.referencia)}</b> · atualizado em ${fmtData(d.atualizado_em)}${d.atualizado_por?' por '+esc(d.atualizado_por):''} · <span class="selo ${p.nivel}">${p.nivel}</span>`;
+  $('#m-meta').innerHTML = `dados de ${fmtRef(d.referencia)} · <span class="selo ${p.nivel}" title="Atualizado em ${esc(fmtData(d.atualizado_em))}${d.atualizado_por?' por '+esc(d.atualizado_por):''}">${p.nivel}</span>`;
   try {
     // ponte: o que o painel pedir ao "Claude" (salvar anotações, baixar arquivos...) vem para o app
     window.__CRV_PAINEL = window.CRV_PONTE.criar({ sb, painel: p.id, perfil: () => E.perfil, quem: () => E.perfil.nome,
@@ -757,7 +759,18 @@ function montarModelo(tpl, conteudo, referencia){
   const base = location.href.split('#')[0].replace(/[^/]*$/, '');
   let html = tpl.split('__CRV_REFBR__').join(fmtRef(referencia)).split('__CRV_BASE__').join(base);
   const ponte = `<script>${window.CRV_PONTE.scriptPainel()}<\/script>`;
+  // visual compacto: capa mais baixa e títulos menores em todos os painéis
+  const compacto = `<style id="crv-compacto">
+    body h1{font-size:20px!important;line-height:1.2!important;margin-top:0!important}
+    body h1 small{font-size:12px!important}
+    body>header,body>.top,body>.hero,body>.head,body>.band,header.top,.hero,.head,.band,.top{padding-top:12px!important;min-height:0!important}
+    header img,.top img,.hero img,.head img,.band img,.brand img,.logo-card img,img.logo{max-height:44px!important;width:auto!important}
+    .logo-card{padding:6px 10px!important}
+    .eyebrow,.kicker,.sup,.over{font-size:10.5px!important;margin-bottom:2px!important}
+    .ttl p,.hero p,.top p.lead,.top .sub,.hero .sub{font-size:13px!important;margin-top:2px!important}
+  </style>`;
   html = /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, m => m + ponte) : ponte + html;
+  html = /<\/head>/i.test(html) ? html.replace(/<\/head>/i, m => compacto + m) : html + compacto;
 
   if (conteudo && conteudo.blocos) {               // formato 2: vários blocos por script
     for (const b of conteudo.blocos) {
