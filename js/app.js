@@ -137,6 +137,21 @@ async function carregarCatalogo(){
     jv.nome = 'Jovem Aprendiz João Bittar';
     if (E.perfil && E.perfil.papel === 'admin') sb.from('paineis').update({ nome: jv.nome }).eq('id', 'jovem').then(() => {}, () => {});
   }
+  // painéis novos que ainda não existem no banco: o administrador cria na hora
+  const sp = E.paineis.find(x => x.id === 'sysprocard');
+  const NOVOS = [
+    { id:'cartao-alimentacao', frente:'Benefícios', nome:'Cartão Alimentação', nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.1 },
+    { id:'cartao-convenio',    frente:'Benefícios', nome:'Cartão Convênio',    nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.2 },
+    { id:'cartao-premium',     frente:'Benefícios', nome:'Cartão Premium',     nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.3 }
+  ].filter(n => !E.paineis.some(x => x.id === n.id));
+  if (NOVOS.length && E.perfil && E.perfil.papel === 'admin') {
+    await sb.from('paineis').insert(NOVOS.map((n, i) => ({ ...n, ordem: (sp ? sp.ordem : 40) + 1 + i })));
+    const r2 = await sb.from('paineis').select('*').order('ordem');
+    if (!r2.error) E.paineis = (r2.data || []).filter(x => x.id !== 'rs' && x.id !== 'absenteismo-gestao');
+  }
+  // os cartões ficam logo abaixo do Sysprocard
+  if (sp) { const ix = E.paineis.indexOf(sp); const cs = E.paineis.filter(x => x.id.startsWith('cartao-')).sort((a,b) => a.id < b.id ? -1 : 1);
+    if (cs.length) { E.paineis = E.paineis.filter(x => !x.id.startsWith('cartao-')); E.paineis.splice(E.paineis.indexOf(E.paineis.find(x => x.id === 'sysprocard')) + 1, 0, ...cs); } }
   E.metas = {};
   (m.data || []).forEach(r => E.metas[r.painel] = r);
   (k.data || []).forEach(r => E.metas[r.painel] = { ...r, linhas:null });
@@ -768,6 +783,8 @@ const MODELOS_LISTA = ['quadro','admissoes','rescisoes','experiencia','fat','cur
   'ferias','sancoes','sysprocard','unimed','uniodonto','farmacia','jovem','renapsi','treinamentos','crachas','pesquisas','lideres',
   'conexao','rd','fadiga','processos','ouvidorias','recepcao','alojamentos','onibus','gratificacao'];
 const MODELOS = Object.fromEntries(MODELOS_LISTA.map(id => [id, `paineis/${id}.html`]));
+// painéis que usam o mesmo arquivo de painel
+['cartao-alimentacao','cartao-convenio','cartao-premium'].forEach(id => MODELOS[id] = 'paineis/cartoes.html');
 // recursos que dependem do Claude e não funcionam no app
 const AVISOS = { curriculos: 'Recrutamento e Seleção fica aqui dentro, no quadro "Recrutamento e Seleção". A leitura automática de currículos por IA só funciona dentro do Claude; aqui você consulta, cadastra e acompanha.' };
 

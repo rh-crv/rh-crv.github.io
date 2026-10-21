@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cartões Sysprocard</title>
+<style>
+:root{--bg:#f4f5f8;--card:#fff;--ink:#1d2433;--mut:#667085;--line:#e4e7ec;--trk:#eef0f4;
+ --acc:#2e8a57;--acc2:#1d5c3a;--accbg:#e8f4ee;
+ --ok:#2e8a57;--okbg:#e6f3ec;--warn:#b7791f;--warnbg:#fcf1dc;--bad:#b42318;--badbg:#fdecea;--info:#5b5f97;--infobg:#eeeefa;--mutbg:#f1f3f6}
+body.t-convenio{--acc:#a35b12;--acc2:#6f3d0b;--accbg:#fbf0e3}
+body.t-premium{--acc:#6b3fa0;--acc2:#45266b;--accbg:#f1eaf9}
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,sans-serif}
+header{background:linear-gradient(120deg,var(--acc2),var(--acc));color:#fff}
+.hin{max-width:1280px;margin:0 auto;padding:16px 18px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.logo{background:#fff;border-radius:10px;padding:6px 10px;display:flex}.logo img{height:40px;display:block}
+.ttl{flex:1;min-width:220px}.ttl .eb{font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.8;font-weight:700}
+.ttl h1{margin:2px 0 0;font-size:22px}.ttl small{display:block;opacity:.85;font-size:12.5px;margin-top:2px}
+.hacts{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:8px 13px;font:600 13px inherit;font-family:inherit;cursor:pointer}
+header .btn{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.3);color:#fff}header .btn:hover{background:rgba(255,255,255,.24)}
+main{max-width:1280px;margin:0 auto;padding:16px 18px 40px}
+.read{display:grid;grid-template-columns:repeat(3,1fr);background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:14px;overflow:hidden}
+.read>div{padding:14px 16px;border-top:3px solid var(--acc)}.read>div+div{border-left:1px solid var(--line)}
+.read>div:nth-child(2){border-top-color:var(--bad)}.read>div:nth-child(3){border-top-color:var(--warn)}
+.read h3{margin:0 0 6px;font-size:12px;letter-spacing:.06em;text-transform:uppercase}.read p{margin:0;font-size:13.5px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:14px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;text-align:left;font:inherit;color:inherit;cursor:pointer;border-left:4px solid var(--c,var(--acc))}
+.kpi:hover{box-shadow:0 2px 10px rgba(0,0,0,.06)}.kpi.on{outline:2px solid var(--c,var(--acc));outline-offset:-1px}
+.kpi .l{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--mut)}
+.kpi .v{font-size:28px;font-weight:700;line-height:1.15;margin-top:2px}.kpi .s{font-size:12px;color:var(--mut)}
+.grid2{display:grid;grid-template-columns:1.1fr .9fr;gap:14px;margin-bottom:14px}
+.box{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.box h2{margin:0 0 2px;font-size:16px}.box .sub{margin:0 0 10px;color:var(--mut);font-size:12.5px}
+.hr{display:grid;grid-template-columns:minmax(120px,1.1fr) 2fr auto;gap:10px;align-items:center;padding:5px 6px;border-radius:7px;cursor:pointer;width:100%;border:0;background:none;font:inherit;color:inherit;text-align:left}
+.hr:hover{background:var(--mutbg)}.hr.on{background:var(--accbg)}
+.hr .n{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.hr .t{height:10px;background:var(--trk);border-radius:5px;overflow:hidden;display:flex}.hr .t i{display:block;height:100%}
+.hr .v{font-size:12.5px;font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--mut)}.hr .v b{color:var(--ink)}
+.lg{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--mut);margin-bottom:6px}.lg i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px}
+.tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.tools input,.tools select{border:1px solid var(--line);border-radius:8px;padding:7px 10px;font:inherit;background:var(--card);color:var(--ink)}
+.tools input{min-width:220px;flex:1}.tools .cnt{color:var(--mut);font-size:12.5px;margin-left:auto}
+.tab{overflow:auto;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+table{width:100%;border-collapse:collapse;font-size:13px}th{position:sticky;top:0;background:#f8f9fb;text-align:left;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mut);padding:8px 10px;z-index:1}
+td{padding:8px 10px;border-top:1px solid var(--line);vertical-align:top}td .sm{font-size:11.5px;color:var(--mut)}
+.pill{display:inline-block;border-radius:99px;padding:2px 9px;font-size:11.5px;font-weight:700;white-space:nowrap}
+.p-ok{background:var(--okbg);color:var(--ok)}.p-warn{background:var(--warnbg);color:var(--warn)}.p-bad{background:var(--badbg);color:var(--bad)}.p-info{background:var(--infobg);color:var(--info)}.p-mut{background:var(--mutbg);color:var(--mut)}
+.mini{border:1px solid var(--line);background:var(--card);border-radius:7px;padding:4px 9px;font:600 12px inherit;font-family:inherit;cursor:pointer;color:var(--ink);white-space:nowrap}
+.mini.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+.more{display:block;margin:10px auto 0}
+.foot{color:var(--mut);font-size:12px;margin-top:14px}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#1d2433;color:#fff;padding:9px 14px;border-radius:8px;font-size:13px;z-index:50}
+.selb{display:flex;gap:8px;align-items:center;background:var(--accbg);border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:13px;flex-wrap:wrap}
+@media (max-width:900px){.read{grid-template-columns:1fr}.read>div+div{border-left:0;border-top-width:3px}.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><div class="hin">
+  <span class="logo"><img alt="CRV Industrial" src="__CRV_BASE__img/logo-crv.png"></span>
+  <div class="ttl"><div class="eb">Benefícios · Sysprocard</div><h1 id="tit">Cartão</h1><small id="sub"></small></div>
+  <div class="hacts"><button class="btn" id="bX">Excel</button><button class="btn" id="bP">PDF</button></div>
+</div></header>
+<main>
+  <section class="read" id="read"></section>
+  <section class="kpis" id="kpis"></section>
+  <section class="grid2">
+    <div class="box"><h2>Cobertura por departamento</h2><p class="sub" id="covSub"></p><div class="lg" id="covLg"></div><div id="cov"></div></div>
+    <div class="box"><h2 id="g2t">Por gerência</h2><p class="sub" id="g2s"></p><div id="g2"></div></div>
+  </section>
+  <section class="box">
+    <h2 id="lt">Lista</h2><p class="sub" id="ls"></p>
+    <div class="tools">
+      <input id="q" type="search" placeholder="Buscar nome, matrícula ou função">
+      <select id="fCat"></select><select id="fDep"></select><select id="fGer"></select><select id="fSit"></select>
+      <span class="cnt" id="cnt"></span>
+    </div>
+    <div class="selb" id="selb" hidden></div>
+    <div class="tab"><table><thead id="th"></thead><tbody id="tb"></tbody></table></div>
+    <button class="btn more" id="more" hidden>Mostrar mais</button>
+  </section>
+  <p class="foot" id="foot"></p>
+</main>
+<div class="toast" id="toast" hidden></div>
+<script>/*__CRV_DADOS_0__*/</script>
+<script>
+(function(){
+'use strict';
+const C=CARTAO, T=C.tipo;
+document.body.classList.add('t-'+T);
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const nf=n=>Number(n).toLocaleString('pt-BR');
+const pc=(a,b)=>b?Math.round(a/b*100)+'%':'–';
+const br=s=>s?String(s).slice(0,10).split('-').reverse().join('/'):'';
+const tc=s=>String(s||'').toLowerCase().replace(/(^|[\s\/(.-])(\S)/g,(m,a,b)=>a+b.toUpperCase()).replace(/ (Da|De|Do|Dos|Das|E) /g,m=>m.toLowerCase()).replace(/\b(Ii|Iii|Iv|Vi|Vii|Ctt|Crv|Adm|Rh|Mg|Coa|Pcm)\b/g,m=>m.toUpperCase());
+const moeda=v=>v==null||v===''?'':'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+function toast(t){const e=$('toast');e.textContent=t;e.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>e.hidden=true,3200)}
+
+/* ---------- regras por cartão ---------- */
+const PREM_TXT='Só podem ter: Motorista I, II e III e Operador de Máquinas Agrícolas I, II e III.';
+const CATS={
+ ok:   {l:T==='convenio'?'Convênio liberado':'Têm o cartão',c:'var(--ok)',p:'p-ok',acao:'—'},
+ falta:{l:'Falta pedir',c:'var(--bad)',p:'p-bad',acao:'Pedir o cartão na Sysprocard'},
+ bloq: {l:T==='convenio'?'Cartão sem convênio liberado':'Cartão bloqueado',c:'var(--warn)',p:'p-warn',acao:T==='convenio'?'Liberar só se o colaborador pedir':'Conferir e pedir o desbloqueio ou 2ª via'},
+ regra:{l:'Fora da regra',c:'var(--info)',p:'p-info',acao:'Função não permitida no Premium: conferir e bloquear'},
+ desl: {l:'Desligados com cartão ativo',c:'var(--bad)',p:'p-bad',acao:'Bloquear o cartão'},
+ fora: {l:'Matrícula fora do Quadro',c:'var(--warn)',p:'p-warn',acao:'Conferir quem é e bloquear se não estiver na empresa'},
+ afast:{l:'Afastados',c:'var(--mut)',p:'p-mut',acao:T==='alimentacao'?'Afastado não recebe o vale (exceto acidente de trabalho)':'Acompanhar no retorno'}
+};
+function cat(r){
+  if(r.sit==='Fora do quadro')return r.card==='Ativo'?'fora':null;
+  if(r.sit==='Desligado')return r.card==='Ativo'?'desl':null;
+  if(T==='premium'&&!r.eleg)return r.card==='Ativo'?'regra':null;
+  if(r.sit==='Afastado'&&T!=='convenio')return 'afast';
+  return r.card==='Ativo'?'ok':r.card?'bloq':'falta';
+}
+const R=C.rows.map(r=>Object.assign(r,{k:cat(r),N:tc(r.nome),F:tc(r.func)})).filter(r=>r.k);
+const ORD=T==='premium'?['ok','falta','bloq','regra','desl','fora','afast']:['ok','falta','bloq','desl','fora','afast'];
+const PEDE=new Set(['falta','bloq','desl','fora','regra']);
+
+/* ---------- pedidos marcados no app ---------- */
+let DB=null,PED={},podeEd=true;
+async function lerPedidos(){try{if(!(window.claude&&window.claude.use))return;DB=await window.claude.use('db');const s=await DB.collection('pedidos').get();PED={};s.docs.forEach(d=>{const x=d.data();if(!x.desfeito)PED[d.id]=x});render()}catch(_){}}
+async function marcar(mats,desfazer){
+  if(!DB){toast('Não dá para salvar nesta visualização.');return}
+  const quem=(window.parent&&window.parent.CRV_QUEM)||'',hoje=new Date().toISOString();
+  try{for(const m of mats){const r=R.find(x=>x.mat===m);const acao=r?CATS[r.k].acao:'';
+      if(desfazer){await DB.collection('pedidos').doc(m).set({desfeito:true,em:hoje,por:quem});delete PED[m]}
+      else{const x={em:hoje,por:quem,cat:r?r.k:'',acao};await DB.collection('pedidos').doc(m).set(x);PED[m]=x}}
+    toast(desfazer?'Marcação desfeita.':(mats.length>1?mats.length+' marcados como pedido feito.':'Marcado como pedido feito.'));render();
+  }catch(e){toast('Não consegui salvar: '+((e&&e.message)||'sem permissão para editar este painel.'))}
+}
+
+/* ---------- filtros ---------- */
+const S={cat:'',dep:'',ger:'',sit:'',q:'',lim:150};
+const deps=[...new Set(R.map(r=>r.dep))].sort((a,b)=>a.localeCompare(b));
+const gers=[...new Set(R.map(r=>r.ger).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+$('fCat').innerHTML='<option value="">Todas as situações do cartão</option>'+ORD.map(k=>`<option value="${k}">${CATS[k].l}</option>`).join('')+'<option value="pedido">Já solicitados (marcados no app)</option>';
+$('fDep').innerHTML='<option value="">Todos os departamentos</option>'+deps.map(d=>`<option>${esc(d)}</option>`).join('');
+$('fGer').innerHTML='<option value="">Todas as gerências</option>'+gers.map(d=>`<option>${esc(d)}</option>`).join('');
+$('fSit').innerHTML='<option value="">Situação no Quadro: todas</option>'+['Ativo','Afastado','Desligado','Fora do quadro'].map(x=>`<option>${x}</option>`).join('');
+const sel=(skip)=>R.filter(r=>(skip==='cat'||!S.cat||(S.cat==='pedido'?!!PED[r.mat]&&PEDE.has(r.k):r.k===S.cat))&&(skip==='dep'||!S.dep||r.dep===S.dep)&&(skip==='ger'||!S.ger||r.ger===S.ger)&&(!S.sit||r.sit===S.sit)&&(!S.q||(r.nome+' '+r.mat+' '+r.func).toUpperCase().includes(S.q.toUpperCase())));
+const alvo=r=>(r.sit==='Ativo'||(T==='convenio'&&r.sit==='Afastado'))&&(T!=='premium'||r.eleg);
+
+function render(){
+  const tit={alimentacao:'Cartão Alimentação',convenio:'Cartão Convênio',premium:'Cartão Premium'}[T];
+  $('tit').textContent=tit;
+  $('sub').textContent=`Planilha Sysprocard ${C.arquivo} de ${br(C.refPlanilha)} · cruzada com o Quadro Geral (empresa 5) de ${br(C.refQuadro)}`;
+  const n=k=>R.filter(r=>r.k===k).length, A=R.filter(alvo), aOk=A.filter(r=>r.k==='ok').length;
+  const pend=R.filter(r=>PEDE.has(r.k)&&!PED[r.mat]);
+  const pedidos=R.filter(r=>PEDE.has(r.k)&&PED[r.mat]).length;
+  /* leitura */
+  const grupo=T==='premium'?'motoristas e operadores de máquinas (I, II e III) ativos':T==='convenio'?'colaboradores ativos e afastados':'colaboradores ativos';
+  const top=(()=>{const m={};A.filter(r=>r.k!=='ok').forEach(r=>m[r.dep]=(m[r.dep]||0)+1);const e=Object.entries(m).sort((a,b)=>b[1]-a[1])[0];return e})();
+  const att=[];
+  if(n('desl'))att.push(`<b>${nf(n('desl'))} desligados ainda com cartão ativo</b>`);
+  if(n('fora'))att.push(`<b>${nf(n('fora'))} cartões ativos com matrícula que não está no Quadro</b>`);
+  if(T==='premium'&&n('regra'))att.push(`<b>${nf(n('regra'))} com Premium em função não permitida</b>`);
+  const faz=[];
+  if(n('falta'))faz.push(`Pedir ${nf(n('falta'))} cartão(ões)`+(pedidos?` (${nf(pedidos)} já marcados como pedido)`:''));
+  if(n('desl')+n('fora'))faz.push(`Bloquear/conferir ${nf(n('desl')+n('fora'))} cartão(ões) ativos de quem não está na empresa`);
+  if(T!=='convenio'&&n('bloq'))faz.push(`Conferir ${nf(n('bloq'))} ${T==='premium'?'elegíveis':'ativos'} com cartão bloqueado`);
+  if(T==='premium'&&n('regra'))faz.push(`Revisar ${nf(n('regra'))} Premium fora da regra`);
+  $('read').innerHTML=`<div><h3>Onde estamos</h3><p>${T==='convenio'?`<b>${nf(aOk)} de ${nf(A.length)}</b> ${grupo} (${pc(aOk,A.length)}) estão com o convênio liberado. ${nf(n('bloq'))} têm o cartão emitido sem convênio liberado e <b>${nf(n('falta'))}</b> ainda não têm cartão.`:`<b>${nf(aOk)} de ${nf(A.length)}</b> ${grupo} (${pc(aOk,A.length)}) têm o cartão ativo.${T==='premium'?' '+PREM_TXT:''}`}${top?` Departamento com mais pendências: <b>${esc(top[0])}</b> (${nf(top[1])}).`:''}</p></div>
+   <div><h3>Ponto de atenção</h3><p>${att.length?att.join('; ')+'.':'Nenhum cartão ativo de quem já saiu da empresa.'}</p></div>
+   <div><h3>O que fazer</h3><p>${faz.length?faz.join('. ')+'.':'Nada pendente.'} Use “Marcar pedido” na lista para acompanhar o que já foi solicitado.</p></div>`;
+  /* kpis */
+  $('kpis').innerHTML=ORD.filter(k=>k==='ok'||n(k)).map(k=>{const v=n(k);const pd=PEDE.has(k)?R.filter(r=>r.k===k&&PED[r.mat]).length:0;
+    const s=k==='ok'?pc(v,A.length)+' do público do cartão':k==='afast'?R.filter(r=>r.k==='afast'&&r.card==='Ativo').length+' com cartão ativo':pd?pd+' já pedidos · '+(v-pd)+' a fazer':CATS[k].acao;
+    return `<button class="kpi${S.cat===k?' on':''}" style="--c:${CATS[k].c}" data-k="${k}"><div class="l">${CATS[k].l}</div><div class="v">${nf(v)}</div><div class="s">${esc(s)}</div></button>`}).join('')+
+    (pedidos?`<button class="kpi${S.cat==='pedido'?' on':''}" style="--c:var(--info)" data-k="pedido"><div class="l">Já solicitados</div><div class="v">${nf(pedidos)}</div><div class="s">pedidos e bloqueios marcados no app</div></button>`:'');
+  $('kpis').querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{S.cat=S.cat===b.dataset.k?'':b.dataset.k;$('fCat').value=S.cat;S.lim=150;render();$('lt').scrollIntoView({behavior:'smooth',block:'start'})});
+  /* cobertura por departamento (público do cartão) */
+  const COL={ok:'var(--ok)',bloq:'var(--warn)',falta:'var(--bad)'};
+  $('covSub').textContent=`Público: ${grupo}. Clique para filtrar a lista.`;
+  $('covLg').innerHTML=[['ok',CATS.ok.l],['bloq',CATS.bloq.l],['falta','Sem cartão']].map(x=>`<span><i style="background:${COL[x[0]]}"></i>${x[1]}</span>`).join('');
+  const bars=(el,key,list)=>{const m={};list.forEach(r=>{const k=r[key]||'—';(m[k]=m[k]||{ok:0,bloq:0,falta:0,t:0});if(m[k][r.k]!=null)m[k][r.k]++;m[k].t++});
+    const E=Object.entries(m).sort((a,b)=>(b[1].t-b[1].ok)-(a[1].t-a[1].ok)||b[1].t-a[1].t);
+    $(el).innerHTML=E.length?E.map(([k,v])=>`<button class="hr${S[key]===k?' on':''}" data-${key}="${esc(k)}" title="${esc(k)}: ${v.ok} com cartão, ${v.bloq} bloqueado, ${v.falta} sem cartão"><span class="n">${esc(tc(k))}</span><span class="t">${['ok','bloq','falta'].map(c=>`<i style="width:${v[c]/v.t*100}%;background:${COL[c]}"></i>`).join('')}</span><span class="v"><b>${pc(v.ok,v.t)}</b> · ${nf(v.t)}</span></button>`).join(''):'<p class="sub">Sem dados.</p>';
+    $(el).querySelectorAll('[data-'+key+']').forEach(b=>b.onclick=()=>{const v=b.getAttribute('data-'+key);S[key]=S[key]===v?'':v;$(key==='dep'?'fDep':'fGer').value=S[key];S.lim=150;render()});};
+  const AF=A.filter(r=>(!S.ger||r.ger===S.ger));bars('cov','dep',AF);
+  $('g2t').textContent='Por gerência';$('g2s').textContent='Mesmo público, separado por gerência. Ordenado por pendências.';
+  bars('g2','ger',A.filter(r=>(!S.dep||r.dep===S.dep)));
+  /* lista */
+  const L=sel().sort((a,b)=>ORD.indexOf(a.k)-ORD.indexOf(b.k)||a.N.localeCompare(b.N));
+  $('lt').textContent=S.cat?CATS[S.cat]?CATS[S.cat].l:'Pedidos feitos':'Lista de colaboradores';
+  $('ls').textContent=S.cat&&CATS[S.cat]?'O que fazer: '+CATS[S.cat].acao+'.':'Clique nos números acima para filtrar. Na lista, “Marcar pedido” registra que a solicitação já foi feita.';
+  $('cnt').textContent=`${nf(L.length)} ${L.length===1?'pessoa':'pessoas'}`;
+  const lim=T==='convenio';
+  $('th').innerHTML=`<tr><th>Matrícula</th><th>Colaborador</th><th>Departamento</th><th>No Quadro</th><th>Cartão</th>${lim?'<th>Limite</th>':''}<th>Situação</th><th></th></tr>`;
+  $('tb').innerHTML=L.slice(0,S.lim).map(r=>{const p=PED[r.mat],pede=PEDE.has(r.k);
+    return `<tr><td>${esc(r.mat)}</td><td><b>${esc(r.N)}</b><div class="sm">${esc(r.F)||''}${T==='premium'&&r.sit!=='Fora do quadro'?(r.eleg?' · função permitida':' · <span style="color:var(--info)">função não permitida</span>'):''}</div>${r.outraMat?`<div class="sm" style="color:var(--warn)">Mesmo CPF da matrícula ${esc(r.outraMat)} (${esc(tc(r.outraNome))}, ${esc(r.outraSit)})</div>`:''}${r.cpfdif?'<div class="sm" style="color:var(--warn)">CPF do cartão diferente do Quadro: conferir</div>':''}</td>
+      <td>${esc(tc(r.dep))}<div class="sm">${esc(tc(r.secao))}</div></td>
+      <td>${esc(r.sit)}<div class="sm">${r.adm?'adm. '+br(r.adm):''}${r.desl?' · saiu '+br(r.desl):''}${r.vinc&&r.vinc!=='Efetivo'?' · '+esc(r.vinc):''}</div></td>
+      <td>${r.card?`<span class="pill ${r.card==='Ativo'?'p-ok':'p-warn'}">${esc(r.card)}</span><div class="sm">ID ${esc(r.idc)}</div>`:'<span class="pill p-bad">Sem cartão</span>'}</td>
+      ${lim?`<td>${r.lim!=null&&r.lim>0.05?moeda(r.lim):'<span class="sm">—</span>'}</td>`:''}
+      <td><span class="pill ${CATS[r.k].p}">${esc(CATS[r.k].l)}</span>${p?`<div class="sm">${['falta','bloq'].includes(r.k)?'Pedido':'Bloqueio pedido'} em ${br(p.em)}${p.por?' por '+esc(String(p.por).split(' ')[0]):''}</div>`:''}</td>
+      <td style="text-align:right">${pede?(p?`<button class="mini" data-des="${esc(r.mat)}">Desfazer</button>`:`<button class="mini pri" data-ped="${esc(r.mat)}">${['falta','bloq'].includes(r.k)?'Marcar pedido':'Marcar bloqueio pedido'}</button>`):''}</td></tr>`}).join('')||`<tr><td colspan="8" class="sm">Ninguém com esses filtros.</td></tr>`;
+  $('more').hidden=L.length<=S.lim;
+  $('tb').querySelectorAll('[data-ped]').forEach(b=>b.onclick=()=>marcar([b.dataset.ped]));
+  $('tb').querySelectorAll('[data-des]').forEach(b=>b.onclick=()=>marcar([b.dataset.des],true));
+  const semPed=L.filter(r=>PEDE.has(r.k)&&!PED[r.mat]);
+  $('selb').hidden=!(S.cat&&PEDE.has(S.cat)&&semPed.length>1);
+  $('selb').innerHTML=`<span>${nf(semPed.length)} nesta lista ainda sem pedido marcado.</span><button class="mini pri" id="pedTodos">Marcar todos como ${['falta','bloq'].includes(S.cat)?'pedido feito':'bloqueio pedido'}</button>`;
+  if($('pedTodos'))$('pedTodos').onclick=()=>marcar(semPed.map(r=>r.mat));
+  $('foot').textContent=`Fonte: planilha da Sysprocard (${C.arquivo}) com ${nf(C.nPlanilha)} cartões (${Object.entries(C.sitPlanilha).map(([k,v])=>nf(v)+' '+k.toLowerCase()).join(', ')}), cruzada pela matrícula com o Quadro Geral da empresa 5. Desligados com cartão já bloqueado não aparecem.`+(T==='premium'?' '+PREM_TXT:'')+(T==='alimentacao'?' Regra do vale: afastados não recebem, exceto por acidente de trabalho.':'');
+}
+$('q').oninput=e=>{S.q=e.target.value.trim();S.lim=150;render()};
+$('fCat').onchange=e=>{S.cat=e.target.value;S.lim=150;render()};
+$('fDep').onchange=e=>{S.dep=e.target.value;S.lim=150;render()};
+$('fGer').onchange=e=>{S.ger=e.target.value;S.lim=150;render()};
+$('fSit').onchange=e=>{S.sit=e.target.value;S.lim=150;render()};
+$('more').onclick=()=>{S.lim+=300;render()};
+
+/* ---------- exportar ---------- */
+const linhasExp=()=>sel().sort((a,b)=>ORD.indexOf(a.k)-ORD.indexOf(b.k)||a.N.localeCompare(b.N)).map(r=>{const p=PED[r.mat];const o={'Matrícula':r.mat,'Nome':r.N,'Função':r.F,'Departamento':tc(r.dep),'Seção':tc(r.secao),'Gerência':tc(r.ger),'Situação no Quadro':r.sit,'Admissão':br(r.adm),'Desligamento':br(r.desl),'Cartão':r.card||'Sem cartão','ID do cartão':r.idc};
+  if(T==='convenio')o['Limite']=r.lim!=null&&r.lim>0.05?r.lim:'';if(T==='premium')o['Função permitida']=r.eleg?'Sim':'Não';
+  o['Situação']=CATS[r.k].l;o['O que fazer']=CATS[r.k].acao;o['Pedido marcado']=p?br(p.em)+(p.por?' · '+p.por:''):'';return o});
+const nomeArq=()=>`${({alimentacao:'Cartao Alimentacao',convenio:'Cartao Convenio',premium:'Cartao Premium'})[T]}${S.cat&&CATS[S.cat]?' - '+CATS[S.cat].l:''} ${new Date().toLocaleDateString('pt-BR').split('/').join('-')}`;
+async function salvar(nome,bytes,tipo){const D=window.claude&&window.claude.use?await window.claude.use('downloads'):null;
+  if(D)return D.save({filename:nome,data:bytes});const u=URL.createObjectURL(new Blob([bytes],{type:tipo}));const a=document.createElement('a');a.href=u;a.download=nome;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},4000)}
+$('bX').onclick=async()=>{const X=window.XLSX||(window.parent&&window.parent.XLSX);const L=linhasExp();if(!X||!L.length){toast(L.length?'Gerador de Excel indisponível.':'Nada para exportar.');return}
+  const ws=X.utils.json_to_sheet(L);ws['!cols']=Object.keys(L[0]).map(k=>({wch:Math.min(45,Math.max(9,k.length+2,...L.slice(0,300).map(r=>String(r[k]).length)))}));
+  const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,'Cartões');await salvar(nomeArq()+'.xlsx',new Uint8Array(X.write(wb,{bookType:'xlsx',type:'array'})),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')};
+$('bP').onclick=async()=>{const J=(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF);const L=linhasExp();if(!J||!L.length){toast(L.length?'Gerador de PDF indisponível.':'Nada para exportar.');return}
+  const doc=new J({orientation:'landscape',unit:'mm',format:'a4'});if(typeof doc.autoTable!=='function'){toast('Gerador de tabela indisponível.');return}
+  const cols=['Matrícula','Nome','Função','Departamento','Situação no Quadro','Cartão'].concat(T==='convenio'?['Limite']:[]).concat(['Situação','O que fazer','Pedido marcado']);
+  doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text(nomeArq(),12,14);doc.setFont('helvetica','normal');doc.setFontSize(8.5);
+  doc.text(`${L.length} pessoas · planilha Sysprocard de ${br(C.refPlanilha)} × Quadro de ${br(C.refQuadro)}${S.dep?' · '+S.dep:''}${S.ger?' · '+S.ger:''}`,12,19);
+  doc.autoTable({startY:23,head:[cols],body:L.map(r=>cols.map(c=>c==='Limite'&&r[c]!==''?moeda(r[c]):String(r[c]??''))),styles:{fontSize:7,cellPadding:1.4},headStyles:{fillColor:T==='premium'?[107,63,160]:T==='convenio'?[163,91,18]:[46,138,87]},margin:{left:10,right:10}});
+  await salvar(nomeArq()+'.pdf',new Uint8Array(doc.output('arraybuffer')),'application/pdf')};
+
+render();lerPedidos();
+})();
+</script>
+</body></html>
