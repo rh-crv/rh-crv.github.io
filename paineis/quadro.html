@@ -2222,7 +2222,9 @@ render();
 .ent-pe .esp{flex:1;color:#5d6a85;font-size:12px}
 .ent-b{border:0;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer;font-size:13px}
 .ent-b.sec{background:#eef1f5;color:#14213d}.ent-b.pri{background:#2e8a57;color:#fff}
-.ent-lista{grid-column:1/-1;max-height:160px;overflow:auto;border:1px solid #e0e5ef;border-radius:8px}
+.ent-mini{border:1px solid #d5dbe6;background:#fff;border-radius:7px;padding:4px 9px;font-size:11.5px;cursor:pointer;font-weight:600;color:#14213d}
+.ent-mini.perigo{border-color:#e7b8b0;color:#a3301c}.ent-mini.perigo.conf{background:#a3301c;color:#fff;border-color:#a3301c}
+.ent-lista{grid-column:1/-1;max-height:220px;overflow:auto;border:1px solid #e0e5ef;border-radius:8px}
 .ent-lista table{width:100%;border-collapse:collapse;font-size:12px}
 .ent-lista th{position:sticky;top:0;background:#f7f9fc;text-align:left;padding:6px 8px;font-size:10.5px;text-transform:uppercase;color:#5d6a85}
 .ent-lista td{padding:6px 8px;border-top:1px solid #eef1f5}
@@ -2263,7 +2265,7 @@ function abrir(){
       <label><input type="radio" name="e-tipo" value="SAFRA"> Safra</label></div></div>
     <div class="ent-info" id="e-info">Digite a matrícula para puxar os dados do Quadro de Colaboradores (empresa 5 - CRV).</div>
     <div class="ent-info">O PDF sai com a 1ª parte já preenchida e as perguntas em branco, para o colaborador marcar com X, assinar e devolver ao RH.</div>
-    <div class="ent-sec">Últimos formulários gerados</div>
+    <div class="ent-sec" style="display:flex;align-items:center;gap:8px">Formulários gerados<button type="button" class="ent-mini" id="e-verexc" style="margin-left:auto;text-transform:none;letter-spacing:0;display:none"></button></div>
     <div class="ent-lista" id="e-lista"><p style="padding:8px;margin:0;color:#5d6a85">Carregando…</p></div>
    </div>
    <div class="ent-pe"><span class="esp" id="e-msg"></span>
@@ -2294,15 +2296,46 @@ function abrir(){
   el('e-mat').addEventListener('input',()=>{clearTimeout(tm);tm=setTimeout(puxar,450)});
   el('e-mat').addEventListener('change',()=>{clearTimeout(tm);puxar()});
   el('e-mat').addEventListener('keyup',e=>{if(e.key==='Enter'){clearTimeout(tm);puxar()}});
+  let verExc=false;
   const listar=async()=>{
     const h=el('e-lista');
     if(!DB){h.innerHTML='<p style="padding:8px;margin:0;color:#5d6a85">O registro não está disponível nesta visualização.</p>';return}
-    try{const s=await DB.collection('entrevistas').get();const L=s.docs.map(d=>d.data()).sort((a,b)=>(b.emitidoEm||'')<(a.emitidoEm||'')?-1:1).slice(0,30);
-      h.innerHTML=L.length?`<table><thead><tr><th>Gerado em</th><th>Colaborador</th><th>Função</th><th>Data do pedido</th><th>Por</th></tr></thead><tbody>${L.map(a=>`<tr><td>${esc(new Date(a.emitidoEm).toLocaleDateString('pt-BR'))}</td><td><b>${esc(a.nome)}</b> · ${esc(a.mat)}</td><td>${esc(a.func||'')}</td><td>${esc(brData(a.pedido))}</td><td>${esc(a.por||'')}</td></tr>`).join('')}</tbody></table>`:'<p style="padding:8px;margin:0;color:#5d6a85">Nenhum formulário gerado ainda.</p>';
+    try{const s=await DB.collection('entrevistas').get();
+      const T=s.docs.map(d=>Object.assign({_id:d.id},d.data())).sort((a,b)=>(b.emitidoEm||'')<(a.emitidoEm||'')?-1:1);
+      const nExc=T.filter(a=>a.excluida).length;
+      const L=T.filter(a=>verExc||!a.excluida).slice(0,40);
+      el('e-verexc').style.display=nExc?'':'none';el('e-verexc').textContent=verExc?'Esconder excluídos':`Mostrar excluídos (${nExc})`;
+      h.innerHTML=L.length?`<table><thead><tr><th>Gerado em</th><th>Colaborador</th><th>Função</th><th>Data do pedido</th><th>Por</th><th></th></tr></thead><tbody>${L.map(a=>`<tr data-id="${esc(a._id)}" style="${a.excluida?'color:#9aa3b5':''}">
+        <td style="${a.excluida?'text-decoration:line-through':''}">${esc(new Date(a.emitidoEm).toLocaleDateString('pt-BR'))}</td>
+        <td><span style="${a.excluida?'text-decoration:line-through':''}"><b>${esc(a.nome)}</b> · ${esc(a.mat)}</span>${a.excluida?`<br><span style="color:#a3301c;font-size:11px">Excluído${a.excluidoPor?' por '+esc(a.excluidoPor):''}${a.excluidoEm?' em '+esc(new Date(a.excluidoEm).toLocaleDateString('pt-BR')):''}${a.motivo?' · '+esc(a.motivo):''}</span>`:''}</td>
+        <td>${esc(a.func||'')}</td><td>${esc(brData(a.pedido))}</td><td>${esc(a.por||'')}</td>
+        <td style="text-align:right;white-space:nowrap">${a.excluida?'<button type="button" class="ent-mini" data-ac="volta">Restaurar</button>':'<button type="button" class="ent-mini" data-ac="pdf">Reimprimir</button> <button type="button" class="ent-mini perigo" data-ac="exc">Excluir</button>'}</td></tr>`).join('')}</tbody></table>`:'<p style="padding:8px;margin:0;color:#5d6a85">Nenhum formulário gerado ainda.</p>';
+      h.querySelectorAll('[data-ac]').forEach(b=>b.onclick=()=>acao(b,T));
     }catch(_){h.innerHTML='<p style="padding:8px;margin:0;color:#8a2a1a">Não consegui ler o registro.</p>'}
   };
+  const acao=async(b,T)=>{
+    const id=b.closest('tr').dataset.id,a=T.find(x=>x._id===id),msg=el('e-msg');if(!a)return;
+    const quem=(window.parent&&window.parent.CRV_QUEM)||'';
+    if(b.dataset.ac==='exc'){
+      if(!b.classList.contains('conf')){
+        b.classList.add('conf');b.textContent='Confirmar exclusão';
+        const inp=document.createElement('input');inp.placeholder='Motivo (opcional)';inp.className='e-mot';inp.style.cssText='display:block;margin:6px 0 0 auto;width:160px;border:1px solid #d5dbe6;border-radius:6px;padding:4px 6px;font:inherit;font-size:11.5px';b.parentElement.appendChild(inp);inp.focus();
+        setTimeout(()=>{if(b.isConnected&&b.classList.contains('conf')){b.classList.remove('conf');b.textContent='Excluir';inp.remove()}},12000);return;
+      }
+      const mot=((b.parentElement.querySelector('.e-mot')||{}).value||'').trim();
+      try{await DB.collection('entrevistas').doc(id).update({excluida:true,excluidoEm:new Date().toISOString(),excluidoPor:quem,motivo:mot});
+        msg.style.color='#1d5c3a';msg.textContent=`Formulário de ${a.nome} excluído. Se foi engano, use "Mostrar excluídos" e Restaurar.`;listar()}
+      catch(e){msg.style.color='#8a2a1a';msg.textContent='Não consegui excluir: '+(e.message||'sem permissão para editar este painel.')}
+    }else if(b.dataset.ac==='volta'){
+      try{await DB.collection('entrevistas').doc(id).update({excluida:false,restauradoEm:new Date().toISOString()});msg.style.color='#1d5c3a';msg.textContent='Formulário restaurado.';listar()}
+      catch(e){msg.style.color='#8a2a1a';msg.textContent='Não consegui restaurar: '+(e.message||'sem permissão.')}
+    }else if(b.dataset.ac==='pdf'){
+      salvar({mat:a.mat,nome:a.nome,dep:a.dep,func:a.func,adm:a.admissao,ped:a.pedido,tipo:a.tipo},false,true);
+    }
+  };
   listar();
-  const salvar=async(d,branco)=>{
+  el('e-verexc').onclick=()=>{verExc=!verExc;listar()};
+  const salvar=async(d,branco,reimp)=>{
     const msg=el('e-msg');msg.style.color='#5d6a85';msg.textContent='Gerando o PDF…';
     try{
       const bytes=await gerarPdf(branco?{}:d);
@@ -2310,7 +2343,7 @@ function abrir(){
       const DL=window.claude&&window.claude.use?await window.claude.use('downloads'):null;
       if(DL)await DL.save({filename:nome,data:bytes});
       else{const u=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));const a=document.createElement('a');a.href=u;a.download=nome;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},4000)}
-      if(!branco&&DB){try{await DB.collection('entrevistas').add({mat:d.mat,nome:d.nome,dep:d.dep,func:d.func,admissao:d.adm,pedido:d.ped,tipo:d.tipo,emitidoEm:new Date().toISOString(),por:(window.parent&&window.parent.CRV_QUEM)||''});listar()}catch(_){}}
+      if(!branco&&!reimp&&DB){try{await DB.collection('entrevistas').add({mat:d.mat,nome:d.nome,dep:d.dep,func:d.func,admissao:d.adm,pedido:d.ped,tipo:d.tipo,emitidoEm:new Date().toISOString(),por:(window.parent&&window.parent.CRV_QUEM)||''});listar()}catch(_){}}
       msg.style.color='#1d5c3a';msg.textContent='PDF gerado. Imprima, entregue ao colaborador e guarde a via preenchida e assinada.';
     }catch(e){console.error(e);msg.style.color='#8a2a1a';msg.textContent='Não consegui gerar o PDF: '+(e.message||e)}
   };
