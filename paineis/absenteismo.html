@@ -38,6 +38,16 @@ main{padding:18px 20px 40px}
 #ger,#dept,#set,#func{max-width:min(100%,230px)}
 select,input[type=search]{font:500 14px var(--body);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 10px;max-width:100%}
 .tog{display:flex;gap:7px;align-items:center;font-size:13.5px;color:var(--muted);cursor:pointer}
+.grpseg{margin-bottom:0!important}.grpseg button{padding:7px 14px!important;font-size:13px!important}
+.gcmp{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 12px}
+.gc{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:12px 14px;text-align:left;font:inherit;color:inherit;cursor:pointer;position:relative}
+.gc:hover{border-color:var(--bar)}.gc.on{border-color:var(--bar);box-shadow:inset 0 0 0 1px var(--bar)}
+.gc .gl{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.gc .gv{font-size:26px;font-weight:700;line-height:1.15;margin-top:2px}
+.gc .gs{font-size:12px;color:var(--muted);margin-top:2px}
+.gc .gb{height:5px;border-radius:3px;background:var(--line);margin-top:8px;overflow:hidden}.gc .gb i{display:block;height:100%;background:var(--bar)}
+.gc.tt{background:var(--surface);border-style:dashed}
+@media (max-width:760px){.gcmp{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(172px,1fr));gap:12px;margin-bottom:14px}
 .kpi{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:14px 16px}
 .kpi .l{font:600 11.5px var(--body);text-transform:uppercase;letter-spacing:.7px;color:var(--muted)}
@@ -163,11 +173,12 @@ tr.dp{cursor:pointer}tr.dp:hover td{background:var(--soft)}
     <select id="dept" aria-label="Setor"></select>
     <select id="set" aria-label="Seção"></select>
     <select id="func" aria-label="Função"></select>
-    <label class="tog"><input type="checkbox" id="excl"> Sem Desistentes e Afastados</label>
+    <div class="seg grpseg" id="grpseg" role="group" aria-label="Grupo"><button data-g="at" title="Sem os cadastros Afastados e Desistentes">Ativos</button><button data-g="af">Afastados</button><button data-g="de">Desistentes</button><button data-g="tt">Total</button></div>
     <button class="chip" id="clr">Limpar filtros</button>
   </div>
 
   <section id="view-g">
+    <div class="gcmp" id="gcmp"></div>
     <div class="kpis" id="kpis"></div>
     <div class="read"><span class="tag">O que os dados mostram</span><div class="main" id="rmain"></div><ul id="rlist"></ul></div>
     <div class="grid">
@@ -243,11 +254,16 @@ const casa=p=>{const d=Math.max(0,Math.min(272,p[2])-p[1]),m=Math.floor(d/30.44)
 function spark(v,sel,c){const mx=Math.max(...v,1e-9),mn=Math.min(...v),r=mx-mn||1,pt=v.map((x,i)=>[4+i*11.5,24-(x-mn)/r*18]),k=sel<0?v.length-1:sel;return `<svg class="spark" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true"><polygon points="4,30 ${pt.map(p=>p.join(',')).join(' ')} 96,30" fill="${c}" opacity=".12"/><polyline points="${pt.map(p=>p.join(',')).join(' ')}" fill="none" stroke="${c}" stroke-width="2" vector-effect="non-scaling-stroke"/><circle cx="${pt[k][0]}" cy="${pt[k][1]}" r="2.6" fill="${c}"/></svg>`}
 const occ=D.P.map(()=>[]); D.O.forEach(o=>occ[o[0]].push(o)); occ.forEach(a=>a.sort((x,y)=>x[1]-y[1]));
 const pseudoIdx=new Set(D.deps.map((d,i)=>PSEUDO.has(d)?i:-1).filter(i=>i>=0));
+const iAF=D.deps.indexOf('AFASTADOS'), iDE=D.deps.indexOf('DESISTENTES');
+if(!S.grp)S.grp='at';
+const GRPN={at:'Ativos',af:'Afastados',de:'Desistentes',tt:'Total'};
+const grpOk=p=>S.grp==='at'?!pseudoIdx.has(p[0]):S.grp==='af'?p[0]===iAF:S.grp==='de'?p[0]===iDE:true;
+const comG=(g,fn)=>{const o=S.grp;S.grp=g;try{return fn()}finally{S.grp=o}};
 const GI=D.rh?8:3, FI=GI+1, SI=GI+2;
-const okGF=p=>(S.ger<0||p[GI]===S.ger)&&(S.func<0||p[FI]===S.func)&&(S.set<0||p[SI]===S.set)&&!(S.excl&&pseudoIdx.has(p[0]));
+const okGF=p=>(S.ger<0||p[GI]===S.ger)&&(S.func<0||p[FI]===S.func)&&(S.set<0||p[SI]===S.set)&&grpOk(p);
 const okP=(p,dept=S.dept)=>(dept<0||p[0]===dept)&&okGF(p);
 const fctx=()=>(S.ger<0?'':' · '+D.gers[S.ger])+(S.dept<0?'':' · '+D.deps[S.dept])+(S.set<0?'':' · '+D.sets[S.set])+(S.func<0?'':' · '+D.funcs[S.func]);
-const anyF=()=>S.set>=0||S.dept>=0||S.ger>=0||S.func>=0||S.excl;
+const anyF=()=>S.set>=0||S.dept>=0||S.ger>=0||S.func>=0;
 let DR={},drN=0,DRL=null;
 function dr(title,fn,o){const k='k'+(drN++);DR[k]=Object.assign({title,fn},o||{});return `data-dr="${k}"`}
 function recs(ts,a,b,pred,dept=S.dept){const out=[];D.P.forEach((p,i)=>{if(!okP(p,dept))return;for(const o of occ[i])if(o[1]>=a&&o[1]<=b&&ts.includes(o[2])&&(!pred||pred(i,o,p)))out.push(o)});return out}
@@ -281,12 +297,17 @@ function hbars(el,rows,color){ const mx=Math.max(...rows.map(r=>r.v),1e-9);
 
 function renderG(){
   const T=agg(S.m,S.dept), per=S.m<0?'janeiro a setembro':MF[S.m], [a,b]=range(), td=T.at+T.fa||1;
-  $('hsub').textContent='Atestados e ocorrências · Unidade Capinópolis · '+per+' de 2026'+fctx();
+  $('hsub').textContent='Atestados e ocorrências · Unidade Capinópolis · '+per+' de 2026 · '+GRPN[S.grp]+fctx();
+  { const G=['at','af','de','tt'].map(g=>({g,T:comG(g,()=>agg(S.m,(g==='at'&&!pseudoIdx.has(S.dept))||g==='tt'?S.dept:-1))}));
+    const tot=G[3].T, dpT=(tot.at+tot.fa)||1;
+    const sub={at:'Sem os cadastros Afastados e Desistentes',af:'Cadastro Afastados',de:'Cadastro Desistentes',tt:'Todos juntos'};
+    $('gcmp').innerHTML=G.map(({g,T})=>{const dp=T.at+T.fa;return `<button type="button" class="gc ${g}${S.grp===g?' on':''}" data-gc="${g}"><div class="gl">${GRPN[g]}</div><div class="gv">${pc(T.rate)}</div><div class="gs">${nf(dp)} dias perdidos${g!=='tt'?' · '+pc(dp/dpT,0)+' do total':''}</div><div class="gs">${nf(T.ppl.size)} com ausência · quadro médio ${nf(T.avg,0)}</div><div class="gs">${sub[g]}</div>${g!=='tt'?`<div class="gb"><i style="width:${(dp/dpT*100).toFixed(1)}%"></i></div>`:''}</button>`}).join('');
+    $('gcmp').querySelectorAll('[data-gc]').forEach(b=>b.onclick=()=>{S.grp=b.dataset.gc;if((S.grp==='at'&&pseudoIdx.has(S.dept))||((S.grp==='af'||S.grp==='de')&&S.dept>=0))S.dept=-1;syncF();render()}); }
   let delta=''; if(S.m>0){const P=agg(S.m-1,S.dept),dd=(T.rate-P.rate)*100; delta=`<span class="d">${dd>=0?'▲':'▼'} ${nf(Math.abs(dd),1)} p.p.</span> em relação a ${MF[S.m-1]} · `;}
   const M=MN.map((_,m)=>agg(m,S.dept));
   const dAll=dr('Atestados e faltas · '+per,()=>recs([0,1],a,b),{range:[a,b]}), dAt=dr('Atestados · '+per,()=>recs([0],a,b),{range:[a,b]}), dFa=dr('Faltas · '+per,()=>recs([1],a,b),{range:[a,b]});
   $('kpis').innerHTML=[
-   ['Absenteísmo total',pc(T.rate),delta+'atestado + falta sobre os dias previstos',M.map(x=>x.rate),'var(--bar)',dAll],
+   ['Absenteísmo · '+GRPN[S.grp],pc(T.rate),delta+'atestado + falta sobre os dias previstos',M.map(x=>x.rate),'var(--bar)',dAll],
    ['% de atestados',pc(T.rAt),`${nf(T.at)} dias · ${pc(T.at/td,0)} dos dias perdidos`,M.map(x=>x.rAt),'var(--s-at)',dAt],
    ['% de faltas',pc(T.rFa),`${nf(T.fa)} dias · ${pc(T.fa/td,0)} dos dias perdidos`,M.map(x=>x.rFa),'var(--s-fa)',dFa],
    ['Dias perdidos',nf(T.at+T.fa),`${nf(T.at)} de atestado · ${nf(T.fa)} de falta`,M.map(x=>x.at+x.fa),'var(--bar)',dAll],
@@ -356,7 +377,7 @@ function renderG(){
     if(S.dept<0&&top) L.push(`Setor com maior percentual: ${top.n}, com ${pc(top.rate)}, sendo ${pc(top.rAt)} de atestado e ${pc(top.rFa)} de falta.`);
     if(S.set<0&&topS) L.push(`Seção com maior percentual (quadro médio de 15 ou mais): ${topS.n}, com ${pc(topS.rate)}, sendo ${pc(topS.rAt)} de atestado e ${pc(topS.rFa)} de falta.`);
     if(S.m<0) L.push(`Mês mais alto: ${MF[best]}, com ${pc(M[best].rate)}. Setembro fechou em ${pc(M[8].rate)}, e a parcela de faltas passou de ${pc(M[0].fa/((M[0].at+M[0].fa)||1),0)} em janeiro para ${pc(M[8].fa/((M[8].at+M[8].fa)||1),0)} em setembro.`);
-    if(!S.excl&&S.dept<0){let pa=0;D.P.forEach((p,i)=>{if(!pseudoIdx.has(p[0])||(S.ger>=0&&p[GI]!==S.ger)||(S.func>=0&&p[FI]!==S.func))return;for(const o of occ[i])if(o[1]>=a&&o[1]<=b&&o[2]<2)pa++;}); if(pa)L.push(`${nf(pa)} dias (${pc(pa/td,0)}) estão nos cadastros Desistentes e Afastados, que não refletem a rotina dos setores. Use o filtro acima para ver o resultado sem eles.`);}
+    if(S.grp==='tt'&&S.dept<0){let pa=0;D.P.forEach((p,i)=>{if(!pseudoIdx.has(p[0])||(S.ger>=0&&p[GI]!==S.ger)||(S.func>=0&&p[FI]!==S.func))return;for(const o of occ[i])if(o[1]>=a&&o[1]<=b&&o[2]<2)pa++;}); if(pa)L.push(`${nf(pa)} dias (${pc(pa/td,0)}) estão nos cadastros Desistentes e Afastados, que não refletem a rotina dos setores. Clique em "Ativos" para ver o resultado sem eles.`);}
   }
   $('rlist').innerHTML=L.map(x=>`<li>${esc(x)}</li>`).join('');
   $('todo').innerHTML=[
@@ -494,13 +515,13 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&!$('drill').hidden
 function render(){
   DR={};drN=0;
   $('months').innerHTML=[['-1','Acumulado']].concat(MN.map((n,i)=>[i,n])).map(x=>`<button class="chip" aria-pressed="${S.m==x[0]}" data-m="${x[0]}">${x[1]}</button>`).join('');
-  $('ger').value=S.ger; $('dept').value=S.dept; $('set').value=S.set; $('func').value=S.func; $('excl').checked=S.excl; const isT=S.view[0]==='t'; $('view-g').hidden=S.view!=='g'; $('view-t').hidden=!isT; $('view-r').hidden=S.view==='g'||isT; $('thresc').hidden=S.sit==='ATIVO'; $('rsub').textContent=({ATIVO:'Somente colaboradores ativos na empresa.',DEMITIDO:'Somente quem já saiu da empresa, com as ausências registradas em 2026 antes da saída.',AFASTADO:'Somente colaboradores afastados.','':'Todos os colaboradores com registro: ativos, demitidos e afastados.'})[S.sit]; document.querySelectorAll('[data-sit]').forEach(x=>x.setAttribute('aria-pressed',x.dataset.sit===S.sit));
+  $('ger').value=S.ger; $('dept').value=S.dept; $('set').value=S.set; $('func').value=S.func; document.querySelectorAll('#grpseg [data-g]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.g===S.grp)); const isT=S.view[0]==='t'; $('view-g').hidden=S.view!=='g'; $('view-t').hidden=!isT; $('view-r').hidden=S.view==='g'||isT; $('thresc').hidden=S.sit==='ATIVO'; $('rsub').textContent=({ATIVO:'Somente colaboradores ativos na empresa.',DEMITIDO:'Somente quem já saiu da empresa, com as ausências registradas em 2026 antes da saída.',AFASTADO:'Somente colaboradores afastados.','':'Todos os colaboradores com registro: ativos, demitidos e afastados.'})[S.sit]; document.querySelectorAll('[data-sit]').forEach(x=>x.setAttribute('aria-pressed',x.dataset.sit===S.sit));
   document.querySelectorAll('.tab').forEach(x=>x.setAttribute('aria-selected',x.dataset.v===S.view));
   if(S.view==='g')renderG(); else if(isT)renderT(); else renderR();
 }
-function deptOpts(){ const ok=new Set(); D.P.forEach(p=>{if(S.ger<0||p[GI]===S.ger)ok.add(p[0])});
+function deptOpts(){ const ok=new Set(); D.P.forEach(p=>{if((S.ger<0||p[GI]===S.ger)&&grpOk(p))ok.add(p[0])}); if(S.dept>=0&&!ok.has(S.dept))S.dept=-1;
   $('dept').innerHTML='<option value="-1">Todos os setores</option>'+D.deps.map((d,i)=>ok.has(i)?`<option value="${i}">${esc(d)}</option>`:'').join(''); }
-function setOpts(){ const ok=new Set(); D.P.forEach(p=>{if((S.ger<0||p[GI]===S.ger)&&(S.dept<0||p[0]===S.dept))ok.add(p[SI])}); if(S.set>=0&&!ok.has(S.set))S.set=-1;
+function setOpts(){ const ok=new Set(); D.P.forEach(p=>{if((S.ger<0||p[GI]===S.ger)&&(S.dept<0||p[0]===S.dept)&&grpOk(p))ok.add(p[SI])}); if(S.set>=0&&!ok.has(S.set))S.set=-1;
   $('set').innerHTML='<option value="-1">Todas as seções</option>'+D.sets.map((d,i)=>ok.has(i)?`<option value="${i}">${esc(d)}</option>`:'').join(''); }
 function funcOpts(){ const ok=new Set(); D.P.forEach(p=>{if((S.ger<0||p[GI]===S.ger)&&(S.dept<0||p[0]===S.dept)&&(S.set<0||p[SI]===S.set))ok.add(p[FI])}); if(S.func>=0&&!ok.has(S.func))S.func=-1;
   $('func').innerHTML='<option value="-1">Todas as funções</option>'+D.funcs.map((d,i)=>ok.has(i)?`<option value="${i}">${esc(d)}</option>`:'').join(''); }
@@ -509,7 +530,7 @@ $('set').addEventListener('change',e=>{S.set=+e.target.value;S.lim=40;S.tlim=40;
 $('ger').innerHTML='<option value="-1">Todas as gerências</option>'+D.gers.map((d,i)=>`<option value="${i}">${esc(d)}</option>`).join(''); syncF();
 $('ger').addEventListener('change',e=>{S.ger=+e.target.value;S.dept=-1;S.set=-1;S.func=-1;S.lim=40;S.tlim=40;syncF();render()});
 $('func').addEventListener('change',e=>{S.func=+e.target.value;S.lim=40;S.tlim=40;render()});
-$('clr').addEventListener('click',()=>{S.m=-1;S.ger=-1;S.dept=-1;S.set=-1;S.func=-1;S.excl=false;syncF();render()});
+$('clr').addEventListener('click',()=>{S.m=-1;S.ger=-1;S.dept=-1;S.set=-1;S.func=-1;syncF();render()});
 document.querySelectorAll('.minq').forEach(c=>c.addEventListener('change',e=>{S.minq=e.target.checked;document.querySelectorAll('.minq').forEach(x=>x.checked=S.minq);render()}));
 for(const pre of ['gd','td','gs','ts']){ $(pre+'s').addEventListener('change',e=>{S[pre].k=e.target.value;S[pre].dir=e.target.value==='n'?1:-1;render()}); $(pre+'q').addEventListener('input',e=>{S[pre].q=e.target.value;render()}); $(pre+'m').addEventListener('click',()=>{S[pre].lim=1e9;render()}); }
 $('tabs').hidden=false; if(!D.rh){$('tab-r').hidden=true;}
@@ -525,7 +546,7 @@ document.addEventListener('click',e=>{ if(e.target.closest('#drill,#clr,#gdm,#td
   render(); });
 $('dept').addEventListener('change',e=>{S.dept=+e.target.value;S.lim=40;S.tlim=40;setOpts();funcOpts();render()});
 if(D.rh){$('ct').innerHTML='<option value="">Todos os contratos</option>'+[...new Set(D.P.map(p=>p[6]))].sort().map(c=>`<option>${esc(c)}</option>`).join('');$('ct').addEventListener('change',e=>{S.ct=e.target.value;S.lim=40;renderR()});}
-$('excl').addEventListener('change',e=>{S.excl=e.target.checked;render()});
+$('grpseg').addEventListener('click',e=>{const b=e.target.closest('[data-g]');if(!b)return;S.grp=b.dataset.g;if((S.grp==='at'&&pseudoIdx.has(S.dept))||((S.grp==='af'||S.grp==='de')&&S.dept>=0))S.dept=-1;syncF();render()});
 $('q').addEventListener('input',e=>{S.q=e.target.value;S.lim=40;renderR()});
 const tip=$('tip'); document.addEventListener('mousemove',e=>{ const t=e.target.closest('[data-tip]'); if(!t||!t.dataset.tip){tip.hidden=true;return}
   tip.innerHTML=t.dataset.tip; tip.hidden=false; const w=tip.offsetWidth; tip.style.left=Math.min(e.clientX+12,innerWidth-w-8)+'px'; tip.style.top=(e.clientY+14)+'px'; });

@@ -130,7 +130,7 @@ async function carregarCatalogo(){
     sb.from('pacotes').select('painel,referencia,atualizado_em,atualizado_por')
   ]);
   if (p.error) throw p.error;
-  E.paineis = (p.data || []).filter(x => x.id !== 'rs'); // R&S fica dentro do Banco de Currículos
+  E.paineis = (p.data || []).filter(x => x.id !== 'rs' && x.id !== 'absenteismo-gestao'); // R&S fica dentro do Banco de Currículos; Absenteísmo Gestão foi retirado (fica só o do RH)
   // nome padrão do Jovem Aprendiz (Instituto João Bittar), separado do RENAPSI
   const jv = E.paineis.find(x => x.id === 'jovem');
   if (jv && jv.nome === 'Jovem Aprendiz') {
