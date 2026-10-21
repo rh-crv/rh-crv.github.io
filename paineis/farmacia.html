@@ -756,6 +756,16 @@ const LINHAS=(MODO==='rd'&&typeof R!=='undefined')?R:[];
 const FUNC=(typeof EMP!=='undefined')?EMP:{};
 const FATOS=(typeof FATO!=='undefined')?FATO:{};
 const porRd=n=>LINHAS.filter(r=>String(r.rd)===String(n).trim());
+/* colaborador pela matrícula: Quadro de Colaboradores (ao vivo, no app) → base guardada no painel */
+async function buscarColab(m){
+  try{
+    const f=window.parent&&window.parent!==window&&window.parent.CRV_QUADRO;
+    if(typeof f==='function'){const q=await f();if(q&&q.mapa){const c=q.mapa[m];if(c)return Object.assign({fonte:'Quadro de Colaboradores'+(q.referencia?' de '+(/^\d{4}-\d{2}-\d{2}/.test(q.referencia)?brData(q.referencia):q.referencia):'')},c)}}
+  }catch(_){}
+  const c=FUNC[m];
+  if(c)return{nome:c[0],funcao:c[1],setor:c[2],situacao:c[3],admissao:c[4],deslig:'',empresa:'',fonte:'base guardada neste painel'};
+  return null;
+}
 
 let DB=null;
 (async()=>{try{DB=window.claude&&window.claude.use?await window.claude.use('db'):null}catch(e){DB=null}})();
@@ -781,7 +791,8 @@ function abrir(rdPre){
     <div class="aut-c s9" style="grid-column:span 9"><label>Nome</label><input id="a-nome"></div>
     <div class="aut-c s6"><label>Função</label><input id="a-func"></div>
     <div class="aut-c s6"><label>Setor</label><input id="a-setor"></div>
-    <div class="aut-info" id="a-matinfo">Digite a matrícula para puxar nome, função e setor.</div>
+    <div class="aut-info" id="a-matinfo">Digite a matrícula para puxar os dados do Quadro de Colaboradores.</div>
+    ${MODO==='rd'?'<div class="aut-info" id="a-matrds" style="display:none"></div>':''}
     ${MODO==='farmacia'?'<div class="aut-sec">Compras de doença comunitária (D.C.)</div><div class="aut-info" id="a-farm">Digite a matrícula para ver as compras D.C. lançadas no controle.</div>':''}
     <div class="aut-sec">Valores</div>
     <div class="aut-c s3"><label>Valor total (R$)</label><input id="a-valor" inputmode="decimal" placeholder="0,00"></div>
@@ -815,15 +826,37 @@ function abrir(rdPre){
   f.addEventListener('mousedown',e=>{if(e.target===f)fechar()});
 
   /* matrícula → dados do colaborador */
-  const puxarMat=()=>{
-    const m=el('a-mat').value.trim(),c=FUNC[m];
+  let ultMat=null;
+  const puxarMat=async(forcar)=>{
+    const m=el('a-mat').value.trim().replace(/^0+(?=\d)/,'');
     const i=el('a-matinfo');
-    if(!m){i.className='aut-info';i.textContent='Digite a matrícula para puxar nome, função e setor.';return}
-    if(!c){i.className='aut-info av';i.textContent='Matrícula não encontrada na base. Preencha nome, função e setor à mão.';return}
-    el('a-nome').value=c[0];el('a-func').value=c[1];el('a-setor').value=c[2];
-    i.className='aut-info '+(c[3]==='Desligado'?'av':'ok');
-    i.textContent=c[3]==='Desligado'?'Colaborador desligado: o desconto será na rescisão.':`${c[3]} · admitido em ${brData(c[4])}`;
+    if(!m){ultMat=null;i.className='aut-info';i.textContent='Digite a matrícula para puxar os dados do Quadro de Colaboradores.';return}
+    if(m===ultMat&&!forcar)return; ultMat=m;
+    i.className='aut-info';i.textContent='Buscando no Quadro de Colaboradores…';
+    const c=await buscarColab(m);
+    if(el('a-mat').value.trim().replace(/^0+(?=\d)/,'')!==m)return;
+    if(!c){i.className='aut-info av';i.textContent='Matrícula não encontrada no Quadro de Colaboradores. Confira o número ou preencha nome, função e setor à mão.';el('a-nome').value='';el('a-func').value='';el('a-setor').value='';return}
+    el('a-nome').value=c.nome;el('a-func').value=c.funcao;el('a-setor').value=c.setor;
+    const des=c.situacao==='Desligado';
+    i.className='aut-info '+(des?'av':'ok');
+    i.innerHTML=`<b>${escA(c.situacao)}</b>${c.empresa?' · '+escA(c.empresa):''}${c.admissao?' · admitido em '+escA(brData(c.admissao)):''}${c.deslig?' · desligado em '+escA(brData(c.deslig)):''}`+
+      (des?'<br>Colaborador desligado: o desconto será na rescisão.':'')+
+      (c.empresa&&!/CRV/i.test(c.empresa)?'<br>Atenção: esta matrícula é de outra empresa ('+escA(c.empresa)+'). Confira se é a pessoa certa.':'')+
+      `<br><span style="opacity:.75">Fonte: ${escA(c.fonte)}</span>`;
     if(MODO==='farmacia')comprasDC(m);
+    if(MODO==='rd')rdsDaMat(m);
+  };
+  /* RD: lista os RDs dessa matrícula para escolher */
+  const rdsDaMat=m=>{
+    const box=el('a-matrds');if(!box)return;
+    const L=LINHAS.filter(r=>String(r.mat)===String(m)).sort((a,b)=>String(a.ds)<String(b.ds)?1:-1);
+    if(!L.length){box.style.display='none';return}
+    box.style.display='';box.className='aut-info';
+    box.innerHTML=`<b>RDs desta matrícula (${L.length}):</b><br>`+L.slice(0,12).map(r=>`<button type="button" class="aut-chip${rdSel&&String(rdSel.rd)===String(r.rd)?' on':''}" data-rd="${escA(r.rd)}">RD ${escA(r.rd)} · ${escA(brData(r.ds))}${num(r.val)>0?' · R$ '+moeda(num(r.val)):''}</button>`).join(' ')+(L.length>12?' …':'');
+    box.querySelectorAll('[data-rd]').forEach(b=>b.onclick=()=>{
+      const r=LINHAS.find(x=>String(x.rd)===b.dataset.rd&&String(x.mat)===String(m));
+      if(!r)return; el('a-rd').value=r.rd; puxarRd(true); usarLinha(r);
+    });
   };
   const comprasDC=async m=>{
     const box=el('a-farm');if(!box)return;
@@ -843,7 +876,10 @@ function abrir(rdPre){
       box.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{el('a-valor').value=moeda(+b.dataset.v);vparManual=false;calc()});
     }catch(e){box.className='aut-info er';box.textContent='Não consegui ler as compras lançadas.'}
   };
-  el('a-mat').addEventListener('change',puxarMat);el('a-mat').addEventListener('keyup',e=>{if(e.key==='Enter')puxarMat()});
+  let tMat=null;
+  el('a-mat').addEventListener('input',()=>{clearTimeout(tMat);tMat=setTimeout(()=>puxarMat(),450)});
+  el('a-mat').addEventListener('change',()=>{clearTimeout(tMat);puxarMat()});
+  el('a-mat').addEventListener('keyup',e=>{if(e.key==='Enter'){clearTimeout(tMat);puxarMat()}});
 
   /* nº da RD → data, fato, envolvidos e valores */
   let rdSel=null;

@@ -776,12 +776,8 @@ async function telaModelo(p, cfg, acao){
     return;
   }
   if (d.conteudo && d.conteudo.arquivo) {
-    const { data: arq, error: ea } = await sb.storage.from('arquivos').download(`${p.id}/${d.conteudo.arquivo}`);
-    if (ea || !arq) { area.innerHTML = `<div class="erro">Não consegui abrir os dados deste painel. Carregue o arquivo de dados de novo em Administração.</div>`; return; }
-    const texto = d.conteudo.arquivo.endsWith('.gz')
-      ? await new Response(arq.stream().pipeThrough(new DecompressionStream('gzip'))).text()
-      : await arq.text();
-    d.conteudo = JSON.parse(texto);
+    try { d.conteudo = await lerArquivoPacote(p.id, d.conteudo.arquivo); }
+    catch(_) { area.innerHTML = `<div class="erro">Não consegui abrir os dados deste painel. Carregue o arquivo de dados de novo em Administração.</div>`; return; }
   }
   try {
     // ponte: o que o painel pedir ao "Claude" (salvar anotações, baixar arquivos...) vem para o app
@@ -803,6 +799,44 @@ async function telaModelo(p, cfg, acao){
     };
   } catch(e){ area.innerHTML = `<div class="erro">Não consegui montar o painel: ${esc(e.message)}</div>`; }
 }
+
+async function lerArquivoPacote(painel, arquivo){
+  const { data: arq, error: ea } = await sb.storage.from('arquivos').download(`${painel}/${arquivo}`);
+  if (ea || !arq) throw new Error('arquivo');
+  const texto = arquivo.endsWith('.gz')
+    ? await new Response(arq.stream().pipeThrough(new DecompressionStream('gzip'))).text()
+    : await arq.text();
+  return JSON.parse(texto);
+}
+
+/* Base de colaboradores tirada do Quadro Geral (usada pelas autorizações de desconto).
+   Retorna { 'matrícula': {nome, funcao, setor, situacao, admissao, deslig, empresa} } */
+let _quadroBase = null, _quadroBaseRef = null;
+window.CRV_QUADRO = async function(){
+  try {
+    const { data: d, error } = await sb.from('pacotes').select('referencia,conteudo,atualizado_em').eq('painel', 'quadro').maybeSingle();
+    if (error || !d) return null;
+    const chave = d.atualizado_em || d.referencia;
+    if (_quadroBase && _quadroBaseRef === chave) return _quadroBase;
+    let c = d.conteudo;
+    if (c && c.arquivo) c = await lerArquivoPacote('quadro', c.arquivo);
+    let dados = c && c.dados;
+    if (Array.isArray(dados) && Array.isArray(c.nomes)) { const o = {}; c.nomes.forEach((n, i) => o[n] = dados[i]); dados = o; }
+    if (!dados || !Array.isArray(dados.D)) return null;
+    const M = {};
+    const txt = v => String(v == null ? '' : v).trim();
+    // desligados: CRV primeiro, depois as outras empresas; o desligamento mais recente vence
+    const DM = (dados.DM || []).slice().sort((a, b) => {
+      const ca = /CRV/i.test(a[21]) ? 1 : 0, cb = /CRV/i.test(b[21]) ? 1 : 0;
+      if (ca !== cb) return ca - cb;
+      return String(a[20] || '') < String(b[20] || '') ? -1 : 1;
+    });
+    DM.forEach(r => { M[txt(r[0])] = { nome:txt(r[1]), funcao:txt(r[2]), setor:txt(r[3]), situacao:'Desligado', admissao:txt(r[9]), deslig:txt(r[20]), empresa:txt(r[21]).replace(/\s*\(\d+\)$/, '') }; });
+    dados.D.forEach(r => { M[txt(r[0])] = { nome:txt(r[1]), funcao:txt(r[2]), setor:txt(r[3]), situacao:txt(r[8]) || 'Ativo', admissao:txt(r[9]), deslig:'', empresa:'CRV' }; });
+    _quadroBase = { mapa:M, referencia:d.referencia || '' }; _quadroBaseRef = chave;
+    return _quadroBase;
+  } catch(_) { return null; }
+};
 
 function jsValor(v){
   // JSON seguro dentro de <script>, restaurando NaN / Infinity / undefined
