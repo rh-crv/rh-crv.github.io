@@ -5,8 +5,9 @@
 :root{--bg:#f4f5f8;--card:#fff;--ink:#1d2433;--mut:#667085;--line:#e4e7ec;--trk:#eef0f4;
  --acc:#2e8a57;--acc2:#1d5c3a;--accbg:#e8f4ee;
  --ok:#2e8a57;--okbg:#e6f3ec;--warn:#b7791f;--warnbg:#fcf1dc;--bad:#b42318;--badbg:#fdecea;--info:#5b5f97;--infobg:#eeeefa;--mutbg:#f1f3f6}
-body.t-convenio{--acc:#a35b12;--acc2:#6f3d0b;--accbg:#fbf0e3}
-body.t-premium{--acc:#6b3fa0;--acc2:#45266b;--accbg:#f1eaf9}
+body.t-convenio{--acc:#c0282d;--acc2:#7a1418;--accbg:#fdecec}
+body.t-premium{--acc:#b8902a;--acc2:#6e5208;--accbg:#fbf4e1}
+body.t-premium header{background:linear-gradient(120deg,#5c4306,#9c7716 55%,#d4b04a)}
 *{box-sizing:border-box}[hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,sans-serif}
 header{background:linear-gradient(120deg,var(--acc2),var(--acc));color:#fff}
@@ -276,7 +277,7 @@ $('bP').onclick=async()=>{const J=(window.jspdf&&window.jspdf.jsPDF)||(window.pa
   const cols=['Matrícula','Nome','Função','Departamento','Situação no Quadro','Cartão'].concat(T==='convenio'?['Limite atual','Limite da regra']:[]).concat(['Situação','O que fazer','Pedido marcado']);
   doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text(nomeArq(),12,14);doc.setFont('helvetica','normal');doc.setFontSize(8.5);
   doc.text(`${L.length} pessoas · planilha Sysprocard de ${br(C.refPlanilha)} × Quadro de ${br(C.refQuadro)}${S.dep?' · '+S.dep:''}${S.ger?' · '+S.ger:''}`,12,19);
-  doc.autoTable({startY:23,head:[cols],body:L.map(r=>cols.map(c=>(c==='Limite atual'||c==='Limite da regra')&&r[c]!==''?moeda(r[c]):String(r[c]??''))),styles:{fontSize:7,cellPadding:1.4},headStyles:{fillColor:T==='premium'?[107,63,160]:T==='convenio'?[163,91,18]:[46,138,87]},margin:{left:10,right:10}});
+  doc.autoTable({startY:23,head:[cols],body:L.map(r=>cols.map(c=>(c==='Limite atual'||c==='Limite da regra')&&r[c]!==''?moeda(r[c]):String(r[c]??''))),styles:{fontSize:7,cellPadding:1.4},headStyles:{fillColor:T==='premium'?[184,144,42]:T==='convenio'?[192,40,45]:[46,138,87]},margin:{left:10,right:10}});
   await salvar(nomeArq()+'.pdf',new Uint8Array(doc.output('arraybuffer')),'application/pdf')};
 
 render();lerPedidos();
