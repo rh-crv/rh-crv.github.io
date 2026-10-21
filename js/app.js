@@ -383,16 +383,18 @@ function blocoFrente(f, lista){
 // opções que aparecem abaixo do painel no menu (seta)
 const SUBACOES = {
   quadro:   [{ acao:'ent', nome:'Entrevista de desligamento' }],
+  ouvidorias: [{ acao:'nova', nome:'Cadastrar ouvidoria' }],
   rd:       [{ acao:'aut', nome:'Autorização de desconto' }, { acao:'hist', nome:'Histórico de autorizações' }],
   farmacia: [{ acao:'aut', nome:'Autorização de desconto' }, { acao:'hist', nome:'Histórico de autorizações' }]
 };
-function fecharJanelasAut(w){ try { w.document.querySelectorAll('.aut-fundo,.ent-fundo').forEach(x => x.remove()); } catch(_){} }
+function fecharJanelasAut(w){ try { w.document.querySelectorAll('.aut-fundo,.ent-fundo,.of-fundo').forEach(x => x.remove()); } catch(_){} }
 function executarAcao(acao){
   const f = document.getElementById('modelo-frame');
   const w = f && f.contentWindow;
   if (acao === 'aut' && w && typeof w.CRV_AUTORIZACAO === 'function') { fecharJanelasAut(w); w.CRV_AUTORIZACAO(); return true; }
   if (acao === 'hist' && w && typeof w.CRV_AUT_HIST === 'function') { fecharJanelasAut(w); w.CRV_AUT_HIST(); return true; }
   if (acao === 'ent' && w && typeof w.CRV_ENTREVISTA === 'function') { fecharJanelasAut(w); w.CRV_ENTREVISTA(); return true; }
+  if (acao === 'nova' && w && typeof w.CRV_OUV_NOVA === 'function') { fecharJanelasAut(w); w.CRV_OUV_NOVA(); return true; }
   return false;
 }
 async function telaPainel(id, acao){
