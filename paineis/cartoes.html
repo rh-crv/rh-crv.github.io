@@ -120,6 +120,7 @@ const PEDE=new Set(['falta','bloq','desl','fora','regra']);
 const OPMOT=/MOTORISTA|OPERADOR|OP\. DE MAQ/;
 let EXC={};(C.exc540||[]).forEach(m=>EXC[String(m)]={on:true,origem:'lista'});
 function regra(r){
+  const esp=(C.excEsp||{})[r.mat];if(esp)return{v:esp[0],t:esp[1]};
   if(EXC[r.mat]&&EXC[r.mat].on)return{v:540,t:'Exceção (R$ 540)'};
   if(r.aloj&&OPMOT.test(r.func))return{v:1080,t:'Alojado, operador/motorista (R$ 1.080)'};
   if(/^ind[uú]stria$/i.test(r.dep))return{v:180,t:'Indústria (R$ 180)'};
@@ -227,7 +228,7 @@ function render(){
   $('selb').hidden=!(S.cat&&PEDE.has(S.cat)&&semPed.length>1);
   $('selb').innerHTML=`<span>${nf(semPed.length)} nesta lista ainda sem pedido marcado.</span><button class="mini pri" id="pedTodos">Marcar todos como ${['falta','bloq'].includes(S.cat)?'pedido feito':'bloqueio pedido'}</button>`;
   if($('pedTodos'))$('pedTodos').onclick=()=>marcar(semPed.map(r=>r.mat));
-  $('foot').textContent=`Fonte: planilha da Sysprocard (${C.arquivo}) com ${nf(C.nPlanilha)} cartões (${Object.entries(C.sitPlanilha).map(([k,v])=>nf(v)+' '+k.toLowerCase()).join(', ')}), cruzada pela matrícula com o Quadro Geral da empresa 5. Desligados com cartão já bloqueado não aparecem.`+(T==='premium'?' '+PREM_TXT:'')+(T==='convenio'?` Regra do limite: Indústria R$ 180; demais áreas R$ 200; exceções R$ 540; operadores e motoristas no alojamento R$ 1.080 (base de alojamento de ${br(C.alojRef)}).`:'')+(T==='alimentacao'?' Regra do vale: afastados não recebem, exceto por acidente de trabalho.':'');
+  $('foot').textContent=`Fonte: planilha da Sysprocard (${C.arquivo}) com ${nf(C.nPlanilha)} cartões (${Object.entries(C.sitPlanilha).map(([k,v])=>nf(v)+' '+k.toLowerCase()).join(', ')}), cruzada pela matrícula com o Quadro Geral da empresa 5. Desligados com cartão já bloqueado não aparecem.`+(T==='premium'?' '+PREM_TXT:'')+(T==='convenio'?` Regra do limite: Indústria R$ 180; demais áreas R$ 200; exceções R$ 540; motorista da diretoria R$ 1.320; operadores e motoristas no alojamento R$ 1.080 (base de alojamento de ${br(C.alojRef)}).`:'')+(T==='alimentacao'?' Regra do vale: afastados não recebem, exceto por acidente de trabalho.':'');
 }
 $('q').oninput=e=>{S.q=e.target.value.trim();S.lim=150;render()};
 $('fCat').onchange=e=>{S.cat=e.target.value;S.lim=150;render()};
