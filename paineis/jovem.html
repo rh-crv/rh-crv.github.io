@@ -468,7 +468,7 @@ function render(){
   $("htxt").innerHTML=h;
   const IC={p:'<circle cx="9" cy="8" r="3.2"/><path d="M3 19c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17" cy="9" r="2.4"/><path d="M16.5 13.6c2.6.2 4.5 2 4.5 4.9"/>',c:'<rect x="4" y="5.5" width="16" height="14" rx="2.5"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4M10 13.5l4 4M14 13.5l-4 4"/>',a:'<path d="M12 4.5 20.5 19h-17L12 4.5z"/><path d="M12 10v4.2M12 16.8v.2"/>',g:'<path d="M4 19.5h16M7 16v-4M12 16V7.5M17 16v-6.5"/>'};
   $("kpis").innerHTML=[
-    ["p","Aprendizes ativos",c.n,pl(m.dias.length,"dia de aula","dias de aula")+" no mês",p&&delta(c.n,p.n),null],
+    ["p","Aprendizes ativos",kAtivos(m,c).v,kAtivos(m,c).s,kAtivos(m,c).hoje?null:p&&delta(c.n,p.n),null],
     ["c","Ausência",f1(c.pct)+"%","Presença de "+f1(100-c.pct)+"% · "+c.aus+" de "+c.tot.toLocaleString("pt-BR")+" dias",p&&delta(c.pct,p.pct,1," p.p."),100-c.pct],
     ["a","Faltas sem justificativa",c.fa,pl(c.comFalta,"jovem","jovens")+" com falta",p&&delta(c.fa,p.fa),null],
     ["g","Média de desempenho",c.media===null?"–":Math.round(c.media),"Escala de 0 a 100 · "+c.nNotas+" notas",p&&delta(c.media,p.media,1),c.media]
@@ -769,6 +769,16 @@ async function salvarSetor(mat,valor){
 }
 (async()=>{try{if(!(window.claude&&window.claude.use))return;SDB=await window.claude.use("db");
   const q=await SDB.collection("setores").get();q.docs.forEach(d=>{SETOR_MAN[d.id]=d.data()});aplicarSetores();try{renderBase()}catch(_){}}catch(_){}})();
+/* card "Aprendizes ativos": no mês mais recente mostra quem está ativo hoje na base */
+function kAtivos(m,c){
+  const base=pl(m.dias.length,"dia de aula","dias de aula")+" no mês";
+  if(m!==MESES[MESES.length-1])return{v:c.n,s:base,hoje:false};
+  const atv=BASE.filter(b=>b.st==="Ativo"),fim=+(String(m.id).replace("-",""))*100+31;
+  const novos=atv.filter(b=>dnum(b.ini)>fim);
+  const mes=m.nome.split(" ")[0];
+  const inis=[...new Set(novos.map(b=>b.ini))];
+  return{v:atv.length,hoje:true,s:"Ativos hoje na base · "+c.n+" na frequência de "+mes+(novos.length?" · "+novos.length+" "+(novos.length===1?"começou":"começaram")+" depois"+(inis.length===1?" (em "+inis[0]+")":""):"")};
+}
 function renderBase(){
   if(!$("setlist")){const dl=document.createElement("datalist");dl.id="setlist";document.body.appendChild(dl);}
   $("setlist").innerHTML=SETORES().map(x=>'<option value="'+esc(x)+'">').join("");
@@ -882,9 +892,9 @@ function exSections(){
   const filt=$("ex_jovf").value==="r"?c.js.filter(j=>j.rad>0):c.js,radT=r=>({v:RAD[r][0],c:RADC[r],b:1}),md=j=>j.med===null?"–":Math.round(j.med);
   const ord=a=>a.slice().sort((x,y)=>y.rad-x.rad||y.sinais.length-x.sinais.length||x.n.localeCompare(y.n));
   if(sel("res")){const at=ord(c.js.filter(j=>j.rad>0));
-    out.push({k:"res",t:"Resumo de "+m.nome,p:[$("htxt").innerText],boxes:[[{l:"Aprendizes ativos",v:String(c.n),s:pl(m.dias.length,"dia de aula","dias de aula")},{l:"Ausência",v:f1(c.pct)+"%",s:c.aus+" de "+c.tot.toLocaleString("pt-BR")+" dias"},{l:"Faltas sem justificativa",v:String(c.fa),s:pl(c.comFalta,"jovem","jovens")+" com falta"},{l:"Média de desempenho",v:c.media===null?"–":String(Math.round(c.media)),s:c.nNotas+" notas"}],[2,1,0].map(r=>({l:RAD[r][0],v:String(c.rad[r]),s:RAD[r][2],c:RADC[r]}))],
+    out.push({k:"res",t:"Resumo de "+m.nome,p:[$("htxt").innerText],boxes:[[{l:"Aprendizes ativos",v:String(kAtivos(m,c).v),s:kAtivos(m,c).s},{l:"Ausência",v:f1(c.pct)+"%",s:c.aus+" de "+c.tot.toLocaleString("pt-BR")+" dias"},{l:"Faltas sem justificativa",v:String(c.fa),s:pl(c.comFalta,"jovem","jovens")+" com falta"},{l:"Média de desempenho",v:c.media===null?"–":String(Math.round(c.media)),s:c.nNotas+" notas"}],[2,1,0].map(r=>({l:RAD[r][0],v:String(c.rad[r]),s:RAD[r][2],c:RADC[r]}))],
       tables:[{t:"Quem acompanhar primeiro",cols:[{h:"Matr. CRV",w:7},{h:"Aprendiz",w:24},{h:"Setor",w:18},{h:"Radar",w:10},{h:"Sinais do mês",w:41}],rows:at.map(j=>[j.mat||"",{v:j.n,b:1},j.setor||"",radT(j.rad),j.sinais.join(" · ")]),empty:"Nenhum jovem em atenção ou intervenção."}],
-      xls:[["Indicador","Valor","Detalhe"],["Aprendizes ativos",c.n,pl(m.dias.length,"dia de aula","dias de aula")],["Ausência (%)",Math.round(c.pct*10)/10,c.aus+" de "+c.tot+" dias"],["Faltas sem justificativa",c.fa,pl(c.comFalta,"jovem","jovens")+" com falta"],["Média de desempenho",c.media===null?"":Math.round(c.media),c.nNotas+" notas"]].concat([2,1,0].map(r=>[RAD[r][0],c.rad[r],RAD[r][2]]))});}
+      xls:[["Indicador","Valor","Detalhe"],["Aprendizes ativos",kAtivos(m,c).v,kAtivos(m,c).s],["Ausência (%)",Math.round(c.pct*10)/10,c.aus+" de "+c.tot+" dias"],["Faltas sem justificativa",c.fa,pl(c.comFalta,"jovem","jovens")+" com falta"],["Média de desempenho",c.media===null?"":Math.round(c.media),c.nNotas+" notas"]].concat([2,1,0].map(r=>[RAD[r][0],c.rad[r],RAD[r][2]]))});}
   if(sel("jov"))out.push({k:"jov",t:"Aprendizes · "+m.label+($("ex_jovf").value==="r"?" · só atenção e intervenção":""),tables:[{cols:[{h:"Matr. CRV",w:6},{h:"Aprendiz",w:20},{h:"Setor",w:15},{h:"Jornada",w:9},{h:"Radar",w:8},{h:"Faltas",w:5,a:"r"},{h:"Atestado",w:6,a:"r"},{h:"Média",w:5,a:"r"},{h:"Registros",w:6,a:"r"},{h:"Sinais do mês",w:20}],
     rows:ord(filt).map(j=>[j.mat||"",{v:j.n,b:1},j.setor||"",j.jor||"",radT(j.rad),j.fa.length,j.at.length,md(j),j.ocN,j.sinais.join(" · ")||"–"])}]});
   if(sel("set")){const G={};c.js.forEach(j=>{const a=j.area||"Sem setor";(G[a]=G[a]||[]).push(j);});
