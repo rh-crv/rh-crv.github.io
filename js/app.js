@@ -702,40 +702,30 @@ const fmtRef = r => r ? r.split('-').reverse().join('/') : '—';
 
 async function telaModelo(p, cfg){
   const editar = podeEditar(p);
-  moldura(`<div class="barra-painel" style="--cor:${cfg.cor}">
-      <div class="bp-esq"><span class="trilha"><button data-ir="#/">Início</button> › ${esc(p.frente)} ›</span> <b>${esc(p.nome)}</b>
-        <span class="meta" id="m-meta">Carregando…</span></div>
-      <div class="bp-dir">${editar ? '<button class="btn prim peq" id="b-pacote">Atualizar dados</button>' : ''}</div>
-    </div>
-    ${AVISOS[p.id] ? `<div class="aviso-painel">${esc(AVISOS[p.id])}</div>` : ''}
-    <div id="modelo-area" class="cartao vazio"><div class="spinner" style="margin:0 auto"></div><p>Abrindo o painel…</p></div>`);
-  document.querySelector('.trilha [data-ir]').onclick = () => location.hash = '#/';
-  $('#b-pacote') && ($('#b-pacote').onclick = () => escolherPacotes(p.id));
-
+  moldura(`<div id="modelo-area" class="cartao vazio"><div class="spinner" style="margin:0 auto"></div><p>Abrindo o painel…</p></div>`);
+  const meta = { set innerHTML(v){}, set textContent(v){} };   // informações do painel ficam só em Administração
   const [pac, tpl] = await Promise.all([
     sb.from('pacotes').select('referencia,conteudo,atualizado_em,atualizado_por').eq('painel', p.id).maybeSingle(),
     fetch(MODELOS[p.id] + '?v=' + CFG.VERSAO, { cache:'no-cache' }).then(r => r.ok ? r.text() : Promise.reject(new Error('Arquivo do painel não encontrado no GitHub (' + MODELOS[p.id] + ').'))).catch(e => ({ erro:e }))
   ]);
   const area = $('#modelo-area');
   if (!area) return;
-  if (pac.error) { area.innerHTML = `<div class="erro">${esc(traduzErro(pac.error))}</div>`; $('#m-meta').textContent=''; return; }
-  if (tpl.erro) { area.innerHTML = `<div class="erro">${esc(tpl.erro.message)}</div>`; $('#m-meta').textContent=''; return; }
+  if (pac.error) { area.innerHTML = `<div class="erro">${esc(traduzErro(pac.error))}</div>`; return; }
+  if (tpl.erro) { area.innerHTML = `<div class="erro">${esc(tpl.erro.message)}</div>`; return; }
   const d = pac.data;
   if (!d) {
-    $('#m-meta').innerHTML = `Ainda sem dados · <span class="selo ${p.nivel}">${p.nivel}</span>`;
-    area.innerHTML = `${svg('planilha')}<h3>Este painel ainda não tem dados</h3>
-      <p>${editar ? 'Clique em <b>Atualizar dados</b> e escolha o arquivo de dados deste painel.' : 'O RH ainda não carregou os dados deste painel.'}</p>`;
+    area.innerHTML = `${svg('planilha')}<h3>${esc(p.nome)}: ainda sem dados</h3>
+      <p>${ehAdmin() ? 'Carregue o arquivo de dados em <b>Administração → Painéis e frentes</b>.' : 'O RH ainda não carregou os dados deste painel.'}</p>`;
     return;
   }
   if (d.conteudo && d.conteudo.arquivo) {
     const { data: arq, error: ea } = await sb.storage.from('arquivos').download(`${p.id}/${d.conteudo.arquivo}`);
-    if (ea || !arq) { area.innerHTML = `<div class="erro">Não consegui abrir os dados deste painel. Carregue o arquivo de dados de novo.</div>`; $('#m-meta').textContent=''; return; }
+    if (ea || !arq) { area.innerHTML = `<div class="erro">Não consegui abrir os dados deste painel. Carregue o arquivo de dados de novo em Administração.</div>`; return; }
     const texto = d.conteudo.arquivo.endsWith('.gz')
       ? await new Response(arq.stream().pipeThrough(new DecompressionStream('gzip'))).text()
       : await arq.text();
     d.conteudo = JSON.parse(texto);
   }
-  $('#m-meta').innerHTML = `dados de ${fmtRef(d.referencia)} · <span class="selo ${p.nivel}" title="Atualizado em ${esc(fmtData(d.atualizado_em))}${d.atualizado_por?' por '+esc(d.atualizado_por):''}">${p.nivel}</span>`;
   try {
     // ponte: o que o painel pedir ao "Claude" (salvar anotações, baixar arquivos...) vem para o app
     window.__CRV_PAINEL = window.CRV_PONTE.criar({ sb, painel: p.id, perfil: () => E.perfil, quem: () => E.perfil.nome,
@@ -1043,13 +1033,13 @@ function adminPaineis(){
   c.innerHTML = `<div class="cartao-cab"><h3>Painéis do app</h3><button class="btn prim" id="p-lote">Carregar arquivos de dados</button></div>
     <p style="color:var(--mut);margin-top:0;font-size:13px"><b>Carregar arquivos de dados:</b> selecione de uma vez todos os arquivos de dados (.json) que o Claude preparou — cada um vai para o seu painel.</p>
     <p style="color:var(--mut);margin-top:0;font-size:13px">Mude a frente ou o nível de acesso de cada painel. <b>Restrito</b>: só administradores. <b>Controlado</b>: quem tiver a frente liberada. <b>Geral</b>: também quem tiver a frente liberada (dado operacional).</p>
-    <div class="tabela-env" style="max-height:none"><table class="tab"><thead><tr><th>Painel</th><th>Frente</th><th>Nível</th><th>Base</th><th></th></tr></thead><tbody>
+    <div class="tabela-env" style="max-height:none"><table class="tab"><thead><tr><th>Painel</th><th>Frente</th><th>Nível</th><th>Dados</th><th>Arquivo de dados</th></tr></thead><tbody>
     ${E.paineis.map(p=>{ const m=E.metas[p.id]; return `<tr data-id="${esc(p.id)}" style="cursor:default">
       <td><b>${esc(p.nome)}</b></td>
       <td><select class="p-frente">${[...new Set([...frentes, ...ORDEM_FRENTES])].map(f=>`<option ${f===p.frente?'selected':''}>${esc(f)}</option>`).join('')}</select></td>
       <td><select class="p-nivel">${['geral','controlado','restrito'].map(n=>`<option ${n===p.nivel?'selected':''}>${n}</option>`).join('')}</select></td>
-      <td>${m ? `${m.linhas==null ? 'dados de '+fmtRef(m.referencia) : fmtNum(m.linhas)+' linhas'} · ${new Date(m.atualizado_em).toLocaleDateString('pt-BR')}` : '—'}</td>
-      <td>${m ? '<button class="btn peq perigo p-apagar">Apagar dados</button>' : ''}</td></tr>`; }).join('')}
+      <td>${m ? `${m.linhas==null ? 'dados de '+fmtRef(m.referencia) : fmtNum(m.linhas)+' linhas'}<br><small style="color:var(--mut)">atualizado ${new Date(m.atualizado_em).toLocaleDateString('pt-BR')}${m.atualizado_por?' por '+esc(m.atualizado_por):''}</small>` : '—'}</td>
+      <td style="white-space:nowrap"><button class="btn peq prim p-carregar">${m ? 'Atualizar' : 'Carregar'}</button> ${m ? '<button class="btn peq perigo p-apagar">Apagar</button>' : ''}</td></tr>`; }).join('')}
     </tbody></table></div>`;
   $('#p-lote').onclick = () => escolherPacotes(null);
   c.querySelectorAll('tr[data-id]').forEach(tr => {
@@ -1060,6 +1050,7 @@ function adminPaineis(){
       const p = E.paineis.find(x=>x.id===id); p[campo] = valor;
       registrar(id, 'alterou painel', `${campo}: ${valor}`); toast('Painel atualizado.');
     };
+    tr.querySelector('.p-carregar').onclick = () => escolherPacotes(id);
     tr.querySelector('.p-frente').onchange = ev => salvar('frente', ev.target.value);
     tr.querySelector('.p-nivel').onchange = ev => salvar('nivel', ev.target.value);
     const ap = tr.querySelector('.p-apagar');

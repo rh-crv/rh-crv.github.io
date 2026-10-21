@@ -265,3 +265,6 @@ table.tab tbody tr:hover{background:var(--bg)}
 .frente-cab{padding:10px 14px}.frente-cab h3{font-size:14px}.frente-ic{width:32px;height:32px}
 .painel-item{padding:9px 14px}.painel-item .pn b{font-size:13.5px}
 .instalar{padding:8px 12px;margin-bottom:12px}.instalar p{font-size:13px}
+/* painel ocupa a tela toda (v1.3.1) */
+.modelo-area iframe{height:calc(100vh - 28px)}
+@media (max-width:900px){.modelo-area iframe{height:calc(100vh - 80px)}}
