@@ -131,6 +131,12 @@ async function carregarCatalogo(){
   ]);
   if (p.error) throw p.error;
   E.paineis = (p.data || []).filter(x => x.id !== 'rs'); // R&S fica dentro do Banco de Currículos
+  // nome padrão do Jovem Aprendiz (Instituto João Bittar), separado do RENAPSI
+  const jv = E.paineis.find(x => x.id === 'jovem');
+  if (jv && jv.nome === 'Jovem Aprendiz') {
+    jv.nome = 'Jovem Aprendiz João Bittar';
+    if (E.perfil && E.perfil.papel === 'admin') sb.from('paineis').update({ nome: jv.nome }).eq('id', 'jovem').then(() => {}, () => {});
+  }
   E.metas = {};
   (m.data || []).forEach(r => E.metas[r.painel] = r);
   (k.data || []).forEach(r => E.metas[r.painel] = { ...r, linhas:null });
@@ -1184,7 +1190,7 @@ function adminPaineis(){
     <p style="color:var(--mut);margin-top:0;font-size:13px">Mude a frente ou o nível de acesso de cada painel. <b>Restrito</b>: só administradores. <b>Controlado</b>: quem tiver a frente liberada. <b>Geral</b>: também quem tiver a frente liberada (dado operacional).</p>
     <div class="tabela-env" style="max-height:none"><table class="tab"><thead><tr><th>Painel</th><th>Frente</th><th>Nível</th><th>Dados</th><th>Arquivo de dados</th></tr></thead><tbody>
     ${E.paineis.map(p=>{ const m=E.metas[p.id]; return `<tr data-id="${esc(p.id)}" style="cursor:default">
-      <td><b>${esc(p.nome)}</b></td>
+      <td><input class="p-nome" value="${esc(p.nome)}" title="Clique para mudar o nome do painel" style="font:inherit;font-weight:700;border:1px solid transparent;background:transparent;border-radius:6px;padding:4px 6px;width:100%;min-width:180px"></td>
       <td><select class="p-frente">${[...new Set([...frentes, ...ORDEM_FRENTES])].map(f=>`<option ${f===p.frente?'selected':''}>${esc(f)}</option>`).join('')}</select></td>
       <td><select class="p-nivel">${['geral','controlado','restrito'].map(n=>`<option ${n===p.nivel?'selected':''}>${n}</option>`).join('')}</select></td>
       <td>${m ? `${m.linhas==null ? 'dados de '+fmtRef(m.referencia) : fmtNum(m.linhas)+' linhas'}<br><small style="color:var(--mut)">atualizado ${new Date(m.atualizado_em).toLocaleDateString('pt-BR')}${m.atualizado_por?' por '+esc(m.atualizado_por):''}</small>` : '—'}</td>
@@ -1202,6 +1208,16 @@ function adminPaineis(){
     tr.querySelector('.p-carregar').onclick = () => escolherPacotes(id);
     tr.querySelector('.p-frente').onchange = ev => salvar('frente', ev.target.value);
     tr.querySelector('.p-nivel').onchange = ev => salvar('nivel', ev.target.value);
+    const pn = tr.querySelector('.p-nome');
+    pn.onfocus = () => { pn.style.borderColor = 'var(--borda, #d5dbe6)'; pn.style.background = '#fff'; };
+    pn.onblur = () => { pn.style.borderColor = 'transparent'; pn.style.background = 'transparent'; };
+    pn.onkeydown = ev => { if (ev.key === 'Enter') pn.blur(); if (ev.key === 'Escape') { pn.value = E.paineis.find(x=>x.id===id).nome; pn.blur(); } };
+    pn.onchange = async () => {
+      const v = pn.value.trim(); const p = E.paineis.find(x=>x.id===id);
+      if (!v) { pn.value = p.nome; return; }
+      if (v === p.nome) return;
+      await salvar('nome', v);
+    };
     const ap = tr.querySelector('.p-apagar');
     if (ap) ap.onclick = async () => {
       if (!confirm('Apagar a base deste painel? Os dados saem do app (a planilha original continua no seu computador).')) return;
