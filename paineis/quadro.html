@@ -2292,6 +2292,8 @@ function abrir(){
     i.innerHTML=`<b>${esc(c.situacao)}</b> · admitido em ${esc(brData(c.admissao))}${c.vinculo?' · '+esc(c.vinculo):''}${c.deslig?' · desligado em '+esc(brData(c.deslig)):''}`+
       (c.situacao==='Desligado'?'<br>Atenção: no Quadro esta matrícula já aparece como desligada.':'')+
       `<br><span style="opacity:.75">Fonte: Quadro de Colaboradores${c.ref?' de '+esc(/^\d{4}-/.test(c.ref)?brData(c.ref):c.ref):''}</span>`;
+    try{const es=typeof window.CRV_ESTAB_DE==='function'?await window.CRV_ESTAB_DE(m):[];
+      if(es.length&&el('e-mat').value.trim().replace(/^0+(?=\d)/,'')===m)i.innerHTML+=`<div style="margin-top:8px;background:#fdecea;color:#8a2a1a;border-radius:7px;padding:8px 10px;font-weight:600">⚠ Este colaborador tem estabilidade provisória: ${es.map(x=>esc(x.tipo)+(x.fim?' até '+brData(x.fim):'')+(x.status==='a confirmar'?' (a confirmar)':'')).join('; ')}. Confira com o Departamento Pessoal antes de seguir com o desligamento.</div>`}catch(_){}
   };
   el('e-mat').addEventListener('input',()=>{clearTimeout(tm);tm=setTimeout(puxar,450)});
   el('e-mat').addEventListener('change',()=>{clearTimeout(tm);puxar()});
@@ -2450,4 +2452,154 @@ window.CRV_ENTREVISTA=abrir;
 })();
 </script>
 <!-- ===== fim: entrevista de desligamento ===== -->
+<!-- ===== Estabilidade provisória ===== -->
+<style>
+.es-btn{background:#fff;color:#14213d;border:0;border-radius:8px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap;margin-left:8px}
+.es-fundo{position:fixed;inset:0;background:rgba(10,20,40,.55);z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding:22px 12px;overflow:auto}
+.es-modal{background:#fff;color:#14213d;border-radius:12px;width:100%;max-width:1100px;box-shadow:0 20px 60px rgba(0,0,0,.35);font-size:13px}
+.es-cab{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid #e0e5ef;flex-wrap:wrap}
+.es-cab h3{margin:0;font-size:16px;flex:1;min-width:240px}.es-cab small{color:#5d6a85;font-weight:400;display:block;font-size:11.5px}
+.es-b{border:1px solid #d5dbe6;background:#fff;color:#14213d;border-radius:8px;padding:7px 12px;font-weight:700;font-size:12.5px;cursor:pointer;white-space:nowrap}
+.es-b.pri{background:#2e8a57;border-color:#2e8a57;color:#fff}
+.es-kp{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;padding:12px 18px 0}
+.es-k{border:1px solid #e0e5ef;border-radius:10px;padding:9px 12px;text-align:left;cursor:pointer;background:#fff;font:inherit;color:inherit;border-left:4px solid var(--c,#2e8a57)}
+.es-k.on{outline:2px solid var(--c,#2e8a57);outline-offset:-1px}
+.es-k small{display:block;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#5d6a85}.es-k b{font-size:21px}.es-k span{display:block;font-size:11.5px;color:#5d6a85}
+.es-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:12px 18px}
+.es-tools input,.es-tools select{border:1px solid #d5dbe6;border-radius:8px;padding:7px 10px;font:inherit}
+.es-tools input[type=search]{flex:1;min-width:200px}
+.es-tab{max-height:56vh;overflow:auto;margin:0 18px 14px;border:1px solid #e0e5ef;border-radius:10px}
+.es-tab table{width:100%;border-collapse:collapse;font-size:12.5px}
+.es-tab th{position:sticky;top:0;background:#f7f9fc;text-align:left;padding:7px 8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:#5d6a85}
+.es-tab td{padding:7px 8px;border-top:1px solid #eef1f5;vertical-align:top}.es-tab td .sm{font-size:11px;color:#5d6a85}
+.es-pill{display:inline-block;border-radius:99px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap}
+.es-ok{background:#e6f3ec;color:#1d6b43}.es-av{background:#fcf1dc;color:#8a5a00}.es-er{background:#fdecea;color:#a3301c}.es-mu{background:#eef1f5;color:#5d6a85}
+.es-mini{border:1px solid #d5dbe6;background:#fff;border-radius:7px;padding:3px 8px;font-size:11.5px;cursor:pointer;font-weight:600;color:#14213d;margin-left:3px}
+.es-mini.perigo{color:#a3301c;border-color:#e7b8b0}.es-mini.perigo.conf{background:#a3301c;color:#fff}
+.es-form{display:grid;grid-template-columns:repeat(12,1fr);gap:10px 12px;padding:14px 18px}
+.es-c{display:flex;flex-direction:column;gap:4px;grid-column:span 4}.es-c.w3{grid-column:span 3}.es-c.w6{grid-column:span 6}.es-c.w8{grid-column:span 8}.es-c.w12{grid-column:1/-1}
+.es-c label{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#5d6a85}
+.es-c input,.es-c select,.es-c textarea{border:1px solid #d5dbe6;border-radius:7px;padding:7px 9px;font:inherit;background:#f7f9fc;color:#14213d}
+.es-info{grid-column:1/-1;background:#f2f5fa;border-radius:8px;padding:8px 10px;font-size:12.5px}.es-info.ok{background:#e9f5ee;color:#1d5c3a}.es-info.av{background:#fdf1da;color:#8a5a00}
+.es-pe{display:flex;gap:8px;justify-content:flex-end;align-items:center;padding:12px 18px;border-top:1px solid #e0e5ef}.es-pe .esp{flex:1;color:#5d6a85;font-size:12px}
+.ent-estab{grid-column:1/-1;background:#fdecea;color:#8a2a1a;border-radius:8px;padding:9px 11px;font-size:12.5px;font-weight:600}
+@media (max-width:700px){.es-form>*{grid-column:1/-1!important}}
+</style>
+<script>
+(function(){
+'use strict';
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const br=s=>s?String(s).slice(0,10).split('-').reverse().join('/'):'';
+const hoje=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const dObj=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
+const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const addM=(s,n)=>{const d=dObj(s);d.setMonth(d.getMonth()+n);return iso(d)};
+const dias=s=>Math.round((dObj(s)-dObj(hoje()))/864e5);
+const tc=s=>String(s||'').toLowerCase().replace(/(^|[\s\/(.-])(\S)/g,(m,a,b)=>a+b.toUpperCase()).replace(/ (Da|De|Do|Dos|Das|E) /g,m=>m.toLowerCase()).replace(/\b(Ii|Iii|Iv|Vi|Vii|Ctt|Crv|Adm|Mg)\b/g,m=>m.toUpperCase());
+const TIPOS=['CIPA','CIPATR','Gestante','Acidente de trabalho','Pré-aposentadoria','Dirigente sindical','Outro'];
+let DB=null,E=[],Q=null;
+const quem=()=>(window.parent&&window.parent.CRV_QUEM)||'';
+async function db(){if(DB)return DB;try{DB=window.claude&&window.claude.use?await window.claude.use('db'):null}catch(_){DB=null}return DB}
+async function carregar(){const D=await db();if(!D)return[];try{const s=await D.collection('estabilidade').get();E=s.docs.map(d=>Object.assign({_id:d.id},d.data())).filter(x=>!x.excluido)}catch(_){E=[]}return E}
+async function quadro(){if(Q)return Q;try{const f=window.parent&&window.parent.CRV_QUADRO;if(typeof f==='function'){const q=await f();Q=q&&q.mapa||{}}}catch(_){Q={}}return Q||{}}
+const sit=x=>{if(x.status==='a confirmar')return['A confirmar','es-av'];if(!x.fim)return['Sem data de fim','es-mu'];const d=dias(x.fim);return d<0?['Encerrada','es-mu']:d<=90?['Vence em '+d+' dias','es-er']:['Vigente','es-ok']};
+const ativa=x=>x.status!=='a confirmar'&&(!x.fim||dias(x.fim)>=0);
+/* usado pela entrevista de desligamento */
+window.CRV_ESTAB_DE=async m=>{if(!E.length)await carregar();return E.filter(x=>String(x.mat)===String(m)&&(ativa(x)||x.status==='a confirmar'))};
+
+function abrir(){
+  const w=document.createElement('div');w.className='es-fundo';
+  const S={q:'',tipo:'',k:'ativas'};
+  w.innerHTML=`<div class="es-modal" role="dialog" aria-modal="true"><div class="es-cab"><h3>Estabilidade provisória<small>Quem tem estabilidade na empresa (CIPA, CIPATR, gestante, acidente de trabalho e outras). Aparece também como alerta na entrevista de desligamento.</small></h3>
+   <button class="es-b pri" id="esN">+ Cadastrar</button><button class="es-b" id="esImp">Carregar lista</button><button class="es-b" id="esXls">Excel</button><button class="es-b" id="esPdf">PDF</button><button class="es-b" id="esX">Fechar</button></div>
+   <div class="es-kp" id="esK"></div>
+   <div class="es-tools"><input type="search" id="esQ" placeholder="Buscar nome ou matrícula"><select id="esT"><option value="">Todos os tipos</option>${TIPOS.map(t=>`<option>${t}</option>`).join('')}</select><span id="esC" style="margin-left:auto;color:#5d6a85;font-size:12px"></span></div>
+   <div class="es-tab"><table><thead><tr><th>Matrícula</th><th>Colaborador</th><th>Tipo</th><th>Detalhe</th><th>Início</th><th>Estabilidade até</th><th>Situação</th><th></th></tr></thead><tbody id="esB"></tbody></table></div></div>`;
+  document.body.appendChild(w);
+  const g=id=>w.querySelector('#'+id),fe=()=>w.remove();g('esX').onclick=fe;w.addEventListener('mousedown',e=>{if(e.target===w)fe()});
+  const lista=()=>E.filter(x=>(!S.tipo||x.tipo===S.tipo)&&(!S.q||(x.nome+' '+x.mat).toUpperCase().includes(S.q.toUpperCase()))&&(S.k==='todas'||(S.k==='ativas'?ativa(x):S.k==='vence'?ativa(x)&&x.fim&&dias(x.fim)<=90:S.k==='conf'?x.status==='a confirmar':S.k==='enc'?x.status!=='a confirmar'&&x.fim&&dias(x.fim)<0:true)))
+    .sort((a,b)=>(a.fim||'9999').localeCompare(b.fim||'9999')||a.nome.localeCompare(b.nome));
+  const draw=async()=>{const QQ=await quadro();
+    const at=E.filter(ativa),ve=at.filter(x=>x.fim&&dias(x.fim)<=90),cf=E.filter(x=>x.status==='a confirmar'),en=E.filter(x=>x.status!=='a confirmar'&&x.fim&&dias(x.fim)<0);
+    const pt={};at.forEach(x=>pt[x.tipo]=(pt[x.tipo]||0)+1);
+    g('esK').innerHTML=[['ativas','Com estabilidade',at.length,Object.entries(pt).map(([k,v])=>v+' '+k).join(' · ')||'—','#2e8a57'],['vence','Vencem em até 90 dias',ve.length,'acompanhar o fim','#a3301c'],['conf','A confirmar',cf.length,'sugestões para conferir','#b7791f'],['enc','Encerradas',en.length,'histórico','#8a94a6'],['todas','Todos os registros',E.length,'','#14213d']]
+      .map(k=>`<button class="es-k${S.k===k[0]?' on':''}" style="--c:${k[4]}" data-k="${k[0]}"><small>${k[1]}</small><b>${k[2]}</b><span>${esc(k[3])}</span></button>`).join('');
+    g('esK').querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{S.k=b.dataset.k;draw()});
+    const L=lista();g('esC').textContent=L.length+' registro(s)';
+    g('esB').innerHTML=L.map(x=>{const c=QQ[String(x.mat)],s=sit(x);return `<tr data-id="${esc(x._id)}"><td>${esc(x.mat)}</td><td><b>${esc(tc(x.nome))}</b><div class="sm">${c?esc(tc(c.funcao))+' · '+esc(tc(c.setor))+(c.situacao!=='Ativo'?' · <b style="color:#a3301c">'+esc(c.situacao)+'</b>':''):'<span style="color:#a3301c">não está no Quadro da empresa 5</span>'}</div></td><td>${esc(x.tipo)}</td><td>${esc(x.detalhe||'')}<div class="sm">${esc(x.origem||'')}</div></td><td>${br(x.inicio)}</td><td><b>${br(x.fim)||'—'}</b></td><td><span class="es-pill ${s[1]}">${esc(s[0])}</span></td>
+      <td style="white-space:nowrap;text-align:right">${x.status==='a confirmar'?'<button class="es-mini" data-a="ok">Confirmar</button>':''}<button class="es-mini" data-a="ed">Editar</button><button class="es-mini perigo" data-a="ex">Excluir</button></td></tr>`}).join('')||'<tr><td colspan="8" class="sm" style="padding:10px">Nenhum registro aqui.</td></tr>';
+    g('esB').querySelectorAll('[data-a]').forEach(b=>b.onclick=async()=>{const x=E.find(y=>y._id===b.closest('tr').dataset.id);if(!x)return;
+      if(b.dataset.a==='ed'||b.dataset.a==='ok')return form(x,draw,b.dataset.a==='ok');
+      if(!b.classList.contains('conf')){b.classList.add('conf');b.textContent='Confirmar exclusão';setTimeout(()=>{if(b.isConnected){b.classList.remove('conf');b.textContent='Excluir'}},7000);return}
+      try{await DB.collection('estabilidade').doc(x._id).delete();E=E.filter(y=>y!==x);draw()}catch(e){alertar('Sem permissão para excluir.')}});
+  };
+  g('esQ').oninput=e=>{S.q=e.target.value.trim();draw()};g('esT').onchange=e=>{S.tipo=e.target.value;draw()};
+  g('esN').onclick=()=>form(null,draw);
+  g('esImp').onclick=()=>{const i=document.createElement('input');i.type='file';i.accept='.json,application/json';i.onchange=async()=>{const f=i.files[0];if(!f)return;
+    try{const j=JSON.parse(await f.text());if(j.tipo!=='crv-estabilidade'||!Array.isArray(j.itens))throw new Error('Este arquivo não é uma lista de estabilidade.');
+      const D=await db();if(!D)throw new Error('Não dá para salvar nesta visualização.');let n=0,p=0;
+      for(const it of j.itens){const id=(it.tipo+'-'+it.mat+'-'+(it.fim||it.detalhe||'')).replace(/[^\w-]+/g,'_').slice(0,90);
+        if(E.some(x=>x._id===id)){p++;continue}
+        await D.collection('estabilidade').doc(id).set(Object.assign({},it,{cadastradoEm:new Date().toISOString(),cadastradoPor:quem()+' (lista)'}));n++}
+      await carregar();draw();alertar(`${n} registro(s) carregado(s)${p?' · '+p+' já existiam e foram mantidos':''}.`)}catch(e){alertar(e.message||'Não consegui ler o arquivo.')}};i.click()};
+  const linhas=()=>lista().map(x=>{const c=(Q||{})[String(x.mat)];return{'Matrícula':x.mat,'Nome':tc(x.nome),'Função':c?tc(c.funcao):'','Setor':c?tc(c.setor):'','Tipo':x.tipo,'Detalhe':x.detalhe||'','Início':br(x.inicio),'Estabilidade até':br(x.fim),'Situação':sit(x)[0],'Origem':x.origem||''}});
+  const salvarArq=async(nome,bytes,tipo)=>{const DL=window.claude&&window.claude.use?await window.claude.use('downloads'):null;if(DL)return DL.save({filename:nome,data:bytes});const u=URL.createObjectURL(new Blob([bytes],{type:tipo}));const a=document.createElement('a');a.href=u;a.download=nome;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},4000)};
+  g('esXls').onclick=async()=>{const X=window.XLSX||(window.parent&&window.parent.XLSX);const L=linhas();if(!X||!L.length)return alertar(L.length?'Excel indisponível.':'Nada para exportar.');
+    const ws=X.utils.json_to_sheet(L);ws['!cols']=Object.keys(L[0]).map(k=>({wch:k==='Nome'||k==='Detalhe'||k==='Origem'?36:14}));const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,'Estabilidade');
+    await salvarArq('Estabilidade provisoria '+br(hoje()).split('/').join('-')+'.xlsx',new Uint8Array(X.write(wb,{bookType:'xlsx',type:'array'})),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')};
+  g('esPdf').onclick=async()=>{const J=(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF);const L=linhas();if(!J||!L.length)return alertar(L.length?'PDF indisponível.':'Nada para exportar.');
+    const doc=new J({orientation:'landscape',unit:'mm',format:'a4'});doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text('Colaboradores com estabilidade provisória · CRV Industrial · Unidade Capinópolis',12,14);
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text(`${L.length} registro(s) · emitido em ${br(hoje())}`,12,20);
+    const cols=['Matrícula','Nome','Função','Setor','Tipo','Detalhe','Estabilidade até','Situação'];
+    doc.autoTable({startY:24,head:[cols],body:L.map(r=>cols.map(c=>String(r[c]??''))),styles:{fontSize:7.5,cellPadding:1.5},headStyles:{fillColor:[11,58,71]},margin:{left:10,right:10}});
+    await salvarArq('Estabilidade provisoria '+br(hoje()).split('/').join('-')+'.pdf',new Uint8Array(doc.output('arraybuffer')),'application/pdf')};
+  carregar().then(draw);
+}
+function alertar(t){let e=document.getElementById('esToast');if(!e){e=document.createElement('div');e.id='esToast';e.style.cssText='position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#14213d;color:#fff;padding:9px 14px;border-radius:8px;font-size:13px;z-index:10050';document.body.appendChild(e)}e.textContent=t;e.hidden=false;clearTimeout(alertar.t);alertar.t=setTimeout(()=>e.hidden=true,3500)}
+function form(x,depois,confirmar){
+  const e=x||{};const w=document.createElement('div');w.className='es-fundo';w.style.zIndex=10000;
+  w.innerHTML=`<div class="es-modal" style="max-width:760px"><div class="es-cab"><h3>${x?(confirmar?'Confirmar estabilidade':'Editar estabilidade'):'Cadastrar estabilidade'}<small>A matrícula puxa os dados do Quadro. Confira as datas pelo documento (C.I., atestado, CAT, convenção).</small></h3><button class="es-b" id="fX">Fechar</button></div>
+   <div class="es-form">
+    <div class="es-c w3"><label>Matrícula *</label><input id="fM" inputmode="numeric" value="${esc(e.mat||'')}"></div>
+    <div class="es-c w8" style="grid-column:span 9"><label>Nome</label><input id="fN" value="${esc(e.nome||'')}"></div>
+    <div class="es-info" id="fI">Digite a matrícula.</div>
+    <div class="es-c"><label>Tipo de estabilidade *</label><select id="fT">${TIPOS.map(t=>`<option${(e.tipo||'CIPA')===t?' selected':''}>${t}</option>`).join('')}</select></div>
+    <div class="es-c w8"><label>Detalhe</label><input id="fD" value="${esc(e.detalhe||'')}" placeholder="Ex.: CIPA 2026/2027 (membro eleito)"></div>
+    <div class="es-c w12" id="fAj" style="flex-direction:row;gap:10px;align-items:flex-end;flex-wrap:wrap"></div>
+    <div class="es-c"><label>Início</label><input id="fIn" type="date" value="${esc(e.inicio||'')}"></div>
+    <div class="es-c"><label>Estabilidade até *</label><input id="fF" type="date" value="${esc(e.fim||'')}"></div>
+    <div class="es-c"><label>Situação do registro</label><select id="fS"><option value="confirmada"${(confirmar||e.status!=='a confirmar')?' selected':''}>Confirmada</option><option value="a confirmar"${!confirmar&&e.status==='a confirmar'?' selected':''}>A confirmar</option></select></div>
+    <div class="es-c w12"><label>Origem / documento</label><input id="fO" value="${esc(e.origem||'')}" placeholder="Ex.: C.I. nº 163/26 do SESMT"></div>
+   </div>
+   <div class="es-pe"><span class="esp" id="fMsg"></span><button class="es-b" id="fC">Cancelar</button><button class="es-b pri" id="fOk">Salvar</button></div></div>`;
+  document.body.appendChild(w);const g=id=>w.querySelector('#'+id),fe=()=>w.remove();g('fX').onclick=fe;g('fC').onclick=fe;
+  const aj=()=>{const t=g('fT').value;const A=g('fAj');
+    if(t==='Gestante')A.innerHTML=`<div class="es-c w3" style="grid-column:auto"><label>Data do parto</label><input id="fAux" type="date"></div><span style="font-size:12px;color:#5d6a85;padding-bottom:8px">Estabilidade da confirmação da gravidez até 5 meses após o parto (ADCT art. 10, II, b). Ao informar o parto, o fim é calculado.</span>`;
+    else if(t==='Acidente de trabalho')A.innerHTML=`<div class="es-c w3" style="grid-column:auto"><label>Retorno do afastamento</label><input id="fAux" type="date"></div><span style="font-size:12px;color:#5d6a85;padding-bottom:8px">12 meses após o fim do auxílio-doença acidentário (Lei 8.213/91, art. 118). Ao informar o retorno, o fim é calculado.</span>`;
+    else if(t==='CIPA'||t==='CIPATR')A.innerHTML=`<span style="font-size:12px;color:#5d6a85">Membro eleito: do registro da candidatura até 1 ano após o fim do mandato. Use a vigência informada pelo SESMT.</span>`;
+    else A.innerHTML='';
+    const ax=g('fAux');if(ax)ax.oninput=()=>{if(!ax.value)return;if(t==='Gestante'){g('fF').value=addM(ax.value,5)}else{g('fIn').value=ax.value;g('fF').value=addM(ax.value,12)}}};
+  g('fT').onchange=aj;aj();
+  let tm=null;const puxar=async()=>{const m=g('fM').value.trim().replace(/^0+(?=\d)/,'');if(!m)return;const QQ=await quadro();const c=QQ[m];
+    if(!c){g('fI').className='es-info av';g('fI').textContent='Matrícula não encontrada no Quadro da empresa 5.';return}
+    if(!x||!g('fN').value)g('fN').value=c.nome;g('fI').className='es-info ok';g('fI').innerHTML=`<b>${esc(c.nome)}</b> · ${esc(tc(c.funcao))} · ${esc(tc(c.setor))} · ${esc(c.situacao)}`};
+  g('fM').addEventListener('input',()=>{clearTimeout(tm);tm=setTimeout(puxar,400)});if(e.mat)puxar();
+  g('fOk').onclick=async()=>{const d={mat:g('fM').value.trim(),nome:g('fN').value.trim().toUpperCase(),tipo:g('fT').value,detalhe:g('fD').value.trim(),inicio:g('fIn').value,fim:g('fF').value,status:g('fS').value,origem:g('fO').value.trim()};
+    const msg=g('fMsg');if(!d.mat||!d.nome){msg.style.color='#a3301c';msg.textContent='Informe matrícula e nome.';return}
+    if(d.status==='confirmada'&&!d.fim){msg.style.color='#a3301c';msg.textContent='Informe até quando vai a estabilidade (ou deixe como "A confirmar").';return}
+    const D=await db();if(!D){msg.style.color='#a3301c';msg.textContent='Não dá para salvar nesta visualização.';return}
+    try{if(x){await D.collection('estabilidade').doc(x._id).update(Object.assign({},d,{alteradoEm:new Date().toISOString(),alteradoPor:quem()}));Object.assign(x,d)}
+      else{const r=await D.collection('estabilidade').add(Object.assign({},d,{cadastradoEm:new Date().toISOString(),cadastradoPor:quem()}));E.push(Object.assign({_id:r.id},d))}
+      fe();depois&&depois()}catch(er){msg.style.color='#a3301c';msg.textContent='Não consegui salvar: '+((er&&er.message)||'sem permissão.')}};
+}
+function montarBotao(){const alvo=document.querySelector('header .hin')||document.querySelector('header');if(!alvo||document.querySelector('.es-btn'))return;
+  const b=document.createElement('button');b.className='es-btn';b.type='button';b.textContent='Estabilidade';b.onclick=abrir;
+  const ref=alvo.querySelector('.ent-btn');if(ref)alvo.insertBefore(b,ref.nextSibling);else alvo.appendChild(b)}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',montarBotao);else montarBotao();
+window.CRV_ESTAB=abrir;
+carregar();
+})();
+</script>
+<!-- ===== fim: estabilidade ===== -->
+
 </body></html>

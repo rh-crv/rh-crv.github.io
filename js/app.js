@@ -398,7 +398,7 @@ function blocoFrente(f, lista){
    ===================================================================== */
 // opções que aparecem abaixo do painel no menu (seta)
 const SUBACOES = {
-  quadro:   [{ acao:'ent', nome:'Entrevista de desligamento' }],
+  quadro:   [{ acao:'ent', nome:'Entrevista de desligamento' }, { acao:'estab', nome:'Estabilidade' }],
   ouvidorias: [{ acao:'nova', nome:'Cadastrar ouvidoria' }],
   rd:       [{ acao:'novo', nome:'Cadastrar RD' }, { acao:'aut', nome:'Autorização de desconto' }, { acao:'hist', nome:'Histórico de autorizações' }],
   fadiga:   [{ acao:'novo', nome:'Cadastrar ocorrência' }],
@@ -410,12 +410,13 @@ const SUBACOES = {
   crachas:  [{ acao:'novo', nome:'Cadastrar crachá de treinamento' }],
   farmacia: [{ acao:'aut', nome:'Autorização de desconto' }, { acao:'hist', nome:'Histórico de autorizações' }]
 };
-function fecharJanelasAut(w){ try { w.document.querySelectorAll('.aut-fundo,.ent-fundo,.of-fundo,.nv-fundo,.rl-fundo').forEach(x => x.remove()); } catch(_){} }
+function fecharJanelasAut(w){ try { w.document.querySelectorAll('.aut-fundo,.ent-fundo,.of-fundo,.nv-fundo,.rl-fundo,.es-fundo').forEach(x => x.remove()); } catch(_){} }
 function executarAcao(acao){
   const f = document.getElementById('modelo-frame');
   const w = f && f.contentWindow;
   if (acao === 'aut' && w && typeof w.CRV_AUTORIZACAO === 'function') { fecharJanelasAut(w); w.CRV_AUTORIZACAO(); return true; }
   if (acao === 'hist' && w && typeof w.CRV_AUT_HIST === 'function') { fecharJanelasAut(w); w.CRV_AUT_HIST(); return true; }
+  if (acao === 'estab' && w && typeof w.CRV_ESTAB === 'function') { fecharJanelasAut(w); w.CRV_ESTAB(); return true; }
   if (acao === 'ent' && w && typeof w.CRV_ENTREVISTA === 'function') { fecharJanelasAut(w); w.CRV_ENTREVISTA(); return true; }
   if (acao === 'termo' && w && typeof w.CRV_TERMO === 'function') { fecharJanelasAut(w); w.CRV_TERMO(); return true; }
   if (acao === 'sem' && w && typeof w.CRV_SEMANA === 'function') { fecharJanelasAut(w); w.CRV_SEMANA(); return true; }
