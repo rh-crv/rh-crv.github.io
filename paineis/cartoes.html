@@ -293,7 +293,7 @@ $('bP').onclick=async()=>{const J=(window.jspdf&&window.jspdf.jsPDF)||(window.pa
   doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text(nomeArq(),12,14);doc.setFont('helvetica','normal');doc.setFontSize(8.5);
   doc.text(`${L.length} pessoas · planilha Sysprocard de ${br(C.refPlanilha)} × Quadro de ${br(C.refQuadro)}${S.dep?' · '+S.dep:''}${S.ger?' · '+S.ger:''}`,12,19);
   doc.autoTable({startY:23,head:[cols],body:L.map(r=>cols.map(c=>(c==='Limite atual'||c==='Limite da regra')&&r[c]!==''?moeda(r[c]):String(r[c]??''))),styles:{fontSize:7,cellPadding:1.4},headStyles:{fillColor:T==='premium'?[184,144,42]:T==='convenio'?[125,26,44]:[46,138,87]},margin:{left:10,right:10}});
-  await salvar(nomeArq()+'.pdf',new Uint8Array(doc.output('arraybuffer')),'application/pdf')};
+  await salvar(nomeArq()+'.pdf',new Uint8Array((await (window.parent.CRV_PDF_LOGOS||window.CRV_PDF_LOGOS||(d=>d))(doc,{syspro:true})).output('arraybuffer')),'application/pdf')};
 
 
 /* ---------- relatório de conferência (pedir / desbloquear / bloquear / limite) ---------- */
@@ -356,7 +356,7 @@ async function gerarRel(sec,fmt){
   });
   if(y>180){doc.addPage();y=20}
   doc.setFontSize(9);doc.line(12,y+12,110,y+12);doc.text('Conferido por (RH)',12,y+16);doc.line(130,y+12,190,y+12);doc.text('Data',130,y+16);
-  await salvar(nome+'.pdf',new Uint8Array(doc.output('arraybuffer')),'application/pdf');
+  await salvar(nome+'.pdf',new Uint8Array((await (window.parent.CRV_PDF_LOGOS||window.CRV_PDF_LOGOS||(d=>d))(doc,{syspro:true})).output('arraybuffer')),'application/pdf');
 }
 
 /* ---------- Termo de opção do Cartão Convênio (impressão) ---------- */
@@ -483,7 +483,7 @@ async function pdfTermo(d){
   doc.setDrawColor(215,220,228);doc.setLineWidth(0.3);doc.line(L,271,R,271);
   doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(...INK);doc.text('CRV INDUSTRIAL LTDA - UNIDADE CAPINÓPOLIS | CNPJ 03.937.452/0004-35',105,276,{align:'center'});
   doc.setFont('helvetica','normal');doc.setTextColor(...MUT);doc.text('Rodovia MG-226, s/nº, km 63, Zona Rural, Capinópolis/MG - CEP 38.360-000',105,280.2,{align:'center'});doc.text('Telefone: (34) 3263-8100',105,284.4,{align:'center'});
-  await salvar(`Termo de opcao Cartao Convenio - ${String(d.nome).split(' ')[0]} ${d.mat}.pdf`,new Uint8Array(doc.output('arraybuffer')),'application/pdf');
+  await salvar(`Termo de opcao Cartao Convenio - ${String(d.nome).split(' ')[0]} ${d.mat}.pdf`,new Uint8Array((await (window.parent.CRV_PDF_LOGOS||window.CRV_PDF_LOGOS||(d=>d))(doc,{syspro:true})).output('arraybuffer')),'application/pdf');
 }
 if(T==='convenio'){const b=document.createElement('button');b.className='btn rel';b.id='bT';b.textContent='Termo de opção';b.onclick=abrirTermo;document.querySelector('.hacts').insertBefore(b,document.getElementById('bR'));}
 window.CRV_TERMO=abrirTermo;
@@ -495,10 +495,11 @@ render();lerPedidos();
 </script>
 <style>
 .df-fundo{position:fixed;inset:0;background:rgba(15,22,38,.55);z-index:9000;display:flex;align-items:flex-start;justify-content:center;padding:16px;overflow:auto}
-.df-modal{background:#fff;color:#1c2333;width:min(1180px,100%);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.3);display:flex;flex-direction:column;max-height:calc(100vh - 32px)}
+.df-modal{position:relative;background:#fff;color:#1c2333;width:min(1180px,100%);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.3);display:flex;flex-direction:column;max-height:calc(100vh - 32px)}
 .df-cab{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;padding:15px 20px;border-bottom:1px solid #dde2ea}
 .df-cab h3{margin:0;font-size:18px;flex:1;min-width:260px}.df-cab h3 small{display:block;font-size:12.5px;font-weight:400;color:#5d6a85;margin-top:3px}
 .df-corpo{padding:14px 20px;overflow:auto}
+.df-esc{position:absolute;inset:0;background:rgba(20,24,34,.45);display:flex;align-items:center;justify-content:center;border-radius:16px;z-index:5}.df-esc-c{background:#fff;border-radius:14px;padding:18px;width:min(420px,92%);box-shadow:0 12px 40px rgba(0,0,0,.3)}.df-esc-c h4{margin:0 0 4px;font-size:16px;color:#5c1220}.df-esc-c p{margin:0 0 12px;color:#5d6a85;font-size:13px}.df-esc-c button{display:block;width:100%;text-align:left;font:inherit;border:1px solid #e3d3d7;background:#fff;border-radius:10px;padding:10px 12px;margin:0 0 8px;cursor:pointer}.df-esc-c button:hover{background:#fbf3f5;border-color:#7d1a2c}.df-esc-c button b{display:block;color:#5c1220;font-size:14px}.df-esc-c button small{color:#5d6a85;font-size:12px}.df-esc-c .df-esc-x{text-align:center;color:#5d6a85;border-color:#dde2ea}
 .df-b{font:inherit;font-size:13px;font-weight:600;border:1px solid #dde2ea;background:#fff;color:inherit;border-radius:9px;padding:7px 12px;cursor:pointer;white-space:nowrap}
 .df-b.pri{background:#7d1a2c;border-color:#7d1a2c;color:#fff}.df-b:disabled{opacity:.5;cursor:default}
 .df-k{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px;margin:0 0 12px}
@@ -586,7 +587,7 @@ const STC={ok:['Com saldo','df-ok'],sem:['Fica sem saldo','df-am'],est:['Já est
 function fechar(){if(W){W.remove();W=null}}
 async function abrir(){fechar();W=document.createElement('div');W.className='df-fundo';
   W.innerHTML='<div class="df-modal" role="dialog" aria-modal="true"><div class="df-cab"><h3>Desconto em folha · Cartão Convênio<small>Carregue o TXT de consumo da Sysprocard do fechamento (21 a 20). Metade só para quem tem crédito de R$ 1.080 na Sysprocard (alojados motoristas e operadores de máquinas); os demais pagam 100%, mesmo alojados; o Josail é pago 100% pela empresa. Centro de custo: carregue a planilha atualizada do sistema; desligados ficam com o centro de custo de antes do desligamento.</small></h3>'
-   +'<select class="df-b" id="dfSel"></select><button class="df-b" id="dfTxt">Carregar TXT do fechamento</button><button class="df-b" id="dfCC">Carregar planilha de centros de custo</button><button class="df-b" id="dfAnt">Trazer do mês anterior (Excel do DP)</button><button class="df-b" id="dfSal">Carregar saldos dos centros de custo</button><button class="df-b pri" id="dfXls">Excel para o DP</button><button class="df-b" id="dfPdf">PDF do resumo</button><button class="df-b" id="dfX">Fechar</button></div><div class="df-corpo"><p>Carregando…</p></div></div>';
+   +'<select class="df-b" id="dfSel"></select><button class="df-b" id="dfTxt">Carregar TXT do fechamento</button><button class="df-b" id="dfCC">Carregar planilha de centros de custo</button><button class="df-b" id="dfAnt">Trazer do mês anterior (Excel do DP)</button><button class="df-b" id="dfSal">Carregar saldos dos centros de custo</button><button class="df-b pri" id="dfXls">Excel</button><button class="df-b" id="dfPdf">PDF</button><button class="df-b" id="dfX">Fechar</button></div><div class="df-corpo"><p>Carregando…</p></div></div>';
   document.body.appendChild(W);W.addEventListener('mousedown',e=>{if(e.target===W)fechar()});
   const g=id=>W.querySelector('#'+id);g('dfX').onclick=fechar;
   const pick=(acc,fn)=>{const i=document.createElement('input');i.type='file';i.accept=acc;i.onchange=()=>{if(i.files[0])fn(i.files[0])};i.click()};
@@ -649,29 +650,54 @@ function desenhar(ok,er){if(!W)return;const g=id=>W.querySelector('#'+id),C=W.qu
 /* ---------- arquivos ---------- */
 async function salvarArq(nome,bytes,tipo){const DL=window.claude&&window.claude.use?await window.claude.use('downloads').catch(()=>null):null;if(DL)return DL.save({filename:nome,data:bytes});const u=URL.createObjectURL(new Blob([bytes],{type:tipo}));const a=document.createElement('a');a.href=u;a.download=nome;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},4000)}
 const nomeArq=ext=>'Sysprocard Convenio Desc. Folha - '+br(F.ini).slice(0,5).replace('/','-')+' a '+br(F.fim).replace(/\//g,'-')+'.'+ext;
-async function excel(){const X=window.XLSX||(window.parent&&window.parent.XLSX);if(!X)throw new Error('Excel indisponível.');const{C:CC}=calc();const it=F.itens.slice().sort((a,b)=>a.nome.localeCompare(b.nome));
-  const MON='#,##0.00_ ;[Red]\\-#,##0.00\\ ',RS='"R$"\\ #,##0.00';
-  const b=[[null,'Fechamento '+br(F.ini)+' a '+br(F.fim),null,{f:'SUBTOTAL(109,D3:D'+(it.length+2)+')',z:MON},{f:'SUBTOTAL(109,E3:E'+(it.length+2)+')',z:MON},{f:'D1-E1',z:MON}],['Marcação','Nome','Matricula','Valor(R$)','Desconto(R$)','C.CUSTO','DESC. C. CUSTO']];
-  it.forEach((x,i)=>{const r=i+3;b.push([x.marc||null,x.nome,+x.mat,{v:x.valor,t:'n',z:MON},{f:'IF(A'+r+'="SIM",D'+r+'/2,IF(A'+r+'="NÃO",0,D'+r+'))',t:'n',z:MON},/^\d+$/.test(x.cc)?+x.cc:x.cc,x.ccd])});
-  const ws1=X.utils.aoa_to_sheet(b);ws1['!cols']=[10,42,10,11,13,10,40].map(w=>({wch:w}));ws1['!autofilter']={ref:'A2:G'+(it.length+2)};
-  const D=it.filter(x=>descDe(x)>0&&!x.desl);const d=[['Nome','Matricula',' Desconto(R$)','C.CUSTO','DESC. C. CUSTO']];D.forEach(x=>d.push([x.nome,+x.mat,{v:descDe(x),t:'n',z:RS},/^\d+$/.test(x.cc)?+x.cc:x.cc,x.ccd]));
-  d.push([{f:'SUBTOTAL(102,B2:B'+(D.length+1)+')'},null,{f:'SUBTOTAL(109,C2:C'+(D.length+1)+')',z:RS},null,null]);
-  const ws2=X.utils.aoa_to_sheet(d);ws2['!cols']=[42,10,15,10,40].map(w=>({wch:w}));ws2['!autofilter']={ref:'A1:E'+(D.length+1)};
-  const DL=it.filter(x=>x.desl);const ws3=X.utils.aoa_to_sheet([['Nome','Matricula','Valor(R$)','Desconto(R$)','C.CUSTO','DESC. C. CUSTO','Observação']].concat(DL.map(x=>[x.nome,+x.mat,x.valor,descDe(x),x.cc,x.ccd,x.conf.join('; ')])));ws3['!cols']=[40,10,11,13,10,36,60].map(w=>({wch:w}));
-  const AC=it.filter(x=>x.conf.length&&!x.desl);const ws4=X.utils.aoa_to_sheet([['Nome','Matricula','Função','Valor(R$)','Desconto(R$)','Marcação','C.CUSTO','O que conferir']].concat(AC.map(x=>[x.nome,+x.mat,x.func,x.valor,descDe(x),x.marc||'Integral',x.cc,x.conf.join('; ')])));ws4['!cols']=[40,10,30,11,13,10,9,90].map(w=>({wch:w}));
-  const ord={est:0,sem:1,fora:2,nd:3,ok:4};const CL=CC.slice().sort((a,b)=>ord[a.st]-ord[b.st]||String(a.nome).localeCompare(String(b.nome)));
-  const ws5=X.utils.aoa_to_sheet([[F.ccRef?'Saldos do relatório de '+F.ccRef+(F.ccPer?' (período '+F.ccPer+')':'')+' comparados com o consumo total do cartão neste fechamento.':'Saldos não carregados.'],[],['C.CUSTO','DESC. C. CUSTO','Pessoas','Consumo(R$)','Desconto em folha(R$)','Parte da empresa(R$)','Previsto(R$)','Realizado(R$)','Saldo antes(R$)','Saldo depois deste consumo(R$)','Situação']]
-    .concat(CL.map(c=>[/^\d+$/.test(c.cc)?+c.cc:c.cc,c.nome,c.n,+c.v.toFixed(2),+c.d.toFixed(2),+(c.v-c.d).toFixed(2),c.s?c.s.prev:null,c.s?c.s.real:null,c.s?c.s.dif:null,c.s?+c.depois.toFixed(2):null,STC[c.st][0]])));ws5['!cols']=[9,36,8,12,13,13,12,13,13,15,24].map(w=>({wch:w}));
-  const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws1,'Base');X.utils.book_append_sheet(wb,ws2,'Descontar');X.utils.book_append_sheet(wb,ws3,'Desligados - rescisão');X.utils.book_append_sheet(wb,ws4,'A conferir');X.utils.book_append_sheet(wb,ws5,'Centros de custo');
-  await salvarArq(nomeArq('xlsx'),new Uint8Array(X.write(wb,{bookType:'xlsx',type:'array'})),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}
-async function pdfRes(){const J=(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF);if(!J)throw new Error('PDF indisponível.');const{T,C:CC}=calc();
-  const doc=new J({unit:'mm',format:'a4'});doc.setFillColor(125,26,44);doc.rect(0,0,210,4,'F');doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(92,18,32);doc.text('CRV INDUSTRIAL · Cartão Convênio · Desconto em folha',14,15);
-  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(60,66,80);doc.text('Fechamento de '+br(F.ini)+' a '+br(F.fim)+' · emitido em '+new Date().toLocaleDateString('pt-BR')+' por '+quem(),14,21);
-  doc.autoTable({startY:26,body:[['Pessoas',String(T.n)],['Consumo total do cartão','R$ '+brl(T.v)],['Desconto em folha','R$ '+brl(T.d)],['Fica com a empresa','R$ '+brl(T.e)],['Desligados (descontar na rescisão)',T.desl+' · R$ '+brl(T.dv)],['Itens a conferir',String(T.conf)]],styles:{fontSize:9},columnStyles:{0:{fontStyle:'bold',cellWidth:80}},theme:'plain',margin:{left:14}});
-  const ord={est:0,sem:1,fora:2,nd:3,ok:4};const CL=CC.slice().sort((a,b)=>ord[a.st]-ord[b.st]||b.v-a.v);
-  doc.autoTable({startY:doc.lastAutoTable.finalY+4,head:[['C. custo','Descrição','Pessoas','Consumo','Desconto','Saldo antes','Saldo depois','Situação']],body:CL.map(c=>[c.cc,c.nome,c.n,brl(c.v),brl(c.d),c.s?brl(c.s.dif):'—',c.s?brl(c.depois):'—',STC[c.st][0]]),styles:{fontSize:7.6,cellPadding:1.3},headStyles:{fillColor:[125,26,44]},margin:{left:10,right:10},
-    didParseCell:h=>{if(h.section==='body'&&h.column.index===7){const t=String(h.cell.raw);h.cell.styles.textColor=/estourado/.test(t)?[163,48,28]:/sem saldo/.test(t)?[138,90,0]:/Com saldo/.test(t)?[29,92,58]:[93,106,133]}}});
-  await salvarArq(nomeArq('pdf'),new Uint8Array(doc.output('arraybuffer')),'application/pdf')}
+/* ---------- exportação: Nominal (desconto de cada pessoa) ou Por centro de custo (lançamento) — sem itens "a conferir" ---------- */
+const ccN=c=>/^\d+$/.test(String(c))?+c:c;
+function dadosExp(){const{C:CC}=calc();const it=F.itens.slice().sort((a,b)=>a.nome.localeCompare(b.nome));
+  const N=it.filter(x=>descDe(x)>0&&!x.desl),DL=it.filter(x=>x.desl);
+  const CL=CC.slice().sort((a,b)=>String(a.cc).localeCompare(String(b.cc),'pt',{numeric:true}));
+  return{it,N,DL,CL}}
+function escolher(tipo){return new Promise(ok=>{const o=document.createElement('div');o.className='df-esc';
+  o.innerHTML='<div class="df-esc-c"><h4>'+(tipo==='xlsx'?'Excel':'PDF')+' para impressão</h4><p>O que você quer imprimir?</p>'
+   +'<button data-v="nom"><b>Nominal</b><small>Desconto de cada pessoa (e desligados para a rescisão)</small></button>'
+   +'<button data-v="cc"><b>Por centro de custo</b><small>Só os totais de cada centro de custo, para lançamento</small></button>'
+   +'<button data-v="ambos"><b>Os dois</b><small>Nominal e por centro de custo no mesmo arquivo</small></button>'
+   +'<button data-v="" class="df-esc-x">Cancelar</button></div>';
+  W.querySelector('.df-modal').appendChild(o);o.querySelectorAll('button').forEach(b=>b.onclick=()=>{o.remove();ok(b.dataset.v)})})}
+async function excel(){const X=window.XLSX||(window.parent&&window.parent.XLSX);if(!X)throw new Error('Excel indisponível.');
+  const op=await escolher('xlsx');if(!op)return;const{N,DL,CL}=dadosExp();const RS='"R$"\\ #,##0.00';const per='Fechamento '+br(F.ini)+' a '+br(F.fim);
+  const wb=X.utils.book_new();
+  if(op!=='cc'){
+    const a=[['CRV INDUSTRIAL · Cartão Convênio Sysprocard · Desconto em folha (nominal)'],[per],[],['Nome','Matricula','C.CUSTO','DESC. C. CUSTO','Desconto(R$)']];
+    N.forEach(x=>a.push([x.nome,+x.mat,ccN(x.cc),x.ccd,{v:descDe(x),t:'n',z:RS}]));
+    a.push(['TOTAL · '+N.length+' pessoas',null,null,null,{f:'SUM(E5:E'+(N.length+4)+')',t:'n',z:RS}]);
+    const ws=X.utils.aoa_to_sheet(a);ws['!cols']=[44,11,10,40,15].map(w=>({wch:w}));ws['!autofilter']={ref:'A4:E'+(N.length+4)};X.utils.book_append_sheet(wb,ws,'Nominal');
+    if(DL.length){const d=[['Desligados · descontar na rescisão'],[per],[],['Nome','Matricula','C.CUSTO','DESC. C. CUSTO','Desconto(R$)']];
+      DL.forEach(x=>d.push([x.nome,+x.mat,ccN(x.cc),x.ccd,{v:descDe(x),t:'n',z:RS}]));d.push(['TOTAL · '+DL.length+' pessoas',null,null,null,{f:'SUM(E5:E'+(DL.length+4)+')',t:'n',z:RS}]);
+      const w2=X.utils.aoa_to_sheet(d);w2['!cols']=[44,11,10,40,15].map(w=>({wch:w}));X.utils.book_append_sheet(wb,w2,'Desligados - rescisão')}}
+  if(op!=='nom'){const c=[['CRV INDUSTRIAL · Cartão Convênio Sysprocard · Lançamento por centro de custo'],[per],[],['C.CUSTO','DESC. C. CUSTO','Pessoas','Consumo total(R$)','Desconto em folha(R$)','Parte da empresa(R$)']];
+    CL.forEach(x=>c.push([ccN(x.cc),x.nome,x.n,{v:+x.v.toFixed(2),t:'n',z:RS},{v:+x.d.toFixed(2),t:'n',z:RS},{v:+(x.v-x.d).toFixed(2),t:'n',z:RS}]));
+    const e=CL.length+4;c.push(['TOTAL',null,{f:'SUM(C5:C'+e+')'},{f:'SUM(D5:D'+e+')',t:'n',z:RS},{f:'SUM(E5:E'+e+')',t:'n',z:RS},{f:'SUM(F5:F'+e+')',t:'n',z:RS}]);
+    const ws=X.utils.aoa_to_sheet(c);ws['!cols']=[10,40,9,17,19,19].map(w=>({wch:w}));X.utils.book_append_sheet(wb,ws,'Por centro de custo')}
+  const suf=op==='nom'?' - Nominal':op==='cc'?' - Por centro de custo':'';
+  await salvarArq(nomeArq('xlsx').replace(/\.xlsx$/,suf+'.xlsx'),new Uint8Array(X.write(wb,{bookType:'xlsx',type:'array'})),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}
+async function pdfRes(){const J=(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF);if(!J)throw new Error('PDF indisponível.');
+  const op=await escolher('pdf');if(!op)return;const{N,DL,CL}=dadosExp();const VI=[125,26,44];
+  const doc=new J({unit:'mm',format:'a4'});const W=210;
+  const cab=(tit)=>{doc.setFillColor(...VI);doc.rect(0,0,W,2,'F');doc.setFont('helvetica','bold');doc.setFontSize(12.5);doc.setTextColor(92,18,32);doc.text('Cartão Convênio Sysprocard · '+tit,10,10);
+    doc.setFont('helvetica','normal');doc.setFontSize(8.6);doc.setTextColor(60,66,80);doc.text('CRV Industrial · Fechamento de '+br(F.ini)+' a '+br(F.fim)+' · emitido em '+new Date().toLocaleDateString('pt-BR'),10,15.5)};
+  const opt={styles:{fontSize:8,cellPadding:1.3},headStyles:{fillColor:VI},footStyles:{fillColor:[245,235,237],textColor:[60,20,30],fontStyle:'bold'},margin:{left:10,right:10,top:22},showFoot:'lastPage'};
+  const nomTab=(L,tit,y)=>{doc.autoTable(Object.assign({},opt,{startY:y,head:[['Nome','Matrícula','C. custo','Descrição do centro de custo','Desconto']],body:L.map(x=>[tcx(x.nome),x.mat,x.cc,x.ccd,'R$ '+brl(descDe(x))]),
+    foot:[['Total · '+L.length+' pessoas','','','','R$ '+brl(L.reduce((s,x)=>s+descDe(x),0))]],columnStyles:{1:{halign:'center'},2:{halign:'center'},4:{halign:'right'}}}))};
+  let primeira=true;
+  if(op!=='cc'){cab('Desconto em folha (nominal)');nomTab(N,'',22);primeira=false;
+    if(DL.length){let y=doc.lastAutoTable.finalY+8;if(y>260){doc.addPage();y=22}doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(92,18,32);doc.text('Desligados · descontar na rescisão',10,y);nomTab(DL,'',y+3)}}
+  if(op!=='nom'){if(!primeira)doc.addPage();cab('Lançamento por centro de custo');
+    const t=CL.reduce((a,c)=>{a.n+=c.n;a.v+=c.v;a.d+=c.d;return a},{n:0,v:0,d:0});
+    doc.autoTable(Object.assign({},opt,{startY:22,head:[['C. custo','Descrição','Pessoas','Consumo total','Desconto em folha','Parte da empresa']],body:CL.map(c=>[c.cc,c.nome,c.n,'R$ '+brl(c.v),'R$ '+brl(c.d),'R$ '+brl(c.v-c.d)]),
+      foot:[['Total','',t.n,'R$ '+brl(t.v),'R$ '+brl(t.d),'R$ '+brl(t.v-t.d)]],columnStyles:{0:{halign:'center'},2:{halign:'center'},3:{halign:'right'},4:{halign:'right'},5:{halign:'right'}}}))}
+  const n=doc.internal.getNumberOfPages();for(let p=1;p<=n;p++){doc.setPage(p);doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(120,128,140);doc.text('Página '+p+' de '+n,W-10,292,{align:'right'})}
+  const suf=op==='nom'?' - Nominal':op==='cc'?' - Por centro de custo':'';
+  await salvarArq(nomeArq('pdf').replace(/\.pdf$/,suf+'.pdf'),new Uint8Array((await (window.parent.CRV_PDF_LOGOS||window.CRV_PDF_LOGOS||(d=>d))(doc,{syspro:true})).output('arraybuffer')),'application/pdf')}
 window.CRV_DESCFOLHA=abrir;
 const hb=document.querySelector('.hacts');if(hb){const b=document.createElement('button');b.className='btn rel';b.textContent='Desconto em folha';b.onclick=abrir;hb.insertBefore(b,hb.firstChild)}
 })();

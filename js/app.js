@@ -873,6 +873,42 @@ async function lerArquivoPacote(painel, arquivo){
 /* Base de colaboradores tirada do Quadro Geral (usada pelas autorizações de desconto).
    Retorna { 'matrícula': {nome, funcao, setor, situacao, admissao, deslig, empresa} } */
 let _quadroBase = null, _quadroBaseRef = null;
+/* Logos nos documentos impressos: CRV em todos; Syspro nos documentos dos cartões Sysprocard.
+   Uso nos painéis: await window.parent.CRV_PDF_LOGOS(doc,{syspro:true}) logo antes de salvar o PDF. */
+const LOGOS_CACHE = {};
+window.CRV_LOGO = function(nome){
+  if (!LOGOS_CACHE[nome]) LOGOS_CACHE[nome] = fetch('img/' + nome + '.png').then(r => r.ok ? r.blob() : null).then(b => b && new Promise(ok => {
+    const fr = new FileReader(); fr.onload = () => { const im = new Image(); im.onload = () => ok({ src: fr.result, w: im.naturalWidth, h: im.naturalHeight }); im.onerror = () => ok(null); im.src = fr.result; }; fr.onerror = () => ok(null); fr.readAsDataURL(b);
+  })).catch(() => null);
+  return LOGOS_CACHE[nome];
+};
+window.CRV_PDF_LOGOS = async function(doc, op){
+  op = op || {};
+  try {
+    const L = [await window.CRV_LOGO('logo-crv')];
+    if (op.syspro) L.push(await window.CRV_LOGO('logo-syspro'));
+    const im = L.filter(Boolean); if (!im.length) return doc;
+    const k = doc.internal.scaleFactor ? 72 / 25.4 / doc.internal.scaleFactor : 1; // mm -> unidade do documento
+    const mm = v => v * k;
+    const dir = mm(op.margem == null ? 6 : op.margem);
+    const n = doc.internal.getNumberOfPages();
+    for (let p = 1; p <= n; p++) {
+      if (op.soPrimeira && p > 1) break;
+      // da 2ª página em diante a logo fica menor, para não encostar na tabela que continua
+      const h = mm(p === 1 ? (op.altura || 9) : 5.5), pad = mm(p === 1 ? 1.6 : 1), gap = mm(p === 1 ? 2.5 : 1.6), top = mm(p === 1 ? (op.topo == null ? 3 : op.topo) : 2.5);
+      const ws = im.map(i => h * i.w / i.h), boxW = ws.reduce((a, b) => a + b, 0) + gap * (im.length - 1) + pad * 2, boxH = h + pad * 2;
+      doc.setPage(p);
+      const W = doc.internal.pageSize.getWidth();
+      let x = op.esquerda ? dir : W - dir - boxW;
+      doc.setFillColor(255, 255, 255); doc.setDrawColor(225, 229, 236); doc.setLineWidth(mm(0.2));
+      doc.roundedRect(x, top, boxW, boxH, mm(1.5), mm(1.5), 'FD');
+      x += pad;
+      im.forEach((i, j) => { try { doc.addImage(i.src, 'PNG', x, top + pad, ws[j], h, 'crvlogo' + j, 'FAST'); } catch (_) {} x += ws[j] + gap; });
+    }
+    doc.setPage(n);
+  } catch (_) {}
+  return doc;
+};
 window.CRV_QUADRO = async function(){
   try {
     const { data: d, error } = await sb.from('pacotes').select('referencia,conteudo,atualizado_em').eq('painel', 'quadro').maybeSingle();

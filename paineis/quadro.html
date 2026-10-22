@@ -2600,7 +2600,7 @@ function abrir(){
     doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text(`${L.length} registro(s) · emitido em ${br(hoje())}`,12,20);
     const cols=['Matrícula','Nome','Função','Setor','Tipo','Detalhe','Estabilidade até','Situação'];
     doc.autoTable({startY:24,head:[cols],body:L.map(r=>cols.map(c=>String(r[c]??''))),styles:{fontSize:7.5,cellPadding:1.5},headStyles:{fillColor:[11,58,71]},margin:{left:10,right:10}});
-    await salvarArq('Estabilidade provisoria '+br(hoje()).split('/').join('-')+'.pdf',new Uint8Array(doc.output('arraybuffer')),'application/pdf')};
+    await salvarArq('Estabilidade provisoria '+br(hoje()).split('/').join('-')+'.pdf',new Uint8Array((await (window.parent.CRV_PDF_LOGOS||window.CRV_PDF_LOGOS||(d=>d))(doc)).output('arraybuffer')),'application/pdf')};
   carregar().then(draw);
 }
 function alertar(t){let e=document.getElementById('esToast');if(!e){e=document.createElement('div');e.id='esToast';e.style.cssText='position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#14213d;color:#fff;padding:9px 14px;border-radius:8px;font-size:13px;z-index:10050';document.body.appendChild(e)}e.textContent=t;e.hidden=false;clearTimeout(alertar.t);alertar.t=setTimeout(()=>e.hidden=true,3500)}
@@ -2745,7 +2745,7 @@ async function exportar(H,k){const L=H.ev.filter(e=>!FILTRO||e.k===FILTRO);const
   if(typeof doc.autoTable!=='function')throw new Error('tabela do PDF indisponível');
   doc.autoTable({startY:45,head:[['Data','Registro','Detalhe','Fonte']],body:linhas.length?linhas:[['','Nenhum registro','','']],styles:{fontSize:8.2,cellPadding:1.6,valign:'top'},headStyles:{fillColor:[31,58,104]},columnStyles:{0:{cellWidth:19},1:{cellWidth:34},3:{cellWidth:20}},margin:{left:14,right:14},
     didDrawPage:()=>{doc.setFontSize(7.5);doc.setTextColor(120,128,140);doc.text('Gestão de Pessoas · CRV Industrial · emitido em '+new Date().toLocaleDateString('pt-BR')+' · uso restrito',14,290)}});
-  return salvarArq(base+'.pdf',new Uint8Array(doc.output('arraybuffer')),'application/pdf')}
+  return salvarArq(base+'.pdf',new Uint8Array((await (window.parent.CRV_PDF_LOGOS||window.CRV_PDF_LOGOS||(d=>d))(doc)).output('arraybuffer')),'application/pdf')}
 window.CRV_FICHA_HIST=async r=>{ATUAL=r;FILTRO='';const el=document.getElementById('fhist');if(!el)return;
   el.innerHTML='<h3>Histórico do colaborador</h3><p class="hc-nota">Buscando advertências, suspensões, atestados, faltas, RD e estabilidade…</p>';
   try{desenhar(await coletar(r))}catch(er){el.innerHTML='<h3>Histórico do colaborador</h3><p class="hc-nota">Não consegui montar o histórico: '+esc(er.message)+'</p>'}};

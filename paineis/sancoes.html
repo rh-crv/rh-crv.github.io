@@ -844,7 +844,7 @@ async function pdf(d){
     y=ciencia(y);assinaturas(y);rodape()};
   if(d.tipo==='ori')docOri();else{docPenal();if(d.junto){doc.addPage();docOri()}}
   const nome=`${d.tipo==='adv'?'Advertencia':d.tipo==='sus'?'Suspensao':'Orientacao'}${d.junto?' e Orientacao':''} - ${String(d.nome).split(' ')[0]} ${d.mat} - ${br(d.data).split('/').join('-')}.pdf`;
-  const bytes=new Uint8Array(doc.output('arraybuffer'));
+  const bytes=new Uint8Array((await (window.parent.CRV_PDF_LOGOS||window.CRV_PDF_LOGOS||(d=>d))(doc)).output('arraybuffer'));
   const DL=window.claude&&window.claude.use?await window.claude.use('downloads'):null;
   if(DL)return DL.save({filename:nome,data:bytes});
   const u=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));const a=document.createElement('a');a.href=u;a.download=nome;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},4000);

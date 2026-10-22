@@ -868,7 +868,7 @@ async function pdf(d){
   doc.text('Testemunha - Nome: ______________________________',c2-4,ys);doc.text('CPF: _____________________________________________',c2-4,ys+4.3);
   rodape();
   const nome=`${({ori:'Termo de orientacao',adv:'Advertencia',sus:'Suspensao',ter:'Termo terceiro'})[d.tipo]} - ${String(d.nome).split(' ')[0]}${d.mat?' '+d.mat:''} - ${br(d.data).split('/').join('-')}.pdf`;
-  const bytes=new Uint8Array(doc.output('arraybuffer'));
+  const bytes=new Uint8Array((await (window.parent.CRV_PDF_LOGOS||window.CRV_PDF_LOGOS||(d=>d))(doc)).output('arraybuffer'));
   const DL=window.claude&&window.claude.use?await window.claude.use('downloads').catch(()=>null):null;
   if(DL)return DL.save({filename:nome,data:bytes});
   const u=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));const a=document.createElement('a');a.href=u;a.download=nome;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},4000);

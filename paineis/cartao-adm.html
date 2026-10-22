@@ -366,7 +366,7 @@ async function pdfTermoADM(d){
   doc.setDrawColor(215,220,228);doc.line(L,271,R,271);
   doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(...INK);doc.text('CRV INDUSTRIAL LTDA - UNIDADE CAPINÓPOLIS | CNPJ 03.937.452/0004-35',105,276,{align:'center'});
   doc.setFont('helvetica','normal');doc.setTextColor(...MUT);doc.text('Rodovia MG-226, s/nº, km 63, Zona Rural, Capinópolis/MG - CEP 38.360-000',105,280.2,{align:'center'});doc.text('Telefone: (34) 3263-8100',105,284.4,{align:'center'});
-  await salvar(`Termo de opcao ADM - cartao ${d.cartao} - ${String(d.nome).split(' ')[0]}.pdf`,new Uint8Array(doc.output('arraybuffer')),'application/pdf');
+  await salvar(`Termo de opcao ADM - cartao ${d.cartao} - ${String(d.nome).split(' ')[0]}.pdf`,new Uint8Array((await (window.parent.CRV_PDF_LOGOS||window.CRV_PDF_LOGOS||(d=>d))(doc,{syspro:true})).output('arraybuffer')),'application/pdf');
 }
 const tcF=s=>String(s||'').toLowerCase().replace(/(^|[\s\/(.-])(\S)/g,(m,a,b)=>a+b.toUpperCase()).replace(/ (Da|De|Do|Dos|Das|E) /g,m=>m.toLowerCase()).replace(/\b(Ii|Iii|Iv|Vi|Vii|Mg)\b/g,m=>m.toUpperCase());
 
@@ -404,7 +404,7 @@ function abrirSemana(){
     doc.autoTable({startY:27,head:[['Cartão nº','Com quem está','Setor','Período do crédito','Valor']],body:L.map(l=>[String(l.x.cartao),l.x.nome+(l.x.mat?' (mat. '+l.x.mat+')':''),l.x.setor,br(l.c.ini)+' a '+br(l.c.fim),moeda(l.c.valor)]),foot:[['','','','Total para depósito',moeda(tot)]],
       styles:{fontSize:8.5,cellPadding:1.8},headStyles:{fillColor:[125,26,44]},footStyles:{fillColor:[238,241,245],textColor:20,fontStyle:'bold'},columnStyles:{0:{cellWidth:16},3:{cellWidth:44},4:{halign:'right',cellWidth:28}},didParseCell:h=>{if(h.column.index===4)h.cell.styles.halign='right'},margin:{left:14,right:14}});
     const y=doc.lastAutoTable.finalY+18;doc.line(14,y,90,y);doc.setFontSize(8.5);doc.text('Lançado na Sysprocard por',14,y+4.5);doc.line(110,y,160,y);doc.text('Data',110,y+4.5);
-    await salvar(nomeA()+'.pdf',new Uint8Array(doc.output('arraybuffer')),'application/pdf')};
+    await salvar(nomeA()+'.pdf',new Uint8Array((await (window.parent.CRV_PDF_LOGOS||window.CRV_PDF_LOGOS||(d=>d))(doc,{syspro:true})).output('arraybuffer')),'application/pdf')};
   (async()=>{try{if(DB){const q=await DB.collection('depositos').get();q.docs.forEach(d=>DEP[d.id]=d.data())}}catch(_){}draw()})();
 }
 
@@ -440,7 +440,7 @@ async function gerarRel(p,L,f){RP=p;
   doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text(`${per} · ${L.length} lançamentos · creditado ${moeda(cred)} · consumido ${moeda(cons)} · saldo ${moeda(cred-cons)}${nt!=null?' · nota '+moeda(nt)+' (diferença × consumido '+moeda(Math.abs(nt-cons)<0.005?0:nt-cons)+')':''}`,12,20);
   doc.autoTable({startY:24,head:[COLS.map(c=>c[0])],body:L.map(x=>COLS.map((c,i)=>{const v=c[1](x);return i===8||i===9?moeda(v):String(v??'')})),foot:[['','','','','','','','Total',moeda(cred),moeda(cons),'','']],
     styles:{fontSize:6.8,cellPadding:1.2},headStyles:{fillColor:[125,26,44],fontSize:6.8},footStyles:{fillColor:[238,241,245],textColor:20,fontStyle:'bold'},columnStyles:{8:{halign:'right'},9:{halign:'right'}},margin:{left:8,right:8}});
-  await salvar(nome+'.pdf',new Uint8Array(doc.output('arraybuffer')),'application/pdf');
+  await salvar(nome+'.pdf',new Uint8Array((await (window.parent.CRV_PDF_LOGOS||window.CRV_PDF_LOGOS||(d=>d))(doc,{syspro:true})).output('arraybuffer')),'application/pdf');
 }
 $('bNovo').onclick=()=>abrirForm(null);
 $('bSem').onclick=abrirSemana;window.CRV_SEMANA=abrirSemana;

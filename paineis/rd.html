@@ -1117,7 +1117,7 @@ async function abrirHist(){
     const cols=Object.keys(L[0]);
     doc.autoTable({startY:25,head:[cols],body:L.map(r=>cols.map(c=>c==='Valor (R$)'?moeda(r[c]):String(r[c]))),foot:[cols.map((c,k)=>k===0?'Total':c==='Valor (R$)'?moeda(tot):'')],
       styles:{fontSize:7.5,cellPadding:1.6},headStyles:{fillColor:[29,92,58]},footStyles:{fillColor:[238,241,245],textColor:20,fontStyle:'bold'},margin:{left:10,right:10}});
-    await salvarArq(titulo()+'.pdf',new Uint8Array(doc.output('arraybuffer')),'application/pdf');
+    await salvarArq(titulo()+'.pdf',new Uint8Array((await (window.parent.CRV_PDF_LOGOS||window.CRV_PDF_LOGOS||(d=>d))(doc)).output('arraybuffer')),'application/pdf');
   };
   g('h-base').onchange=e=>{st.base=e.target.value;st.mes=-1;guardar();desenhar()};
   g('h-ano').onchange=e=>{st.ano=+e.target.value;st.mes=-1;guardar();desenhar()};
