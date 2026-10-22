@@ -406,7 +406,7 @@ const SUBACOES = {
   'cartao-alimentacao': [{ acao:'rel', nome:'Relatório de conferência' }],
   'cartao-convenio':    [{ acao:'termo', nome:'Termo de opção' }, { acao:'rel', nome:'Relatório de conferência' }],
   'cartao-premium':     [{ acao:'rel', nome:'Relatório de conferência' }],
-  'cartao-adm':         [{ acao:'novo', nome:'Registrar entrega' }, { acao:'rel', nome:'Relatório do período' }],
+  'cartao-adm':         [{ acao:'novo', nome:'Registrar entrega' }, { acao:'sem', nome:'Créditos da semana' }, { acao:'rel', nome:'Relatório do período' }],
   crachas:  [{ acao:'novo', nome:'Cadastrar crachá de treinamento' }],
   farmacia: [{ acao:'aut', nome:'Autorização de desconto' }, { acao:'hist', nome:'Histórico de autorizações' }]
 };
@@ -418,6 +418,7 @@ function executarAcao(acao){
   if (acao === 'hist' && w && typeof w.CRV_AUT_HIST === 'function') { fecharJanelasAut(w); w.CRV_AUT_HIST(); return true; }
   if (acao === 'ent' && w && typeof w.CRV_ENTREVISTA === 'function') { fecharJanelasAut(w); w.CRV_ENTREVISTA(); return true; }
   if (acao === 'termo' && w && typeof w.CRV_TERMO === 'function') { fecharJanelasAut(w); w.CRV_TERMO(); return true; }
+  if (acao === 'sem' && w && typeof w.CRV_SEMANA === 'function') { fecharJanelasAut(w); w.CRV_SEMANA(); return true; }
   if (acao === 'rel' && w && typeof w.CRV_RELATORIO === 'function') { fecharJanelasAut(w); w.CRV_RELATORIO(); return true; }
   if (acao === 'novo' && w && typeof w.CRV_NOVO === 'function') { fecharJanelasAut(w); w.CRV_NOVO(); return true; }
   if (acao === 'nova' && w && typeof w.CRV_OUV_NOVA === 'function') { fecharJanelasAut(w); w.CRV_OUV_NOVA(); return true; }
@@ -876,7 +877,8 @@ window.CRV_QUADRO = async function(){
     const DM = (dados.DM || []).filter(r => /\(5\)\s*$/.test(String(r[21] || '')) || /^CRV\b/i.test(String(r[21] || '')))
       .sort((a, b) => String(a[20] || '') < String(b[20] || '') ? -1 : 1);
     DM.forEach(r => { M[txt(r[0])] = { nome:txt(r[1]), funcao:txt(r[2]), setor:txt(r[3]), situacao:'Desligado', vinculo:txt(r[7]), gerencia:txt(r[6]), cnh:txt(r[17]), admissao:txt(r[9]), deslig:txt(r[20]), empresa:txt(r[21]).replace(/\s*\(\d+\)$/, '') }; });
-    dados.D.forEach(r => { M[txt(r[0])] = { nome:txt(r[1]), funcao:txt(r[2]), setor:txt(r[3]), situacao:txt(r[8]) || 'Ativo', vinculo:txt(r[7]), gerencia:txt(r[6]), cnh:txt(r[17]), admissao:txt(r[9]), deslig:'', empresa:'CRV' }; });
+    const XX = Array.isArray(dados.X) && dados.X.length === dados.D.length ? dados.X : null;
+    dados.D.forEach((r, i) => { M[txt(r[0])] = { cpf: XX ? txt(XX[i][11]) : '', nome:txt(r[1]), funcao:txt(r[2]), setor:txt(r[3]), situacao:txt(r[8]) || 'Ativo', vinculo:txt(r[7]), gerencia:txt(r[6]), cnh:txt(r[17]), admissao:txt(r[9]), deslig:'', empresa:'CRV' }; });
     _quadroBase = { mapa:M, referencia:d.referencia || '' }; _quadroBaseRef = chave;
     return _quadroBase;
   } catch(_) { return null; }

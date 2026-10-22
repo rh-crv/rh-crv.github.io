@@ -71,7 +71,7 @@ td .sm{font-size:11.5px;color:var(--mut)}tfoot td{font-weight:700;background:#f8
 <header><div class="hin">
   <span class="logo"><img alt="CRV Industrial" src="__CRV_BASE__img/logo-crv.png"></span>
   <div class="ttl"><div class="eb">Benefícios · Sysprocard</div><h1>Cartão Convênio ADM</h1><small id="sub"></small></div>
-  <div class="hacts"><button class="btn pri" id="bNovo">+ Registrar entrega</button><button class="btn" id="bRel">Relatório do período</button></div>
+  <div class="hacts"><button class="btn pri" id="bNovo">+ Registrar entrega</button><button class="btn" id="bSem">Créditos da semana</button><button class="btn" id="bRel">Relatório do período</button></div>
 </div></header>
 <main>
   <div class="per" id="per"></div>
@@ -130,8 +130,8 @@ async function carregar(){
   render();
 }
 const EXTRA=new Set();
-function periodos(){const s=new Set(U.map(x=>x.periodo));s.add(perDe(hojeISO()));EXTRA.forEach(p=>s.add(p));return [...s].sort()}
-const doPer=()=>U.filter(x=>x.periodo===S.p);
+function periodos(){const s=new Set(U.map(x=>x.periodo));U.forEach(x=>(x.creditos||[]).forEach(c=>s.add(perDe(c.ini))));s.add(perDe(hojeISO()));EXTRA.forEach(p=>s.add(p));return [...s].sort()}
+const doPer=()=>U.filter(x=>x.periodo===S.p||(Array.isArray(x.creditos)&&x.creditos.some(c=>perDe(c.ini)===S.p)));
 const sel=()=>doPer().filter(x=>(!S.sit||x.situacao===S.sit)&&(!S.sol||x.solicitante===S.sol)&&(!S.k||(S.k==='aberto'?aberto(x.situacao):S.k==='prob'?!aberto(x.situacao)&&x.situacao!=='Devolvido':true))&&(!S.q||[x.nome,x.cartao,x.mat,x.setor,x.solicitante,x.cargo].join(' ').toUpperCase().includes(S.q.toUpperCase())));
 
 function render(){
@@ -140,7 +140,7 @@ function render(){
   $('per').innerHTML='<span class="lab">Período</span>'+ps.map(p=>`<button class="chip${p===S.p?' on':''}" data-p="${p}">${perCurto(p)}</button>`).join('')+`<button class="chip" id="pNovo" title="Abrir o próximo período">+ próximo período</button>`;
   $('per').querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{S.p=b.dataset.p;S.k='';render()});
   $('pNovo').onclick=()=>{S.p=proxPer(ps[ps.length-1]);EXTRA.add(S.p);render();toast('Período '+perTxt(S.p)+' aberto.')};
-  const L=doPer(),cred=L.reduce((s,x)=>s+num(x.creditado),0),cons=L.reduce((s,x)=>s+num(x.consumido),0);
+  const L=doPer(),cred=L.reduce((s,x)=>s+credNoPer(x,S.p),0),cons=L.reduce((s,x)=>s+(x.periodo===S.p?num(x.consumido):0),0);
   const ab=L.filter(x=>aberto(x.situacao)),prob=L.filter(x=>!aberto(x.situacao)&&x.situacao!=='Devolvido');
   const pessoas=new Set(L.map(x=>(x.mat||x.nome).toUpperCase())).size;
   $('kpis').innerHTML=[
@@ -170,10 +170,10 @@ function render(){
   /* lista */
   const LS=sel().sort((a,b)=>(+a.cartao||0)-(+b.cartao||0)||String(a.entrega).localeCompare(String(b.entrega)));
   $('cnt').textContent=`${nf(LS.length)} lançamentos`;
-  $('tb').innerHTML=LS.map(x=>`<tr data-id="${esc(x._id)}"><td>${br(x.entrega)}</td><td><b>${esc(x.cartao)}</b></td><td><b>${esc(x.nome)}</b><div class="sm">${x.mat?'mat. '+esc(x.mat):esc(x.matTxt||'sem matrícula')}</div></td><td>${esc(x.setor)}<div class="sm">${esc(x.cargo)}</div></td><td>${esc(x.refeicao)}</td><td>${esc(x.duracao)}${/^\d+$/.test(String(x.duracao))?' dias':''}</td><td class="n">${moeda(x.creditado)}</td><td class="n">${moeda(x.consumido)}</td><td>${esc(x.solicitante)}</td>
+  $('tb').innerHTML=LS.map(x=>`<tr data-id="${esc(x._id)}"><td>${br(x.entrega)}</td><td><b>${esc(x.cartao)}</b></td><td><b>${esc(x.nome)}</b><div class="sm">${x.mat?'mat. '+esc(x.mat):esc(x.matTxt||'sem matrícula')}</div></td><td>${esc(x.setor)}<div class="sm">${esc(x.cargo)}</div></td><td>${esc(x.refeicao)}</td><td>${esc(x.duracao)}${/^\d+$/.test(String(x.duracao))?' dias':''}</td><td class="n">${moeda(credNoPer(x,S.p))}${Array.isArray(x.creditos)&&Math.abs(credNoPer(x,S.p)-num(x.creditado))>0.009?`<div class="sm">de ${moeda(x.creditado)} no total</div>`:''}</td><td class="n">${x.periodo===S.p?moeda(x.consumido):'<span class="sm">no fechamento '+perCurto(x.periodo)+'</span>'}</td><td>${esc(x.solicitante)}</td>
     <td><span class="pill ${sitCls(x.situacao)}">${esc(x.situacao)}</span>${x.devolucao?`<div class="sm">devolvido em ${br(x.devolucao)}</div>`:''}${x.obs?`<div class="sm">${esc(x.obs)}</div>`:''}</td>
-    <td style="white-space:nowrap;text-align:right">${aberto(x.situacao)?`<button class="mini pri" data-a="dev">Devolução</button> `:''}<button class="mini" data-a="ed">Editar</button> <button class="mini perigo" data-a="ex">Excluir</button></td></tr>`).join('')||`<tr><td colspan="11" class="sm">Nenhum lançamento neste período${S.q||S.sit||S.sol||S.k?' com esses filtros':''}. Use “+ Registrar entrega”.</td></tr>`;
-  const c2=LS.reduce((s,x)=>s+num(x.creditado),0),u2=LS.reduce((s,x)=>s+num(x.consumido),0);
+    <td style="white-space:nowrap;text-align:right">${aberto(x.situacao)?`<button class="mini pri" data-a="dev">Devolução</button> `:''}${Array.isArray(x.creditos)&&x.creditos.length?'<button class="mini" data-a="termo">Termo</button> ':''}<button class="mini" data-a="ed">Editar</button> <button class="mini perigo" data-a="ex">Excluir</button></td></tr>`).join('')||`<tr><td colspan="11" class="sm">Nenhum lançamento neste período${S.q||S.sit||S.sol||S.k?' com esses filtros':''}. Use “+ Registrar entrega”.</td></tr>`;
+  const c2=LS.reduce((s,x)=>s+credNoPer(x,S.p),0),u2=LS.reduce((s,x)=>s+(x.periodo===S.p?num(x.consumido):0),0);
   $('tf').innerHTML=LS.length?`<tr><td colspan="6">Total ${LS.length<L.length?'do filtro':'do período'} (${nf(LS.length)})</td><td class="n">${moeda(c2)}</td><td class="n">${moeda(u2)}</td><td colspan="3">Saldo ${moeda(c2-u2)}</td></tr>`:'';
   $('tb').querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>acao(b));
   /* mapa */
@@ -183,7 +183,7 @@ function render(){
     return `<button class="cel ${cls}" data-c="${n}" title="${x?esc(x.nome+' · '+x.situacao+' · '+perTxt(x.periodo)):'Disponível'}"><b>${n}</b><span>${x?esc(aberto(x.situacao)?String(x.nome).split(' ')[0]:x.situacao==='Devolvido'?'livre':x.situacao.split(' ')[0]):'—'}</span></button>`}).join('');
   $('mapa').querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>histCartao(+b.dataset.c));
   /* resumo */
-  const grp=(el,key)=>{const m={};L.forEach(x=>{const k=x[key]||'—';(m[k]=m[k]||{c:0,u:0,n:0});m[k].c+=num(x.creditado);m[k].u+=num(x.consumido);m[k].n++});
+  const grp=(el,key)=>{const m={};L.forEach(x=>{const k=x[key]||'—';(m[k]=m[k]||{c:0,u:0,n:0});m[k].c+=credNoPer(x,S.p);m[k].u+=x.periodo===S.p?num(x.consumido):0;m[k].n++});
     const E=Object.entries(m).sort((a,b)=>b[1].c-a[1].c),mx=Math.max(1,...E.map(e=>e[1].c));
     $(el).innerHTML=E.map(([k,v])=>`<div class="hr"><span>${esc(k)} <span class="sm" style="color:var(--mut)">(${v.n})</span></span><span class="t"><i style="width:${v.u/mx*100}%;background:var(--acc)"></i><i style="width:${(v.c-v.u)/mx*100}%;background:#e3c3ca"></i></span><span class="v"><b>${moeda(v.u)}</b> de ${moeda(v.c)}</span></div>`).join('')||'<p class="sub">Sem lançamentos.</p>'};
   grp('rSol','solicitante');grp('rSet','setor');
@@ -198,6 +198,7 @@ async function acao(b){
   const id=b.closest('tr').dataset.id,x=U.find(y=>y._id===id);if(!x)return;
   if(b.dataset.a==='ed')return abrirForm(x);
   if(b.dataset.a==='dev')return abrirForm(x,true);
+  if(b.dataset.a==='termo'){try{await pdfTermoADM(x)}catch(e){toast('Não consegui gerar o termo.')}return}
   if(!b.classList.contains('conf')){b.classList.add('conf');b.textContent='Confirmar';setTimeout(()=>{if(b.isConnected){b.classList.remove('conf');b.textContent='Excluir'}},7000);return}
   try{await DB.collection('usos').doc(id).delete();U=U.filter(y=>y._id!==id);render();toast('Lançamento excluído.')}catch(e){toast('Sem permissão para excluir.')}
 }
@@ -212,37 +213,75 @@ function histCartao(n){
 
 /* ---------- cadastro / edição / devolução ---------- */
 async function buscarMat(m){try{const f=window.parent&&window.parent.CRV_QUADRO;if(typeof f==='function'){const q=await f();return q&&q.mapa&&q.mapa[m]}}catch(_){}return null}
+/* programação de créditos: semanas de segunda a domingo, quebrando no dia 20/21 (fechamento) */
+const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const dObj=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
+const addD=(s,n)=>{const d=dObj(s);d.setDate(d.getDate()+n);return iso(d)};
+const diasEntre=(a,b)=>Math.round((dObj(b)-dObj(a))/864e5)+1;
+function programar(ini,fim,diaria){
+  const out=[];if(!ini||!fim||fim<ini)return out;let a=ini;
+  while(a<=fim){const d=dObj(a);let b=addD(a,(7-((d.getDay()+6)%7))-1);if(b>fim)b=fim;
+    const dia=+a.slice(8,10);if(dia<=20){const c=a.slice(0,8)+'20';if(b>c)b=c}
+    out.push({ini:a,fim:b,valor:Math.round(diasEntre(a,b)*diaria*100)/100});a=addD(b,1)}
+  return out;
+}
+const credNoPer=(x,p)=>Array.isArray(x.creditos)&&x.creditos.length?x.creditos.filter(c=>perDe(c.ini)===p).reduce((s,c)=>s+num(c.valor),0):(x.periodo===p?num(x.creditado):0);
 function abrirForm(x,dev,cartaoPre){
   const e=x||{};const w=document.createElement('div');w.className='fundo';
   const sols=[...new Set(U.map(y=>y.solicitante).filter(Boolean))].sort();
-  const refs=[...new Set(['Café / Almoço / Jantar','Almoço / Jantar','Refeições'].concat(U.map(y=>y.refeicao).filter(Boolean)))];
   const setores=[...new Set(U.map(y=>y.setor).filter(Boolean))].sort();
-  w.innerHTML=`<div class="modal" role="dialog" aria-modal="true"><div class="mcab"><h3>${dev?'Registrar devolução':x?'Editar lançamento':'Registrar entrega de cartão'}<small>Período ${perTxt(x?e.periodo:S.p)}. A matrícula (se for colaborador CRV) puxa nome, setor e cargo do Quadro.</small></h3><button class="mini" id="fX">Fechar</button></div>
+  const rf=e.ref||{cafe:true,almoco:true,jantar:true,vCafe:8,vAlmoco:18,vJantar:18};
+  let CR=Array.isArray(e.creditos)?e.creditos.map(c=>Object.assign({},c)):[];
+  const vbr=v=>Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  w.innerHTML=`<div class="modal" role="dialog" aria-modal="true" style="max-width:900px"><div class="mcab"><h3>${dev?'Registrar devolução':x?'Editar lançamento':'Registrar entrega de cartão'}<small>A matrícula (se for colaborador CRV) puxa nome, CPF, setor e cargo do Quadro. Os créditos semanais saem do período de uso e das refeições.</small></h3><button class="mini" id="fX">Fechar</button></div>
    <div class="mcorpo">
     <div class="sec">Cartão e colaborador</div>
     <div class="c w2"><label>Nº do cartão *</label><input id="fC" inputmode="numeric" value="${esc(e.cartao||cartaoPre||'')}"></div>
-    <div class="c w2"><label>Data da entrega *</label><input id="fE" type="date" value="${esc(e.entrega||hojeISO())}"></div>
+    <div class="c w2"><label>Data da retirada *</label><input id="fE" type="date" value="${esc(e.entrega||hojeISO())}"></div>
     <div class="c w2"><label>Matrícula</label><input id="fM" inputmode="numeric" placeholder="se tiver" value="${esc(e.mat||'')}"></div>
     <div class="c w6"><label>Nome do colaborador / prestador *</label><input id="fN" value="${esc(e.nome||'')}"></div>
-    <div class="c w6"><label>Setor / empresa</label><input id="fS" list="dlS" value="${esc(e.setor||'')}" placeholder="Ex.: CTT / CRV-MG"><datalist id="dlS">${setores.map(s=>`<option value="${esc(s)}">`).join('')}</datalist></div>
-    <div class="c w6"><label>Cargo</label><input id="fG" value="${esc(e.cargo||'')}"></div>
+    <div class="c w3"><label>CPF</label><input id="fCpf" value="${esc(e.cpf||'')}" placeholder="000.000.000-00"></div>
+    <div class="c w4"><label>Setor / empresa</label><input id="fS" list="dlS" value="${esc(e.setor||'')}" placeholder="Ex.: CTT / CRV-MG"><datalist id="dlS">${setores.map(s=>`<option value="${esc(s)}">`).join('')}</datalist></div>
+    <div class="c w5"><label>Cargo / função</label><input id="fG" value="${esc(e.cargo||'')}"></div>
     <div class="info" id="fI">${x?'Dados já preenchidos.':'Digite o nº do cartão e, se for colaborador CRV, a matrícula.'}</div>
-    <div class="sec">Crédito</div>
-    <div class="c w4"><label>Tipo de refeição</label><input id="fR" list="dlR" value="${esc(e.refeicao||'Café / Almoço / Jantar')}"><datalist id="dlR">${refs.map(s=>`<option value="${esc(s)}">`).join('')}</datalist></div>
-    <div class="c w2"><label>Duração (dias)</label><input id="fD" value="${esc(e.duracao||'')}" placeholder="ou Mensal"></div>
-    <div class="c w3"><label>Valor creditado (R$) *</label><input id="fV" inputmode="decimal" value="${e.creditado!=null&&e.creditado!==''?num(e.creditado).toLocaleString('pt-BR',{minimumFractionDigits:2}):''}"></div>
-    <div class="c w3"><label>Responsável solicitante</label><input id="fP" list="dlP" value="${esc(e.solicitante||'')}"><datalist id="dlP">${sols.map(s=>`<option value="${esc(s)}">`).join('')}</datalist></div>
+    <div class="sec">Uso autorizado e refeições</div>
+    <div class="c w3"><label>Início do uso *</label><input id="fIni" type="date" value="${esc(e.inicio||e.entrega||hojeISO())}"></div>
+    <div class="c w2"><label>Dias</label><input id="fDias" inputmode="numeric" value="${esc(e.inicio&&e.fimUso?diasEntre(e.inicio,e.fimUso):(/^\d+$/.test(String(e.duracao||''))?e.duracao:'30'))}"></div>
+    <div class="c w3"><label>Fim do uso *</label><input id="fFim" type="date" value="${esc(e.fimUso||'')}"></div>
+    <div class="c w4"><label>Responsável solicitante</label><input id="fP" list="dlP" value="${esc(e.solicitante||'')}"><datalist id="dlP">${sols.map(s=>`<option value="${esc(s)}">`).join('')}</datalist></div>
+    <div class="c w12" style="flex-direction:row;gap:18px;flex-wrap:wrap;align-items:center">
+      <label style="display:flex;gap:6px;align-items:center;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink)"><input type="checkbox" id="rC" ${rf.cafe?'checked':''}> Café R$ <input id="vC" style="width:64px" value="${vbr(rf.vCafe)}"></label>
+      <label style="display:flex;gap:6px;align-items:center;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink)"><input type="checkbox" id="rA" ${rf.almoco?'checked':''}> Almoço R$ <input id="vA" style="width:64px" value="${vbr(rf.vAlmoco)}"></label>
+      <label style="display:flex;gap:6px;align-items:center;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink)"><input type="checkbox" id="rJ" ${rf.jantar?'checked':''}> Jantar R$ <input id="vJ" style="width:64px" value="${vbr(rf.vJantar)}"></label>
+      <span id="fDia" style="font-size:13px;color:var(--mut)"></span>
+      <button class="mini" id="fRec" type="button">Recalcular créditos</button>
+    </div>
+    <div class="c w12"><label>Programação dos créditos (semanas de segunda a domingo, separadas no fechamento do dia 20) · pode mudar o valor de cada semana</label>
+      <div class="tab"><table><thead><tr><th>Período</th><th>Dias</th><th>Valor do crédito</th><th></th></tr></thead><tbody id="fCr"></tbody><tfoot id="fCrT"></tfoot></table></div></div>
     <div class="sec">Devolução e consumo</div>
     <div class="c w4"><label>Situação</label><select id="fT">${SITS.map(s=>`<option${(dev?'Devolvido':(e.situacao||'Em uso'))===s?' selected':''}>${s}</option>`).join('')}</select></div>
     <div class="c w4"><label>Data da devolução</label><input id="fDv" type="date" value="${esc(e.devolucao||(dev?hojeISO():''))}"></div>
-    <div class="c w4"><label>Valor consumido (R$)</label><input id="fU" inputmode="decimal" value="${e.consumido!=null&&e.consumido!==''&&(x)?num(e.consumido).toLocaleString('pt-BR',{minimumFractionDigits:2}):''}" placeholder="lançar na devolução"></div>
+    <div class="c w4"><label>Valor consumido (R$)</label><input id="fU" inputmode="decimal" value="${e.consumido!=null&&e.consumido!==''&&x?vbr(e.consumido):''}" placeholder="lançar na devolução"></div>
     <div class="c w12"><label>Observações</label><textarea id="fO">${esc(e.obs||'')}</textarea></div>
-    ${x?'':`<div class="c w4"><label>Período</label><select id="fPer">${periodos().concat([proxPer(periodos().slice(-1)[0])]).filter((v,i,a)=>a.indexOf(v)===i).map(p=>`<option value="${p}"${p===S.p?' selected':''}>${perTxt(p)}</option>`).join('')}</select></div>`}
    </div>
-   <div class="mpe"><span id="fMsg" style="flex:1;color:var(--mut);font-size:12.5px"></span><button class="btn" id="fCan">Cancelar</button><button class="btn pri" id="fOk">${x?'Salvar':'Registrar entrega'}</button></div></div>`;
+   <div class="mpe"><span id="fMsg" style="flex:1;color:var(--mut);font-size:12.5px"></span><button class="btn" id="fCan">Cancelar</button><button class="btn" id="fTermo">Salvar e gerar termo</button><button class="btn pri" id="fOk">${x?'Salvar':'Registrar entrega'}</button></div></div>`;
   document.body.appendChild(w);
   const g=id=>w.querySelector('#'+id),fe=()=>w.remove();
   g('fX').onclick=fe;g('fCan').onclick=fe;w.addEventListener('mousedown',ev=>{if(ev.target===w)fe()});
+  const diaria=()=>(g('rC').checked?num(g('vC').value):0)+(g('rA').checked?num(g('vA').value):0)+(g('rJ').checked?num(g('vJ').value):0);
+  const desenharCR=()=>{g('fDia').textContent='Valor por dia: '+moeda(diaria());
+    g('fCr').innerHTML=CR.map((c,i)=>`<tr><td>${br(c.ini)} a ${br(c.fim)}</td><td>${diasEntre(c.ini,c.fim)}</td><td><input data-i="${i}" class="crv" value="${vbr(c.valor)}" style="width:110px;border:1px solid var(--line);border-radius:6px;padding:4px 6px;font:inherit"></td><td><button class="mini perigo" data-del="${i}" type="button">tirar</button></td></tr>`).join('')||'<tr><td colspan="4" class="sm">Informe início e fim do uso.</td></tr>';
+    g('fCrT').innerHTML=CR.length?`<tr><td>Total</td><td>${CR.reduce((s,c)=>s+diasEntre(c.ini,c.fim),0)}</td><td>${moeda(CR.reduce((s,c)=>s+num(c.valor),0))}</td><td></td></tr>`:'';
+    g('fCr').querySelectorAll('.crv').forEach(i=>i.oninput=()=>{CR[+i.dataset.i].valor=num(i.value);g('fCrT').innerHTML=`<tr><td>Total</td><td>${CR.reduce((s,c)=>s+diasEntre(c.ini,c.fim),0)}</td><td>${moeda(CR.reduce((s,c)=>s+num(c.valor),0))}</td><td></td></tr>`});
+    g('fCr').querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{CR.splice(+b.dataset.del,1);desenharCR()});};
+  const recalc=()=>{CR=programar(g('fIni').value,g('fFim').value,diaria());desenharCR()};
+  const syncFim=()=>{const n=parseInt(g('fDias').value,10);if(g('fIni').value&&n>0)g('fFim').value=addD(g('fIni').value,n-1)};
+  const syncDias=()=>{if(g('fIni').value&&g('fFim').value&&g('fFim').value>=g('fIni').value)g('fDias').value=diasEntre(g('fIni').value,g('fFim').value)};
+  if(!g('fFim').value)syncFim();
+  g('fDias').oninput=()=>{syncFim();recalc()};g('fFim').oninput=()=>{syncDias();recalc()};g('fIni').oninput=()=>{syncFim();recalc()};
+  ['rC','rA','rJ'].forEach(k=>g(k).onchange=recalc);['vC','vA','vJ'].forEach(k=>g(k).oninput=recalc);g('fRec').onclick=recalc;
+  g('fE').oninput=()=>{if(!x)g('fIni').value=g('fE').value;syncFim();recalc()};
+  if(!CR.length&&!x)recalc();else desenharCR();
   const checaCartao=()=>{const n=+g('fC').value;if(!n)return;
     if(n<1||n>NC){g('fI').className='info av';g('fI').textContent=`O cartão precisa ser de 1 a ${NC}.`;return}
     const em=U.filter(y=>+y.cartao===n&&aberto(y.situacao)&&(!x||y._id!==x._id));
@@ -251,31 +290,120 @@ function abrirForm(x,dev,cartaoPre){
   g('fC').addEventListener('input',checaCartao);if(cartaoPre)checaCartao();
   let tm=null;g('fM').addEventListener('input',()=>{clearTimeout(tm);tm=setTimeout(async()=>{const m=g('fM').value.trim().replace(/^0+(?=\d)/,'');if(!m)return;const c=await buscarMat(m);
     if(!c){g('fI').className='info av';g('fI').textContent='Matrícula não encontrada no Quadro da empresa 5. Preencha à mão.';return}
-    g('fN').value=c.nome;g('fG').value=c.funcao;if(!g('fS').value)g('fS').value=c.setor+' / CRV-MG';g('fI').className='info ok';g('fI').innerHTML=`<b>${esc(c.nome)}</b> · ${esc(c.funcao)} · ${esc(c.setor)} · ${esc(c.situacao)}`},450)});
+    g('fN').value=c.nome;g('fG').value=c.funcao;if(c.cpf)g('fCpf').value=c.cpf;if(!g('fS').value)g('fS').value=c.setor+' / CRV-MG';g('fI').className='info ok';g('fI').innerHTML=`<b>${esc(c.nome)}</b> · ${esc(c.funcao)} · ${esc(c.setor)} · ${esc(c.situacao)}`},450)});
   g('fT').onchange=()=>{if(g('fT').value==='Devolvido'&&!g('fDv').value)g('fDv').value=hojeISO()};
-  g('fOk').onclick=async()=>{
-    const msg=g('fMsg');const d={cartao:+g('fC').value||'',entrega:g('fE').value,mat:g('fM').value.trim(),nome:g('fN').value.trim(),setor:g('fS').value.trim(),cargo:g('fG').value.trim(),refeicao:g('fR').value.trim(),duracao:g('fD').value.trim(),
-      creditado:num(g('fV').value),consumido:num(g('fU').value),solicitante:g('fP').value.trim(),situacao:g('fT').value,devolucao:g('fDv').value,obs:g('fO').value.trim()};
-    const falta=[!d.cartao&&'nº do cartão',!d.entrega&&'data da entrega',!d.nome&&'nome',!g('fV').value.trim()&&'valor creditado'].filter(Boolean);
-    if(falta.length){msg.style.color='var(--bad)';msg.textContent='Falta preencher: '+falta.join(', ')+'.';return}
-    if(d.cartao<1||d.cartao>NC){msg.style.color='var(--bad)';msg.textContent=`Nº do cartão de 1 a ${NC}.`;return}
-    if(d.consumido>d.creditado+0.009){msg.style.color='var(--warn)';if(!g('fOk').dataset.ok){g('fOk').dataset.ok=1;msg.textContent='O consumido está maior que o creditado. Clique de novo para salvar assim mesmo.';return}}
-    if(!DB){msg.style.color='var(--bad)';msg.textContent='Não dá para salvar nesta visualização.';return}
+  const salvarForm=async(termo)=>{
+    const msg=g('fMsg');
+    const refs=[g('rC').checked&&'Café',g('rA').checked&&'Almoço',g('rJ').checked&&'Jantar'].filter(Boolean).join(' / ');
+    const d={cartao:+g('fC').value||'',entrega:g('fE').value,mat:g('fM').value.trim(),nome:g('fN').value.trim(),cpf:g('fCpf').value.trim(),setor:g('fS').value.trim(),cargo:g('fG').value.trim(),
+      inicio:g('fIni').value,fimUso:g('fFim').value,duracao:g('fDias').value.trim(),refeicao:refs,ref:{cafe:g('rC').checked,almoco:g('rA').checked,jantar:g('rJ').checked,vCafe:num(g('vC').value),vAlmoco:num(g('vA').value),vJantar:num(g('vJ').value)},
+      creditos:CR.map(c=>({ini:c.ini,fim:c.fim,valor:num(c.valor)})),creditado:Math.round(CR.reduce((s,c)=>s+num(c.valor),0)*100)/100,
+      consumido:num(g('fU').value),solicitante:g('fP').value.trim(),situacao:g('fT').value,devolucao:g('fDv').value,obs:g('fO').value.trim()};
+    if(x&&!CR.length&&x.creditado)d.creditado=num(x.creditado);
+    const falta=[!d.cartao&&'nº do cartão',!d.entrega&&'data da retirada',!d.nome&&'nome',!d.inicio&&'início do uso',!d.fimUso&&'fim do uso',!(d.creditado>0)&&'créditos'].filter(Boolean);
+    if(falta.length){msg.style.color='var(--bad)';msg.textContent='Falta preencher: '+falta.join(', ')+'.';return null}
+    if(d.cartao<1||d.cartao>NC){msg.style.color='var(--bad)';msg.textContent=`Nº do cartão de 1 a ${NC}.`;return null}
+    if(!DB){msg.style.color='var(--bad)';msg.textContent='Não dá para salvar nesta visualização.';return null}
     const quem=(window.parent&&window.parent.CRV_QUEM)||'';
     try{
-      if(x){await DB.collection('usos').doc(x._id).update(Object.assign({},d,{alteradoEm:new Date().toISOString(),alteradoPor:quem}));Object.assign(x,d)}
-      else{const per=g('fPer')?g('fPer').value:S.p;const reg=Object.assign({},d,{periodo:per,cadastradoEm:new Date().toISOString(),cadastradoPor:quem});const ref=await DB.collection('usos').add(reg);U.push(Object.assign({_id:ref&&ref.id?ref.id:('n'+Date.now())},reg));S.p=per}
-      fe();render();toast(x?(dev?'Devolução registrada.':'Lançamento atualizado.'):'Entrega registrada.');
-      if(!x)carregar();
-    }catch(e){msg.style.color='var(--bad)';msg.textContent='Não consegui salvar: '+((e&&e.message)||'sem permissão para editar este painel.')}
+      if(x){await DB.collection('usos').doc(x._id).update(Object.assign({},d,{alteradoEm:new Date().toISOString(),alteradoPor:quem}));Object.assign(x,d);return x}
+      const reg=Object.assign({},d,{periodo:perDe(d.inicio||d.entrega),cadastradoEm:new Date().toISOString(),cadastradoPor:quem});
+      const ref=await DB.collection('usos').add(reg);const nx=Object.assign({_id:ref&&ref.id?ref.id:('n'+Date.now())},reg);U.push(nx);S.p=reg.periodo;return nx;
+    }catch(er){msg.style.color='var(--bad)';msg.textContent='Não consegui salvar: '+((er&&er.message)||'sem permissão para editar este painel.');return null}
   };
+  g('fOk').onclick=async()=>{const r=await salvarForm();if(r){fe();render();toast(x?(dev?'Devolução registrada.':'Lançamento atualizado.'):'Entrega registrada.');if(!x)carregar()}};
+  g('fTermo').onclick=async()=>{const r=await salvarForm(true);if(r){try{await pdfTermoADM(r)}catch(er){toast('Não consegui gerar o termo: '+(er.message||er))}fe();render();if(!x)carregar()}};
   setTimeout(()=>g(dev?'fU':x?'fN':'fC').focus(),60);
+}
+
+/* ---------- termo de opção ADM ---------- */
+const MESX=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+async function pdfTermoADM(d){
+  const J=(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF);if(!J)throw new Error('gerador de PDF indisponível');
+  const doc=new J({unit:'mm',format:'a4'});
+  const NAVY=[31,58,104],INK=[40,46,58],MUT=[110,116,128],GREEN=[110,150,60];const L=18,R=192,W=R-L;
+  const rich=(segs,y,fs=9.8,lh=5.0)=>{doc.setFontSize(fs);const words=[];segs.forEach(([t,bd])=>String(t).split(/(\s+)/).forEach(w=>{if(w!=='')words.push({w,bd:!!bd})}));
+    let x=L;const lines=[[]];words.forEach(o=>{doc.setFont('helvetica',o.bd?'bold':'normal');const ww=doc.getTextWidth(o.w);const sp=/^\s+$/.test(o.w);if(sp&&x===L)return;if(x+ww>R&&!sp){lines.push([]);x=L}if(sp&&x===L)return;lines[lines.length-1].push({...o,x});x+=ww});
+    lines.forEach(ln=>{ln.forEach(o=>{doc.setFont('helvetica',o.bd?'bold':'normal');doc.setTextColor(...INK);doc.text(o.w,o.x,y)});y+=lh});return y};
+  const sec=(t,y)=>{doc.setFont('helvetica','bold');doc.setFontSize(10.3);doc.setTextColor(...NAVY);doc.text(t,L,y);return y+6};
+  const lab=(t,v,x,y)=>{doc.setFont('helvetica','bold');doc.text(t,x,y);const w=doc.getTextWidth(t);doc.setFont('helvetica','normal');doc.text(String(v||''),x+w+1.8,y);return x+w+1.8+doc.getTextWidth(String(v||''))};
+  doc.setFillColor(...NAVY);doc.rect(0,0,210,4,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(...NAVY);doc.text('CRV INDUSTRIAL',L,21);
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...MUT);doc.text('UNIDADE CAPINÓPOLIS',L,26.5);
+  doc.setDrawColor(...GREEN);doc.setLineWidth(0.6);doc.line(L,32,R,32);
+  doc.setFont('helvetica','bold');doc.setFontSize(19);doc.setTextColor(...NAVY);doc.text('TERMO DE OPÇÃO ADM',L,45);
+  doc.setFont('helvetica','normal');doc.setFontSize(11);doc.setTextColor(...INK);doc.text('Cartão Convênio Sysprocard',L,52);
+  doc.setFillColor(238,241,245);doc.roundedRect(L,57,W,20,2,2,'F');doc.setFontSize(10);doc.setTextColor(...INK);
+  lab('Colaborador:',String(d.nome).toUpperCase(),L+0.5,64.5);
+  let x2=lab('CPF:',d.cpf,L+0.5,70.5);x2=lab('Função:',tcF(d.cargo),x2+5,70.5);lab('Cartão nº:',d.cartao,x2+5,70.5);
+  let y=rich([['Declaro que recebi os esclarecimentos da empresa e opto pelo recebimento do ticket-refeição por meio do Cartão Convênio Sysprocard físico, conforme as condições abaixo.']],87)+3;
+  y=sec('1. UTILIZAÇÃO E PRAZO',y);
+  y=rich([['O cartão é pessoal e intransferível, para utilização em restaurantes, padarias e lanchonetes que aceitem o Cartão Convênio Sysprocard. O período autorizado de utilização é de '],[br(d.inicio)+' a '+br(d.fimUso),1],['.']],y)+3;
+  y=sec('2. PROGRAMAÇÃO DOS CRÉDITOS',y);
+  const CRs=(d.creditos||[]),tot=CRs.reduce((s,c)=>s+num(c.valor),0);
+  doc.autoTable({startY:y-2,head:[['PERÍODO','VALOR DO CRÉDITO']],body:CRs.map(c=>[br(c.ini)+' a '+br(c.fim),moeda(c.valor)]),foot:[['TOTAL',moeda(tot)]],theme:'plain',
+    styles:{fontSize:9,cellPadding:{top:1.3,bottom:1.3,left:4,right:4},textColor:INK},headStyles:{fillColor:NAVY,textColor:255,fontStyle:'bold',fontSize:8.5},footStyles:{fillColor:[238,241,245],textColor:NAVY,fontStyle:'bold'},
+    alternateRowStyles:{fillColor:[246,248,251]},columnStyles:{1:{halign:'right'}},didParseCell:h=>{if(h.column.index===1&&(h.section==='head'||h.section==='foot'))h.cell.styles.halign='right'},margin:{left:L,right:210-R}});
+  y=doc.lastAutoTable.finalY+7;
+  const rf=d.ref||{},vv=n=>Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2});
+  const vals=[rf.cafe&&'café da manhã: R$ '+vv(rf.vCafe),rf.almoco&&'almoço: R$ '+vv(rf.vAlmoco),rf.jantar&&'jantar: R$ '+vv(rf.vJantar)].filter(Boolean).join('; ');
+  y=sec('3. CUSTEIO E CONTINUIDADE DE USO',y);
+  y=rich([['Os valores de referência são: '],[vals||'—',1],['. O custeio pela empresa é válido exclusivamente para os primeiros '],['30 (trinta) dias de contrato',1],[', conforme acordado com a gerência do departamento contratante.']],y);
+  y=rich([['Caso opte pela continuidade do ticket-refeição após esse período, o colaborador deverá arcar integralmente com o valor solicitado, ciente de que o crédito não será cumulativo.']],y)+3;
+  y=sec('4. DEVOLUÇÃO E CIÊNCIA',y);
+  y=rich([['O cartão deverá ser devolvido ao RH da empresa ao término do prazo autorizado. Declaro que li, compreendi e estou de acordo com as condições deste termo.']],y)+4;
+  doc.setFont('helvetica','normal');doc.setFontSize(10);doc.text('Retirada em: '+br(d.entrega),L,y);doc.text('Devolução em: '+(d.devolucao?br(d.devolucao):'____/____/'+String(d.fimUso||d.entrega).slice(0,4)),118,y);
+  const ya=Math.min(Math.max(y+17,238),257);doc.setLineWidth(0.3);doc.setDrawColor(...INK);doc.line(55,ya,155,ya);
+  doc.setFont('helvetica','bold');doc.text(String(d.nome).toUpperCase(),105,ya+5,{align:'center'});doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(...MUT);doc.text('Assinatura do colaborador',105,ya+9.5,{align:'center'});
+  doc.setDrawColor(215,220,228);doc.line(L,271,R,271);
+  doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(...INK);doc.text('CRV INDUSTRIAL LTDA - UNIDADE CAPINÓPOLIS | CNPJ 03.937.452/0004-35',105,276,{align:'center'});
+  doc.setFont('helvetica','normal');doc.setTextColor(...MUT);doc.text('Rodovia MG-226, s/nº, km 63, Zona Rural, Capinópolis/MG - CEP 38.360-000',105,280.2,{align:'center'});doc.text('Telefone: (34) 3263-8100',105,284.4,{align:'center'});
+  await salvar(`Termo de opcao ADM - cartao ${d.cartao} - ${String(d.nome).split(' ')[0]}.pdf`,new Uint8Array(doc.output('arraybuffer')),'application/pdf');
+}
+const tcF=s=>String(s||'').toLowerCase().replace(/(^|[\s\/(.-])(\S)/g,(m,a,b)=>a+b.toUpperCase()).replace(/ (Da|De|Do|Dos|Das|E) /g,m=>m.toLowerCase()).replace(/\b(Ii|Iii|Iv|Vi|Vii|Mg)\b/g,m=>m.toUpperCase());
+
+/* ---------- créditos da semana (para depositar na Sysprocard) ---------- */
+const segDe=s=>{const d=dObj(s);return addD(s,-((d.getDay()+6)%7))};
+function abrirSemana(){
+  let seg=segDe(hojeISO());let DEP={};
+  const w=document.createElement('div');w.className='fundo';
+  w.innerHTML=`<div class="modal" style="max-width:860px"><div class="mcab"><h3>Créditos da semana<small>Cartões ativos com crédito programado na semana, para lançar o depósito no sistema da Sysprocard.</small></h3><button class="mini" id="sX">Fechar</button></div>
+   <div style="padding:14px 18px"><div class="tools"><button class="mini" id="sA">‹ semana anterior</button><input id="sD" type="date" style="min-width:0;flex:0 0 auto"><button class="mini" id="sP">próxima semana ›</button><span id="sT" style="font-weight:700"></span><span class="cnt" id="sC"></span></div>
+   <div id="sDep" class="info" style="margin-bottom:10px"></div>
+   <div class="tab"><table><thead><tr><th>Cartão nº</th><th>Com quem está</th><th>Setor</th><th>Período do crédito</th><th>Valor do crédito</th></tr></thead><tbody id="sB"></tbody><tfoot id="sF"></tfoot></table></div></div>
+   <div class="mpe"><span id="sMsg" style="flex:1;color:var(--mut);font-size:12.5px"></span><button class="btn" id="sXls">Excel</button><button class="btn" id="sPdf">PDF</button><button class="btn pri" id="sOk">Marcar depósito feito</button></div></div>`;
+  document.body.appendChild(w);const g=id=>w.querySelector('#'+id),fe=()=>w.remove();g('sX').onclick=fe;w.addEventListener('mousedown',e=>{if(e.target===w)fe()});
+  const linhas=()=>{const dom=addD(seg,6),out=[];U.filter(x=>Array.isArray(x.creditos)&&x.situacao!=='Devolvido'&&!/bloque|não devolvido|extravi/i.test(x.situacao)||(Array.isArray(x.creditos)&&x.situacao==='Devolvido'&&x.devolucao&&x.devolucao>=seg)).forEach(x=>x.creditos.forEach(c=>{if(c.ini>=seg&&c.ini<=dom&&num(c.valor)>0)out.push({x,c})}));
+    return out.sort((a,b)=>(+a.x.cartao)-(+b.x.cartao)||a.c.ini.localeCompare(b.c.ini))};
+  const draw=()=>{const dom=addD(seg,6),L=linhas(),tot=L.reduce((s,l)=>s+num(l.c.valor),0);g('sD').value=seg;g('sT').textContent=`Semana de ${br(seg)} a ${br(dom)}`;
+    g('sC').textContent=`${L.length} crédito(s) · ${new Set(L.map(l=>l.x.cartao)).size} cartão(ões)`;
+    g('sB').innerHTML=L.map(l=>`<tr><td><b>${esc(l.x.cartao)}</b></td><td><b>${esc(l.x.nome)}</b><div class="sm">${esc(l.x.cargo||'')}${l.x.mat?' · mat. '+esc(l.x.mat):''}</div></td><td>${esc(l.x.setor)}</td><td>${br(l.c.ini)} a ${br(l.c.fim)}${perDe(l.c.ini)!==perDe(seg)||perDe(l.c.ini)!==perDe(dom)?`<div class="sm">fechamento ${perCurto(perDe(l.c.ini))}</div>`:''}</td><td class="n"><b>${moeda(l.c.valor)}</b></td></tr>`).join('')||'<tr><td colspan="5" class="sm">Nenhum crédito programado nesta semana.</td></tr>';
+    g('sF').innerHTML=L.length?`<tr><td colspan="4">Total para depósito</td><td class="n">${moeda(tot)}</td></tr>`:'';
+    const dp=DEP[seg];g('sDep').className='info'+(dp?' ok':'');g('sDep').innerHTML=dp?`Depósito marcado como feito em ${br(dp.em)}${dp.por?' por '+esc(String(dp.por).split(' ')[0]):''} · total ${moeda(dp.total)}${Math.abs(num(dp.total)-tot)>0.009?` <b style="color:var(--bad)">(o total mudou depois: agora ${moeda(tot)})</b>`:''} <button class="mini" id="sDes">Desfazer</button>`:'Depósito desta semana ainda não marcado.';
+    if(g('sDes'))g('sDes').onclick=async()=>{try{await DB.collection('depositos').doc(seg).delete();delete DEP[seg];draw()}catch(e){toast('Sem permissão.')}};
+    return {L,tot,dom}};
+  g('sA').onclick=()=>{seg=addD(seg,-7);draw()};g('sP').onclick=()=>{seg=addD(seg,7);draw()};g('sD').onchange=()=>{if(g('sD').value){seg=segDe(g('sD').value);draw()}};
+  g('sOk').onclick=async()=>{const {tot}=draw();if(!DB){toast('Não dá para salvar nesta visualização.');return}
+    try{const x={em:new Date().toISOString(),por:(window.parent&&window.parent.CRV_QUEM)||'',total:tot};await DB.collection('depositos').doc(seg).set(x);DEP[seg]=x;draw();toast('Depósito da semana marcado como feito.')}catch(e){toast('Sem permissão para salvar.')}};
+  const nomeA=()=>`Creditos Syspro ADM semana ${br(seg).split('/').join('-')} a ${br(addD(seg,6)).split('/').join('-')}`;
+  g('sXls').onclick=async()=>{const {L,tot,dom}=draw();const X=window.XLSX||(window.parent&&window.parent.XLSX);if(!X||!L.length){toast(L.length?'Excel indisponível.':'Nada para exportar.');return}
+    const aoa=[[`Créditos Syspro ADM · semana de ${br(seg)} a ${br(dom)}`],[],['Cartão nº','Com quem está','Matrícula','Setor','Cargo','Período do crédito','Valor do crédito (R$)']].concat(L.map(l=>[+l.x.cartao,l.x.nome,l.x.mat||'',l.x.setor,l.x.cargo,br(l.c.ini)+' a '+br(l.c.fim),num(l.c.valor)])).concat([['','','','','','Total',tot]]);
+    const ws=X.utils.aoa_to_sheet(aoa);ws['!cols']=[10,36,10,24,26,24,16].map(w=>({wch:w}));const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,'Créditos da semana');
+    await salvar(nomeA()+'.xlsx',new Uint8Array(X.write(wb,{bookType:'xlsx',type:'array'})),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')};
+  g('sPdf').onclick=async()=>{const {L,tot,dom}=draw();const J=(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF);if(!J||!L.length){toast(L.length?'PDF indisponível.':'Nada para exportar.');return}
+    const doc=new J({unit:'mm',format:'a4'});doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text('Créditos da semana · Cartão Convênio ADM · Sysprocard',14,16);
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text(`Semana de ${br(seg)} a ${br(dom)} · ${L.length} crédito(s) · total ${moeda(tot)}`,14,22);
+    doc.autoTable({startY:27,head:[['Cartão nº','Com quem está','Setor','Período do crédito','Valor']],body:L.map(l=>[String(l.x.cartao),l.x.nome+(l.x.mat?' (mat. '+l.x.mat+')':''),l.x.setor,br(l.c.ini)+' a '+br(l.c.fim),moeda(l.c.valor)]),foot:[['','','','Total para depósito',moeda(tot)]],
+      styles:{fontSize:8.5,cellPadding:1.8},headStyles:{fillColor:[125,26,44]},footStyles:{fillColor:[238,241,245],textColor:20,fontStyle:'bold'},columnStyles:{0:{cellWidth:16},3:{cellWidth:44},4:{halign:'right',cellWidth:28}},didParseCell:h=>{if(h.column.index===4)h.cell.styles.halign='right'},margin:{left:14,right:14}});
+    const y=doc.lastAutoTable.finalY+18;doc.line(14,y,90,y);doc.setFontSize(8.5);doc.text('Lançado na Sysprocard por',14,y+4.5);doc.line(110,y,160,y);doc.text('Data',110,y+4.5);
+    await salvar(nomeA()+'.pdf',new Uint8Array(doc.output('arraybuffer')),'application/pdf')};
+  (async()=>{try{if(DB){const q=await DB.collection('depositos').get();q.docs.forEach(d=>DEP[d.id]=d.data())}}catch(_){}draw()})();
 }
 
 /* ---------- relatório do período (igual à planilha) ---------- */
 async function salvar(nome,bytes,tipo){const D=window.claude&&window.claude.use?await window.claude.use('downloads'):null;if(D)return D.save({filename:nome,data:bytes});
   const u=URL.createObjectURL(new Blob([bytes],{type:tipo}));const a=document.createElement('a');a.href=u;a.download=nome;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},4000)}
-const COLS=[['Data da Entrega',x=>br(x.entrega)],['Nº Cartão Syspro',x=>x.cartao],['Nome do Colaborador',x=>x.nome],['Matrícula',x=>x.mat||x.matTxt||'N/A'],['Setor',x=>x.setor],['Cargo',x=>x.cargo],['Tipo de Refeição',x=>x.refeicao],['Duração (dias)',x=>x.duracao],['Valor Creditado (R$)',x=>num(x.creditado)],['Valor Consumido (R$)',x=>num(x.consumido)],['Responsável Solicitante',x=>x.solicitante],['Observações',x=>[x.situacao,x.devolucao?'devolvido em '+br(x.devolucao):'',x.obs].filter(Boolean).join(' · ')]];
+const COLS=[['Data da Entrega',x=>br(x.entrega)],['Nº Cartão Syspro',x=>x.cartao],['Nome do Colaborador',x=>x.nome],['Matrícula',x=>x.mat||x.matTxt||'N/A'],['Setor',x=>x.setor],['Cargo',x=>x.cargo],['Tipo de Refeição',x=>x.refeicao],['Duração (dias)',x=>x.duracao],['Valor Creditado (R$)',x=>credNoPer(x,RP)],['Valor Consumido (R$)',x=>x.periodo===RP?num(x.consumido):0],['Responsável Solicitante',x=>x.solicitante],['Observações',x=>[x.situacao,x.devolucao?'devolvido em '+br(x.devolucao):'',x.obs].filter(Boolean).join(' · ')]];
 function abrirRel(){
   const w=document.createElement('div');w.className='fundo';const ps=periodos();
   w.innerHTML=`<div class="modal" style="max-width:520px"><div class="mcab"><h3>Relatório do período<small>No mesmo formato da planilha Syspro ADM, com o total creditado e consumido para bater com a nota.</small></h3><button class="mini" id="rX">Fechar</button></div>
@@ -284,11 +412,12 @@ function abrirRel(){
    <div class="mpe"><span id="rMsg" style="flex:1;color:var(--mut);font-size:12.5px"></span><button class="btn pri" id="rG">Gerar relatório</button></div></div>`;
   document.body.appendChild(w);const fe=()=>w.remove();w.querySelector('#rX').onclick=fe;w.addEventListener('mousedown',e=>{if(e.target===w)fe()});
   w.querySelector('#rG').onclick=async()=>{const p=w.querySelector('#rP').value,f=w.querySelector('input[name=rF]:checked').value;
-    const L=U.filter(x=>x.periodo===p).sort((a,b)=>String(a.nome).localeCompare(String(b.nome)));if(!L.length){w.querySelector('#rMsg').textContent='Sem lançamentos nesse período.';return}
+    const L=U.filter(x=>x.periodo===p||(Array.isArray(x.creditos)&&x.creditos.some(c=>perDe(c.ini)===p))).sort((a,b)=>String(a.nome).localeCompare(String(b.nome)));if(!L.length){w.querySelector('#rMsg').textContent='Sem lançamentos nesse período.';return}
     try{await gerarRel(p,L,f);fe()}catch(e){w.querySelector('#rMsg').textContent='Não consegui gerar: '+(e.message||e)}};
 }
-async function gerarRel(p,L,f){
-  const cred=L.reduce((s,x)=>s+num(x.creditado),0),cons=L.reduce((s,x)=>s+num(x.consumido),0),nt=NOTAS[p]&&NOTAS[p].valor!=null?num(NOTAS[p].valor):null;
+let RP='';
+async function gerarRel(p,L,f){RP=p;
+  const cred=L.reduce((s,x)=>s+credNoPer(x,p),0),cons=L.reduce((s,x)=>s+(x.periodo===p?num(x.consumido):0),0),nt=NOTAS[p]&&NOTAS[p].valor!=null?num(NOTAS[p].valor):null;
   const nome=`Syspro - ADM Fechamento ${perIni(p).slice(8,10)}-${perIni(p).slice(5,7)} a 20-${p.slice(5,7)}-${p.slice(0,4)}`;
   const per=`Período: ${br(perIni(p)).slice(0,6)}${perIni(p).slice(2,4)} a ${br(perFim(p)).slice(0,6)}${p.slice(2,4)}`;
   if(f==='xlsx'){const X=window.XLSX||(window.parent&&window.parent.XLSX);if(!X)throw new Error('gerador de Excel indisponível');
@@ -306,6 +435,7 @@ async function gerarRel(p,L,f){
   await salvar(nome+'.pdf',new Uint8Array(doc.output('arraybuffer')),'application/pdf');
 }
 $('bNovo').onclick=()=>abrirForm(null);
+$('bSem').onclick=abrirSemana;window.CRV_SEMANA=abrirSemana;
 $('bRel').onclick=abrirRel;
 window.CRV_NOVO=()=>abrirForm(null);window.CRV_RELATORIO=abrirRel;
 render();carregar();
