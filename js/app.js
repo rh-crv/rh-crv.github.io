@@ -408,19 +408,20 @@ const SUBACOES = {
   fadiga:   [{ acao:'novo', nome:'Cadastrar ocorrência' }, { acao:'trat', nome:'Aplicar tratativa' }],
   treinamentos: [{ acao:'novo', nome:'Cadastrar treinamento' }],
   'cartao-alimentacao': [{ acao:'rel', nome:'Relatório de conferência' }],
-  'cartao-convenio':    [{ acao:'termo', nome:'Termo de opção' }, { acao:'rel', nome:'Relatório de conferência' }],
+  'cartao-convenio':    [{ acao:'desc', nome:'Desconto em folha' }, { acao:'termo', nome:'Termo de opção' }, { acao:'rel', nome:'Relatório de conferência' }],
   'cartao-premium':     [{ acao:'rel', nome:'Relatório de conferência' }],
   'cartao-adm':         [{ acao:'novo', nome:'Registrar entrega' }, { acao:'sem', nome:'Créditos da semana' }, { acao:'rel', nome:'Relatório do período' }],
   crachas:  [{ acao:'novo', nome:'Cadastrar crachá de treinamento' }],
   farmacia: [{ acao:'aut', nome:'Autorização de desconto' }, { acao:'hist', nome:'Histórico de autorizações' }]
 };
-function fecharJanelasAut(w){ try { w.document.querySelectorAll('.aut-fundo,.ent-fundo,.of-fundo,.nv-fundo,.rl-fundo,.es-fundo,.ds-fundo,.ct-fundo,.jf-fundo,.ft-fundo').forEach(x => x.remove()); } catch(_){} }
+function fecharJanelasAut(w){ try { w.document.querySelectorAll('.aut-fundo,.ent-fundo,.of-fundo,.nv-fundo,.rl-fundo,.es-fundo,.ds-fundo,.ct-fundo,.jf-fundo,.ft-fundo,.df-fundo').forEach(x => x.remove()); } catch(_){} }
 function executarAcao(acao){
   const f = document.getElementById('modelo-frame');
   const w = f && f.contentWindow;
   if (acao === 'aut' && w && typeof w.CRV_AUTORIZACAO === 'function') { fecharJanelasAut(w); w.CRV_AUTORIZACAO(); return true; }
   if (acao === 'hist' && w && typeof w.CRV_AUT_HIST === 'function') { fecharJanelasAut(w); w.CRV_AUT_HIST(); return true; }
   if (acao === 'doc' && w && typeof w.CRV_DOCDISC === 'function') { fecharJanelasAut(w); w.CRV_DOCDISC(); return true; }
+  if (acao === 'desc' && w && typeof w.CRV_DESCFOLHA === 'function') { fecharJanelasAut(w); w.CRV_DESCFOLHA(); return true; }
   if (acao === 'trat' && w && typeof w.CRV_FAD_TRAT === 'function') { fecharJanelasAut(w); w.CRV_FAD_TRAT(); return true; }
   if (acao === 'dslj' && w && typeof w.CRV_JOV_DESL === 'function') { fecharJanelasAut(w); w.CRV_JOV_DESL(); return true; }
   if (acao === 'atj' && w && typeof w.CRV_JOV_AT === 'function') { fecharJanelasAut(w); w.CRV_JOV_AT(); return true; }
@@ -888,9 +889,9 @@ window.CRV_QUADRO = async function(){
     // só a empresa 5 (CRV); entre desligados, o desligamento mais recente vence
     const DM = (dados.DM || []).filter(r => /\(5\)\s*$/.test(String(r[21] || '')) || /^CRV\b/i.test(String(r[21] || '')))
       .sort((a, b) => String(a[20] || '') < String(b[20] || '') ? -1 : 1);
-    DM.forEach(r => { M[txt(r[0])] = { nome:txt(r[1]), funcao:txt(r[2]), setor:txt(r[3]), situacao:'Desligado', vinculo:txt(r[7]), gerencia:txt(r[6]), cnh:txt(r[17]), admissao:txt(r[9]), deslig:txt(r[20]), empresa:txt(r[21]).replace(/\s*\(\d+\)$/, '') }; });
+    DM.forEach(r => { M[txt(r[0])] = { ccd: txt(r[13]), nome:txt(r[1]), funcao:txt(r[2]), setor:txt(r[3]), situacao:'Desligado', vinculo:txt(r[7]), gerencia:txt(r[6]), cnh:txt(r[17]), admissao:txt(r[9]), deslig:txt(r[20]), empresa:txt(r[21]).replace(/\s*\(\d+\)$/, '') }; });
     const XX = Array.isArray(dados.X) && dados.X.length === dados.D.length ? dados.X : null;
-    dados.D.forEach((r, i) => { M[txt(r[0])] = { cpf: XX ? txt(XX[i][11]) : '', nome:txt(r[1]), funcao:txt(r[2]), setor:txt(r[3]), situacao:txt(r[8]) || 'Ativo', vinculo:txt(r[7]), gerencia:txt(r[6]), cnh:txt(r[17]), admissao:txt(r[9]), deslig:'', empresa:'CRV' }; });
+    dados.D.forEach((r, i) => { M[txt(r[0])] = { cpf: XX ? txt(XX[i][11]) : '', cc: XX ? txt(XX[i][33]) : '', ccd: txt(r[13]), nome:txt(r[1]), funcao:txt(r[2]), setor:txt(r[3]), situacao:txt(r[8]) || 'Ativo', vinculo:txt(r[7]), gerencia:txt(r[6]), cnh:txt(r[17]), admissao:txt(r[9]), deslig:'', empresa:'CRV' }; });
     // departamentos (código Depto/Seção → nome), a partir dos ativos e afastados
     const DP = {};
     if (XX) dados.D.forEach((r, i) => { const cod = txt(XX[i][23]), nome = txt(r[3]); if (!cod || !nome) return;
