@@ -925,6 +925,8 @@ window.CRV_HIST_COLAB = async function(mat){
       DB.R.forEach(r => { if (mm(r[1]) !== mat) return;
         out.sanc.push({ data:r[2], t:r[0] ? 'sus' : 'adv', sq:r[3], dias:r[0] ? r[5] : null, ini:r[6] || '', fim:r[7] || '', assunto:'', motivo:DB.M[r[4]] || '', cat:(DB.CATS || [])[(DB.MC || [])[r[4]]] || '', app:false }); });
     }
+    if (DB && DB.HA && Array.isArray(DB.HA.R)) DB.HA.R.forEach(r => { if (mm(r[0]) !== mat) return;
+      out.sanc.push({ data:r[1], t:'adv', sq:r[2], dias:null, ini:'', fim:'', assunto:'', motivo:DB.HA.M[r[3]] || '', cat:'anos anteriores', app:false }); });
   } catch(_){}
   (SD || []).forEach(d => { if (d.excluido || mm(d.mat) !== mat || !d.data) return;
     out.sanc.push({ data:d.data, t:d.tipo, sq:null, dias:d.tipo === 'sus' ? (parseInt(d.dias, 10) || null) : null, ini:d.tipo === 'sus' ? d.ini || '' : '', fim:d.tipo === 'sus' ? d.fim || '' : '',
