@@ -533,6 +533,8 @@ const ROW={};V.rows.forEach(r=>{ROW[String(r.mat)]=r});
 let FS=[],F=null,W=null,TAB='pes',FIL='',Q='';
 async function lerTodos(){const D=await db();if(!D){FS=[];return}try{const s=await D.collection('fechamentos').get();FS=s.docs.map(d=>Object.assign({_id:d.id},d.data())).filter(x=>!x.excluido).sort((a,b)=>String(b._id).localeCompare(String(a._id)))}catch(_){FS=[]}}
 async function gravar(){const D=await db();if(!D)throw new Error('O registro não está disponível nesta visualização.');F.atualizadoEm=new Date().toISOString();F.por=quem();const o=Object.assign({},F);delete o._id;await D.collection('fechamentos').doc(F._id).set(o)}
+/* metade só para quem está na relação da Sysprocard com crédito de R$ 1.080 (alojados motoristas e operadores de máquinas); demais pagam 100%; quem é pago pela empresa (excEsp) não desconta */
+const e1080=r=>r&&r.lim!=null&&Math.abs(Number(r.lim)-1080)<0.1;
 const descDe=x=>x.marc==='SIM'?Math.round(x.valor*50)/100:x.marc==='NÃO'?0:x.valor;
 /* ---------- leitura do TXT da Sysprocard ---------- */
 async function lerTxt(file){const buf=await file.arrayBuffer();let t;try{t=new TextDecoder('windows-1252').decode(buf)}catch(_){t=new TextDecoder().decode(buf)}
@@ -546,12 +548,11 @@ async function montar(tx){const q=window.parent&&window.parent.CRV_QUADRO?await 
   const itens=tx.L.map(t=>{const p=M[t.mat]||{},r=ROW[t.mat]||{},a=AM[t.mat]||{};const conf=[];
     let marc='';
     if(V.excEsp[t.mat]){marc='NÃO';conf.push('Valor pago pela empresa ('+V.excEsp[t.mat][1]+'): sem desconto')}
-    else if(r.aloj&&/MOTORISTA|OP\.?\s*DE\s*MAQ|OPERADOR DE M[AÁ]Q|OP\._?\s*MAQ/.test(String(p.funcao||r.func||'').toUpperCase()))marc='SIM';
-    else if(a.marc==='SIM'){marc='SIM';conf.push('Desconto de metade como no fechamento anterior, mas não está no alojamento como motorista ou operador de máquinas: confirmar')}
-    if(!marc&&r.aloj)conf.push('Está no alojamento ('+r.aloj+'), mas não é motorista nem operador de máquinas: desconto integral');
-    const cc=p.cc||a.cc||'',ccd=p.ccd||a.ccd||'';
+    else if(e1080(r))marc='SIM';
+    const dsl=p.situacao==='Desligado';
+    const cc=dsl?(a.cc||p.cc||''):(p.cc||a.cc||''),ccd=dsl?(a.ccd||p.ccd||''):(p.ccd||a.ccd||'');
     if(!p.nome)conf.push('Matrícula não encontrada no Quadro');
-    if(p.situacao==='Desligado')conf.push('Desligado em '+br(p.deslig)+': descontar na rescisão');
+    if(dsl)conf.push('Desligado em '+br(p.deslig)+': descontar na rescisão'+(a.cc?' (centro de custo de antes do desligamento)':''));
     if(p.situacao==='Afastado')conf.push('Afastado no Quadro');
     if(a.cc&&p.cc&&String(a.cc)!==String(p.cc))conf.push('Centro de custo mudou: antes '+a.cc+', agora '+p.cc);
     if(!cc)conf.push('Sem centro de custo: informar');
@@ -584,8 +585,8 @@ const STC={ok:['Com saldo','df-ok'],sem:['Fica sem saldo','df-am'],est:['Já est
 /* ---------- tela ---------- */
 function fechar(){if(W){W.remove();W=null}}
 async function abrir(){fechar();W=document.createElement('div');W.className='df-fundo';
-  W.innerHTML='<div class="df-modal" role="dialog" aria-modal="true"><div class="df-cab"><h3>Desconto em folha · Cartão Convênio<small>Carregue o TXT de consumo da Sysprocard do fechamento (21 a 20). Alojados motoristas e operadores de máquinas descontam metade; quem é pago pela empresa não desconta.</small></h3>'
-   +'<select class="df-b" id="dfSel"></select><button class="df-b" id="dfTxt">Carregar TXT do fechamento</button><button class="df-b" id="dfAnt">Trazer do mês anterior (Excel do DP)</button><button class="df-b" id="dfSal">Carregar saldos dos centros de custo</button><button class="df-b pri" id="dfXls">Excel para o DP</button><button class="df-b" id="dfPdf">PDF do resumo</button><button class="df-b" id="dfX">Fechar</button></div><div class="df-corpo"><p>Carregando…</p></div></div>';
+  W.innerHTML='<div class="df-modal" role="dialog" aria-modal="true"><div class="df-cab"><h3>Desconto em folha · Cartão Convênio<small>Carregue o TXT de consumo da Sysprocard do fechamento (21 a 20). Metade só para quem tem crédito de R$ 1.080 na Sysprocard (alojados motoristas e operadores de máquinas); os demais pagam 100%, mesmo alojados; o Josail é pago 100% pela empresa. Centro de custo: carregue a planilha atualizada do sistema; desligados ficam com o centro de custo de antes do desligamento.</small></h3>'
+   +'<select class="df-b" id="dfSel"></select><button class="df-b" id="dfTxt">Carregar TXT do fechamento</button><button class="df-b" id="dfCC">Carregar planilha de centros de custo</button><button class="df-b" id="dfAnt">Trazer do mês anterior (Excel do DP)</button><button class="df-b" id="dfSal">Carregar saldos dos centros de custo</button><button class="df-b pri" id="dfXls">Excel para o DP</button><button class="df-b" id="dfPdf">PDF do resumo</button><button class="df-b" id="dfX">Fechar</button></div><div class="df-corpo"><p>Carregando…</p></div></div>';
   document.body.appendChild(W);W.addEventListener('mousedown',e=>{if(e.target===W)fechar()});
   const g=id=>W.querySelector('#'+id);g('dfX').onclick=fechar;
   const pick=(acc,fn)=>{const i=document.createElement('input');i.type='file';i.accept=acc;i.onchange=()=>{if(i.files[0])fn(i.files[0])};i.click()};
@@ -600,21 +601,31 @@ async function abrir(){fechar();W=document.createElement('div');W.className='df-
       const H=A[hi].map(c=>String(c||'').trim().toUpperCase());const ix=k=>H.findIndex(h=>h.startsWith(k));const iM=ix('MARCA'),iMat=ix('MATRIC'),iCC=ix('C.CUSTO'),iD=ix('DESC. C');
       const P={};A.slice(hi+1).forEach(r=>{if(!r||r[iMat]==null)return;P[String(+r[iMat])]={marc:String(r[iM]||'').trim().toUpperCase().replace('NAO','NÃO'),cc:r[iCC]!=null?String(r[iCC]):'',ccd:r[iD]||''}});
       let nM=0,nC=0,nD=0;F.itens.forEach(x=>{const a=P[x.mat];if(!a)return;
-        if(a.marc==='SIM'&&x.marc!=='SIM'&&!x.manual){x.marc='SIM';nM++;x.conf=x.conf.filter(t=>!/^Está no alojamento/.test(t));x.conf.push('Desconto de metade como no mês anterior, mas não está no alojamento como motorista ou operador de máquinas: confirmar')}
-        if(!x.cc&&a.cc){x.cc=a.cc;x.ccd=(F.cc&&F.cc[a.cc]&&F.cc[a.cc].nome)||a.ccd;x.conf=x.conf.filter(t=>!/^Sem centro de custo/.test(t));nC++}
+        if(x.desl&&a.cc&&String(x.cc)!==String(a.cc)){x.cc=a.cc;x.ccd=a.ccd||x.ccd;nC++}
+        else if(!x.cc&&a.cc){x.cc=a.cc;x.ccd=(F.cc&&F.cc[a.cc]&&F.cc[a.cc].nome)||a.ccd;x.conf=x.conf.filter(t=>!/^Sem centro de custo/.test(t));nC++}
         else if(x.cc&&a.cc&&String(x.cc)!==String(a.cc)&&!x.conf.some(t=>/^Centro de custo mudou/.test(t))){x.conf.push('Centro de custo mudou: antes '+a.cc+', agora '+x.cc);nD++}});
-      await gravar();desenhar('Mês anterior: '+nM+' marcações de metade trazidas, '+nC+' centros de custo preenchidos e '+nD+' mudanças de centro de custo apontadas.')}catch(er){desenhar('',er.message)}})};
+      await gravar();desenhar('Mês anterior: '+nC+' centros de custo preenchidos e '+nD+' mudanças de centro de custo apontadas.')}catch(er){desenhar('',er.message)}})};
+  g('dfCC').onclick=()=>{if(!F)return desenhar('','Carregue primeiro o TXT do fechamento.');pick('.xlsx,.xls,.csv',async f=>{try{const X=window.XLSX||(window.parent&&window.parent.XLSX);const wb=X.read(new Uint8Array(await f.arrayBuffer()),{type:'array'});
+      const A=X.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true});const nz=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
+      const hi=A.findIndex(r=>r&&r.some(c=>/MATRIC/.test(nz(c)))&&r.some(c=>/CENTRO/.test(nz(c))));if(hi<0)throw new Error('Não encontrei as colunas Matrícula e Centro de Custo na planilha.');
+      const H=A[hi].map(nz),iMat=H.findIndex(h=>/MATRIC/.test(h)),iC=H.findIndex(h=>/COD.*CENTRO|CENTRO.*COD/.test(h)),iD=H.findIndex(h=>/DESC.*CENTRO/.test(h));if(iC<0)throw new Error('Não encontrei a coluna do código do centro de custo.');
+      const P={};A.slice(hi+1).forEach(r=>{if(r&&r[iMat]!=null&&r[iC]!=null)P[String(+r[iMat])]={cc:String(r[iC]).trim(),ccd:iD>=0?String(r[iD]||'').trim():''}});
+      let nA=0,nF=0;const ref=f.name;F.itens.forEach(x=>{x.conf=x.conf.filter(t=>!/^Não está na planilha de centro de custo|^Centro de custo mudou|^Sem centro de custo/.test(t));const a=P[x.mat];
+        if(x.desl){if(!x.cc)x.conf.push('Sem centro de custo: informar');return}
+        if(a){if(String(x.cc)!==a.cc)nA++;x.cc=a.cc;x.ccd=a.ccd||(F.cc&&F.cc[a.cc]&&F.cc[a.cc].nome)||x.ccd}
+        else{nF++;x.conf.push('Não está na planilha de centro de custo: ficou o do Quadro ('+(x.cc||'sem')+'), confirmar')}});
+      F.ccPlan=ref;F.ccPlanEm=new Date().toISOString();await gravar();desenhar('Planilha de centros de custo aplicada: '+nA+' centros de custo atualizados; '+nF+' pessoa(s) ativas não estão na planilha (ver A conferir). Desligados mantêm o centro de custo de antes.')}catch(er){desenhar('',er.message)}})};
   g('dfSel').onchange=()=>{F=FS.find(x=>x._id===g('dfSel').value)||null;desenhar()};
   g('dfXls').onclick=()=>F&&excel().catch(er=>desenhar('',er.message));g('dfPdf').onclick=()=>F&&pdfRes().catch(er=>desenhar('',er.message));
-  await lerTodos();F=FS[0]||null;desenhar()}
+  await lerTodos();FS.forEach(f=>(f.itens||[]).forEach(x=>{if(x.manual)return;x.conf=(x.conf||[]).filter(t=>!/alojamento|como no (mês|fechamento) anterior/.test(t));x.marc=V.excEsp[x.mat]?'NÃO':e1080(ROW[x.mat])?'SIM':''}));F=FS[0]||null;desenhar()}
 function desenhar(ok,er){if(!W)return;const g=id=>W.querySelector('#'+id),C=W.querySelector('.df-corpo');
   g('dfSel').innerHTML=FS.length?FS.map(f=>'<option value="'+e_(f._id)+'"'+(F&&F._id===f._id?' selected':'')+'>Fechamento '+br(f.ini)+' a '+br(f.fim)+'</option>').join(''):'<option>Nenhum fechamento</option>';
-  ['dfXls','dfPdf','dfSal','dfAnt'].forEach(id=>g(id).disabled=!F);
+  ['dfXls','dfPdf','dfSal','dfAnt','dfCC'].forEach(id=>g(id).disabled=!F);
   if(!F){C.innerHTML=(er?'<div class="df-av er">'+e_(er)+'</div>':'')+'<div class="df-vazio">Nenhum fechamento carregado. Clique em <b>Carregar TXT do fechamento</b> e escolha o arquivo de consumo da Sysprocard.</div>';return}
   const{T,C:CC}=calc();const sem=CC.filter(c=>c.st==='sem'),est=CC.filter(c=>c.st==='est');
   let h=(ok?'<div class="df-av in">'+e_(ok)+'</div>':'')+(er?'<div class="df-av er">'+e_(er)+'</div>':'');
   if(F.totalTxt!=null&&Math.abs(F.totalTxt-T.v)>0.02)h+='<div class="df-av er">O total lido ('+brl(T.v)+') não bate com o total do TXT ('+brl(F.totalTxt)+'). Confira o arquivo.</div>';
-  const K=[['pes','','Pessoas',T.n,'no TXT da Sysprocard','#7d1a2c'],['pes','','Consumo',  'R$ '+brl(T.v),'custo total do cartão','#5c1220'],['pes','SIM','Desconto em folha','R$ '+brl(T.d),'metade dos alojados e integral dos demais','#1f3a68'],['pes','EMP','Fica com a empresa','R$ '+brl(T.e),'metade dos alojados e quem não desconta','#8a5a00'],['conf','','A conferir',T.conf,'antes de enviar ao DP','#c2410c'],['desl','','Desligados',T.desl,'R$ '+brl(T.dv)+' para a rescisão','#5d6a85'],['cc','','Centros de custo',F.ccRef?sem.length+est.length:'—',F.ccRef?sem.length+' ficam sem saldo · '+est.length+' já estourados':'carregue os saldos','#a3301c']];
+  const K=[['pes','','Pessoas',T.n,'no TXT da Sysprocard','#7d1a2c'],['pes','','Consumo',  'R$ '+brl(T.v),'custo total do cartão','#5c1220'],['pes','SIM','Desconto em folha','R$ '+brl(T.d),'metade de quem tem crédito R$ 1.080; integral dos demais','#1f3a68'],['pes','EMP','Fica com a empresa','R$ '+brl(T.e),'metade dos R$ 1.080 e quem não desconta','#8a5a00'],['conf','','A conferir',T.conf,'antes de enviar ao DP','#c2410c'],['desl','','Desligados',T.desl,'R$ '+brl(T.dv)+' para a rescisão','#5d6a85'],['cc','','Centros de custo',F.ccRef?sem.length+est.length:'—',F.ccRef?sem.length+' ficam sem saldo · '+est.length+' já estourados':'carregue os saldos','#a3301c']];
   h+='<div class="df-k">'+K.map((k,i)=>'<button data-i="'+i+'" class="'+(TAB===k[0]&&FIL===k[1]?'on':'')+'" style="--kc:'+k[5]+'"><span>'+k[2]+'</span><b>'+k[3]+'</b><small>'+e_(k[4])+'</small></button>').join('')+'</div>';
   h+='<div class="df-tabs">'+[['pes','Pessoas'],['cc','Centros de custo'],['conf','A conferir ('+T.conf+')'],['desl','Desligados ('+T.desl+')']].map(t=>'<button data-t="'+t[0]+'" class="'+(TAB===t[0]?'on':'')+'">'+t[1]+'</button>').join('')+'</div>';
   if(TAB==='cc'){
