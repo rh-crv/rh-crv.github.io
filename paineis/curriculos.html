@@ -2446,4 +2446,284 @@ render(); renderJobs(); setView(location.hash === '#rs' ? 'rs' : 'banco', true);
 })();
 })();
 </script>
+<style>
+.ct-fundo{position:fixed;inset:0;background:rgba(15,22,38,.55);z-index:9000;display:flex;align-items:flex-start;justify-content:center;padding:18px;overflow:auto}
+.ct-modal{background:var(--surface,#fff);color:var(--ink,#15203A);width:min(1180px,100%);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.3);display:flex;flex-direction:column;max-height:calc(100vh - 36px)}
+.ct-cab{display:flex;align-items:flex-start;gap:12px;padding:16px 20px;border-bottom:1px solid var(--line,#D3DBE7)}
+.ct-cab h3{margin:0;font-size:18px;flex:1}
+.ct-cab h3 small{display:block;font-weight:400;font-size:12.5px;color:var(--ink-2,#45506A);margin-top:3px}
+.ct-corpo{padding:16px 20px;overflow:auto}
+.ct-b{font:inherit;font-size:13px;font-weight:600;border:1px solid var(--line,#D3DBE7);background:var(--surface,#fff);color:var(--ink,#15203A);border-radius:9px;padding:7px 12px;cursor:pointer;white-space:nowrap}
+.ct-b:hover{border-color:var(--ink-3,#77819A)}
+.ct-b.pri{background:var(--k1,#2756A0);border-color:var(--k1,#2756A0);color:#fff}
+.ct-b.ok{background:#1D7349;border-color:#1D7349;color:#fff}
+.ct-b.dan{color:#a3301c}
+.ct-b[disabled]{opacity:.5;cursor:not-allowed}
+.ct-k{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:0 0 14px}
+.ct-k button{all:unset;cursor:pointer;border:1px solid var(--line,#D3DBE7);border-radius:12px;padding:10px 13px;background:var(--surface,#fff);border-left:5px solid var(--kc,#2756A0)}
+.ct-k button.on{box-shadow:0 0 0 2px var(--kc,#2756A0)}
+.ct-k span{display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-2,#45506A);font-weight:700}
+.ct-k b{display:block;font-size:26px;line-height:1.15;margin-top:3px}
+.ct-k small{display:block;font-size:12px;color:var(--ink-2,#45506A)}
+.ct-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 10px}
+.ct-tools input[type=search]{flex:1;min-width:200px;font:inherit;font-size:13.5px;padding:8px 11px;border:1px solid var(--line,#D3DBE7);border-radius:9px;background:var(--surface,#fff);color:inherit}
+.ct-seg{display:inline-flex;border:1px solid var(--line,#D3DBE7);border-radius:9px;overflow:hidden}
+.ct-seg button{font:inherit;font-size:12.5px;font-weight:600;border:0;background:transparent;color:inherit;padding:7px 11px;cursor:pointer}
+.ct-seg button.on{background:var(--k1,#2756A0);color:#fff}
+.ct-lista{display:grid;gap:8px}
+.ct-card{display:grid;grid-template-columns:minmax(0,2.2fr) 90px minmax(0,3fr) auto;gap:12px;align-items:center;border:1px solid var(--line,#D3DBE7);border-radius:12px;padding:10px 13px;cursor:pointer;background:var(--surface,#fff)}
+.ct-card:hover{border-color:var(--k1,#2756A0)}
+.ct-card .nm{font-weight:700;font-size:14px}
+.ct-card .sm{font-size:12px;color:var(--ink-2,#45506A)}
+.ct-dias{text-align:center}
+.ct-dias b{display:block;font-size:22px;line-height:1}
+.ct-dias small{font-size:11px;color:var(--ink-2,#45506A)}
+.ct-dias.al b{color:#c2410c}
+.ct-et{display:flex;gap:5px;flex-wrap:wrap}
+.ct-chip{font-size:11.5px;font-weight:700;border-radius:20px;padding:3px 9px;background:#eef1f5;color:#5d6a85;white-space:nowrap}
+.ct-chip.ok{background:#dcefe3;color:#1d5c3a}
+.ct-chip.pe{background:#fdecd8;color:#9a4b0b}
+.ct-chip.er{background:#fdecea;color:#a3301c}
+.ct-bar{height:6px;border-radius:6px;background:#e6ebf3;overflow:hidden;margin-top:5px}
+.ct-bar i{display:block;height:100%;background:#1D7349}
+.ct-st{font-size:12px;font-weight:700;border-radius:8px;padding:5px 9px;text-align:center}
+.ct-vazio{padding:20px;text-align:center;color:var(--ink-2,#45506A);border:1px dashed var(--line,#D3DBE7);border-radius:12px}
+.ct-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:10px 12px}
+.ct-c{display:flex;flex-direction:column;gap:4px;min-width:0}
+.ct-c label{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-2,#45506A)}
+.ct-c input,.ct-c select,.ct-c textarea{font:inherit;font-size:13.5px;padding:8px 10px;border:1px solid var(--line,#D3DBE7);border-radius:8px;background:var(--surface,#fff);color:inherit;min-width:0}
+.ct-c textarea{min-height:54px;resize:vertical}
+.w2{grid-column:span 2}.w3{grid-column:span 3}.w4{grid-column:span 4}.w5{grid-column:span 5}.w6{grid-column:span 6}.w8{grid-column:span 8}.w9{grid-column:span 9}.w12{grid-column:span 12}
+.ct-sec{grid-column:1/-1;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--k1,#2756A0);border-bottom:2px solid var(--k1s,#E1E9F6);padding:10px 0 4px;margin-top:4px;display:flex;align-items:center;gap:10px}
+.ct-sec span{font-weight:600;text-transform:none;letter-spacing:0;color:var(--ink-2,#45506A);font-size:12.5px}
+.ct-docs{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:6px}
+.ct-doc{display:flex;align-items:center;gap:8px;border:1px solid var(--line,#D3DBE7);border-radius:9px;padding:7px 10px;font-size:13px;cursor:pointer;user-select:none}
+.ct-doc input{width:17px;height:17px;flex:none}
+.ct-doc.ok{background:#eef8f1;border-color:#9fd3b4}
+.ct-doc.na{opacity:.55}
+.ct-doc .tg{margin-left:auto;font-size:10.5px;font-weight:800;border-radius:12px;padding:2px 7px;background:#fdecea;color:#a3301c;white-space:nowrap}
+.ct-doc .tg.op{background:#eef1f5;color:#5d6a85}
+.ct-doc .tg.ok{background:#dcefe3;color:#1d5c3a}
+.ct-aviso{grid-column:1/-1;border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.45}
+.ct-aviso.er{background:#fdecea;color:#8a2a1a;border:1px solid #f2b8ae}
+.ct-aviso.ok{background:#e6f4ec;color:#1d5c3a;border:1px solid #a8d5bb}
+.ct-aviso.in{background:#eef3fb;color:#2756A0;border:1px solid #c9d8f0}
+.ct-dep{grid-column:1/-1;border:1px solid var(--line,#D3DBE7);border-radius:10px;padding:10px;display:grid;gap:8px}
+.ct-dep .hd{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ct-dep .hd input,.ct-dep .hd select{font:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--line,#D3DBE7);border-radius:7px;background:var(--surface,#fff);color:inherit}
+.ct-rod{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:12px 20px;border-top:1px solid var(--line,#D3DBE7)}
+.ct-rod .msg{flex:1;font-size:13px;min-width:200px}
+.ct-hist{grid-column:1/-1;font-size:12.5px;color:var(--ink-2,#45506A);border-left:3px solid var(--line,#D3DBE7);padding-left:10px;display:grid;gap:3px;max-height:150px;overflow:auto}
+.ct-cfg{display:grid;gap:6px}
+.ct-cfg>div{display:grid;grid-template-columns:minmax(0,1fr) 230px 36px;gap:8px;align-items:center}
+.ct-cfg input,.ct-cfg select{font:inherit;font-size:13px;padding:7px 9px;border:1px solid var(--line,#D3DBE7);border-radius:8px;background:var(--surface,#fff);color:inherit}
+@media(max-width:760px){.ct-card{grid-template-columns:1fr 70px}.ct-card>:nth-child(3),.ct-card>:nth-child(4){grid-column:1/-1}.ct-grid>.ct-c{grid-column:1/-1}.ct-cfg>div{grid-template-columns:1fr}}
+</style>
+<script>
+(function(){
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const hoje=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const br=s=>s?String(s).slice(0,10).split('-').reverse().join('/'):'';
+const dias=(a,b)=>a?Math.max(0,Math.round((new Date((b||hoje())+'T12:00:00')-new Date(String(a).slice(0,10)+'T12:00:00'))/864e5)):0;
+const quem=()=>(window.parent&&window.parent.CRV_QUEM)||'';
+const pl=(n,a,b)=>n+' '+(n===1?a:b);
+let DB=null;const db=async()=>{if(DB)return DB;try{DB=window.claude&&window.claude.use?await window.claude.use('db'):null}catch(_){DB=null}return DB};
+
+/* lista de documentos (modelo "Documentação para contratação") — a regra de cada um pode ser ajustada em "Documentos exigidos" */
+const DOCS_PADRAO=[
+ ['end','Comprovante de endereço (atual)','sempre'],['sang','Tipo sanguíneo','sempre'],['rg','Identidade RG (2 cópias)','sempre'],
+ ['cpf','CPF titular e dependentes (2 cópias)','sempre'],['res','Reservista','homens'],['ctps','Carteira de trabalho digital','sempre'],
+ ['pis','PIS','sempre'],['sus','SUS','sempre'],['tit','Título de eleitor','sempre'],['banco','Conta bancária Bradesco (extrato)','sempre'],
+ ['cnh','CNH','motop'],['vac','Cartão de vacina','sempre'],['cert','Certidão de nascimento ou casamento','sempre'],
+ ['esc','Declaração de escolaridade','sempre'],['curso','Certificados de conclusão de curso','se_tiver'],['foto','1 foto 3x4','sempre']];
+const REGRAS={sempre:'Obrigatório para todos',homens:'Obrigatório só para homens',motop:'Obrigatório para motorista e operador de máquinas agrícolas',se_tiver:'Se o candidato tiver (não bloqueia)'};
+const MOTOP=/MOTORISTA|OPERADOR DE M[AÁ]Q|OP\.?\s*DE\s*M[AÁ]Q|OP\._?\s*M[AÁ]Q|M[AÁ]QUINAS? AGR/i;
+let DOCS=DOCS_PADRAO.map(d=>({k:d[0],n:d[1],r:d[2]}));
+async function carregarCfg(){const D=await db();if(!D)return;try{const s=await D.collection('contratacoes_cfg').doc('docs').get();const v=s&&s.exists&&s.data?s.data():null;if(v&&Array.isArray(v.lista)&&v.lista.length)DOCS=v.lista}catch(_){}}
+const aplica=(d,c)=>d.r==='sempre'||d.r==='se_tiver'||(d.r==='homens'&&c.sexo==='M')||(d.r==='motop'&&MOTOP.test(c.func||''));
+const obrig=(d,c)=>d.r!=='se_tiver'&&aplica(d,c);
+const toxApl=c=>MOTOP.test(c.func||'');
+/* dependentes para o Unimed */
+const DEP_DOCS=(t,idade)=>{if(t==='conjuge')return[['rg','RG'],['cpf','CPF'],['sus','SUS'],['cas','Certidão de casamento']];
+  const L=[['rg','RG'],['cpf','CPF'],['sus','SUS'],['nas','Certidão de nascimento']];const i=parseInt(idade,10);
+  if(!isNaN(i)&&i<6)L.push(['vac','Cartão de vacina']);if(!isNaN(i)&&i>=10&&i<=18)L.push(['dec','Declaração escolar']);return L};
+
+function situacao(c){
+  const docsF=DOCS.filter(d=>obrig(d,c)&&!(c.docs&&c.docs[d.k]&&c.docs[d.k].ok));
+  const med=c.medico||{},tox=c.toxico||{},integ=c.integ||{};
+  const medOk=med.res==='Apto',medIn=med.res==='Inapto',toxNa=!toxApl(c),toxOk=toxNa||tox.res==='Negativo',toxPos=tox.res==='Positivo';
+  const bloq=[];if(docsF.length)bloq.push(pl(docsF.length,'documento obrigatório pendente','documentos obrigatórios pendentes'));
+  if(!medOk)bloq.push(medIn?'exame médico inapto':'exame médico (ASO) não registrado como apto');
+  if(!toxOk)bloq.push(toxPos?'exame toxicológico positivo':'exame toxicológico pendente');
+  const totObr=DOCS.filter(d=>obrig(d,c)).length;
+  return{docsF,totObr,medOk,medIn,toxNa,toxOk,toxPos,integOk:!!integ.data,bloq,pronto:!bloq.length}}
+const STL={proc:['Em processo','#eef3fb','#2756A0'],contratado:['Contratado','#dcefe3','#1d5c3a'],desistiu:['Desistiu','#f3f4f6','#5d6a85'],nao_aprovado:['Não aprovado','#fdecea','#a3301c']};
+const ALERTA=15; // dias em processo para destacar
+
+let L=[],F={st:'proc',q:'',k:''};
+async function carregar(){const D=await db();if(!D){L=[];return}try{const s=await D.collection('contratacoes').get();L=s.docs.map(d=>Object.assign({_id:d.id},d.data())).filter(x=>!x.excluido)}catch(_){L=[]}}
+async function salvar(c,txt){const D=await db();if(!D)throw new Error('O registro não está disponível nesta visualização.');
+  const h=(c.hist||[]).concat(txt?[{em:new Date().toISOString(),por:quem(),txt}]:[]).slice(-60);c.hist=h;c.atualizadoEm=new Date().toISOString();
+  const o=Object.assign({},c);delete o._id;
+  if(c._id)await D.collection('contratacoes').doc(c._id).set(o);else{o.criadoEm=new Date().toISOString();o.por=quem();const r=await D.collection('contratacoes').add(o);c._id=r&&r.id}}
+
+let W=null;
+function fechar(){if(W){W.remove();W=null}}
+async function abrir(){fechar();W=document.createElement('div');W.className='ct-fundo';
+  W.innerHTML='<div class="ct-modal" role="dialog" aria-modal="true"><div class="ct-cab"><h3>Contratações em andamento<small>Fichas de informe de contratação recebidas pelo RH: documentos, exame médico, toxicológico e integração de cada candidato.</small></h3><button class="ct-b" id="ctCfg">Documentos exigidos</button><button class="ct-b pri" id="ctNovo">+ Cadastrar ficha</button><button class="ct-b" id="ctX">Fechar</button></div><div class="ct-corpo" id="ctCorpo"><p>Carregando…</p></div></div>';
+  document.body.appendChild(W);W.addEventListener('mousedown',e=>{if(e.target===W)fechar()});
+  W.querySelector('#ctX').onclick=fechar;W.querySelector('#ctNovo').onclick=()=>form({});W.querySelector('#ctCfg').onclick=cfg;
+  await carregarCfg();await carregar();lista()}
+function lista(){if(!W)return;const C=W.querySelector('#ctCorpo');
+  const proc=L.filter(c=>(c.status||'proc')==='proc'),pr=proc.filter(c=>situacao(c).pronto),at=proc.filter(c=>dias(c.recebida)>ALERTA),
+    med=proc.length?Math.round(proc.reduce((a,c)=>a+dias(c.recebida),0)/proc.length):0,
+    mes=L.filter(c=>c.status==='contratado'&&String(c.admissao||'').slice(0,7)===hoje().slice(0,7));
+  const K=[['proc','Em processo',proc.length,'média de '+pl(med,'dia','dias')+' desde a ficha','#2756A0'],['pronto','Prontos para contratar',pr.length,'documentos e exames em dia','#1D7349'],
+    ['alerta','Há mais de '+ALERTA+' dias',at.length,'em processo desde a ficha','#c2410c'],['contratado','Contratados no mês',mes.length,'com admissão neste mês','#7546A3']];
+  let R=L.slice();const st=F.k||F.st;
+  if(st==='proc')R=proc;else if(st==='pronto')R=pr;else if(st==='alerta')R=at;else if(st==='contratado'&&F.k)R=mes;else if(st!=='todos')R=R.filter(c=>(c.status||'proc')===st);
+  const q=F.q.trim().toLowerCase();if(q)R=R.filter(c=>[c.nome,c.func,c.dep,c.tel].join(' ').toLowerCase().includes(q));
+  R.sort((a,b)=>((a.status||'proc')==='proc'?0:1)-((b.status||'proc')==='proc'?0:1)||dias(b.recebida,b.admissao)-dias(a.recebida,a.admissao));
+  C.innerHTML='<div class="ct-k">'+K.map(k=>'<button data-k="'+k[0]+'" class="'+(F.k===k[0]?'on':'')+'" style="--kc:'+k[4]+'"><span>'+k[1]+'</span><b>'+k[2]+'</b><small>'+esc(k[3])+'</small></button>').join('')+'</div>'
+   +'<div class="ct-tools"><div class="ct-seg">'+[['proc','Em processo'],['contratado','Contratados'],['desistiu','Desistências'],['nao_aprovado','Não aprovados'],['todos','Todos']].map(s=>'<button data-s="'+s[0]+'" class="'+(!F.k&&F.st===s[0]?'on':'')+'">'+s[1]+'</button>').join('')+'</div><input type="search" id="ctQ" placeholder="Buscar por nome, função, departamento ou telefone" value="'+esc(F.q)+'"><button class="ct-b" id="ctXls">Excel</button><button class="ct-b" id="ctPdf">PDF</button></div>'
+   +'<div class="ct-lista">'+(R.length?R.map(c=>{const s=situacao(c),d=dias(c.recebida,c.status==='contratado'?c.admissao:(c.status&&c.status!=='proc'?String(c.encerradoEm||'').slice(0,10):'')),stt=STL[c.status||'proc'];const ok=s.totObr-s.docsF.length;
+     return '<div class="ct-card" data-id="'+esc(c._id)+'"><div><div class="nm">'+esc(c.nome)+'</div><div class="sm">'+esc(c.func||'—')+' · '+esc(c.dep||'—')+(c.contrato?' · '+esc(c.contrato):'')+'</div><div class="sm">Ficha recebida em '+br(c.recebida)+(c.entrada?' · entrada prevista '+br(c.entrada):'')+(c.tel?' · '+esc(c.tel):'')+'</div></div>'
+      +'<div class="ct-dias'+((c.status||'proc')==='proc'&&d>ALERTA?' al':'')+'"><b>'+d+'</b><small>'+(d===1?'dia':'dias')+((c.status||'proc')==='proc'?' em processo':' até encerrar')+'</small></div>'
+      +'<div><div class="ct-et"><span class="ct-chip '+(s.docsF.length?'pe':'ok')+'">Documentos '+ok+'/'+s.totObr+'</span><span class="ct-chip '+(s.medOk?'ok':s.medIn?'er':'pe')+'">Médico'+(s.medOk?' ✓':s.medIn?' inapto':'')+'</span>'+(s.toxNa?'':'<span class="ct-chip '+(s.toxOk?'ok':s.toxPos?'er':'pe')+'">Toxicológico'+(s.toxOk?' ✓':s.toxPos?' positivo':'')+'</span>')+'<span class="ct-chip '+(s.integOk?'ok':'pe')+'">Integração'+(s.integOk?' ✓':'')+'</span></div><div class="ct-bar"><i style="width:'+(s.totObr?Math.round(ok/s.totObr*100):100)+'%"></i></div></div>'
+      +'<div class="ct-st" style="background:'+stt[1]+';color:'+stt[2]+'">'+((c.status||'proc')==='proc'&&s.pronto?'Pronto para contratar':stt[0])+'</div></div>'}).join(''):'<div class="ct-vazio">Nenhuma ficha '+(st==='proc'?'em processo':'neste filtro')+'. Use "+ Cadastrar ficha" quando chegar uma ficha de informe de contratação.</div>')+'</div>';
+  C.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{F.k=F.k===b.dataset.k?'':b.dataset.k;lista()});
+  C.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{F.k='';F.st=b.dataset.s;lista()});
+  const qi=C.querySelector('#ctQ');qi.oninput=()=>{F.q=qi.value;clearTimeout(qi._t);qi._t=setTimeout(()=>{lista();const n=W.querySelector('#ctQ');n.focus();n.setSelectionRange(n.value.length,n.value.length)},300)};
+  C.querySelectorAll('.ct-card').forEach(el=>el.onclick=()=>{const c=L.find(x=>x._id===el.dataset.id);if(c)form(JSON.parse(JSON.stringify(c)))});
+  C.querySelector('#ctXls').onclick=()=>exportar(R,'x');C.querySelector('#ctPdf').onclick=()=>exportar(R,'p')}
+
+async function funcoes(){try{const f=window.parent&&window.parent.CRV_QUADRO;if(typeof f==='function'){const q=await f();const M=q&&q.mapa||{};const fu=new Set(),de=new Set();Object.values(M).forEach(x=>{if(x.funcao)fu.add(x.funcao);if(x.setor)de.add(x.setor)});return{fu:[...fu].sort(),de:[...de].sort()}}}catch(_){}return{fu:[],de:[]}}
+
+async function form(c){if(!W)return;c.docs=c.docs||{};c.deps=c.deps||[];c.medico=c.medico||{};c.toxico=c.toxico||{};c.integ=c.integ||{};c.status=c.status||'proc';if(!c.recebida)c.recebida=hoje();
+  const C=W.querySelector('#ctCorpo');const SL=await funcoes();
+  const v=k=>esc(c[k]||''),sel=(k,ops)=>ops.map(o=>{const[a,b]=Array.isArray(o)?o:[o,o];return '<option value="'+esc(a)+'"'+((c[k]||'')===a?' selected':'')+'>'+esc(b)+'</option>'}).join('');
+  C.innerHTML='<div class="ct-grid">'
+   +'<div class="ct-sec">Ficha de informe de contratação <span>RE.0150.03</span></div>'
+   +'<div class="ct-c w6"><label>Nome do candidato *</label><input data-f="nome" value="'+v('nome')+'"></div>'
+   +'<div class="ct-c w3"><label>Telefone</label><input data-f="tel" value="'+v('tel')+'" inputmode="tel" placeholder="(34) 99999-9999"></div>'
+   +'<div class="ct-c w3"><label>Sexo</label><select data-f="sexo">'+sel('sexo',[['','—'],['M','Masculino'],['F','Feminino']])+'</select></div>'
+   +'<div class="ct-c w5"><label>Departamento *</label><input data-f="dep" list="ctDL" value="'+v('dep')+'"></div>'
+   +'<div class="ct-c w3"><label>Setor de locação (código)</label><input data-f="setorCod" value="'+v('setorCod')+'" inputmode="numeric"></div>'
+   +'<div class="ct-c w4"><label>Função *</label><input data-f="func" list="ctFL" value="'+v('func')+'"></div>'
+   +'<div class="ct-c w4"><label>Jornada de trabalho</label><input data-f="jornada" value="'+v('jornada')+'" placeholder="Ex.: 5 X 1 23:00 às 07:20"></div>'
+   +'<div class="ct-c w2"><label>Turno</label><select data-f="turno">'+sel('turno',['','Matutino','Vespertino','Noturno'])+'</select></div>'
+   +'<div class="ct-c w2"><label>Salário (R$)</label><input data-f="salario" value="'+v('salario')+'" inputmode="decimal"></div>'
+   +'<div class="ct-c w2"><label>Contrato</label><select data-f="contrato">'+sel('contrato',['Experiência','Safra','Determinado','Indeterminado'])+'</select></div>'
+   +'<div class="ct-c w2"><label>Entrada prevista</label><input type="date" data-f="entrada" value="'+v('entrada')+'"></div>'
+   +'<div class="ct-c w3"><label>Ficha recebida no RH em *</label><input type="date" data-f="recebida" value="'+v('recebida')+'"></div>'
+   +'<div class="ct-c w3"><label>Assinada pelo supervisor em</label><input type="date" data-f="supData" value="'+v('supData')+'"></div>'
+   +'<div class="ct-c w3"><label>Assinada pelo gerente em</label><input type="date" data-f="gerData" value="'+v('gerData')+'"></div>'
+   +'<div class="ct-c w3"><label>Dias em processo</label><input id="ctDias" readonly></div>'
+   +'<div class="ct-c w12"><label>Observação</label><textarea data-f="obs">'+v('obs')+'</textarea></div>'
+   +'<div class="ct-sec">Documentação <span id="ctDocInfo"></span></div><div class="ct-docs" id="ctDocs"></div>'
+   +'<div class="ct-sec">Exames</div>'
+   +'<div class="ct-c w3"><label>Exame médico (ASO) em</label><input type="date" data-x="medico.data" value="'+esc(c.medico.data||'')+'"></div>'
+   +'<div class="ct-c w3"><label>Resultado do médico</label><select data-x="medico.res">'+['','Apto','Inapto'].map(o=>'<option'+((c.medico.res||'')===o?' selected':'')+'>'+o+'</option>').join('')+'</select></div>'
+   +'<div class="ct-c w3" id="ctTox1"><label>Exame toxicológico em</label><input type="date" data-x="toxico.data" value="'+esc(c.toxico.data||'')+'"></div>'
+   +'<div class="ct-c w3" id="ctTox2"><label>Resultado do toxicológico</label><select data-x="toxico.res">'+['','Negativo','Positivo'].map(o=>'<option'+((c.toxico.res||'')===o?' selected':'')+'>'+o+'</option>').join('')+'</select></div>'
+   +'<div class="ct-aviso in" id="ctToxNa" style="grid-column:span 6">Exame toxicológico: obrigatório só para motorista e operador de máquinas agrícolas.</div>'
+   +'<div class="ct-sec">Integração</div>'
+   +'<div class="ct-c w3"><label>Integração feita em</label><input type="date" data-x="integ.data" value="'+esc(c.integ.data||'')+'"></div>'
+   +'<div class="ct-c w9"><label>Observação da integração</label><input data-x="integ.obs" value="'+esc(c.integ.obs||'')+'"></div>'
+   +'<div class="ct-sec">Dependentes para o plano Unimed <span>não bloqueia a contratação</span></div><div id="ctDeps" style="grid-column:1/-1;display:grid;gap:8px"></div>'
+   +'<div style="grid-column:1/-1"><button class="ct-b" id="ctAddDep">+ Adicionar dependente</button></div>'
+   +'<div class="ct-sec">Situação</div><div class="ct-aviso" id="ctSit"></div>'
+   +'<div class="ct-c w3"><label>Situação do processo</label><select data-f="status">'+sel('status',[['proc','Em processo'],['contratado','Contratado'],['desistiu','Desistiu'],['nao_aprovado','Não aprovado']])+'</select></div>'
+   +'<div class="ct-c w3" id="ctAdm"><label>Data de admissão</label><input type="date" data-f="admissao" value="'+v('admissao')+'"></div>'
+   +'<div class="ct-c w2" id="ctMat"><label>Matrícula</label><input data-f="mat" value="'+v('mat')+'" inputmode="numeric"></div>'
+   +'<div class="ct-c w4" id="ctMot"><label>Motivo</label><input data-f="motivo" value="'+v('motivo')+'" placeholder="Ex.: desistiu antes do exame"></div>'
+   +(c.hist&&c.hist.length?'<div class="ct-sec">Histórico</div><div class="ct-hist">'+c.hist.slice().reverse().map(h=>'<div>'+new Date(h.em).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})+' · '+esc(String(h.por||'').split(' ')[0])+' · '+esc(h.txt)+'</div>').join('')+'</div>':'')
+   +'</div><datalist id="ctFL">'+SL.fu.map(x=>'<option value="'+esc(x)+'">').join('')+'</datalist><datalist id="ctDL">'+SL.de.map(x=>'<option value="'+esc(x)+'">').join('')+'</datalist>';
+  const modal=W.querySelector('.ct-modal');let rod=modal.querySelector('.ct-rod');if(rod)rod.remove();
+  rod=document.createElement('div');rod.className='ct-rod';rod.innerHTML='<span class="msg" id="ctMsg"></span>'+(c._id?'<button class="ct-b dan" id="ctDel">Excluir</button>':'')+'<button class="ct-b" id="ctPend">Copiar pendências (WhatsApp)</button><button class="ct-b" id="ctPdfF">PDF da ficha</button><button class="ct-b" id="ctVolta">Voltar à lista</button><button class="ct-b pri" id="ctSalva">Salvar</button>';modal.appendChild(rod);
+  const g=s=>C.querySelector(s),msg=(t,cor)=>{const m=rod.querySelector('#ctMsg');m.style.color=cor||'';m.textContent=t};
+  const ler=()=>{C.querySelectorAll('[data-f]').forEach(e=>{c[e.dataset.f]=e.value.trim()});C.querySelectorAll('[data-x]').forEach(e=>{const[a,b]=e.dataset.x.split('.');c[a][b]=e.value.trim()})};
+  const docsH=()=>{ler();const s=situacao(c);
+    g('#ctDocs').innerHTML=DOCS.map(d=>{const ap=aplica(d,c),ob=obrig(d,c),st=c.docs[d.k]||{};return '<label class="ct-doc'+(st.ok?' ok':'')+(ap?'':' na')+'"><input type="checkbox" data-d="'+d.k+'"'+(st.ok?' checked':'')+(ap?'':' disabled')+'><span>'+esc(d.n)+(st.ok&&st.em?' <small style="color:#5d6a85">('+br(st.em)+')</small>':'')+'</span><span class="tg'+(st.ok?' ok':ob?'':' op')+'">'+(st.ok?'Entregue':!ap?'Não se aplica':ob?'Obrigatório':'Se tiver')+'</span></label>'}).join('');
+    g('#ctDocInfo').textContent=(s.totObr-s.docsF.length)+' de '+s.totObr+' obrigatórios entregues'+(c.sexo?'':' · informe o sexo para saber se a reservista é exigida');
+    g('#ctDocs').querySelectorAll('[data-d]').forEach(i=>i.onchange=()=>{c.docs[i.dataset.d]=i.checked?{ok:true,em:hoje()}:{ok:false};docsH()});
+    const tx=toxApl(c);g('#ctTox1').hidden=!tx;g('#ctTox2').hidden=!tx;g('#ctToxNa').hidden=tx;
+    const stv=g('[data-f=status]').value;g('#ctAdm').hidden=stv!=='contratado';g('#ctMat').hidden=stv!=='contratado';g('#ctMot').hidden=!(stv==='desistiu'||stv==='nao_aprovado');
+    g('#ctDias').value=pl(dias(c.recebida,stv==='contratado'?c.admissao:''),'dia','dias');
+    const si=g('#ctSit');if(s.pronto){si.className='ct-aviso ok';si.innerHTML='<b>Pronto para contratar.</b> Documentos obrigatórios entregues, exame médico apto'+(s.toxNa?'':' e toxicológico negativo')+'.'+(s.integOk?'':' A integração ainda não foi registrada.')}
+    else{si.className='ct-aviso er';si.innerHTML='<b>Ainda não pode ser contratado.</b> Falta: '+esc(s.bloq.join('; '))+'.'+(s.docsF.length?'<br>Documentos pendentes: '+esc(s.docsF.map(d=>d.n).join(', '))+'.':'')}};
+  const depsH=()=>{g('#ctDeps').innerHTML=c.deps.map((d,i)=>{const L2=DEP_DOCS(d.tipo,d.idade);d.docs=d.docs||{};return '<div class="ct-dep"><div class="hd"><select data-dp="'+i+'" data-k="tipo"><option value="conjuge"'+(d.tipo==='conjuge'?' selected':'')+'>Cônjuge</option><option value="filho"'+(d.tipo!=='conjuge'?' selected':'')+'>Filho(a)</option></select><input data-dp="'+i+'" data-k="nome" placeholder="Nome do dependente" value="'+esc(d.nome||'')+'" style="flex:1;min-width:160px">'+(d.tipo!=='conjuge'?'<input data-dp="'+i+'" data-k="idade" placeholder="Idade" inputmode="numeric" value="'+esc(d.idade||'')+'" style="width:80px">':'')+'<button class="ct-b dan" data-rm="'+i+'">Remover</button></div><div class="ct-docs">'+L2.map(x=>'<label class="ct-doc'+(d.docs[x[0]]?' ok':'')+'"><input type="checkbox" data-dd="'+i+'" data-k="'+x[0]+'"'+(d.docs[x[0]]?' checked':'')+'><span>'+x[1]+'</span></label>').join('')+'</div></div>'}).join('')||'<div class="ct-vazio" style="padding:10px">Sem dependentes informados.</div>';
+    g('#ctDeps').querySelectorAll('[data-dp]').forEach(e=>e.onchange=()=>{c.deps[+e.dataset.dp][e.dataset.k]=e.value.trim();depsH()});
+    g('#ctDeps').querySelectorAll('[data-dd]').forEach(e=>e.onchange=()=>{const d=c.deps[+e.dataset.dd];d.docs=d.docs||{};d.docs[e.dataset.k]=e.checked;depsH()});
+    g('#ctDeps').querySelectorAll('[data-rm]').forEach(e=>e.onclick=()=>{c.deps.splice(+e.dataset.rm,1);depsH()})};
+  C.querySelectorAll('[data-f],[data-x]').forEach(e=>{e.addEventListener('change',docsH);if(e.dataset.f==='func')e.addEventListener('input',docsH)});
+  g('#ctAddDep').onclick=()=>{c.deps.push({tipo:'filho',docs:{}});depsH()};
+  docsH();depsH();C.scrollTop=0;
+  rod.querySelector('#ctVolta').onclick=async()=>{rod.remove();await carregar();lista()};
+  rod.querySelector('#ctPend').onclick=async()=>{ler();const s=situacao(c);const t=pendencias(c,s);try{await navigator.clipboard.writeText(t);msg('Mensagem copiada. Cole no WhatsApp do candidato.','#1d5c3a')}catch(_){prompt('Copie a mensagem:',t)}};
+  rod.querySelector('#ctPdfF').onclick=()=>{ler();pdfFicha(c).catch(e=>msg('Não consegui gerar: '+e.message,'#a3301c'))};
+  if(rod.querySelector('#ctDel'))rod.querySelector('#ctDel').onclick=async e=>{const b=e.target;if(!b.dataset.c){b.dataset.c=1;b.textContent='Confirmar exclusão';setTimeout(()=>{if(b.isConnected){delete b.dataset.c;b.textContent='Excluir'}},6000);return}
+    try{c.excluido=true;c.excluidoEm=new Date().toISOString();await salvar(c,'Ficha excluída');rod.remove();await carregar();lista()}catch(er){msg(er.message,'#a3301c')}};
+  rod.querySelector('#ctSalva').onclick=async()=>{ler();const falta=[!c.nome&&'nome',!c.dep&&'departamento',!c.func&&'função',!c.recebida&&'data em que a ficha chegou'].filter(Boolean);
+    if(falta.length)return msg('Falta preencher: '+falta.join(', ')+'.','#a3301c');
+    const s=situacao(c);
+    if(c.status==='contratado'&&!s.pronto){c.status='proc';g('[data-f=status]').value='proc';docsH();return msg('Não dá para marcar como contratado: '+s.bloq.join('; ')+'.','#a3301c')}
+    if(c.status==='contratado'&&!c.admissao)return msg('Informe a data de admissão.','#a3301c');
+    const ant=L.find(x=>x._id===c._id);const mud=[];
+    if(!ant)mud.push('Ficha cadastrada');else{if((ant.status||'proc')!==c.status)mud.push('Situação: '+STL[c.status][0]+(c.motivo&&c.status!=='contratado'?' ('+c.motivo+')':''));
+      const novos=DOCS.filter(d=>(c.docs[d.k]||{}).ok&&!((ant.docs||{})[d.k]||{}).ok).map(d=>d.n);if(novos.length)mud.push('Entregou: '+novos.join(', '));
+      if((ant.medico||{}).res!==c.medico.res&&c.medico.res)mud.push('Exame médico: '+c.medico.res);if((ant.toxico||{}).res!==c.toxico.res&&c.toxico.res)mud.push('Toxicológico: '+c.toxico.res);
+      if(!(ant.integ||{}).data&&c.integ.data)mud.push('Integração em '+br(c.integ.data));if(!mud.length)mud.push('Dados atualizados')}
+    if(c.status!=='proc'&&!c.encerradoEm)c.encerradoEm=new Date().toISOString();if(c.status==='proc')delete c.encerradoEm;
+    try{await salvar(c,mud.join(' · '));msg('Salvo.','#1d5c3a');await carregar();form(JSON.parse(JSON.stringify(L.find(x=>x._id===c._id)||c)));setTimeout(()=>{const m=W&&W.querySelector('#ctMsg');if(m){m.style.color='#1d5c3a';m.textContent='Salvo.'}},50)}catch(er){msg(er.message||'Não consegui salvar.','#a3301c')}};
+}
+function pendencias(c,s){const p=(c.nome||'').split(' ')[0];const L2=[];
+  L2.push('Olá, '+p+'! Aqui é do RH da CRV Industrial. Para concluir sua contratação'+(c.func?' para a função '+String(c.func).toLowerCase().replace(/(^|\s)\S/g,x=>x.toUpperCase()).replace(/\b(I{1,3}|Iv|Vi{0,3})\b/g,x=>x.toUpperCase()).replace(/ (Da|De|Do|E) /g,x=>x.toLowerCase()):'')+', ainda precisamos de:');
+  s.docsF.forEach(d=>L2.push('• '+d.n));
+  if(!s.medOk&&!s.medIn)L2.push('• Exame médico admissional');
+  if(!s.toxNa&&!s.toxOk&&!s.toxPos)L2.push('• Exame toxicológico');
+  const dp=(c.deps||[]).map(d=>{const f=DEP_DOCS(d.tipo,d.idade).filter(x=>!(d.docs||{})[x[0]]).map(x=>x[1]);return f.length?'• '+(d.tipo==='conjuge'?'Cônjuge':'Filho(a)')+(d.nome?' '+d.nome.split(' ')[0]:'')+': '+f.join(', '):''}).filter(Boolean);
+  if(dp.length){L2.push('','Para incluir dependentes no plano Unimed:');L2.push(...dp)}
+  if(L2.length===1)return 'Olá, '+p+'! Aqui é do RH da CRV Industrial. Sua documentação e seus exames estão completos. Em breve entraremos em contato com a data de início.';
+  L2.push('','A contratação só é concluída após a entrega de todos os documentos exigidos e a realização dos exames necessários para a função.');return L2.join('\n')}
+async function salvarArq(nome,bytes,tipo){const DL=window.claude&&window.claude.use?await window.claude.use('downloads').catch(()=>null):null;if(DL)return DL.save({filename:nome,data:bytes});
+  const u=URL.createObjectURL(new Blob([bytes],{type:tipo}));const a=document.createElement('a');a.href=u;a.download=nome;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},4000)}
+const JS=()=>(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF);
+async function pdfFicha(c){const J=JS();if(!J)throw new Error('gerador de PDF indisponível');const s=situacao(c);const doc=new J({unit:'mm',format:'a4'});
+  doc.setFillColor(31,58,104);doc.rect(0,0,210,4,'F');doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(31,58,104);doc.text('CRV INDUSTRIAL · Acompanhamento de contratação',14,15);
+  doc.setFontSize(12);doc.setTextColor(30,36,48);doc.text(String(c.nome||''),14,24);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(80,88,104);
+  const lin=[['Função',c.func],['Departamento',c.dep+(c.setorCod?' ('+c.setorCod+')':'')],['Jornada',[c.jornada,c.turno].filter(Boolean).join(' · ')],['Contrato',c.contrato],['Salário',c.salario?'R$ '+c.salario:''],['Telefone',c.tel],['Ficha recebida',br(c.recebida)+' · '+pl(dias(c.recebida,c.status==='contratado'?c.admissao:''),'dia','dias')+' em processo'],['Entrada prevista',br(c.entrada)],['Situação',STL[c.status||'proc'][0]+(c.status==='contratado'?' em '+br(c.admissao)+(c.mat?' · matrícula '+c.mat:''):'')]];
+  let y=30;lin.forEach(l=>{if(!l[1])return;doc.setFont('helvetica','bold');doc.text(l[0]+':',14,y);doc.setFont('helvetica','normal');doc.text(String(l[1]),48,y);y+=5});
+  doc.autoTable({startY:y+2,head:[['Documento','Regra','Situação']],body:DOCS.map(d=>{const st=(c.docs||{})[d.k]||{};return[d.n,!aplica(d,c)?'Não se aplica':obrig(d,c)?'Obrigatório':'Se tiver',st.ok?'Entregue'+(st.em?' em '+br(st.em):''):(aplica(d,c)?'Pendente':'—')]}).concat([['Exame médico (ASO)','Obrigatório',c.medico&&c.medico.res?c.medico.res+(c.medico.data?' em '+br(c.medico.data):''):'Pendente'],['Exame toxicológico',s.toxNa?'Não se aplica':'Obrigatório',s.toxNa?'—':(c.toxico&&c.toxico.res?c.toxico.res+(c.toxico.data?' em '+br(c.toxico.data):''):'Pendente')],['Integração','Etapa',c.integ&&c.integ.data?'Feita em '+br(c.integ.data):'Pendente']]),
+    styles:{fontSize:8.6,cellPadding:1.6},headStyles:{fillColor:[31,58,104]},margin:{left:14,right:14},didParseCell:h=>{if(h.section==='body'&&h.column.index===2){const t=String(h.cell.raw);if(/^Pendente/.test(t))h.cell.styles.textColor=[163,48,28];else if(/Entregue|Apto|Negativo|Feita/.test(t))h.cell.styles.textColor=[29,92,58]}}});
+  let y2=doc.lastAutoTable.finalY+6;doc.setFontSize(9.5);doc.setFont('helvetica','bold');doc.setTextColor(s.pronto?29:163,s.pronto?92:48,s.pronto?58:28);
+  doc.text(doc.splitTextToSize(s.pronto?'Pronto para contratar: documentos obrigatórios e exames em dia.':'Ainda não pode ser contratado. Falta: '+s.bloq.join('; ')+'.',182),14,y2);
+  if((c.deps||[]).length){y2+=10;doc.autoTable({startY:y2,head:[['Dependente (Unimed)','Documentos pendentes']],body:c.deps.map(d=>[(d.tipo==='conjuge'?'Cônjuge':'Filho(a)')+(d.nome?' · '+d.nome:'')+(d.idade?' · '+d.idade+' anos':''),DEP_DOCS(d.tipo,d.idade).filter(x=>!(d.docs||{})[x[0]]).map(x=>x[1]).join(', ')||'Completo']),styles:{fontSize:8.6,cellPadding:1.6},headStyles:{fillColor:[31,58,104]},margin:{left:14,right:14}})}
+  doc.setFontSize(7.5);doc.setFont('helvetica','normal');doc.setTextColor(120,128,140);doc.text('Gestão de Pessoas · CRV Industrial · emitido em '+new Date().toLocaleDateString('pt-BR')+' por '+quem(),14,290);
+  await salvarArq('Contratacao - '+String(c.nome||'').split(' ').slice(0,2).join(' ')+'.pdf',new Uint8Array(doc.output('arraybuffer')),'application/pdf')}
+async function exportar(R,k){const linhas=R.map(c=>{const s=situacao(c);return[c.nome,c.func,c.dep,c.contrato||'',br(c.recebida),dias(c.recebida,c.status==='contratado'?c.admissao:''),(s.totObr-s.docsF.length)+'/'+s.totObr,s.docsF.map(d=>d.n).join(', '),c.medico&&c.medico.res||'Pendente',s.toxNa?'Não se aplica':(c.toxico&&c.toxico.res||'Pendente'),c.integ&&c.integ.data?br(c.integ.data):'Pendente',(c.status||'proc')==='proc'?(s.pronto?'Pronto para contratar':'Em processo'):STL[c.status][0],br(c.admissao)]});
+  const H=['Candidato','Função','Departamento','Contrato','Ficha recebida','Dias','Documentos','Pendentes','Médico','Toxicológico','Integração','Situação','Admissão'];
+  if(k==='x'){const X=window.XLSX||(window.parent&&window.parent.XLSX);if(!X)return alert('Excel indisponível.');const ws=X.utils.aoa_to_sheet([H,...linhas]);ws['!cols']=H.map((h,i)=>({wch:[34,26,28,13,13,6,11,50,10,13,12,20,12][i]}));const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,'Contratações');
+    return salvarArq('Contratacoes em andamento '+br(hoje()).split('/').join('-')+'.xlsx',new Uint8Array(X.write(wb,{bookType:'xlsx',type:'array'})),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}
+  const J=JS();if(!J)return alert('PDF indisponível.');const doc=new J({unit:'mm',format:'a4',orientation:'landscape'});
+  doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(31,58,104);doc.text('CRV INDUSTRIAL · Contratações em andamento',14,14);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(90,98,112);doc.text('Posição em '+br(hoje())+' · '+pl(R.length,'candidato','candidatos'),14,20);
+  doc.autoTable({startY:24,head:[H],body:linhas,styles:{fontSize:7.6,cellPadding:1.3,valign:'top'},headStyles:{fillColor:[31,58,104]},columnStyles:{7:{cellWidth:60}},margin:{left:10,right:10}});
+  return salvarArq('Contratacoes em andamento '+br(hoje()).split('/').join('-')+'.pdf',new Uint8Array(doc.output('arraybuffer')),'application/pdf')}
+async function cfg(){if(!W)return;await carregarCfg();const C=W.querySelector('#ctCorpo');const T=DOCS.map(d=>Object.assign({},d));
+  const modal=W.querySelector('.ct-modal');let rod=modal.querySelector('.ct-rod');if(rod)rod.remove();
+  const draw=()=>{C.innerHTML='<div class="ct-aviso in" style="margin-bottom:12px">Lista do modelo "Documentação para contratação". Escolha a regra de cada documento. Os obrigatórios que faltarem bloqueiam a contratação. Exame médico sempre é exigido; o toxicológico, para motorista e operador de máquinas agrícolas.</div><div class="ct-cfg">'+T.map((d,i)=>'<div><input data-i="'+i+'" data-k="n" value="'+esc(d.n)+'"><select data-i="'+i+'" data-k="r">'+Object.entries(REGRAS).map(([a,b])=>'<option value="'+a+'"'+(d.r===a?' selected':'')+'>'+b+'</option>').join('')+'</select><button class="ct-b dan" data-rm="'+i+'" title="Remover">×</button></div>').join('')+'</div><div style="margin-top:10px"><button class="ct-b" id="ctAddD">+ Adicionar documento</button></div>';
+    C.querySelectorAll('[data-i]').forEach(e=>e.onchange=()=>{T[+e.dataset.i][e.dataset.k]=e.value.trim()});C.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{T.splice(+b.dataset.rm,1);draw()});
+    C.querySelector('#ctAddD').onclick=()=>{T.push({k:'d'+Date.now().toString(36),n:'',r:'sempre'});draw();const ins=C.querySelectorAll('.ct-cfg input');ins[ins.length-1].focus()}};
+  draw();rod=document.createElement('div');rod.className='ct-rod';rod.innerHTML='<span class="msg" id="ctMsg"></span><button class="ct-b" id="ctPad">Voltar ao padrão</button><button class="ct-b" id="ctVolta">Voltar à lista</button><button class="ct-b pri" id="ctSalva">Salvar regras</button>';modal.appendChild(rod);
+  rod.querySelector('#ctVolta').onclick=()=>{rod.remove();lista()};
+  rod.querySelector('#ctPad').onclick=()=>{T.length=0;DOCS_PADRAO.forEach(d=>T.push({k:d[0],n:d[1],r:d[2]}));draw()};
+  rod.querySelector('#ctSalva').onclick=async()=>{const L2=T.filter(d=>d.n);const D=await db();if(!D)return;try{await D.collection('contratacoes_cfg').doc('docs').set({lista:L2,em:new Date().toISOString(),por:quem()});DOCS=L2;rod.querySelector('#ctMsg').style.color='#1d5c3a';rod.querySelector('#ctMsg').textContent='Regras salvas.'}catch(e){rod.querySelector('#ctMsg').style.color='#a3301c';rod.querySelector('#ctMsg').textContent='Sem permissão para salvar as regras.'}}}
+window.CRV_CONTRATACAO=abrir;
+/* botão no topo do painel */
+function botao(){const a=document.querySelector('.top-actions');if(!a||document.getElementById('btnContrat'))return;const b=document.createElement('button');b.className='btn cta';b.id='btnContrat';b.type='button';
+  b.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg>Em contratação';b.onclick=abrir;a.prepend(b)}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',botao);else botao();
+})();
+</script>
+
 </body></html>
