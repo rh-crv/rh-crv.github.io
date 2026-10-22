@@ -405,7 +405,7 @@ const SUBACOES = {
   sancoes:  [{ acao:'doc', nome:'Emitir advertência / suspensão / orientação' }],
   ouvidorias: [{ acao:'nova', nome:'Cadastrar ouvidoria' }],
   rd:       [{ acao:'novo', nome:'Cadastrar RD' }, { acao:'aut', nome:'Autorização de desconto' }, { acao:'hist', nome:'Histórico de autorizações' }],
-  fadiga:   [{ acao:'novo', nome:'Cadastrar ocorrência' }],
+  fadiga:   [{ acao:'novo', nome:'Cadastrar ocorrência' }, { acao:'trat', nome:'Aplicar tratativa' }],
   treinamentos: [{ acao:'novo', nome:'Cadastrar treinamento' }],
   'cartao-alimentacao': [{ acao:'rel', nome:'Relatório de conferência' }],
   'cartao-convenio':    [{ acao:'termo', nome:'Termo de opção' }, { acao:'rel', nome:'Relatório de conferência' }],
@@ -414,13 +414,14 @@ const SUBACOES = {
   crachas:  [{ acao:'novo', nome:'Cadastrar crachá de treinamento' }],
   farmacia: [{ acao:'aut', nome:'Autorização de desconto' }, { acao:'hist', nome:'Histórico de autorizações' }]
 };
-function fecharJanelasAut(w){ try { w.document.querySelectorAll('.aut-fundo,.ent-fundo,.of-fundo,.nv-fundo,.rl-fundo,.es-fundo,.ds-fundo,.ct-fundo,.jf-fundo').forEach(x => x.remove()); } catch(_){} }
+function fecharJanelasAut(w){ try { w.document.querySelectorAll('.aut-fundo,.ent-fundo,.of-fundo,.nv-fundo,.rl-fundo,.es-fundo,.ds-fundo,.ct-fundo,.jf-fundo,.ft-fundo').forEach(x => x.remove()); } catch(_){} }
 function executarAcao(acao){
   const f = document.getElementById('modelo-frame');
   const w = f && f.contentWindow;
   if (acao === 'aut' && w && typeof w.CRV_AUTORIZACAO === 'function') { fecharJanelasAut(w); w.CRV_AUTORIZACAO(); return true; }
   if (acao === 'hist' && w && typeof w.CRV_AUT_HIST === 'function') { fecharJanelasAut(w); w.CRV_AUT_HIST(); return true; }
   if (acao === 'doc' && w && typeof w.CRV_DOCDISC === 'function') { fecharJanelasAut(w); w.CRV_DOCDISC(); return true; }
+  if (acao === 'trat' && w && typeof w.CRV_FAD_TRAT === 'function') { fecharJanelasAut(w); w.CRV_FAD_TRAT(); return true; }
   if (acao === 'dslj' && w && typeof w.CRV_JOV_DESL === 'function') { fecharJanelasAut(w); w.CRV_JOV_DESL(); return true; }
   if (acao === 'atj' && w && typeof w.CRV_JOV_AT === 'function') { fecharJanelasAut(w); w.CRV_JOV_AT(); return true; }
   if (acao === 'ctr' && w && typeof w.CRV_CONTRATACAO === 'function') { fecharJanelasAut(w); w.CRV_CONTRATACAO(); return true; }
@@ -838,8 +839,9 @@ async function telaModelo(p, cfg, acao){
       podeEditar: () => podeEditar(p), ehAdmin: () => ehAdmin() });
     let novos = [];
     if (PAINEIS_COM_NOVOS.includes(p.id)) {
-      const r = await sb.from('registros').select('doc_id,dados').eq('painel', p.id).eq('colecao', COLECAO_NOVOS[p.id] || 'novos').range(0, 4999);
-      if (!r.error) novos = (r.data || []).filter(x => x.dados && !x.dados.excluida).map(x => ({ _id: x.doc_id, dados: x.dados }));
+      const cols = [].concat(COLECAO_NOVOS[p.id] || 'novos');
+      const r = await sb.from('registros').select('doc_id,dados,colecao').eq('painel', p.id).in('colecao', cols).range(0, 4999);
+      if (!r.error) novos = (r.data || []).filter(x => x.dados && !x.dados.excluida).map(x => cols.length > 1 ? { _id: x.doc_id, colecao: x.colecao, dados: x.dados } : { _id: x.doc_id, dados: x.dados });
     }
     window.CRV_RECARREGAR = () => { if (location.hash.startsWith('#/p/' + encodeURIComponent(p.id))) telaPainel(p.id); };
     const html = montarModelo(tpl, d.conteudo, d.referencia, p, novos);
@@ -924,6 +926,9 @@ window.CRV_REGS = async function(painel, colecao){
     return r.error ? [] : (r.data || []).map(x => Object.assign({ _id:x.doc_id }, x.dados || {}));
   } catch(_) { return []; }
 };
+/* banco de registros de outro painel (ex.: a fadiga grava a advertência também nas Sanções) */
+window.CRV_DB_DE = function(id){ const p = (E.paineis || []).find(x => x.id === id); if (!p || !window.CRV_PONTE) return null;
+  return window.CRV_PONTE.criar({ sb, painel:id, perfil:() => E.perfil, quem:() => E.perfil.nome, podeEditar:() => podeEditar(p), ehAdmin:() => ehAdmin() }).capacidade('db'); };
 /* sanções (planilha + emitidas no app) e RD de uma matrícula */
 window.CRV_HIST_COLAB = async function(mat){
   mat = String(mat || '').trim().replace(/^0+(?=\d)/, '');
@@ -999,7 +1004,7 @@ function cssCapa(p){
 }
 
 const PAINEIS_COM_NOVOS = ['rd', 'fadiga', 'treinamentos', 'sancoes'];
-const COLECAO_NOVOS = { sancoes:'documentos' };
+const COLECAO_NOVOS = { sancoes:'documentos', fadiga:['novos','tratativas'] };
 function montarModelo(tpl, conteudo, referencia, p, novos){
   const nomeOk = n => /^[A-Za-z_$][\w$]*$/.test(n);
   const base = location.href.split('#')[0].replace(/[^/]*$/, '');

@@ -181,7 +181,11 @@ const SETORES=["CTT","Oficina","Compras","Comboio","Indústria","Irrigação"];
 /* ocorrências cadastradas no app (as que já vieram na planilha não contam duas vezes) */
 window.CRV_FAD_OCS=new Set(D.r.map(r=>String(r[10]||'')).filter(Boolean));
 let NAPP=0;
-(function(){const N=window.CRV_NOVOS||[];if(!N.length)return;
+(function(){const TR=(window.CRV_NOVOS||[]).filter(n=>n.colecao==='tratativas'&&n.dados&&!n.dados.excluido);
+ if(TR.length){const MD={ori:'Orientação',adv:'Advertência',sus:'Suspensão',ter:'Orientação'},RK={'Não informada':0,'Orientação':1,'Advertência':2,'Suspensão':3};const by={};D.r.forEach(r=>{if(r[10])by[String(r[10])]=r});
+  TR.forEach(t=>{const md=MD[t.dados.tipo];(t.dados.ocs||[]).forEach(oc=>{const r=by[String(oc)];if(r&&(RK[md]||0)>=(RK[r[8]]||0))r[8]=md})})}
+})();
+(function(){const N=(window.CRV_NOVOS||[]).filter(n=>!n.colecao||n.colecao==='novos');if(!N.length)return;
  const tc=s=>String(s||'').toLowerCase().replace(/(^|\s)\S/g,c=>c.toUpperCase()).replace(/ (Da|De|Do|Dos|Das|E) /g,(m,p)=>' '+p.toLowerCase()+' ');
  const ch=new Set(D.r.map(r=>[r[1],r[2],r[3],r[4]].join('|')));
  N.forEach(n=>{const d=n.dados||{};if(!d.data||!d.mat)return;const [y,mo,dia]=d.data.split('-');if(y!=='2026')return;
@@ -293,7 +297,7 @@ function renderN(){
     const sp=`<div class="spark" data-tip="${pm.map((v,i)=>MES[i]+" "+v).join(" · ")}">${pm.map((v,i)=>`<i class="${v?"":"z"}${per===i+1&&v?" s":""}" style="height:${Math.max(3,v/mx*26)}px"></i>`).join("")}</div>`;
     const l=last(o);
     let tr=`<tr class="p" data-m="${o.m}" tabindex="0" aria-expanded="${open===o.m}"><td class="nm">${esc(o.p[0])}<div class="sm">Mat. ${o.m}</div></td><td>${esc(sets)}<div class="sm">${esc(o.p[1])}</div></td><td><span class="pill ${o.p[3]}">${o.p[3]}</span></td><td class="num big">${o.rs.length}</td><td class="tags">${tag(count(o.rs,r=>r.mot))}</td><td class="tags">${tag(count(o.rs,r=>r.med))}</td><td>${sp}</td><td>${d2(l.dia)}/${d2(l.mo)}</td></tr>`;
-    if(open===o.m)tr+=`<tr class="det"><td colspan="8"><div class="sm" style="margin-bottom:6px">${esc(o.p[2])}</div><div class="scroll"><table><thead><tr><th>Data</th><th>Ocorrência</th><th>Hora</th><th>Turno</th><th>Frota</th><th>Setor</th><th>Motivo</th><th>Medida</th></tr></thead><tbody>${o.rs.map(r=>`<tr><td>${dt(r)}</td><td>${r.oc||"–"}</td><td>${r.h||"–"}</td><td>${r.tu||"–"}</td><td>${r.fr}</td><td>${r.s}</td><td>${r.mot}</td><td>${r.med}</td></tr>`).join("")}</tbody></table></div></td></tr>`;
+    if(open===o.m)tr+=`<tr class="det"><td colspan="8"><div class="sm" style="margin-bottom:6px">${esc(o.p[2])}</div><div class="scroll"><table><thead><tr><th>Data</th><th>Ocorrência</th><th>Hora</th><th>Turno</th><th>Frota</th><th>Setor</th><th>Motivo</th><th>Medida</th><th></th></tr></thead><tbody>${o.rs.map(r=>`<tr><td>${dt(r)}</td><td>${r.oc||"–"}</td><td>${r.h||"–"}</td><td>${r.tu||"–"}</td><td>${r.fr}</td><td>${r.s}</td><td>${r.mot}</td><td>${r.med}</td><td><button type="button" class="ft-trat" data-mat="${esc(String(r.m))}" data-oc="${esc(String(r.oc||""))}">Tratativa</button></td></tr>`).join("")}</tbody></table></div></td></tr>`;
     return tr;
   }).join("");
 }
@@ -625,5 +629,241 @@ window.CRV_NOVO=()=>abrir();
 })();
 </script>
 <!-- ===== fim: cadastro de novos ===== -->
+
+<style>
+.ft-fundo{position:fixed;inset:0;background:rgba(15,22,38,.55);z-index:9000;display:flex;align-items:flex-start;justify-content:center;padding:18px;overflow:auto}
+.ft-modal{background:var(--card,#fff);color:var(--ink,#1c2333);width:min(1040px,100%);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.3);display:flex;flex-direction:column;max-height:calc(100vh - 36px)}
+.ft-cab{display:flex;gap:12px;align-items:flex-start;padding:15px 20px;border-bottom:1px solid var(--line,#dde2ea)}
+.ft-cab h3{margin:0;font-size:18px;flex:1}.ft-cab h3 small{display:block;font-size:12.5px;font-weight:400;color:var(--mut,#5d6a85);margin-top:3px}
+.ft-corpo{padding:14px 20px;overflow:auto}
+.ft-rod{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:12px 20px;border-top:1px solid var(--line,#dde2ea)}.ft-rod .msg{flex:1;font-size:13px;min-width:180px}
+.ft-b{font:inherit;font-size:13px;font-weight:600;border:1px solid var(--line,#dde2ea);background:var(--card,#fff);color:inherit;border-radius:9px;padding:7px 12px;cursor:pointer;white-space:nowrap}
+.ft-b.pri{background:#1f3a68;border-color:#1f3a68;color:#fff}.ft-b.dan{color:#a3301c}
+.ft-tipos{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}
+.ft-tipos button{font:inherit;font-size:13px;font-weight:700;border:1px solid var(--line,#dde2ea);background:transparent;color:inherit;border-radius:20px;padding:7px 14px;cursor:pointer}
+.ft-tipos button.on{background:#1f3a68;border-color:#1f3a68;color:#fff}
+.ft-g{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:10px 12px}
+.ft-c{display:flex;flex-direction:column;gap:4px;min-width:0}
+.ft-c label{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--mut,#5d6a85)}
+.ft-c input,.ft-c select,.ft-c textarea{font:inherit;font-size:13.5px;padding:8px 10px;border:1px solid var(--line,#dde2ea);border-radius:8px;background:var(--card,#fff);color:inherit;min-width:0}
+.ft-c textarea{min-height:70px;resize:vertical}
+.ft-g .w2{grid-column:span 2}.ft-g .w3{grid-column:span 3}.ft-g .w4{grid-column:span 4}.ft-g .w5{grid-column:span 5}.ft-g .w6{grid-column:span 6}.ft-g .w8{grid-column:span 8}.ft-g .w9{grid-column:span 9}.ft-g .w12{grid-column:span 12}
+.ft-sec{grid-column:1/-1;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#1f3a68;border-bottom:2px solid rgba(31,58,104,.15);padding:8px 0 4px}
+.ft-av{grid-column:1/-1;border-radius:10px;padding:9px 12px;font-size:13px;line-height:1.45}
+.ft-av.in{background:#eef3fb;color:#1f3a68;border:1px solid #c9d8f0}.ft-av.er{background:#fdecea;color:#8a2a1a;border:1px solid #f2b8ae}.ft-av.ok{background:#e6f4ec;color:#1d5c3a;border:1px solid #a8d5bb}
+.ft-ocs{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap}
+.ft-oc{font:inherit;font-size:12px;border:1px solid var(--line,#dde2ea);background:var(--card,#fff);color:inherit;border-radius:8px;padding:5px 9px;cursor:pointer;text-align:left}
+.ft-oc.on{background:#1f3a68;border-color:#1f3a68;color:#fff}
+.ft-tb{width:100%;border-collapse:collapse;font-size:13px}.ft-tb th{text-align:left;font-size:11.5px;text-transform:uppercase;color:var(--mut,#5d6a85);padding:7px 8px;border-bottom:1px solid var(--line,#dde2ea)}.ft-tb td{padding:7px 8px;border-bottom:1px solid var(--line,#dde2ea);vertical-align:top}
+.ft-trat{font:inherit;font-size:11.5px;font-weight:700;border:1px solid #1f3a68;color:#1f3a68;background:transparent;border-radius:7px;padding:3px 8px;cursor:pointer;white-space:nowrap}
+@media(max-width:700px){.ft-g>.ft-c{grid-column:1/-1}}
+</style>
+<script>
+(function(){
+const e_=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const hojeI=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const br=s=>s?String(s).slice(0,10).split('-').reverse().join('/'):'';
+const addD=(s,n)=>{const d=new Date(s+'T12:00:00');d.setDate(d.getDate()+n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const quem=()=>(window.parent&&window.parent.CRV_QUEM)||'';
+const tcx=s=>String(s||'').toLowerCase().replace(/(^|\s)\S/g,c=>c.toUpperCase()).replace(/ (Da|De|Do|Dos|Das|E) /g,(m,p)=>' '+p.toLowerCase()+' ').replace(/\b(Ii|Iii|Iv)\b/g,m=>m.toUpperCase());
+const MESN=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const NUM=['ZERO','UM','DOIS','TRÊS','QUATRO','CINCO','SEIS','SETE','OITO','NOVE','DEZ','ONZE','DOZE','TREZE','QUATORZE','QUINZE'];
+const TIPOS={ori:'Termo de orientação',adv:'Advertência',sus:'Suspensão',ter:'Termo para terceiro'};
+const MEDIDA={ori:'Orientação',adv:'Advertência',sus:'Suspensão',ter:'Orientação'};
+/* textos sugeridos por motivo (editáveis antes de gerar) */
+const CTB_CEL='CTB - Lei nº 9.503/1997, art. 28: exige que o condutor mantenha o domínio do veículo e dirija com atenção e com os cuidados necessários à segurança do trânsito.\nCTB - art. 252, inciso VI: trata da condução com fones nos ouvidos conectados a aparelhagem sonora ou da utilização de telefone celular.\nCTB - art. 252, inciso V e parágrafo único: o inciso V trata da condução com apenas uma das mãos, ressalvadas as exceções legais. Segurar ou manusear telefone celular ao dirigir caracteriza infração gravíssima.\nCTB - art. 169: dirigir sem atenção ou sem os cuidados indispensáveis à segurança constitui infração de trânsito.\nProcedimentos internos de segurança para condução e circulação dos veículos da CRV.';
+const CTB_ATN='CTB - Lei nº 9.503/1997, art. 28: exige que o condutor mantenha o domínio do veículo e dirija com atenção e com os cuidados necessários à segurança do trânsito.\nCTB - art. 169: dirigir sem atenção ou sem os cuidados indispensáveis à segurança constitui infração de trânsito.\nProcedimentos internos de segurança para condução e circulação dos veículos da CRV.';
+const ORI_FAD='1. Comunicar imediatamente à liderança sinais de fadiga, sonolência ou redução de atenção, inclusive antes de iniciar as atividades.\n2. Durante o trajeto, ao perceber esses sinais, interromper a condução assim que for possível parar com segurança, estacionar em local adequado e acionar a liderança.\n3. Cumprir a jornada, as pausas e os períodos de descanso definidos para a atividade, comunicando situações que comprometam o repouso ou a atenção.\n4. Não tentar compensar o cansaço com celular, som elevado ou outras distrações. Essas medidas não substituem o descanso necessário.\n5. Aguardar o encaminhamento da liderança quanto à pausa, substituição ou atendimento pela área responsável. Retomar a condução somente em condições adequadas de segurança.\n6. Cumprir os procedimentos internos de segurança. Cabe à liderança avaliar a comunicação e as condições de trabalho e providenciar as medidas preventivas necessárias.';
+const MOT={
+ 'Uso de celular':{as:'USO DE CELULAR DURANTE A CONDUÇÃO DE VEÍCULO',fato:'utilizou aparelho celular enquanto conduzia o veículo',norma:CTB_CEL,ori:'É proibido utilizar, segurar ou manusear aparelho celular durante a condução. Quando precisar utilizar o aparelho, deverá parar e estacionar o veículo em local seguro e permitido, antes de iniciar o uso.'},
+ 'Sonolência':{as:'FADIGA E SONOLÊNCIA NA CONDUÇÃO DE VEÍCULOS',fato:'apresentou sinais de fadiga e/ou sonolência durante a condução do veículo',norma:CTB_ATN,ori:ORI_FAD},
+ 'Distração':{as:'DISTRAÇÃO NA CONDUÇÃO DE VEÍCULO',fato:'desviou a atenção da via durante a condução do veículo',norma:CTB_ATN,ori:'Manter atenção integral à via, ao veículo, aos passageiros e às condições de circulação durante toda a condução, evitando qualquer distração.'},
+ 'Não usar cinto':{as:'NÃO UTILIZAÇÃO DO CINTO DE SEGURANÇA',fato:'conduziu o veículo sem utilizar o cinto de segurança',norma:'CTB - Lei nº 9.503/1997, art. 65: é obrigatório o uso do cinto de segurança para condutor e passageiros em todas as vias do território nacional.\nCTB - art. 167: deixar o condutor ou passageiro de usar o cinto de segurança constitui infração de trânsito.\nProcedimentos internos de segurança para condução e circulação dos veículos da CRV.',ori:'Utilizar o cinto de segurança durante todo o trajeto, desde antes de colocar o veículo em movimento, e exigir o uso pelos passageiros.'},
+ 'Obstrução de câmera':{as:'OBSTRUÇÃO DA CÂMERA DE MONITORAMENTO DO VEÍCULO',fato:'obstruiu a câmera do sistema de monitoramento instalada no veículo',norma:'Procedimentos internos de segurança e de uso do sistema de monitoramento de fadiga instalado nos veículos da empresa.',ori:'Não obstruir, cobrir, desligar ou mudar a posição da câmera de monitoramento. Comunicar à liderança qualquer defeito no equipamento.'},
+ 'Fumando':{as:'FUMAR NO INTERIOR DO VEÍCULO',fato:'fumou no interior do veículo durante a condução',norma:'Procedimentos internos de segurança e normas da empresa sobre a condução e o uso dos veículos.',ori:'Não fumar no interior dos veículos da empresa. Quando necessário, fazer a pausa com o veículo estacionado em local seguro e permitido.'},
+ 'Alimentando':{as:'ALIMENTAÇÃO DURANTE A CONDUÇÃO DE VEÍCULO',fato:'se alimentou durante a condução do veículo',norma:'CTB - Lei nº 9.503/1997, art. 28: exige que o condutor mantenha o domínio do veículo e dirija com atenção e com os cuidados necessários à segurança do trânsito.\nCTB - art. 252, inciso V: trata da condução com apenas uma das mãos, ressalvadas as exceções legais.\nProcedimentos internos de segurança para condução e circulação dos veículos da CRV.',ori:'Fazer as refeições somente com o veículo parado e estacionado em local seguro, respeitando as pausas previstas.'}};
+const MOTX={as:'OCORRÊNCIA NO MONITORAMENTO DE FADIGA',fato:'teve ocorrência registrada pelo sistema de monitoramento durante a condução do veículo',norma:CTB_ATN,ori:'Manter atenção integral à condução e cumprir os procedimentos internos de segurança.'};
+let DBF=null;const db=async()=>{if(DBF)return DBF;try{DBF=window.claude&&window.claude.use?await window.claude.use('db'):null}catch(_){DBF=null}return DBF};
+const OCS=()=>{const m={};D.r.forEach(r=>{if(r[10])m[String(r[10])]=r});return m};
+const ocInfo=r=>({oc:String(r[10]||''),mat:String(r[1]),data:'2026-'+String(r[2]).padStart(2,'0')+'-'+String(r[3]).padStart(2,'0'),hora:r[6]||'',frota:r[7]||'',mot:r[4],setor:r[0],med:r[8]});
+async function quadro(m){try{const f=window.parent&&window.parent.CRV_QUADRO;if(typeof f==='function'){const q=await f();return q&&q.mapa&&q.mapa[m]}}catch(_){}return null}
+let W=null;let fechar=()=>{if(W){W.remove();W=null}};
+let LISTA=[];
+async function carregar(){const D2=await db();if(!D2){LISTA=[];return}try{const s=await D2.collection('tratativas').get();LISTA=s.docs.map(d=>Object.assign({_id:d.id},d.data())).filter(x=>!x.excluido).sort((a,b)=>String(b.emitidoEm).localeCompare(String(a.emitidoEm)))}catch(_){LISTA=[]}}
+
+async function abrir(pre){pre=pre||{};fechar();W=document.createElement('div');W.className='ft-fundo';
+  W.innerHTML='<div class="ft-modal" role="dialog" aria-modal="true"><div class="ft-cab"><h3>Tratativa da ocorrência de fadiga<small>Digite o número da ocorrência ou a matrícula: os dados do colaborador e da ocorrência entram no documento. Para destacar em negrito no PDF, escreva entre **asteriscos**.</small></h3><button class="ft-b" data-x>Fechar</button></div><div class="ft-corpo"></div><div class="ft-rod"><span class="msg"></span><button class="ft-b" data-c>Fechar</button><button class="ft-b pri" data-g>Gerar PDF e registrar</button></div></div>';
+  document.body.appendChild(W);W.querySelector('[data-x]').onclick=fechar;W.querySelector('[data-c]').onclick=fechar;W.addEventListener('mousedown',ev=>{if(ev.target===W)fechar()});
+  const C=W.querySelector('.ft-corpo'),msg=(t,c)=>{const m=W.querySelector('.ft-rod .msg');m.style.color=c||'';m.textContent=t};
+  let tipo=pre.tipo||'ori';const sel=new Set((pre.ocs||[]).map(String));let pessoa=null;
+  const v=k=>e_(pre[k]||'');
+  C.innerHTML='<div class="ft-tipos">'+Object.entries(TIPOS).map(([k,l])=>'<button data-t="'+k+'">'+l+'</button>').join('')+'</div>'
+   +'<div class="ft-g">'
+   +'<div class="ft-sec">Ocorrência</div>'
+   +'<div class="ft-c w5"><label>Nº da(s) ocorrência(s)</label><input id="ftOc" value="'+e_([...sel].join(', '))+'" placeholder="Ex.: 12084292 (separe por vírgula se forem várias)"></div>'
+   +'<div class="ft-c w3 ftCol"><label>Matrícula</label><input id="ftMat" inputmode="numeric" value="'+v('mat')+'"></div>'
+   +'<div class="ft-c w4"><label>Data do documento</label><input type="date" id="ftData" value="'+e_(pre.data||hojeI())+'"></div>'
+   +'<div class="ft-av in" id="ftInfo">Digite o número da ocorrência ou a matrícula do colaborador.</div>'
+   +'<div class="ft-ocs" id="ftLista"></div>'
+   +'<div class="ft-sec" id="ftSecP">Colaborador</div>'
+   +'<div class="ft-c w6"><label>Nome *</label><input id="ftNome" value="'+v('nome')+'"></div>'
+   +'<div class="ft-c w3"><label>CPF</label><input id="ftCpf" value="'+v('cpf')+'"></div>'
+   +'<div class="ft-c w3 ftCol"><label>Admissão</label><input type="date" id="ftAdm" value="'+v('adm')+'"></div>'
+   +'<div class="ft-c w6 ftCol"><label>Departamento</label><input id="ftDep" value="'+v('dep')+'"></div>'
+   +'<div class="ft-c w6"><label>Função</label><input id="ftFun" value="'+v('func')+'"></div>'
+   +'<div class="ft-c w6 ftTer"><label>Empresa prestadora</label><input id="ftEmp" value="'+v('empresa')+'"></div>'
+   +'<div class="ft-c w3 ftTer"><label>CNPJ</label><input id="ftCnpj" value="'+v('cnpj')+'"></div>'
+   +'<div class="ft-c w3 ftTer"><label>Veículo / frota</label><input id="ftFrota" value="'+v('frota')+'"></div>'
+   +'<div class="ft-sec">Documento</div>'
+   +'<div class="ft-c w12"><label>Assunto *</label><input id="ftAss" value="'+v('assunto')+'"></div>'
+   +'<div class="ft-c w4"><label>Data e horário</label><input id="ftQuando" value="'+v('quando')+'"></div>'
+   +'<div class="ft-c w8"><label>Local / veículo</label><input id="ftLocal" value="'+v('local')+'"></div>'
+   +'<div class="ft-c w12"><label id="ftLDesc">Descrição dos fatos *</label><textarea id="ftDesc" style="min-height:96px">'+v('desc')+'</textarea></div>'
+   +'<div class="ft-c w12" id="ftWNorma"><label id="ftLNorma">Norma ou procedimento descumprido</label><textarea id="ftNorma" style="min-height:90px">'+v('norma')+'</textarea></div>'
+   +'<div class="ft-c w2 ftSus"><label>Dias</label><input id="ftDias" inputmode="numeric" value="'+e_(pre.dias||'1')+'"></div>'
+   +'<div class="ft-c w3 ftSus"><label>Início</label><input type="date" id="ftIni" value="'+e_(pre.ini||addD(hojeI(),1))+'"></div>'
+   +'<div class="ft-c w3 ftSus"><label>Término</label><input type="date" id="ftFim" value="'+v('fim')+'" readonly></div>'
+   +'<div class="ft-c w4 ftSus"><label>Retorno</label><input type="date" id="ftRet" value="'+v('ret')+'"></div>'
+   +'<div class="ft-c w12 ftSus"><label>Horário / escala do retorno</label><input id="ftEsc" value="'+v('escala')+'" placeholder="Ex.: no horário habitual da escala"></div>'
+   +'<div class="ft-c w12"><label id="ftLOri">Orientações e conduta esperada</label><textarea id="ftOri" style="min-height:110px">'+v('ori')+'</textarea></div>'
+   +'<div class="ft-c w6"><label>Gestão de RH (nome)</label><input id="ftRh" value="'+e_(pre.rh||quem())+'"></div>'
+   +'<div class="ft-sec">Tratativas registradas</div><div id="ftHist" style="grid-column:1/-1"></div>'
+   +'</div>';
+  const g=id=>C.querySelector('#'+id);
+  const calcFim=()=>{const i=g('ftIni').value,n=parseInt(g('ftDias').value,10)||1;if(i){g('ftFim').value=addD(i,n-1);if(!g('ftRet').dataset.man)g('ftRet').value=addD(i,n)}};
+  g('ftIni').onchange=calcFim;g('ftDias').oninput=calcFim;g('ftRet').oninput=()=>{g('ftRet').dataset.man=1};
+  const motivoSel=()=>{const m=OCS(),L=[...sel].map(k=>m[k]).filter(Boolean);return L.length?L[0][4]:null};
+  const textos=(forcar)=>{const mo=motivoSel(),T=MOT[mo]||MOTX,m=OCS(),L=[...sel].map(k=>m[k]).filter(Boolean).map(ocInfo).sort((a,b)=>(a.data+a.hora).localeCompare(b.data+b.hora));
+    const set=(id,val)=>{const el=g(id);if(el.dataset.man&&el.value.trim())return;if(forcar||!el.value.trim())el.value=val};
+    set('ftAss',T.as);
+    if(L.length){set('ftQuando',L.map(o=>br(o.data)+(o.hora?' às '+o.hora:'')).join('; '));set('ftLocal',[...new Set(L.map(o=>o.frota).filter(Boolean))].map(f=>'Frota '+f).join(', '));
+      const nm=g('ftNome').value.trim()||'o(a) colaborador(a)';
+      set('ftDesc',L.map(o=>'No dia **'+br(o.data)+(o.hora?', às '+o.hora:'')+'**'+(o.frota?', durante a condução da **frota '+o.frota+'**':'')+', o sistema de monitoramento de fadiga registrou a ocorrência nº **'+o.oc+'** ('+String(o.mot).toLowerCase()+').').join('\n')+'\nConforme o registro, '+(tipo==='ter'?'o motorista ':'o(a) colaborador(a) ')+nm.toUpperCase()+' '+T.fato+'. A conduta compromete a atenção necessária à direção e expõe a riscos o próprio condutor, os passageiros, terceiros, o veículo e o patrimônio da empresa.')}
+    set('ftNorma',T.norma);
+    set('ftOri',tipo==='ori'?T.ori:tipo==='ter'?'O motorista foi orientado: '+T.ori+'\nDeverá manter atenção integral à via, ao veículo, aos passageiros e às condições de circulação, comunicando à empresa prestadora e à operação da CRV situações que comprometam a segurança.':T.ori+' Cumprir os procedimentos internos de segurança e as orientações recebidas.')};
+  const lerOcs=()=>{sel.clear();g('ftOc').value.split(/[\s,;]+/).map(x=>x.trim()).filter(Boolean).forEach(x=>sel.add(x))};
+  const desenharLista=()=>{const m=g('ftMat').value.trim().replace(/^0+(?=\d)/,'');const L=D.r.filter(r=>String(r[1])===m).map(ocInfo).sort((a,b)=>(b.data+b.hora).localeCompare(a.data+a.hora));
+    g('ftLista').innerHTML=L.length?'<span style="font-size:12px;color:var(--mut);align-self:center">Ocorrências deste colaborador (clique para incluir):</span>'+L.map(o=>'<button type="button" class="ft-oc'+(sel.has(o.oc)?' on':'')+'" data-oc="'+e_(o.oc)+'"'+(o.oc?'':' disabled title="Sem número na planilha"')+'>'+(o.oc?'nº '+e_(o.oc):'sem nº')+' · '+br(o.data)+(o.hora?' '+e_(o.hora):'')+' · '+e_(o.mot)+' · '+e_(o.med)+'</button>').join(''):'';
+    g('ftLista').querySelectorAll('[data-oc]').forEach(b=>b.onclick=()=>{const k=b.dataset.oc;if(!k)return;if(sel.has(k))sel.delete(k);else sel.add(k);g('ftOc').value=[...sel].join(', ');desenharLista();textos(true)})};
+  const puxarPessoa=async m=>{m=String(m||'').trim().replace(/^0+(?=\d)/,'');if(!m)return;const c=await quadro(m),p=D.p[m];
+    if(c){g('ftNome').value=c.nome;g('ftCpf').value=c.cpf||'';g('ftDep').value=c.setor;g('ftFun').value=c.funcao;g('ftAdm').value=(c.admissao||'').slice(0,10);pessoa=c}
+    else if(p){g('ftNome').value=String(p[0]).toUpperCase();g('ftFun').value=String(p[1]).toUpperCase();g('ftDep').value=String(p[2]).toUpperCase();pessoa=null}
+    const i=g('ftInfo');i.className='ft-av '+(c||p?'ok':'er');i.innerHTML=c?'<b>'+e_(c.nome)+'</b> · '+e_(c.funcao)+' · '+e_(c.setor)+' · '+e_(c.situacao):p?'<b>'+e_(p[0])+'</b> · dados do painel de fadiga (não encontrado no Quadro)':'Matrícula não encontrada. Preencha os dados à mão.';
+    desenharLista()};
+  const porOc=async()=>{lerOcs();const m=OCS(),L=[...sel].map(k=>m[k]);const nao=[...sel].filter(k=>!m[k]);
+    const achados=L.filter(Boolean);const mats=[...new Set(achados.map(r=>String(r[1])))];
+    if(achados.length&&tipo!=='ter'){if(mats.length===1&&g('ftMat').value.trim()!==mats[0]){g('ftMat').value=mats[0];await puxarPessoa(mats[0])}}
+    if(achados.length){if(tipo==='ter'&&!g('ftFrota').value)g('ftFrota').value=achados[0][7]||'';textos(true)}
+    if(nao.length||mats.length>1){const i=g('ftInfo');i.className='ft-av er';i.textContent=(nao.length?'Ocorrência não encontrada no painel: '+nao.join(', ')+'. ':'')+(mats.length>1?'As ocorrências são de matrículas diferentes: '+mats.join(', ')+'.':'')}
+    desenharLista()};
+  let tmO,tmM;g('ftOc').addEventListener('input',()=>{clearTimeout(tmO);tmO=setTimeout(porOc,500)});g('ftOc').addEventListener('change',porOc);
+  g('ftMat').addEventListener('input',()=>{clearTimeout(tmM);tmM=setTimeout(()=>puxarPessoa(g('ftMat').value),450)});
+  const aplicarTipo=()=>{C.querySelectorAll('[data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t===tipo));
+    C.querySelectorAll('.ftCol').forEach(x=>x.hidden=tipo==='ter');C.querySelectorAll('.ftTer').forEach(x=>x.hidden=tipo!=='ter');C.querySelectorAll('.ftSus').forEach(x=>x.hidden=tipo!=='sus');
+    g('ftSecP').textContent=tipo==='ter'?'Motorista terceiro':'Colaborador';g('ftWNorma').hidden=tipo==='ori';
+    g('ftLNorma').textContent=tipo==='ter'?'Normas e legislação aplicável':'Norma ou procedimento descumprido';
+    g('ftLOri').textContent=tipo==='ori'?'Orientações e responsabilidades':tipo==='ter'?'Orientação e compromisso de condução segura':'Conduta esperada e orientações';
+    if(tipo==='sus')calcFim()};
+  C.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{tipo=b.dataset.t;aplicarTipo();textos(true)});
+  ['ftAss','ftQuando','ftLocal','ftDesc','ftNorma','ftOri'].forEach(id=>g(id).addEventListener('input',()=>{g(id).dataset.man=1}));
+  g('ftNome').addEventListener('change',()=>textos(true));
+  if(pre._id)['ftAss','ftQuando','ftLocal','ftDesc','ftNorma','ftOri'].forEach(id=>{g(id).dataset.man=1});
+  aplicarTipo();
+  const hist=async()=>{await carregar();const H=g('ftHist');
+    H.innerHTML=LISTA.length?'<div style="overflow:auto"><table class="ft-tb"><thead><tr><th>Emitido</th><th>Tipo</th><th>Pessoa</th><th>Ocorrência(s)</th><th>Assunto</th><th></th></tr></thead><tbody>'+LISTA.slice(0,60).map(x=>'<tr data-id="'+e_(x._id)+'"><td>'+br(x.data)+'</td><td>'+e_(TIPOS[x.tipo])+'</td><td><b>'+e_(tcx(x.nome))+'</b>'+(x.mat?' · '+e_(x.mat):'')+'</td><td>'+e_((x.ocs||[]).join(', ')||'–')+'</td><td>'+e_(x.assunto)+'</td><td style="white-space:nowrap"><button class="ft-b" data-a="re">Reimprimir</button> <button class="ft-b" data-a="ab">Abrir</button> <button class="ft-b dan" data-a="ex">Excluir</button></td></tr>').join('')+'</tbody></table></div>':'<p style="margin:0;color:var(--mut);font-size:13px">Nenhuma tratativa registrada ainda.</p>';
+    H.querySelectorAll('[data-a]').forEach(b=>b.onclick=async()=>{const x=LISTA.find(y=>y._id===b.closest('tr').dataset.id);if(!x)return;
+      if(b.dataset.a==='re'){try{await pdf(x)}catch(er){msg('Não consegui gerar: '+er.message,'#a3301c')}return}
+      if(b.dataset.a==='ab'){abrir(x);return}
+      if(!b.dataset.c){b.dataset.c=1;b.textContent='Confirmar exclusão';setTimeout(()=>{if(b.isConnected){delete b.dataset.c;b.textContent='Excluir'}},6000);return}
+      try{const D2=await db();await D2.collection('tratativas').doc(x._id).update({excluido:true,excluidoEm:new Date().toISOString(),excluidoPor:quem()});
+        if(x.sancId){try{const S=window.parent.CRV_DB_DE&&window.parent.CRV_DB_DE('sancoes');if(S)await S.collection('documentos').doc(x.sancId).update({excluido:true,excluidoEm:new Date().toISOString(),excluidoPor:quem()})}catch(_){}}
+        MUDOU=true;hist();msg('Tratativa excluída.','#1d5c3a')}catch(er){msg('Sem permissão para excluir.','#a3301c')}})};
+  hist();
+  if(pre.mat&&!pre._id)puxarPessoa(pre.mat);if(sel.size&&!pre._id)porOc();else if(pre.mat)desenharLista();
+  W.querySelector('[data-g]').onclick=async()=>{lerOcs();
+    const d={tipo,titulo:TIPOS[tipo],ocs:[...sel],mat:tipo==='ter'?'':g('ftMat').value.trim().replace(/^0+(?=\d)/,''),nome:g('ftNome').value.trim().toUpperCase(),cpf:g('ftCpf').value.trim(),adm:tipo==='ter'?'':g('ftAdm').value,dep:tipo==='ter'?'':g('ftDep').value.trim().toUpperCase(),func:g('ftFun').value.trim().toUpperCase(),
+      empresa:tipo==='ter'?g('ftEmp').value.trim().toUpperCase():'',cnpj:tipo==='ter'?g('ftCnpj').value.trim():'',frota:tipo==='ter'?g('ftFrota').value.trim():'',
+      data:g('ftData').value||hojeI(),assunto:g('ftAss').value.trim().toUpperCase(),quando:g('ftQuando').value.trim(),local:g('ftLocal').value.trim(),desc:g('ftDesc').value.trim(),norma:tipo==='ori'?'':g('ftNorma').value.trim(),ori:g('ftOri').value.trim(),
+      dias:tipo==='sus'?(parseInt(g('ftDias').value,10)||1):'',ini:tipo==='sus'?g('ftIni').value:'',fim:tipo==='sus'?g('ftFim').value:'',ret:tipo==='sus'?g('ftRet').value:'',escala:tipo==='sus'?g('ftEsc').value.trim():'',rh:g('ftRh').value.trim(),
+      mot:motivoSel()||''};
+    const falta=[!d.nome&&'nome',!d.assunto&&'assunto',!d.desc&&'descrição dos fatos',tipo==='sus'&&!d.ini&&'início da suspensão'].filter(Boolean);
+    if(falta.length)return msg('Falta preencher: '+falta.join(', ')+'.','#a3301c');
+    try{await pdf(d)}catch(er){return msg('Não consegui gerar: '+(er.message||er),'#a3301c')}
+    const D2=await db();if(!D2)return msg('PDF gerado. O registro não está disponível nesta visualização.','#9a4b0b');
+    try{const reg=Object.assign({},d,{emitidoEm:new Date().toISOString(),por:quem()});
+      if((tipo==='adv'||tipo==='sus')&&d.mat){try{const S=window.parent.CRV_DB_DE&&window.parent.CRV_DB_DE('sancoes');if(S){const r=await S.collection('documentos').add({tipo,titulo:tipo==='adv'?'ADVERTÊNCIA ESCRITA':'SUSPENSÃO DISCIPLINAR',mat:d.mat,nome:d.nome,cpf:d.cpf,dep:d.dep,func:d.func,adm:d.adm,data:d.data,assunto:d.assunto,desc:d.desc,enq:'outro',enqO:d.norma,dias:d.dias,ini:d.ini,fim:d.fim,ret:d.ret,cond:d.ori,origem:'fadiga',ocs:d.ocs,emitidoEm:reg.emitidoEm,por:reg.por});reg.sancId=r&&r.id}}catch(_){}}
+      await D2.collection('tratativas').add(reg);MUDOU=true;hist();
+      msg('PDF gerado e registrado.'+(reg.sancId?' A '+(tipo==='adv'?'advertência':'suspensão')+' também entrou no painel de Sanções e no histórico do colaborador.':'')+(d.ocs.length?' A medida das ocorrências passa a constar como '+MEDIDA[tipo]+' (atualiza ao fechar).':''),'#1d5c3a')}
+    catch(er){msg('PDF gerado, mas não consegui registrar: '+(er.message||er),'#a3301c')}};
+}
+let MUDOU=false;
+/* ---------- PDF no modelo ---------- */
+async function pdf(d){
+  const J=(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF);if(!J)throw new Error('gerador de PDF indisponível');
+  const doc=new J({unit:'mm',format:'a4'});
+  const NAVY=[31,58,104],INK=[40,46,58],MUT=[110,116,128],GREEN=[110,150,60];const L=18,R=192,W2=R-L;
+  const segs=t=>{const out=[];String(t||'').split(/(\*\*[^*]+\*\*)/).forEach(p=>{if(!p)return;if(/^\*\*[^*]+\*\*$/.test(p))out.push([p.slice(2,-2),1]);else out.push([p,0])});return out};
+  const cab2=()=>{doc.setFillColor(...NAVY);doc.rect(0,0,210,4,'F')};
+  const rich=(S,y,fs=8.9,lh=4.25)=>{doc.setFontSize(fs);const words=[];S.forEach(([t,bd])=>String(t).split(/(\s+)/).forEach(w=>{if(w!=='')words.push({w,bd:!!bd})}));
+    let x=L;let lines=[[]];words.forEach(o=>{if(/\n/.test(o.w)){const n=(o.w.match(/\n/g)||[]).length;for(let k=0;k<n;k++)lines.push([]);x=L;return}
+      doc.setFont('helvetica',o.bd?'bold':'normal');const ww=doc.getTextWidth(o.w);const sp=/^\s+$/.test(o.w);if(sp&&x===L)return;if(x+ww>R&&!sp){lines.push([]);x=L}if(sp&&x===L)return;lines[lines.length-1].push({...o,x});x+=ww});
+    lines.forEach(ln=>{if(y>262){doc.addPage();cab2();y=20}ln.forEach(o=>{doc.setFont('helvetica',o.bd?'bold':'normal');doc.setTextColor(...INK);doc.text(o.w,o.x,y)});y+=lh});return y};
+  const sec=(t,y)=>{if(y>252){doc.addPage();cab2();y=20}doc.setFont('helvetica','bold');doc.setFontSize(9.6);doc.setTextColor(...NAVY);doc.text(t,L,y);return y+5};
+  const rodape=()=>{const n=doc.getNumberOfPages();for(let i=1;i<=n;i++){doc.setPage(i);doc.setDrawColor(215,220,228);doc.setLineWidth(0.3);doc.line(L,276,R,276);doc.setFont('helvetica','bold');doc.setFontSize(7.3);doc.setTextColor(...INK);doc.text('CRV INDUSTRIAL LTDA - UNIDADE CAPINÓPOLIS | CNPJ 03.937.452/0004-35',105,280.5,{align:'center'});
+    doc.setFont('helvetica','normal');doc.setTextColor(...MUT);doc.text('Rodovia MG-226, s/nº, km 63, Zona Rural, Capinópolis/MG - CEP 38.360-000',105,284.3,{align:'center'});doc.text('Telefone: (34) 3263-8100',105,288,{align:'center'})}};
+  const lab=(t,v,x,y)=>{doc.setFont('helvetica','bold');doc.text(t,x,y);const w=doc.getTextWidth(t);doc.setFont('helvetica','normal');const vv=String(v||'');doc.text(vv||'____________________',x+w+1.6,y);return x+w+1.6+doc.getTextWidth(vv||'____________________')};
+  const dt=new Date((d.data||hojeI())+'T12:00:00');const dataTxt=`Capinópolis/MG, ${String(dt.getDate()).padStart(2,'0')} de ${MESN[dt.getMonth()]} de ${dt.getFullYear()}.`;
+  const TIT={ori:'TERMO DE ORIENTAÇÃO E REGISTRO DE OCORRÊNCIA',adv:'ADVERTÊNCIA DISCIPLINAR',sus:'SUSPENSÃO DISCIPLINAR',ter:'TERMO DE CIÊNCIA E COMPROMISSO'}[d.tipo];
+  cab2();doc.setFont('helvetica','bold');doc.setFontSize(13.5);doc.setTextColor(...NAVY);doc.text('CRV INDUSTRIAL',L,19);
+  doc.setFont('helvetica','normal');doc.setFontSize(7.8);doc.setTextColor(...MUT);doc.text('UNIDADE CAPINÓPOLIS',L,24);doc.setDrawColor(...GREEN);doc.setLineWidth(0.6);doc.line(L,29,R,29);
+  doc.setFont('helvetica','bold');doc.setFontSize(17);doc.setTextColor(...NAVY);const tl=doc.splitTextToSize(TIT,W2);doc.text(tl,L,40);let y=40+(tl.length-1)*7;
+  if(d.tipo==='ter'){doc.setFontSize(11);doc.text('TERCEIRO',L,y+6);y+=6}
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(...INK);doc.text(dataTxt,L,y+6);y+=11;
+  doc.setFillColor(238,241,245);doc.roundedRect(L,y,W2,25,2,2,'F');doc.setFontSize(9.4);
+  if(d.tipo==='ter'){lab('Nome:',d.nome,L+2,y+6.5);let x=lab('Função:',d.func,L+2,y+11.6);lab('CPF:',d.cpf,Math.max(x+6,110),y+11.6);lab('Empresa prestadora:',d.empresa,L+2,y+16.7);x=lab('CNPJ:',d.cnpj,L+2,y+21.8);lab('Veículo / frota:',d.frota,Math.max(x+6,110),y+21.8)}
+  else{lab('Colaborador(a):',d.nome,L+2,y+6.5);let x=lab('Matrícula:',d.mat,L+2,y+11.6);lab('CPF:',d.cpf,Math.max(x+6,95),y+11.6);lab('Departamento:',d.dep,L+2,y+16.7);x=lab('Função:',d.func,L+2,y+21.8);lab('Admissão:',br(d.adm),Math.max(x+6,125),y+21.8)}
+  y+=35;doc.setFontSize(9.8);doc.setTextColor(...INK);const at=doc.splitTextToSize('ASSUNTO: '+d.assunto,W2);doc.setFont('helvetica','bold');doc.text(at,L,y);y+=at.length*5+5;
+  const linhaFato=()=>{const p=[];if(d.quando)p.push(['Data e horário: ',1],[d.quando+'   ',0]);if(d.local)p.push(['Local: ',1],[d.local,0]);if(p.length){y=rich(p,y)+0.5}
+    if((d.ocs||[]).length){y=rich([[d.tipo==='sus'?'Ocorrência(s) no Fadiga: ':'Número(s) da(s) ocorrência(s): ',1],[d.ocs.join(', '),0]],y)+0.5}};
+  if(d.tipo==='ori'){
+    y=sec('1. REGISTRO DA OCORRÊNCIA',y);y=rich([['Este termo registra a orientação preventiva ao(à) motorista sobre a ocorrência abaixo, identificada pelo sistema de monitoramento de veículos. Situações como essa comprometem a segurança do condutor, dos passageiros, de terceiros e do patrimônio da empresa.']],y)+1.5;
+    linhaFato();y=rich([['Descrição dos fatos: ',1]].concat(segs(d.desc)),y)+2;
+    y=sec('2. ORIENTAÇÕES E RESPONSABILIDADES',y);y=rich(segs(d.ori),y)+2;
+    y=sec('3. CIÊNCIA DO COLABORADOR',y);y=rich([[d.mot==='Sonolência'?'Declaro que recebi e compreendi as orientações deste termo e estou ciente da necessidade de comunicar sinais de fadiga e de interromper a condução em condições inseguras. Minha assinatura registra a ciência das orientações, sem presumir reconhecimento de culpa pela ocorrência.':'Declaro que recebi e compreendi as orientações deste termo. Minha assinatura registra a ciência das orientações, sem presumir reconhecimento de culpa pela ocorrência.']],y)}
+  else if(d.tipo==='ter'){
+    y=sec('1. REGISTRO DA OCORRÊNCIA E ORIENTAÇÃO',y);linhaFato();y=rich(segs(d.desc),y)+2;
+    y=sec('2. NORMAS E LEGISLAÇÃO APLICÁVEL',y);y=rich(segs(d.norma),y)+2;
+    y=sec('3. COMPROMISSO DE CONDUÇÃO SEGURA',y);y=rich(segs(d.ori),y)+2;
+    y=sec('CIÊNCIA E COMPROMISSO DO MOTORISTA',y);y=rich([['Declaro que recebi e compreendi as orientações acima, estou ciente dos riscos da conduta registrada e comprometo-me a não repeti-la, cumprindo os procedimentos de segurança aplicáveis. Minha assinatura registra a ciência das orientações e o compromisso de observá-las.']],y)}
+  else{
+    y=sec('1. DESCRIÇÃO DA NÃO CONFORMIDADE',y);linhaFato();y=rich(segs(d.desc),y)+2;
+    y=sec('2. NORMA OU PROCEDIMENTO DESCUMPRIDO',y);y=rich(segs(d.norma),y)+2;
+    y=sec('3. PENALIDADE APLICADA',y);y=rich([['Diante dos fatos registrados, fica aplicada ao(à) colaborador(a) a penalidade de '],[d.tipo==='sus'?'SUSPENSÃO DISCIPLINAR':'ADVERTÊNCIA ESCRITA',1],[', devendo observar as normas internas e os procedimentos aplicáveis às suas atividades.']],y)+1;
+    if(d.tipo==='sus'){const n=+d.dias||1;y=rich([['Duração: ',1],[String(n).padStart(2,'0')+' ('+(NUM[n]||n)+') dia'+(n>1?'s':'')+'   ',0],['Início: ',1],[br(d.ini)+'   ',0],['Término: ',1],[br(d.fim),0]],y);y=rich([['Retorno: ',1],[(br(d.ret)||'________')+'   ',0],['Horário / escala: ',1],[d.escala||'no horário habitual da escala',0]],y)}
+    y+=2;y=sec('4. CONDUTA ESPERADA E ORIENTAÇÕES',y);y=rich(segs(d.ori),y)+1;
+    y=rich([['A reincidência ou novo descumprimento poderá resultar em medidas disciplinares mais severas, considerando a gravidade e as circunstâncias de cada ocorrência, as normas internas e a legislação aplicável.']],y)+2;
+    y=sec('CIÊNCIA DO COLABORADOR',y);y=rich([['Declaro que recebi e tomei ciência deste documento e das orientações nele contidas. Minha assinatura registra o recebimento e a ciência, sem implicar concordância com todos os fatos descritos.']],y)}
+  if(y>234){doc.addPage();cab2();y=30}
+  let ys=Math.min(Math.max(y+14,232),246);const c2=118;doc.setDrawColor(...INK);doc.setLineWidth(0.3);doc.line(L,ys,L+78,ys);doc.line(c2-4,ys,R,ys);
+  doc.setFont('helvetica','bold');doc.setFontSize(8.8);doc.setTextColor(...INK);doc.text(d.tipo==='ter'?'Motorista terceiro':'Colaborador(a)',L+39,ys+4.5,{align:'center'});doc.text('Gestão de RH',(c2-4+R)/2,ys+4.5,{align:'center'});
+  doc.setFont('helvetica','normal');doc.setFontSize(7.8);doc.text(d.nome+(d.mat?' | Matrícula: '+d.mat:''),L+39,ys+9,{align:'center'});doc.text('Nome: '+(d.rh||'______________________________________'),(c2-4+R)/2,ys+9,{align:'center'});
+  ys+=21;doc.line(L,ys-5,L+78,ys-5);doc.line(c2-4,ys-5,R,ys-5);
+  doc.text('Testemunha - Nome: ______________________________',L,ys);doc.text('CPF: _____________________________________________',L,ys+4.3);
+  doc.text('Testemunha - Nome: ______________________________',c2-4,ys);doc.text('CPF: _____________________________________________',c2-4,ys+4.3);
+  rodape();
+  const nome=`${({ori:'Termo de orientacao',adv:'Advertencia',sus:'Suspensao',ter:'Termo terceiro'})[d.tipo]} - ${String(d.nome).split(' ')[0]}${d.mat?' '+d.mat:''} - ${br(d.data).split('/').join('-')}.pdf`;
+  const bytes=new Uint8Array(doc.output('arraybuffer'));
+  const DL=window.claude&&window.claude.use?await window.claude.use('downloads').catch(()=>null):null;
+  if(DL)return DL.save({filename:nome,data:bytes});
+  const u=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));const a=document.createElement('a');a.href=u;a.download=nome;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},4000);
+}
+fechar=()=>{if(W){W.remove();W=null;if(MUDOU){MUDOU=false;try{window.parent.CRV_RECARREGAR&&window.parent.CRV_RECARREGAR()}catch(_){}}}};
+window.CRV_FAD_TRAT=pre=>abrir(pre);
+/* botão no cabeçalho e nas ocorrências */
+function botao(){const a=document.querySelector('header .acts');if(!a||document.getElementById('ftBtn'))return;const b=document.createElement('button');b.id='ftBtn';b.type='button';b.className='btn';b.textContent='Aplicar tratativa';b.style.cssText='background:#1f3a68;color:#fff;border-color:#1f3a68';b.onclick=()=>abrir();a.appendChild(b)}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',botao);else botao();
+document.addEventListener('click',ev=>{const b=ev.target.closest('.ft-trat');if(!b)return;ev.preventDefault();ev.stopPropagation();abrir({mat:b.dataset.mat,ocs:b.dataset.oc?[b.dataset.oc]:[]})},true);
+})();
+</script>
 
 </body></html>
