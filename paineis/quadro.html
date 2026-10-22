@@ -520,7 +520,7 @@ button.tile:hover,button.act:hover{transform:translateY(-2px);box-shadow:var(--s
       <input id="dq" type="search" placeholder="Buscar seção" aria-label="Buscar seção">
       <span class="cnt" id="dcnt"></span>
     </div>
-    <div class="tile scroll"><table class="nom dept"><thead><tr id="dh"></tr></thead><tbody id="db"></tbody></table>
+    <div class="tile scroll"><table class="nom dept dsetor"><thead><tr id="dh"></tr></thead><tbody id="db"></tbody></table>
       <div class="more"><button class="btn2" id="dMore"></button></div></div>
 
     <h2 class="sech">Perfil do quadro</h2>
@@ -855,15 +855,22 @@ function geral(){
     +(()=>{const afs=R0.filter(r=>/^Afastados$/i.test(r[AREA])).length,des=R0.filter(r=>/^Desistentes$/i.test(r[AREA])).length;return '<tr class="totr"><td><b>Total</b><div class="sm">sem afastados e desistentes</div><div class="sm" style="margin-top:3px">Quadro completo: <b>'+nf(tot.t+afs+des)+'</b> = '+nf(tot.t)+' + '+nf(afs)+' afastados + '+nf(des)+' desistentes</div></td>'})()+'<td class="num"><b>'+nf(tot.t)+'</b></td><td class="num"><b>'+nf(tot.e)+'</b></td><td class="num"><b>'+nf(tot.s)+'</b></td><td class="num"><b>'+nf(tot.ef)+'</b></td><td class="num cf"><b>'+nf(tot.f)+'</b></td><td class="num cm"><b>'+nf(tot.m)+'</b></td><td class="num"><b>'+nf(tot.ne)+'</b></td><td>'+(tot.va?'<span class="pv f">'+nf(tot.va)+' vagas em aberto</span>':'<span class="pv c">Atendido</span>')+'</td></tr>';
   {const af=R0.filter(r=>/^(Afastados|Desistentes)$/i.test(r[AREA]));$('abFoot').textContent='Sem afastados e desistentes'+(af.length?' ('+nf(af.length)+' pessoas, que seguem no total geral do quadro). O card Ativos do alto inclui os desistentes, porque no sistema eles ainda constam como ativos':'')+'. Necessidade: total previsto pelas áreas na aba Previsão; clique no número para abrir. Setor sem necessidade informada ou com o quadro completo aparece como Atendido.'+(tot.ou?' O total inclui '+nf(tot.ou)+' contrato por prazo determinado, fora de experiência, safra e efetivos.':'');}
   /* tabela de seções */
-  const PB=prevByDep(),g=new Map();R.forEach(r=>{(g.get(r.dk)||g.set(r.dk,[]).get(r.dk)).push(r)});
-  let T=[...g].map(([k,L])=>({k:k,d:DEPS.get(k),L:L,n:L.length,e:L.filter(r=>r[CON]=='Experiência'),s:L.filter(r=>r[CON]=='Safra'),v:L.filter(r=>r.t<365),f:L.filter(r=>r[SEX]=='F'),p:PB.get(k)}));
+  const PB=prevByDep(),g=new Map();R.filter(r=>!/^(Afastados|Desistentes)$/i.test(r[AREA])).forEach(r=>{(g.get(r.dk)||g.set(r.dk,[]).get(r.dk)).push(r)});
+  let T=[...g].map(([k,L])=>({k:k,d:DEPS.get(k),L:L,n:L.length,e:L.filter(r=>r[CON]=='Experiência'),s:L.filter(r=>r[CON]=='Safra'),ef:L.filter(r=>r[CON]=='Efetivo'),f:L.filter(r=>r[SEX]=='F'),m:L.filter(r=>r[SEX]!='F'),p:PB.get(k)}));
   const q=st.dq.trim().toLowerCase();if(q)T=T.filter(x=>x.d.lab.toLowerCase().includes(q));
-  const key={d:x=>x.d.lab,n:x=>x.n,e:x=>x.e.length,s:x=>x.s.length,v:x=>x.v.length,f:x=>x.f.length,p:x=>x.p?x.p.d:999}[st.dSort];
+  const key=({d:x=>x.d.lab,n:x=>x.n,e:x=>x.e.length,s:x=>x.s.length,ef:x=>x.ef.length,f:x=>x.f.length,m:x=>x.m.length,p:x=>x.p?x.p.p:-1,sit:x=>x.p&&x.p.d<0?-x.p.d:0})[st.dSort]||(x=>x.n);
   T.sort((a,b)=>(key(a)<key(b)?-1:key(a)>key(b)?1:0)*st.dDir||b.n-a.n);
-  const H=[['Seção','d'],['Quadro','n'],['Experiência','e'],['Safra','s'],['Menos de 1 ano','v'],['Mulheres','f'],['Previsão','p']];
-  $('dh').innerHTML=H.map((h,i)=>'<th'+(i&&i<6?' class="num"':'')+'><button data-ds="'+h[1]+'">'+h[0]+(st.dSort==h[1]?(st.dDir>0?' ↑':' ↓'):'')+'</button></th>').join('');
+  const H=[['Seção','d'],['Total','n'],['Experiência','e'],['Safra','s'],['Efetivos','ef'],['Mulheres','f'],['Homens','m'],['Necessidade','p'],['Situação','sit']];
+  $('dh').innerHTML=H.map((h,i)=>'<th'+(i&&i<8?' class="num'+(h[1]=='f'?' cf':h[1]=='m'?' cm':'')+'"':'')+'><button data-ds="'+h[1]+'">'+h[0]+(st.dSort==h[1]?(st.dDir>0?' ↑':' ↓'):'')+'</button></th>').join('');
   const show=st.dAll||q||T.length<=15?T:T.slice(0,15);
-  $('db').innerHTML=show.map(x=>{const n=x.d.lab;return '<tr><td data-l="Seção"><button class="depn" data-dep="'+esc(x.k)+'" title="Filtrar o painel por esta seção">'+esc(n)+'</button><div class="sm">'+esc(x.d.area)+'</div></td><td data-l="Quadro" class="num">'+nb(x.L,tt(n).replace(' · '+n,''))+'</td><td data-l="Experiência" class="num">'+nb(x.e,n+' · em experiência')+'</td><td data-l="Safra" class="num">'+nb(x.s,n+' · safra')+'</td><td data-l="Menos de 1 ano" class="num">'+nb(x.v,n+' · menos de 1 ano de casa')+'</td><td data-l="Mulheres" class="num">'+nb(x.f,n+' · mulheres')+'</td><td data-l="Previsão">'+(x.p?pvPill(x.p.d)+' <span class="sm">temos '+x.p.t+' de '+x.p.p+'</span>':'<span class="sm">não informada por seção</span>')+'</td></tr>'}).join('')||'<tr><td colspan="7" class="empty">Nenhuma seção com esse nome.</td></tr>';
+  const TT={n:0,e:0,s:0,ef:0,f:0,m:0,p:0,va:0};T.forEach(x=>{TT.n+=x.n;TT.e+=x.e.length;TT.s+=x.s.length;TT.ef+=x.ef.length;TT.f+=x.f.length;TT.m+=x.m.length;if(x.p){TT.p+=x.p.p;if(x.p.d<0)TT.va-=x.p.d}});
+  $('db').innerHTML=(show.map(x=>{const n=x.d.lab,ou=x.L.filter(r=>r[CON]!='Experiência'&&r[CON]!='Safra'&&r[CON]!='Efetivo');return '<tr><td data-l="Seção"><button class="depn" data-dep="'+esc(x.k)+'" title="Filtrar o painel por esta seção">'+esc(n)+'</button><div class="sm">'+esc(x.d.area)+'</div></td>'
+    +'<td data-l="Total" class="num tot">'+nb(x.L,tt(n).replace(' · '+n,''))+(ou.length?'<div class="sm">'+nf(ou.length)+' '+esc([...new Set(ou.map(r=>String(r[CON]).toLowerCase()))].join(', '))+'</div>':'')+'</td>'
+    +'<td data-l="Experiência" class="num">'+nb(x.e,n+' · em experiência')+'</td><td data-l="Safra" class="num">'+nb(x.s,n+' · safra')+'</td><td data-l="Efetivos" class="num">'+nb(x.ef,n+' · efetivos')+'</td>'
+    +'<td data-l="Mulheres" class="num cf">'+nb(x.f,n+' · mulheres')+'</td><td data-l="Homens" class="num cm">'+nb(x.m,n+' · homens')+'</td>'
+    +'<td data-l="Necessidade" class="num">'+(x.p?'<b>'+nf(x.p.p)+'</b><div class="sm">temos '+nf(x.p.t)+'</div>':'<span class="sm">—</span>')+'</td>'
+    +'<td data-l="Situação">'+(x.p&&x.p.d<0?'<span class="pv f">'+nf(-x.p.d)+(x.p.d==-1?' vaga em aberto':' vagas em aberto')+'</span>':'<span class="pv c">Atendido</span>')+'</td></tr>'}).join('')||'<tr><td colspan="9" class="empty">Nenhuma seção com esse nome.</td></tr>')
+    +(T.length?'<tr class="totr"><td><b>Total'+(q?' da busca':'')+'</b><div class="sm">'+nf(T.length)+' seções'+(show.length<T.length?' (inclui as que não estão na lista)':'')+' · sem afastados e desistentes</div></td><td class="num"><b>'+nf(TT.n)+'</b></td><td class="num"><b>'+nf(TT.e)+'</b></td><td class="num"><b>'+nf(TT.s)+'</b></td><td class="num"><b>'+nf(TT.ef)+'</b></td><td class="num cf"><b>'+nf(TT.f)+'</b></td><td class="num cm"><b>'+nf(TT.m)+'</b></td><td class="num"><b>'+(TT.p?nf(TT.p):'—')+'</b><div class="sm">só seções com necessidade</div></td><td>'+(TT.va?'<span class="pv f">'+nf(TT.va)+' vagas em aberto</span>':'<span class="pv c">Atendido</span>')+'</td></tr>':'');
   $('dcnt').textContent=T.length+(T.length==1?' seção':' seções')+' · clique no nome para filtrar o painel, ou em um número para ver quem são';
   $('dMore').hidden=!!q||T.length<=15;$('dMore').textContent=st.dAll?'Mostrar só as 15 maiores':'Ver todas as '+T.length+' seções';
   /* perfil */
