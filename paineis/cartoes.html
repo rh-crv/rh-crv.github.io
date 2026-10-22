@@ -638,7 +638,7 @@ function desenhar(ok,er){if(!W)return;const g=id=>W.querySelector('#'+id),C=W.qu
   h+='<div class="df-tabs">'+[['pes','Pessoas'],['cc','Centros de custo'],['conf','A conferir ('+T.conf+')'+(T.conf?'':' ✓')],['desl','Desligados ('+T.desl+')']].map(t=>'<button data-t="'+t[0]+'" class="'+(TAB===t[0]?'on':'')+'">'+t[1]+'</button>').join('')+'</div>';
   if(TAB==='cc'){
     if(!F.ccRef)h+='<div class="df-av in">Carregue o relatório "Saldos por Centro de Custo" (grupo Vale Refeição) em PDF ou Excel para ver quem tem saldo. O saldo é comparado com o consumo total do cartão.</div>';
-    else h+='<div class="df-av in">Relatório de '+e_(F.ccRef)+(F.ccPer?' · período '+e_(F.ccPer):'')+'. Saldo depois = saldo do relatório − consumo total do cartão neste fechamento.</div>';
+    else h+='<div class="df-av in" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="flex:1;min-width:240px">Relatório de '+e_(F.ccRef)+(F.ccPer?' · período '+e_(F.ccPer):'')+'. Saldo depois = saldo do relatório − consumo total do cartão neste fechamento.</span><button class="df-b" id="dfSalPdf">Imprimir PDF</button><button class="df-b" id="dfSalXls">Excel</button></div>';
     const ord={est:0,sem:1,fora:2,nd:3,ok:4};const L=CC.slice().sort((a,b)=>ord[a.st]-ord[b.st]||b.v-a.v);
     h+='<div style="overflow:auto;max-height:58vh"><table class="df-tb"><thead><tr><th>C. custo</th><th>Descrição</th><th class="n">Pessoas</th><th class="n">Consumo</th><th class="n">Desconto</th><th class="n">Saldo antes</th><th class="n">Saldo depois</th><th>Situação</th></tr></thead><tbody>'
      +L.map(c=>'<tr data-cc="'+e_(c.cc)+'" style="cursor:pointer"><td>'+e_(c.cc)+'</td><td>'+e_(c.nome)+'</td><td class="n">'+c.n+'</td><td class="n">'+brl(c.v)+'</td><td class="n">'+brl(c.d)+'</td><td class="n">'+(c.s?brl(c.s.dif):'—')+'</td><td class="n">'+(c.s?brl(c.depois):'—')+'</td><td><span class="df-st '+STC[c.st][1]+'">'+STC[c.st][0]+'</span></td></tr>').join('')+'</tbody></table></div>'}
@@ -656,6 +656,7 @@ function desenhar(ok,er){if(!W)return;const g=id=>W.querySelector('#'+id),C=W.qu
   C.querySelectorAll('[data-cc]').forEach(r=>r.onclick=()=>{TAB='pes';FIL='cc:'+r.dataset.cc;desenhar()});
   const qi=C.querySelector('#dfQ');if(qi)qi.oninput=()=>{Q=qi.value;clearTimeout(qi._t);qi._t=setTimeout(()=>{desenhar();const n=W.querySelector('#dfQ');n.focus();n.setSelectionRange(n.value.length,n.value.length)},300)};
   const lp=C.querySelector('#dfLimpa');if(lp)lp.onclick=()=>{FIL='';desenhar()};
+  const sp=C.querySelector('#dfSalPdf');if(sp)sp.onclick=()=>pdfRes('sal').catch(er=>desenhar('',er.message));const sx=C.querySelector('#dfSalXls');if(sx)sx.onclick=()=>excel('sal').catch(er=>desenhar('',er.message));
   const vv=C.querySelector('#dfVV');if(vv)vv.onclick=()=>{VERV=!VERV;desenhar()};
   C.querySelectorAll('[data-vf]').forEach(b=>b.onclick=async()=>{const x=F.itens.find(y=>y.mat===b.dataset.vf);b.disabled=true;const ant=x.verif;x.verif=b.dataset.des?null:{sig:sigConf(x),por:quem(),em:new Date().toISOString()};
     try{await gravar();desenhar(b.dataset.des?'Alerta de '+tcx(x.nome)+' voltou para A conferir.':'Alerta de '+tcx(x.nome)+' verificado e salvo.')}catch(er){x.verif=ant;desenhar('',er.message)}});
@@ -674,11 +675,12 @@ function escolher(tipo){return new Promise(ok=>{const o=document.createElement('
   o.innerHTML='<div class="df-esc-c"><h4>'+(tipo==='xlsx'?'Excel':'PDF')+' para impressão</h4><p>O que você quer imprimir?</p>'
    +'<button data-v="nom"><b>Nominal</b><small>Desconto de cada pessoa (e desligados para a rescisão)</small></button>'
    +'<button data-v="cc"><b>Por centro de custo</b><small>Só os totais de cada centro de custo, para lançamento</small></button>'
-   +'<button data-v="ambos"><b>Os dois</b><small>Nominal e por centro de custo no mesmo arquivo</small></button>'
+   +'<button data-v="ambos"><b>Nominal e por centro de custo</b><small>Os dois no mesmo arquivo</small></button>'
+   +'<button data-v="sal"'+(F.ccRef?'':' disabled style="opacity:.5;cursor:not-allowed"')+'><b>Saldo dos centros de custo</b><small>'+(F.ccRef?'Consumo do mês comparado com o saldo do orçamento (relatório de '+e_(F.ccRef)+')':'Carregue antes os saldos dos centros de custo')+'</small></button>'
    +'<button data-v="" class="df-esc-x">Cancelar</button></div>';
-  W.querySelector('.df-modal').appendChild(o);o.querySelectorAll('button').forEach(b=>b.onclick=()=>{o.remove();ok(b.dataset.v)})})}
-async function excel(){const X=window.XLSX||(window.parent&&window.parent.XLSX);if(!X)throw new Error('Excel indisponível.');
-  const op=await escolher('xlsx');if(!op)return;const{N,DL,CL}=dadosExp();const RS='"R$"\\ #,##0.00';const per='Fechamento '+br(F.ini)+' a '+br(F.fim);
+  W.querySelector('.df-modal').appendChild(o);o.querySelectorAll('button').forEach(b=>b.onclick=()=>{if(b.disabled)return;o.remove();ok(b.dataset.v)})})}
+async function excel(fix){const X=window.XLSX||(window.parent&&window.parent.XLSX);if(!X)throw new Error('Excel indisponível.');
+  const op=fix||await escolher('xlsx');if(!op)return;if(op==='sal')return excelSal(X);const{N,DL,CL}=dadosExp();const RS='"R$"\\ #,##0.00';const per='Fechamento '+br(F.ini)+' a '+br(F.fim);
   const wb=X.utils.book_new();
   if(op!=='cc'){
     const a=[['CRV INDUSTRIAL · Cartão Convênio Sysprocard · Desconto em folha (nominal)'],[per],[],['Nome','Matricula','C.CUSTO','DESC. C. CUSTO','Desconto(R$)']];
@@ -694,8 +696,8 @@ async function excel(){const X=window.XLSX||(window.parent&&window.parent.XLSX);
     const ws=X.utils.aoa_to_sheet(c);ws['!cols']=[10,40,9,17,19,19].map(w=>({wch:w}));X.utils.book_append_sheet(wb,ws,'Por centro de custo')}
   const suf=op==='nom'?' - Nominal':op==='cc'?' - Por centro de custo':'';
   await salvarArq(nomeArq('xlsx').replace(/\.xlsx$/,suf+'.xlsx'),new Uint8Array(X.write(wb,{bookType:'xlsx',type:'array'})),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}
-async function pdfRes(){const J=(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF);if(!J)throw new Error('PDF indisponível.');
-  const op=await escolher('pdf');if(!op)return;const{N,DL,CL}=dadosExp();const VI=[125,26,44];
+async function pdfRes(fix){const J=(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF);if(!J)throw new Error('PDF indisponível.');
+  const op=fix||await escolher('pdf');if(!op)return;if(op==='sal')return pdfSal(J);const{N,DL,CL}=dadosExp();const VI=[125,26,44];
   const doc=new J({unit:'mm',format:'a4'});const W=210;
   const cab=(tit)=>{doc.setFillColor(...VI);doc.rect(0,0,W,2,'F');doc.setFont('helvetica','bold');doc.setFontSize(12.5);doc.setTextColor(92,18,32);doc.text('Cartão Convênio Sysprocard · '+tit,10,10);
     doc.setFont('helvetica','normal');doc.setFontSize(8.6);doc.setTextColor(60,66,80);doc.text('CRV Industrial · Fechamento de '+br(F.ini)+' a '+br(F.fim)+' · emitido em '+new Date().toLocaleDateString('pt-BR'),10,15.5)};
@@ -712,6 +714,25 @@ async function pdfRes(){const J=(window.jspdf&&window.jspdf.jsPDF)||(window.pare
   const n=doc.internal.getNumberOfPages();for(let p=1;p<=n;p++){doc.setPage(p);doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(120,128,140);doc.text('Página '+p+' de '+n,W-10,292,{align:'right'})}
   const suf=op==='nom'?' - Nominal':op==='cc'?' - Por centro de custo':'';
   await salvarArq(nomeArq('pdf').replace(/\.pdf$/,suf+'.pdf'),new Uint8Array((await (window.parent.CRV_PDF_LOGOS||window.CRV_PDF_LOGOS||(d=>d))(doc,{syspro:true})).output('arraybuffer')),'application/pdf')}
+function salLinhas(){if(!F.ccRef)throw new Error('Carregue primeiro os saldos dos centros de custo.');const{C:CC}=calc();const ord={est:0,sem:1,fora:2,nd:3,ok:4};return CC.slice().sort((a,b)=>ord[a.st]-ord[b.st]||b.v-a.v)}
+async function excelSal(X){const L=salLinhas(),RS='"R$"\\ #,##0.00',MON='#,##0.00_ ;[Red]\\-#,##0.00\\ ';
+  const a=[['CRV INDUSTRIAL · Cartão Convênio Sysprocard · Saldo dos centros de custo'],['Fechamento '+br(F.ini)+' a '+br(F.fim)+' · relatório de saldos de '+F.ccRef+(F.ccPer?' (período '+F.ccPer+')':'')+' · saldo depois = saldo do relatório − consumo total do cartão'],[],['C.CUSTO','DESC. C. CUSTO','Pessoas','Consumo(R$)','Desconto(R$)','Saldo antes(R$)','Saldo depois(R$)','Situação']];
+  L.forEach(c=>a.push([ccN(c.cc),c.nome,c.n,{v:+c.v.toFixed(2),t:'n',z:MON},{v:+c.d.toFixed(2),t:'n',z:MON},c.s?{v:c.s.dif,t:'n',z:MON}:null,c.s?{v:+c.depois.toFixed(2),t:'n',z:MON}:null,STC[c.st][0]]));
+  const e=L.length+4;a.push(['TOTAL',null,{f:'SUM(C5:C'+e+')'},{f:'SUM(D5:D'+e+')',t:'n',z:MON},{f:'SUM(E5:E'+e+')',t:'n',z:MON},null,null,null]);
+  const ws=X.utils.aoa_to_sheet(a);ws['!cols']=[10,38,9,14,14,15,15,26].map(w=>({wch:w}));ws['!autofilter']={ref:'A4:H'+e};const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,'Saldo centros de custo');
+  await salvarArq(nomeArq('xlsx').replace(/\.xlsx$/,' - Saldo dos centros de custo.xlsx'),new Uint8Array(X.write(wb,{bookType:'xlsx',type:'array'})),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}
+async function pdfSal(J){const L=salLinhas();const VI=[125,26,44];const doc=new J({unit:'mm',format:'a4',orientation:'landscape'});const W=297;
+  doc.setFillColor(...VI);doc.rect(0,0,W,2,'F');doc.setFont('helvetica','bold');doc.setFontSize(12.5);doc.setTextColor(92,18,32);doc.text('Cartão Convênio Sysprocard · Saldo dos centros de custo',10,10);
+  doc.setFont('helvetica','normal');doc.setFontSize(8.6);doc.setTextColor(60,66,80);doc.text('CRV Industrial · Fechamento de '+br(F.ini)+' a '+br(F.fim)+' · relatório de saldos de '+F.ccRef+(F.ccPer?' (período '+F.ccPer+')':'')+' · emitido em '+new Date().toLocaleDateString('pt-BR'),10,15.5);
+  const cnt=k=>L.filter(c=>c.st===k).length;doc.setFontSize(8.2);doc.text('Saldo depois = saldo do relatório - consumo total do cartão neste fechamento.   Já estourados: '+cnt('est')+'   ·   Ficam sem saldo: '+cnt('sem')+'   ·   Com saldo: '+cnt('ok'),10,20.5);
+  const t=L.reduce((a,c)=>{a.n+=c.n;a.v+=c.v;a.d+=c.d;return a},{n:0,v:0,d:0});
+  doc.autoTable({startY:24,head:[['C. custo','Descrição','Pessoas','Consumo','Desconto','Saldo antes','Saldo depois','Situação']],body:L.map(c=>[c.cc,c.nome,c.n,brl(c.v),brl(c.d),c.s?brl(c.s.dif):'—',c.s?brl(c.depois):'—',STC[c.st][0]]),
+    foot:[['Total','',t.n,brl(t.v),brl(t.d),'','','']],showFoot:'lastPage',styles:{fontSize:8,cellPadding:1.4},headStyles:{fillColor:VI},footStyles:{fillColor:[245,235,237],textColor:[60,20,30],fontStyle:'bold'},margin:{left:10,right:10,top:22},
+    columnStyles:{0:{halign:'center'},2:{halign:'center'},3:{halign:'right'},4:{halign:'right'},5:{halign:'right'},6:{halign:'right'}},
+    didParseCell:h=>{if(h.section!=='body')return;if(h.column.index===7){const x=String(h.cell.raw);h.cell.styles.fontStyle='bold';h.cell.styles.textColor=/estourado/.test(x)?[163,48,28]:/sem saldo/i.test(x)?[138,90,0]:/Com saldo/.test(x)?[29,92,58]:[93,106,133]}
+      if((h.column.index===5||h.column.index===6)&&/^-/.test(String(h.cell.raw)))h.cell.styles.textColor=[163,48,28]}});
+  const n=doc.internal.getNumberOfPages();for(let p=1;p<=n;p++){doc.setPage(p);doc.setFontSize(7.5);doc.setTextColor(120,128,140);doc.text('Página '+p+' de '+n,W-10,204,{align:'right'})}
+  await salvarArq(nomeArq('pdf').replace(/\.pdf$/,' - Saldo dos centros de custo.pdf'),new Uint8Array((await (window.parent.CRV_PDF_LOGOS||window.CRV_PDF_LOGOS||(d=>d))(doc,{syspro:true})).output('arraybuffer')),'application/pdf')}
 window.CRV_DESCFOLHA=abrir;
 const hb=document.querySelector('.hacts');if(hb){const b=document.createElement('button');b.className='btn rel';b.textContent='Desconto em folha';b.onclick=abrir;hb.insertBefore(b,hb.firstChild)}
 /* aba "Descontos em folha" dentro do painel (ao lado de Por setor e Nominal) */
