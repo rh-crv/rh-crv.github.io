@@ -2601,7 +2601,7 @@ function lista(){if(!W)return;const C=W.querySelector('#ctCorpo');
   C.querySelectorAll('.ct-card').forEach(el=>el.onclick=()=>{const c=L.find(x=>x._id===el.dataset.id);if(c)form(JSON.parse(JSON.stringify(c)))});
   C.querySelector('#ctXls').onclick=()=>exportar(R,'x');C.querySelector('#ctPdf').onclick=()=>exportar(R,'p')}
 
-async function funcoes(){try{const f=window.parent&&window.parent.CRV_QUADRO;if(typeof f==='function'){const q=await f();const M=q&&q.mapa||{};const fu=new Set(),de=new Set();Object.values(M).forEach(x=>{if(x.funcao)fu.add(x.funcao);if(x.setor)de.add(x.setor)});return{fu:[...fu].sort(),de:[...de].sort()}}}catch(_){}return{fu:[],de:[]}}
+async function funcoes(){try{const f=window.parent&&window.parent.CRV_QUADRO;if(typeof f==='function'){const q=await f();const M=q&&q.mapa||{};const fu=new Set();Object.values(M).forEach(x=>{if(x.funcao&&x.situacao!=='Desligado')fu.add(x.funcao)});return{fu:[...fu].sort(),dp:(q.deptos||[]).filter(d=>!/^(AFASTADOS|DESISTENTES)$/.test(d.nome))}}}catch(_){}return{fu:[],dp:[]}}
 
 async function form(c){if(!W)return;c.docs=c.docs||{};c.deps=c.deps||[];c.medico=c.medico||{};c.toxico=c.toxico||{};c.integ=c.integ||{};c.status=c.status||'proc';if(!c.recebida)c.recebida=hoje();
   const C=W.querySelector('#ctCorpo');const SL=await funcoes();
@@ -2612,8 +2612,8 @@ async function form(c){if(!W)return;c.docs=c.docs||{};c.deps=c.deps||[];c.medico
    +'<div class="ct-c w2"><label>Telefone</label><input data-f="tel" value="'+v('tel')+'" inputmode="tel" placeholder="(34) 99999-9999"></div>'
    +'<div class="ct-c w2"><label>Sexo</label><select data-f="sexo">'+sel('sexo',[['','—'],['M','Masculino'],['F','Feminino']])+'</select></div>'
    +'<div class="ct-c w2"><label>Nascimento</label><input type="date" data-f="nasc" value="'+v('nasc')+'"></div>'
-   +'<div class="ct-c w5"><label>Departamento *</label><input data-f="dep" list="ctDL" value="'+v('dep')+'"></div>'
-   +'<div class="ct-c w3"><label>Setor de locação (código)</label><input data-f="setorCod" value="'+v('setorCod')+'" inputmode="numeric"></div>'
+   +'<div class="ct-c w5"><label>Departamento * <span style="text-transform:none;font-weight:500;letter-spacing:0">(nome ou código)</span></label><input data-f="dep" list="ctDL" value="'+v('dep')+'" autocomplete="off" placeholder="Digite o nome ou o código"></div>'
+   +'<div class="ct-c w3"><label>Setor de locação (código)</label><input data-f="setorCod" list="ctCL" value="'+v('setorCod')+'" inputmode="numeric" autocomplete="off"></div>'
    +'<div class="ct-c w4"><label>Função *</label><input data-f="func" list="ctFL" value="'+v('func')+'"></div>'
    +'<div class="ct-c w4"><label>Jornada de trabalho</label><input data-f="jornada" value="'+v('jornada')+'" placeholder="Ex.: 5 X 1 23:00 às 07:20"></div>'
    +'<div class="ct-c w2"><label>Turno</label><select data-f="turno">'+sel('turno',['','Matutino','Vespertino','Noturno'])+'</select></div>'
@@ -2624,6 +2624,7 @@ async function form(c){if(!W)return;c.docs=c.docs||{};c.deps=c.deps||[];c.medico
    +'<div class="ct-c w3"><label>Assinada pelo supervisor em</label><input type="date" data-f="supData" value="'+v('supData')+'"></div>'
    +'<div class="ct-c w3"><label>Assinada pelo gerente em</label><input type="date" data-f="gerData" value="'+v('gerData')+'"></div>'
    +'<div class="ct-c w3"><label>Dias em processo</label><input id="ctDias" readonly></div>'
+   +'<div class="ct-aviso in" id="ctDepInfo" style="padding:7px 11px" hidden></div>'
    +'<div class="ct-c w12"><label>Observação</label><textarea data-f="obs">'+v('obs')+'</textarea></div>'
    +'<div class="ct-sec">Documentação <span id="ctDocInfo"></span></div><div class="ct-docs" id="ctDocs"></div>'
    +'<div class="ct-sec">Exames</div>'
@@ -2643,7 +2644,7 @@ async function form(c){if(!W)return;c.docs=c.docs||{};c.deps=c.deps||[];c.medico
    +'<div class="ct-c w2" id="ctMat"><label>Matrícula</label><input data-f="mat" value="'+v('mat')+'" inputmode="numeric"></div>'
    +'<div class="ct-c w4" id="ctMot"><label>Motivo</label><input data-f="motivo" value="'+v('motivo')+'" placeholder="Ex.: desistiu antes do exame"></div>'
    +(c.hist&&c.hist.length?'<div class="ct-sec">Histórico</div><div class="ct-hist">'+c.hist.slice().reverse().map(h=>'<div>'+new Date(h.em).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})+' · '+esc(String(h.por||'').split(' ')[0])+' · '+esc(h.txt)+'</div>').join('')+'</div>':'')
-   +'</div><datalist id="ctFL">'+SL.fu.map(x=>'<option value="'+esc(x)+'">').join('')+'</datalist><datalist id="ctDL">'+SL.de.map(x=>'<option value="'+esc(x)+'">').join('')+'</datalist>';
+   +'</div><datalist id="ctFL">'+SL.fu.map(x=>'<option value="'+esc(x)+'">').join('')+'</datalist><datalist id="ctDL">'+SL.dp.map(d=>'<option value="'+esc(d.nome)+' · '+esc(d.cod)+'">').join('')+'</datalist><datalist id="ctCL">'+SL.dp.map(d=>'<option value="'+esc(d.cod)+'">'+esc(d.nome)+'</option>').join('')+'</datalist>';
   const modal=W.querySelector('.ct-modal');let rod=modal.querySelector('.ct-rod');if(rod)rod.remove();
   rod=document.createElement('div');rod.className='ct-rod';rod.innerHTML='<span class="msg" id="ctMsg"></span>'+(c._id?'<button class="ct-b dan" id="ctDel">Excluir</button>':'')+'<button class="ct-b" id="ctPend">Copiar pendências (WhatsApp)</button><button class="ct-b" id="ctPdfF">PDF da ficha</button><button class="ct-b" id="ctVolta">Voltar à lista</button><button class="ct-b pri" id="ctSalva">Salvar</button>';modal.appendChild(rod);
   const g=s=>C.querySelector(s),msg=(t,cor)=>{const m=rod.querySelector('#ctMsg');m.style.color=cor||'';m.textContent=t};
@@ -2663,6 +2664,20 @@ async function form(c){if(!W)return;c.docs=c.docs||{};c.deps=c.deps||[];c.medico
     g('#ctDeps').querySelectorAll('[data-rm]').forEach(e=>e.onclick=()=>{c.deps.splice(+e.dataset.rm,1);depsH()})};
   C.querySelectorAll('[data-f],[data-x]').forEach(e=>{e.addEventListener('change',docsH);if(e.dataset.f==='func')e.addEventListener('input',docsH)});
   g('#ctAddDep').onclick=()=>{c.deps.push({tipo:'filho',docs:{}});depsH()};
+  /* departamento: nome ou código puxa o outro, com área, gerência e funções do setor */
+  const dpI=g('[data-f=dep]'),cdI=g('[data-f=setorCod]');
+  const mostrar=d=>{const i=g('#ctDepInfo');if(!d){i.hidden=true;return}i.hidden=false;i.innerHTML='<b>'+esc(d.nome)+'</b> · código '+esc(d.cod)+(d.area?' · '+esc(d.area):'')+(d.ger&&!/CLASSIFICAR/i.test(d.ger)?' · gerência '+esc(d.ger):'')+' · '+pl(d.n,'pessoa no quadro','pessoas no quadro')+(d.funcs.length?'<br><span style="opacity:.8">Funções do setor: '+esc(d.funcs.slice(0,8).join(', '))+(d.funcs.length>8?'…':'')+'</span>':'');
+    const fl=g('#ctFL');if(fl&&d.funcs.length)fl.innerHTML=d.funcs.concat(SL.fu.filter(x=>!d.funcs.includes(x))).map(x=>'<option value="'+esc(x)+'">').join('')};
+  const porCod=c=>SL.dp.find(d=>d.cod===String(c).replace(/\D/g,''));
+  const doDep=()=>{let t=dpI.value.trim();if(!t){mostrar(null);return}
+    const m=t.match(/^(.*?)\s*·\s*(\d{6,})$/);let d=null;
+    if(m)d=porCod(m[2]);else if(/^\d{6,}$/.test(t))d=porCod(t);
+    else{const L2=SL.dp.filter(x=>x.nome.toUpperCase()===t.toUpperCase());if(L2.length===1)d=L2[0];else if(L2.length>1){mostrar(null);const i=g('#ctDepInfo');i.hidden=false;i.innerHTML='<b>'+esc(L2[0].nome)+'</b> tem '+L2.length+' códigos: '+L2.map(x=>esc(x.cod)+' ('+pl(x.n,'pessoa','pessoas')+')').join(', ')+'. Escolha o código no campo ao lado.';return}}
+    if(d){dpI.value=d.nome;cdI.value=d.cod;mostrar(d);docsH()}};
+  const doCod=()=>{const d=porCod(cdI.value);if(d){cdI.value=d.cod;dpI.value=d.nome;mostrar(d);docsH()}};
+  dpI.addEventListener('change',doDep);dpI.addEventListener('input',()=>{if(/·\s*\d{6,}$/.test(dpI.value))doDep()});
+  cdI.addEventListener('change',doCod);cdI.addEventListener('input',()=>{if(/^\d{9}$/.test(cdI.value.trim()))doCod()});
+  if(cdI.value&&porCod(cdI.value))mostrar(porCod(cdI.value));else if(dpI.value)doDep();
   docsH();depsH();C.scrollTop=0;
   rod.querySelector('#ctVolta').onclick=async()=>{rod.remove();await carregar();lista()};
   rod.querySelector('#ctPend').onclick=async()=>{ler();const s=situacao(c);const t=pendencias(c,s);try{await navigator.clipboard.writeText(t);msg('Mensagem copiada. Cole no WhatsApp do candidato.','#1d5c3a')}catch(_){prompt('Copie a mensagem:',t)}};

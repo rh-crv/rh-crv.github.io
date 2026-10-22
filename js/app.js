@@ -885,7 +885,13 @@ window.CRV_QUADRO = async function(){
     DM.forEach(r => { M[txt(r[0])] = { nome:txt(r[1]), funcao:txt(r[2]), setor:txt(r[3]), situacao:'Desligado', vinculo:txt(r[7]), gerencia:txt(r[6]), cnh:txt(r[17]), admissao:txt(r[9]), deslig:txt(r[20]), empresa:txt(r[21]).replace(/\s*\(\d+\)$/, '') }; });
     const XX = Array.isArray(dados.X) && dados.X.length === dados.D.length ? dados.X : null;
     dados.D.forEach((r, i) => { M[txt(r[0])] = { cpf: XX ? txt(XX[i][11]) : '', nome:txt(r[1]), funcao:txt(r[2]), setor:txt(r[3]), situacao:txt(r[8]) || 'Ativo', vinculo:txt(r[7]), gerencia:txt(r[6]), cnh:txt(r[17]), admissao:txt(r[9]), deslig:'', empresa:'CRV' }; });
-    _quadroBase = { mapa:M, referencia:d.referencia || '' }; _quadroBaseRef = chave;
+    // departamentos (código Depto/Seção → nome), a partir dos ativos e afastados
+    const DP = {};
+    if (XX) dados.D.forEach((r, i) => { const cod = txt(XX[i][23]), nome = txt(r[3]); if (!cod || !nome) return;
+      const o = DP[cod] || (DP[cod] = { cod, nome, area:txt(r[5]), ger:txt(r[6]), n:0, funcs:{} }); o.n++; const f = txt(r[2]); if (f) o.funcs[f] = (o.funcs[f] || 0) + 1; });
+    const deptos = Object.values(DP).map(o => ({ cod:o.cod, nome:o.nome, area:o.area, ger:o.ger, n:o.n, funcs:Object.entries(o.funcs).sort((a, b) => b[1] - a[1]).map(x => x[0]) }))
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR') || a.cod.localeCompare(b.cod));
+    _quadroBase = { mapa:M, deptos, referencia:d.referencia || '' }; _quadroBaseRef = chave;
     return _quadroBase;
   } catch(_) { return null; }
 };
