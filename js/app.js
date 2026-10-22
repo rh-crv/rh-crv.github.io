@@ -985,6 +985,26 @@ window.CRV_OCORR = async function(mats, ini, fim){
   Object.values(P).forEach(o => Object.values(o).forEach(a => a.sort((x, y) => String(x.data || x).localeCompare(String(y.data || y)))));
   return { abs, P };
 };
+/* Férias de um grupo de matrículas que caem num período (programação da planilha + programações feitas no painel de Férias).
+   Retorna { mat: [{inicio, fim, dias, src}] } só com as partes dentro do período */
+window.CRV_FERIAS = async function(mats, ini, fim){
+  const M = new Set((mats || []).map(m => String(m).replace(/^0+(?=\d)/, ''))); const out = {};
+  const addD = (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+  try {
+    const F = await window.CRV_DADOS('ferias'); const DATA = F && F.dados.DATA; if (!Array.isArray(DATA)) return out;
+    const PR = {}; (await window.CRV_REGS('ferias', 'prog') || []).forEach(d => { if (d && d._id) PR[d._id] = d; });
+    DATA.forEach(p => { const m = String(p.c); if (!M.has(m)) return;
+      (p.p || []).forEach(([de, , , saldo, , nulo, plan]) => { const key = m + '_' + de; let g = PR[key] || null;
+        if (!g && plan && !nulo && /^\d{4}-\d{2}-\d{2}$/.test(plan)) g = { inicio: plan, dias: Math.min(30, Math.max(5, Math.round(saldo) || 30)), src: 'planilha' };
+        if (!g || g.retorno) return;
+        const parts = Array.isArray(g.parcelas) && g.parcelas.length ? g.parcelas : [{ inicio: g.inicio, dias: g.dias }];
+        parts.forEach(q => { if (!q || !q.inicio || !q.dias) return; const f = addD(q.inicio, (+q.dias) - 1);
+          const a = q.inicio > ini ? q.inicio : ini, b = f < fim ? f : fim; if (a > b) return;
+          const n = Math.round((new Date(b + 'T12:00:00Z') - new Date(a + 'T12:00:00Z')) / 864e5) + 1;
+          (out[m] = out[m] || []).push({ inicio: q.inicio, fim: f, dias: n, src: g.src || 'painel' }); }); }); });
+  } catch(_){}
+  return out;
+};
 window.CRV_REGS = async function(painel, colecao){
   try {
     const r = await sb.from('registros').select('doc_id,dados').eq('painel', painel).eq('colecao', colecao).range(0, 4999);

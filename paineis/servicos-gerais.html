@@ -72,9 +72,9 @@ tfoot td{font-weight:700;background:#faf7f2;border-top:1px solid var(--line)}
 .msg{font-size:13px}.msg.er{color:var(--bad)}.msg.ok{color:var(--ok)}
 /* gratificação */
 .gt td{vertical-align:middle}.gt input[type=number],.gt input.tx{border:1px solid var(--line);border-radius:6px;padding:4px 6px;font:inherit;font-size:13px;background:#fff}
-.gt input[type=number]{width:70px;text-align:right}.gt input.tx{width:100%;min-width:180px}
+.gt input[type=number]{width:62px;text-align:right}.gt input.tx{width:100%;min-width:150px}.gt td:nth-child(2){min-width:190px}.gt td:nth-child(4){min-width:300px}.gt .crit label{padding:2px 5px}
 .crit{display:flex;gap:4px;flex-wrap:wrap}.crit label{display:flex;gap:4px;align-items:center;border:1px solid var(--line);border-radius:7px;padding:2px 6px;font-size:11.5px;cursor:pointer;white-space:nowrap;background:#fff}
-.crit label.on{background:var(--terbg);border-color:#e9b9a3;color:#8a3a1a;font-weight:700}
+.crit label.on{background:var(--terbg);border-color:#e9b9a3;color:#8a3a1a;font-weight:700}.crit label.au{background:var(--plubg);border-color:#cdb4dc;color:#5a3570;font-weight:700}.crit label.ig{background:#f4f3f1;border-style:dashed;color:#9aa0aa;text-decoration:line-through}.crit label small{font-weight:400;opacity:.85}
 .sug{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px}.sug span{font-size:11px;border-radius:6px;padding:1px 6px;background:var(--plubg);color:#5a3570}
 .pct{font-weight:750;font-variant-numeric:tabular-nums}.pct.b{color:var(--bad)}
 .salvo{font-size:12.5px;color:var(--mut)}
@@ -90,7 +90,7 @@ tfoot td{font-weight:700;background:#faf7f2;border-top:1px solid var(--line)}
   <div class="comp"><button class="nav" id="mAnt" title="Mês anterior">‹</button><label for="selComp">Mês</label><select id="selComp"></select><button class="nav" id="mProx" title="Próximo mês">›</button></div>
 </div></header>
 <main>
-  <nav class="vtabs" id="vtabs"><button data-v="g" class="on">Visão geral</button><button data-v="h">Horas extras</button><button data-v="b">Gratificação BPP</button><button data-v="m">Mês a mês</button><button data-v="c">Por colaborador</button><button data-v="cfg">Assinaturas e textos</button></nav>
+  <nav class="vtabs" id="vtabs"><button data-v="g" class="on">Visão geral</button><button data-v="h">Horas extras</button><button data-v="b">Gratificação BPP</button><button data-v="m">Mês a mês</button><button data-v="c">Por colaborador</button><button data-v="cfg">Regras, assinaturas e textos</button></nav>
   <section id="vG"></section>
   <section id="vH" hidden></section>
   <section id="vB" hidden></section>
@@ -164,11 +164,23 @@ function render(){topo();document.querySelectorAll('#vtabs button').forEach(b=>b
   [['g','vG'],['h','vH'],['b','vB'],['m','vM'],['c','vC'],['cfg','vCfg']].forEach(([k,id])=>$(id).hidden=V!==k);
   if(V==='g')rGeral();if(V==='h')rHE();if(V==='b')rGR();if(V==='m')rMes();if(V==='c')rCol();if(V==='cfg')rCfg()}
 
-/* ---------- cálculo da gratificação ---------- */
-function pctDe(i){if(i.pctMan!=null&&i.pctMan!=='')return Math.max(0,Math.min(1,+i.pctMan));if(!i.crit&&i.pct!=null)return +i.pct;
-  const n=(i.crit||[]).length;let p=Math.max(0,1-n*CFG().pesoCrit);if(i.dias!=null&&i.dias!=='')p=p*Math.min(30,+i.dias)/30;return Math.round(p*10000)/10000}
+/* ---------- cálculo da gratificação ----------
+   Regras (editáveis em "Assinaturas e textos"): cada ocorrência tira o seu percentual; "uma vez" conta uma vez no período, "por ocorrência" multiplica.
+   Atestado, falta, advertência e suspensão vêm sozinhos do Absenteísmo e das Sanções; mau comportamento e EPI são marcados à mão.
+   Férias no período: proporcional aos dias trabalhados (base 30). */
+const REGRAS0=[{k:'mc',nome:'Mau comportamento',peso:.5,modo:'uma'},{k:'epi',nome:'Não uso do EPI',peso:.25,modo:'uma'},{k:'at',nome:'Atestado',peso:.25,modo:'uma',auto:1},{k:'fa',nome:'Falta sem justificativa',peso:.25,modo:'uma',auto:1},{k:'adv',nome:'Advertência',peso:.25,modo:'uma',auto:1},{k:'su',nome:'Suspensão',peso:.5,modo:'uma',auto:1}];
+const REGRAS=()=>{const r=(CFG_DB&&Array.isArray(CFG_DB.regras)&&CFG_DB.regras.length)?CFG_DB.regras:REGRAS0;return r.map(x=>Object.assign({},REGRAS0.find(y=>y.k===x.k)||{},x))};
+const NOMEK={'comportamento':'mc','mau comportamento':'mc','não uso do epi':'epi','nao uso do epi':'epi','atestado':'at','falta sem justificativa':'fa','falta':'fa','advertência':'adv','advertencia':'adv','suspensão':'su','suspensao':'su'};
+const kDe=c=>REGRAS().some(r=>r.k===c)?c:(NOMEK[String(c).toLowerCase()]||c);
+const histItem=i=>!i.crit&&i.pct!=null&&!i.au;
+function aplicadas(i){const R=REGRAS(),man=new Set((i.crit||[]).map(kDe)),ign=new Set(i.ign||[]),au=i.au||{};
+  return R.filter(r=>man.has(r.k)||(au[r.k]&&!ign.has(r.k))).map(r=>({r,n:man.has(r.k)&&!au[r.k]?1:Math.max(1,(au[r.k]||{}).n||1),txt:(au[r.k]||{}).txt||'',auto:!!(au[r.k]&&!ign.has(r.k))}))}
+function diasDe(i){if(i.dias!==''&&i.dias!=null)return +i.dias;if(i.diasAuto!=null)return +i.diasAuto;return null}
+function pctDe(i){if(i.pctMan!=null&&i.pctMan!=='')return Math.max(0,Math.min(1,+i.pctMan));if(histItem(i))return +i.pct;
+  const d=aplicadas(i).reduce((s,a)=>s+(+a.r.peso||0)*(a.r.modo==='cada'?a.n:1),0);let p=Math.max(0,1-d);const dd=diasDe(i);if(dd!=null)p=p*Math.max(0,Math.min(30,dd))/30;return Math.round(p*10000)/10000}
 const valDe=i=>Math.round((+i.prev||0)*pctDe(i)*100)/100;
-function motivoDe(i){const a=[];(i.crit||[]).forEach(c=>a.push(c));if(i.dias!=null&&i.dias!=='')a.push('referente a '+i.dias+' dias trabalhados');const t=a.join(', ');return [t,i.motivo].filter(Boolean).join(' · ')}
+function motivoDe(i){if(histItem(i))return i.motivo||'';const a=aplicadas(i).map(x=>x.r.nome+(x.r.modo==='cada'&&x.n>1?' ('+x.n+'x)':'')+(x.txt?' '+x.txt:''));const dd=diasDe(i);
+  if(dd!=null&&dd<30)a.push('referente a '+dd+' dias trabalhados'+(i.ferTxt&&(i.dias===''||i.dias==null)?' ('+i.ferTxt+')':''));return [a.join(', '),i.motivo].filter(Boolean).join(' · ')}
 function grTot(g){const t={prev:0,pago:0,n:0,desc:0};(g&&g.itens||[]).forEach(i=>{t.n++;t.prev+=+i.prev||0;const v=valDe(i);t.pago+=v;if(pctDe(i)<1)t.desc++});return t}
 
 /* ---------- Visão geral ---------- */
@@ -279,64 +291,90 @@ function formHE(ed){const eq=equipe(),mots=[...new Set(HE().map(x=>String(x.moti
 }
 
 /* ---------- Gratificação BPP ---------- */
-let OC=null,OCK='';
-async function ocorr(g){const k=COMP+g.ini+g.fim+(g.itens||[]).length;if(OCK===k)return OC;OCK=k;OC=null;
-  try{const f=window.parent&&window.parent.CRV_OCORR;if(typeof f==='function'&&g.ini&&g.fim)OC=await f((g.itens||[]).map(i=>i.mat),g.ini,g.fim)}catch(_){}return OC}
+let OC=null,FE=null,OCK='';
+async function ocorr(g){const k=COMP+g.ini+g.fim+(g.itens||[]).map(i=>i.mat).join(',');if(OCK===k)return OC;OCK=k;OC=null;FE=null;
+  const ms=(g.itens||[]).map(i=>i.mat);
+  try{const f=window.parent&&window.parent.CRV_OCORR;if(typeof f==='function'&&g.ini&&g.fim)OC=await f(ms,g.ini,g.fim)}catch(_){}
+  try{const f=window.parent&&window.parent.CRV_FERIAS;if(typeof f==='function'&&g.ini&&g.fim)FE=await f(ms,g.ini,g.fim)}catch(_){}
+  return OC}
+const episodios=ds=>{let n=0,ant=null;ds.slice().sort().forEach(d=>{if(!ant||(new Date(d)-new Date(ant))/864e5>1)n++;ant=d});return n};
+const dd5=d=>br(d).slice(0,5);
+/* o que veio dos outros painéis para uma pessoa */
+function autoDe(mat){const p=OC&&OC.P[String(mat)],au={};if(p){
+  if(p.at.length)au.at={n:episodios(p.at),txt:p.at.map(dd5).join(', ')};
+  if(p.fa.length)au.fa={n:episodios(p.fa),txt:p.fa.map(dd5).join(', ')};
+  if(p.adv.length)au.adv={n:p.adv.length,txt:p.adv.map(a=>dd5(a.data)).join(', ')};
+  const sus=p.sus.length?p.sus:[];if(sus.length||p.su.length)au.su={n:Math.max(sus.length,episodios(p.su)),txt:(sus.length?sus.map(a=>dd5(a.data)):p.su.map(dd5)).join(', ')}}
+  const R=REGRAS();Object.keys(au).forEach(k=>{if(!R.some(r=>r.k===k&&r.auto))delete au[k]});
+  let dias=null,ftx='';const fe=FE&&FE[String(mat)];if(fe&&fe.length){const n=fe.reduce((s,x)=>s+x.dias,0);dias=Math.max(0,30-n);ftx='férias '+fe.map(x=>dd5(x.inicio)+' a '+dd5(x.fim)).join(', ')}
+  return {au,dias,ftx}}
 let GSAVE=null;
 async function salvarGR(g){const D=await db();if(!D)throw new Error('Não dá para salvar nesta visualização.');g.atualizadoPor=quem();g.atualizadoEm=new Date().toISOString();await D.collection('grat').doc(g.comp).set(g);GR_DB[g.comp]=g}
 function agendarGR(g){const s=$('gSalvo');if(s)s.textContent='Salvando…';clearTimeout(GSAVE);GSAVE=setTimeout(()=>salvarGR(g).then(()=>{const e=$('gSalvo');if(e)e.textContent='Salvo às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}).catch(e=>{const x=$('gSalvo');if(x)x.textContent='Não salvou: '+(e.message||'sem permissão')}),600)}
-/* edição de um mês que veio da planilha: copia para o app ao mexer */
+/* mês que veio da planilha: copia para o app ao mexer */
 const grEditavel=c=>{let g=GR(c);if(!g)return null;if(!GR_DB[c]){g=JSON.parse(JSON.stringify(g));g.comp=c;g.itens.forEach(i=>{i.hist=true});GR_DB[c]=g}return GR_DB[c]};
+const ehPlanilha=g=>(g.itens||[]).some(histItem);
+/* aplica as ocorrências e as férias puxadas (só em meses lançados no app, ou quando ela pede num mês da planilha) */
+function sincronizar(g,forcar){if(!OC&&!FE)return false;if(ehPlanilha(g)&&!forcar)return false;let mud=false;const x=forcar?grEditavel(g.comp):g;
+  x.itens.forEach(i=>{const a=autoDe(i.mat);if(forcar&&histItem(i)){i.crit=[];delete i.pct;i.motivo=''}
+    const novo=JSON.stringify([a.au,a.dias,a.ftx]),velho=JSON.stringify([i.au||{},i.diasAuto==null?null:i.diasAuto,i.ferTxt||'']);if(novo!==velho){i.au=a.au;i.diasAuto=a.dias;i.ferTxt=a.ftx;mud=true}});
+  if(mud)agendarGR(x);return mud}
 function novoGR(){const cs=Object.keys(Object.assign({},P0.grat,GR_DB)).filter(c=>c<COMP).sort();const ant=cs.length?GR(cs[cs.length-1]):null;
   const ini=ant&&ant.fim?addDia(ant.fim,1):COMP+'-01',fim=ant&&ant.fim?addMes(ant.fim.slice(0,7),1)+ant.fim.slice(7):'';
-  const it=(ant?ant.itens:equipe()).map(i=>{const q=pessoa(i.mat)||{};return {mat:i.mat,nome:q.nome||i.nome,funcao:q.funcao||i.funcao,prev:+i.prev||150,crit:[],dias:'',motivo:''}}).filter(i=>{const q=pessoa(i.mat);return !q||q.sit!=='Desligado'});
+  const it=(ant?ant.itens:equipe()).map(i=>{const q=pessoa(i.mat)||{};return {mat:i.mat,nome:q.nome||i.nome,funcao:q.funcao||i.funcao,prev:+i.prev||150,crit:[],ign:[],dias:'',motivo:''}}).filter(i=>{const q=pessoa(i.mat);return !q||q.sit!=='Desligado'});
   const fora=[];(ant?ant.itens:[]).forEach(i=>{const q=pessoa(i.mat);if(q&&q.sit==='Desligado')fora.push({mat:i.mat,nome:q.nome,motivo:'Desligado(a)'})});
-  (ant&&ant.fora||[]).forEach(f=>{const q=pessoa(f.mat);if(!q||q.sit==='Desligado')return;if(!fora.some(x=>x.mat===f.mat))fora.push({mat:f.mat,nome:q.nome||f.nome,motivo:f.motivo})});
+  (ant&&ant.fora||[]).forEach(f=>{const q=pessoa(f.mat);if(!q||q.sit==='Desligado')return;if(!fora.some(x=>x.mat===f.mat))fora.push({mat:f.mat,nome:q.nome||f.nome,motivo:f.motivo,prev:f.prev})});
   return {comp:COMP,ini,fim,itens:it.sort((a,b)=>a.nome.localeCompare(b.nome)),fora,criadoPor:quem(),criadoEm:new Date().toISOString()}}
 async function rGR(){const g0=GR(COMP);
-  if(!g0){$('vB').innerHTML='<div class="box"><h2>Gratificação BPP · '+compCap(COMP)+'</h2><p class="sub">A avaliação deste mês ainda não foi lançada.</p><div class="av in">Ao começar, o painel traz a equipe e o valor previsto de cada um da última avaliação, todos com 100%. Quem foi desligado sai sozinho. Depois é só marcar os critérios de quem teve desconto.</div><button class="btn pri" id="gIni">Começar a avaliação de '+compNome(COMP)+'</button></div>';
+  if(!g0){$('vB').innerHTML='<div class="box"><h2>Gratificação BPP · '+compCap(COMP)+'</h2><p class="sub">A avaliação deste mês ainda não foi lançada.</p><div class="av in">Ao começar, o painel traz a equipe e o valor previsto de cada um da última avaliação. Em seguida puxa sozinho, do período, os <b>atestados, faltas, advertências e suspensões</b> (Absenteísmo e Sanções) e as <b>férias</b> (painel de Férias), e já calcula quanto cada um tem direito. Você só marca o que o sistema não sabe: mau comportamento e não uso do EPI.</div><button class="btn pri" id="gIni">Começar a avaliação de '+compNome(COMP)+'</button></div>';
     $('gIni').onclick=async()=>{const g=novoGR();try{await salvarGR(g);toast('Avaliação de '+compNome(COMP)+' criada.');rGR()}catch(e){toast(e.message)}};return}
-  const g=g0,crs=CFG().criterios,t=grTot(g);
+  $('vB').innerHTML='<div class="box"><p class="mut">Buscando ocorrências e férias do período…</p></div>';
+  await ocorr(g0);sincronizar(g0,false);desenharGR()}
+function desenharGR(){const g=GR(COMP),R=REGRAS(),t=grTot(g),plan=ehPlanilha(g);
+  const legenda=R.map(r=>'<b>'+esc(r.nome)+'</b> −'+Math.round(r.peso*100)+'%'+(r.modo==='cada'?' por ocorrência':'')+(r.auto?' <span class="pill p-plu">automático</span>':'')).join(' · ');
   let h='<div class="box"><div class="tools"><div><h2 style="margin:0">Avaliação mensal · Gratificação BPP · '+compCap(COMP)+'</h2><p class="sub" style="margin:2px 0 0">'+t.n+' avaliados · pago R$ '+brl(t.pago)+' de R$ '+brl(t.prev)+' previstos · '+t.desc+' com desconto <span class="salvo" id="gSalvo"></span></p></div><span class="esp"></span>'
    +'<button class="btn" id="gProx" title="Lançar o período seguinte">Próximo período ›</button><button class="btn" id="gAdd">+ Incluir pessoa</button><button class="btn" id="gXls">Excel</button><button class="btn tea" id="gPdf">Imprimir para assinatura</button></div>'
-   +'<div class="fg" style="margin-bottom:10px"><div class="fc w3"><label>Período: de</label><input type="date" id="gIniD" value="'+esc(g.ini)+'"></div><div class="fc w3"><label>até</label><input type="date" id="gFimD" value="'+esc(g.fim)+'"></div><div class="fc w6"><label>Como funciona</label><span class="small mut" style="padding-top:6px">Cada critério marcado tira '+Math.round(CFG().pesoCrit*100)+'% ('+crs.join(', ')+'). "Dias" é para quem trabalhou só parte do período (ex.: 11 dias = 11/30). Se a gestão definir outro percentual, digite em "% manual".</span></div></div>'
-   +'<div id="gOc"></div>'
-   +'<div class="tab gt"><table><thead><tr><th>Mat.</th><th>Nome</th><th class="n">Previsto</th><th>Critérios (−'+Math.round(CFG().pesoCrit*100)+'% cada)</th><th class="n">Dias</th><th class="n">% manual</th><th class="n">% atingido</th><th class="n">Gratificação</th><th>Motivo / observação</th><th></th></tr></thead><tbody>'
-   +g.itens.map((i,ix)=>{const p=pctDe(i);return '<tr data-i="'+ix+'"><td>'+esc(i.mat)+'</td><td><b>'+esc(tc(i.nome))+'</b><div class="small mut">'+esc(tc(i.funcao))+'</div><div class="sug" id="sg'+ix+'"></div></td>'
+   +'<div class="fg" style="margin-bottom:10px"><div class="fc w3"><label>Período: de</label><input type="date" id="gIniD" value="'+esc(g.ini)+'"></div><div class="fc w3"><label>até</label><input type="date" id="gFimD" value="'+esc(g.fim)+'"></div><div class="fc w6"><label>Regras do desconto</label><span class="small" style="padding-top:4px">'+legenda+'. Férias: proporcional aos dias trabalhados (base 30).</span></div></div>'
+   +'<div id="gOc">'+avisoOc(g,plan)+'</div>'
+   +'<div class="tab gt"><table><thead><tr><th>Mat.</th><th>Nome</th><th class="n">Previsto</th><th>Ocorrências do período <span style="text-transform:none;font-weight:400">(clique para marcar ou desconsiderar)</span></th><th class="n">Dias trab.</th><th class="n">% manual</th><th class="n">% direito</th><th class="n">Tem direito</th><th>Motivo / observação</th><th></th></tr></thead><tbody>'
+   +g.itens.map((i,ix)=>{const p=pctDe(i),hi=histItem(i),man=new Set((i.crit||[]).map(kDe)),ign=new Set(i.ign||[]),au=i.au||{},dd=diasDe(i);
+     const chips=hi?'<span class="small mut">Lançado na planilha: '+pc(+i.pct)+(i.motivo?' ('+esc(i.motivo)+')':'')+'</span>':R.map(r=>{const a=au[r.k],ig=a&&ign.has(r.k),on=man.has(r.k)||(a&&!ig);
+       const cls=a?(ig?'ig':'au'):(on?'on':'');const tit=a?(ig?'Desconsiderado. Clique para voltar a contar.':'Veio do '+(r.k==='adv'||r.k==='su'?'painel de Sanções/Absenteísmo':'Absenteísmo')+': '+a.txt+'. Clique para desconsiderar.'):(on?'Marcado à mão. Clique para desmarcar.':'Clique para marcar');
+       return '<label class="'+cls+'" title="'+esc(tit)+'"><input type="checkbox" data-r="'+r.k+'" hidden>'+esc(r.nome)+(a?' <small>'+esc(a.txt)+'</small>':'')+(on?' <b>−'+Math.round(r.peso*100*(r.modo==='cada'?Math.max(1,(a||{}).n||1):1))+'%</b>':'')+'</label>'}).join('');
+     return '<tr data-i="'+ix+'"><td>'+esc(i.mat)+'</td><td><b>'+esc(tc(i.nome))+'</b>'+(/servi[cç]os gerais/i.test(i.funcao||'')?'':'<div class="small mut">'+esc(tc(i.funcao))+'</div>')+'</td>'
      +'<td class="n"><input type="number" min="0" step="10" data-k="prev" value="'+esc(i.prev)+'"></td>'
-     +'<td><div class="crit">'+crs.map(c=>{const on=(i.crit||[]).includes(c);return '<label class="'+(on?'on':'')+'"><input type="checkbox" data-c="'+esc(c)+'"'+(on?' checked':'')+' hidden>'+esc(c)+'</label>'}).join('')+'</div>'+(i.hist&&!i.crit?'<div class="small mut">da planilha: '+pc(+i.pct)+'</div>':'')+'</td>'
-     +'<td class="n"><input type="number" min="0" max="30" data-k="dias" value="'+esc(i.dias==null?'':i.dias)+'" placeholder="30"></td>'
+     +'<td><div class="crit">'+chips+'</div></td>'
+     +'<td class="n"><input type="number" min="0" max="30" data-k="dias" value="'+esc(i.dias==null?'':i.dias)+'" placeholder="'+(i.diasAuto!=null?i.diasAuto:'30')+'">'+(i.ferTxt?'<div class="small" style="color:var(--tea)" title="Do painel de Férias">'+esc(i.ferTxt)+'</div>':'')+'</td>'
      +'<td class="n"><input type="number" min="0" max="100" step="0.01" data-k="pctMan" value="'+(i.pctMan!=null&&i.pctMan!==''?Math.round(i.pctMan*10000)/100:'')+'" placeholder="—"></td>'
-     +'<td class="n"><span class="pct'+(p<1?' b':'')+'">'+pc(p)+'</span></td><td class="n"><b>R$ '+brl(valDe(i))+'</b></td>'
-     +'<td><input class="tx" data-k="motivo" value="'+esc(i.motivo||'')+'" placeholder="Ex.: auditoria interna"><div class="small mut">'+esc((i.crit||[]).concat(i.dias?['referente a '+i.dias+' dias trabalhados']:[]).join(', '))+'</div></td>'
-     +'<td><button class="btn sm perigo" data-fora="'+ix+'" title="Tirar desta avaliação (férias, afastamento...)">Tirar</button></td></tr>'}).join('')
+     +'<td class="n"><span class="pct'+(p<1?' b':'')+'">'+pc(p)+'</span></td><td class="n"><b>R$ '+brl(valDe(i))+'</b>'+(p<1?'<div class="small mut">de R$ '+brl(i.prev)+'</div>':'')+'</td>'
+     +'<td><input class="tx" data-k="motivo" value="'+esc(hi?'':i.motivo||'')+'" placeholder="Observação (opcional)"><div class="small mut">'+esc(hi?'':motivoDe(Object.assign({},i,{motivo:''})))+'</div></td>'
+     +'<td><button class="btn sm perigo" data-fora="'+ix+'" title="Tirar desta avaliação (afastamento, desligamento...)">Tirar</button></td></tr>'}).join('')
    +'</tbody><tfoot><tr><td colspan="2">Total · '+t.n+' pessoas</td><td class="n">R$ '+brl(t.prev)+'</td><td colspan="4"></td><td class="n">R$ '+brl(t.pago)+'</td><td colspan="2"></td></tr></tfoot></table></div>';
-  h+='<div style="margin-top:12px"><h2 style="font-size:14px;margin:0 0 6px">Fora da avaliação deste mês</h2><p class="sub" style="margin:0 0 6px">Saem no documento como observação (ex.: férias no período, afastada, desligada).</p>'
+  h+='<div style="margin-top:12px"><h2 style="font-size:14px;margin:0 0 6px">Fora da avaliação deste mês</h2><p class="sub" style="margin:0 0 6px">Saem no documento como observação (ex.: afastada, desligada, férias no período inteiro).</p>'
    +((g.fora||[]).map((f,k)=>'<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px"><span style="min-width:260px"><b>'+esc(tc(f.nome))+'</b> <span class="mut small">mat. '+esc(f.mat)+'</span></span><input class="tx" data-fk="'+k+'" value="'+esc(f.motivo)+'" style="flex:1;border:1px solid var(--line);border-radius:6px;padding:5px 7px;font:inherit"><button class="btn sm" data-volta="'+k+'">Voltar para a avaliação</button><button class="btn sm perigo" data-tira="'+k+'">Remover</button></div>').join('')||'<p class="mut small" style="margin:0">Ninguém fora da avaliação.</p>')+'</div></div>';
   $('vB').innerHTML=h;
-  const ed=()=>grEditavel(COMP);
-  $('gIniD').onchange=()=>{const x=ed();x.ini=$('gIniD').value;agendarGR(x);OCK='';sugestoes(x)};$('gFimD').onchange=()=>{const x=ed();x.fim=$('gFimD').value;agendarGR(x);OCK='';sugestoes(x)};
+  const ed=()=>grEditavel(COMP),re=()=>{OCK='';rGR()};
+  $('gIniD').onchange=()=>{const x=ed();x.ini=$('gIniD').value;agendarGR(x);re()};$('gFimD').onchange=()=>{const x=ed();x.fim=$('gFimD').value;agendarGR(x);re()};
+  const pu=$('gPuxar');if(pu)pu.onclick=()=>{sincronizar(GR(COMP),true);desenharGR();toast('Ocorrências e férias aplicadas neste mês.')};
   $('vB').querySelectorAll('tr[data-i]').forEach(tr=>{const ix=+tr.dataset.i;
     tr.querySelectorAll('input[data-k]').forEach(inp=>inp.onchange=()=>{const x=ed(),i=x.itens[ix],k=inp.dataset.k;
       if(k==='pctMan')i.pctMan=inp.value===''?null:Math.max(0,Math.min(100,+inp.value))/100;else if(k==='prev')i.prev=+inp.value||0;else if(k==='dias')i.dias=inp.value===''?'':Math.max(0,Math.min(30,+inp.value));else i[k]=inp.value;
-      if(k!=='motivo'){i.crit=i.crit||[];delete i.pct}agendarGR(x);if(k!=='motivo')rGR()});
-    tr.querySelectorAll('input[data-c]').forEach(cb=>cb.onchange=()=>{const x=ed(),i=x.itens[ix];i.crit=i.crit||[];const c=cb.dataset.c;if(cb.checked){if(!i.crit.includes(c))i.crit.push(c)}else i.crit=i.crit.filter(y=>y!==c);delete i.pct;agendarGR(x);rGR()})});
-  $('vB').querySelectorAll('[data-fora]').forEach(b=>b.onclick=()=>{const x=ed(),i=x.itens.splice(+b.dataset.fora,1)[0];x.fora=x.fora||[];x.fora.push({mat:i.mat,nome:i.nome,motivo:'Durante o período apurado está de férias',prev:i.prev});agendarGR(x);rGR()});
+      if(k==='pctMan'||k==='dias'){if(histItem(i)){i.crit=[];delete i.pct;if(k!=='motivo')i.motivo=i.motivo||''}}agendarGR(x);if(k!=='motivo')desenharGR()});
+    tr.querySelectorAll('label input[data-r]').forEach(cb=>cb.closest('label').onclick=e=>{e.preventDefault();const x=ed(),i=x.itens[ix],k=cb.dataset.r;
+      i.crit=(i.crit||[]).map(kDe);i.ign=i.ign||[];if(i.au&&i.au[k]){i.ign=i.ign.includes(k)?i.ign.filter(y=>y!==k):i.ign.concat(k)}else{i.crit=i.crit.includes(k)?i.crit.filter(y=>y!==k):i.crit.concat(k)}
+      agendarGR(x);desenharGR()})});
+  $('vB').querySelectorAll('[data-fora]').forEach(b=>b.onclick=()=>{const x=ed(),i=x.itens.splice(+b.dataset.fora,1)[0];x.fora=x.fora||[];x.fora.push({mat:i.mat,nome:i.nome,motivo:'Afastado(a) no período',prev:i.prev});agendarGR(x);desenharGR()});
   $('vB').querySelectorAll('[data-fk]').forEach(inp=>inp.onchange=()=>{const x=ed();x.fora[+inp.dataset.fk].motivo=inp.value;agendarGR(x)});
-  $('vB').querySelectorAll('[data-volta]').forEach(b=>b.onclick=()=>{const x=ed(),f=x.fora.splice(+b.dataset.volta,1)[0];const q=pessoa(f.mat)||{};x.itens.push({mat:f.mat,nome:q.nome||f.nome,funcao:q.funcao||'',prev:f.prev||150,crit:[],dias:'',motivo:''});x.itens.sort((a,b)=>a.nome.localeCompare(b.nome));agendarGR(x);rGR()});
-  $('vB').querySelectorAll('[data-tira]').forEach(b=>b.onclick=()=>{const x=ed();x.fora.splice(+b.dataset.tira,1);agendarGR(x);rGR()});
+  $('vB').querySelectorAll('[data-volta]').forEach(b=>b.onclick=()=>{const x=ed(),f=x.fora.splice(+b.dataset.volta,1)[0];const q=pessoa(f.mat)||{};x.itens.push({mat:f.mat,nome:q.nome||f.nome,funcao:q.funcao||'',prev:f.prev||150,crit:[],ign:[],dias:'',motivo:''});x.itens.sort((a,b)=>a.nome.localeCompare(b.nome));agendarGR(x);re()});
+  $('vB').querySelectorAll('[data-tira]').forEach(b=>b.onclick=()=>{const x=ed();x.fora.splice(+b.dataset.tira,1);agendarGR(x);desenharGR()});
   $('gAdd').onclick=()=>incluirGR();$('gProx').onclick=()=>irMes(1);$('gXls').onclick=()=>xlsGR().catch(e=>toast(e.message));$('gPdf').onclick=()=>pdfGR().catch(e=>toast(e.message));
-  sugestoes(g);
 }
-/* ocorrências do período (absenteísmo e sanções) para ajudar a marcar os critérios — não marca sozinho */
-async function sugestoes(g){const o=await ocorr(g);const box=$('gOc');if(!box)return;
-  if(!o){box.innerHTML='';return}
-  let n=0;g.itens.forEach((i,ix)=>{const p=o.P[String(i.mat)];const el=$('sg'+ix);if(!el||!p)return;const s=[];
-    if(p.at.length)s.push(p.at.length+' dia(s) de atestado: '+p.at.map(d=>br(d).slice(0,5)).join(', '));if(p.fa.length)s.push(p.fa.length+' falta(s): '+p.fa.map(d=>br(d).slice(0,5)).join(', '));
-    if(p.su.length)s.push('suspensão: '+p.su.map(d=>br(d).slice(0,5)).join(', '));p.adv.forEach(a=>s.push('advertência '+br(a.data).slice(0,5)+(a.motivo?' ('+a.motivo+')':'')));p.sus.forEach(a=>s.push('suspensão '+br(a.data).slice(0,5)+(a.motivo?' ('+a.motivo+')':'')));
-    if(s.length){n++;el.innerHTML=s.map(t=>'<span title="Do painel de Absenteísmo/Sanções">'+esc(t)+'</span>').join('')}});
-  const fimAbs=o.abs&&g.fim&&o.abs<g.fim;
-  box.innerHTML='<div class="av in">'+(n?'<b>'+n+' pessoa(s) com ocorrência no período</b> (em roxo, embaixo do nome), tiradas do Absenteísmo e das Sanções. Confira e marque o critério se for o caso; o painel não desconta sozinho.':'Nenhum atestado, falta ou sanção registrado no período para esta equipe.')+(fimAbs?' <b>Atenção:</b> o absenteísmo carregado vai só até '+br(o.abs)+'.':'')+'</div>'}
+function avisoOc(g,plan){const o=OC;if(!o&&!FE)return '<div class="av">Não consegui ler o Absenteísmo, as Sanções e as Férias. Confira se esses painéis têm dados carregados.</div>';
+  let nOc=0,nFe=0;g.itens.forEach(i=>{const a=autoDe(i.mat);if(Object.keys(a.au).length)nOc++;if(a.dias!=null)nFe++});
+  const fimAbs=o&&o.abs&&g.fim&&o.abs<g.fim;
+  return '<div class="av in">'+(plan?'Este mês foi lançado na planilha, então os percentuais de lá foram mantidos. No sistema há <b>'+nOc+' pessoa(s) com ocorrência</b> e <b>'+nFe+' com férias</b> neste período. <button class="btn sm" id="gPuxar" style="margin-left:6px">Puxar ocorrências e recalcular este mês</button>'
+    :'Puxado sozinho do período: <b>'+nOc+' pessoa(s) com ocorrência</b> (atestado, falta, advertência, suspensão) e <b>'+nFe+' com férias</b>. Em <span class="pill p-plu">roxo</span> o que veio do sistema; clique para desconsiderar quando não deve contar. Mau comportamento e EPI você marca.')
+    +(fimAbs?' <b>Atenção:</b> o absenteísmo carregado vai só até '+br(o.abs)+'; ocorrências depois disso ainda não aparecem.':'')+'</div>'}
 function incluirGR(){const x0=GR(COMP),ja=new Set((x0.itens||[]).map(i=>i.mat).concat((x0.fora||[]).map(f=>f.mat))),sec=daSecao().filter(p=>!ja.has(p.mat));
   const w=document.createElement('div');w.className='fundo';w.innerHTML='<div class="jan st"><div class="jcab"><h3>Incluir pessoa na avaliação<small>Pela matrícula ou da mesma seção no Quadro.</small></h3><button class="x" data-x>×</button></div><div class="jcorpo"><div class="fg"><div class="fc w6"><label>Matrícula</label><input id="iMat" inputmode="numeric"></div><div class="fc w6"><label>Valor previsto (R$)</label><input id="iPrev" type="number" value="150"></div><div class="fc w12"><span id="iInfo" class="small mut"></span></div>'
    +(sec.length?'<div class="fc w12"><label>Da mesma seção, fora da avaliação</label><div class="pes">'+sec.map(p=>'<label><input type="radio" name="iS" value="'+esc(p.mat)+'"> '+esc(tc(p.nome))+' <span class="mut small">'+esc(tc(p.funcao))+'</span></label>').join('')+'</div></div>':'')+'</div></div><div class="jpe"><span class="esp msg" id="iMsg"></span><button class="btn" data-x>Cancelar</button><button class="btn pri" id="iOk">Incluir</button></div></div>';
@@ -344,7 +382,7 @@ function incluirGR(){const x0=GR(COMP),ja=new Set((x0.itens||[]).map(i=>i.mat).c
   const info=()=>{const q=pessoa(g('#iMat').value.trim());g('#iInfo').textContent=q?tc(q.nome)+' · '+tc(q.funcao)+' · '+(q.sit||''):''};g('#iMat').oninput=info;
   w.querySelectorAll('[name=iS]').forEach(r=>r.onchange=()=>{g('#iMat').value=r.value;info()});
   g('#iOk').onclick=()=>{const m=g('#iMat').value.trim().replace(/^0+(?=\d)/,''),q=pessoa(m);if(!q){g('#iMsg').className='esp msg er';g('#iMsg').textContent='Matrícula não encontrada no Quadro.';return}if(ja.has(m)){g('#iMsg').className='esp msg er';g('#iMsg').textContent='Essa pessoa já está nesta avaliação.';return}
-    const x=grEditavel(COMP);x.itens.push({mat:m,nome:q.nome,funcao:q.funcao,prev:+g('#iPrev').value||0,crit:[],dias:'',motivo:''});x.itens.sort((a,b)=>a.nome.localeCompare(b.nome));agendarGR(x);w.remove();OCK='';rGR()}}
+    const x=grEditavel(COMP);x.itens.push({mat:m,nome:q.nome,funcao:q.funcao,prev:+g('#iPrev').value||0,crit:[],ign:[],dias:'',motivo:''});x.itens.sort((a,b)=>a.nome.localeCompare(b.nome));agendarGR(x);w.remove();OCK='';rGR()}}
 
 /* ---------- Mês a mês ---------- */
 const FM={ano:'',ver:'res'};
@@ -436,6 +474,9 @@ function ficha(mat){const H=HE().filter(x=>x.mat===mat).sort((a,b)=>a.data.local
 function rCfg(){const c=CFG(),hm0=HM_DB[COMP]||{};
   const ass=(k,t)=>'<div class="box"><h2>'+t+'</h2><p class="sub">Nome e cargo de quem assina. Saem nesta ordem no documento.</p><div id="'+k+'">'+(c[k]||[]).map((a,i)=>'<div class="fg" style="margin-bottom:6px" data-a="'+i+'"><div class="fc w5"><input data-f="nome" value="'+esc(a.nome)+'" placeholder="Nome"></div><div class="fc w5"><input data-f="cargo" value="'+esc(a.cargo)+'" placeholder="Cargo"></div><div class="fc w2"><button class="btn sm perigo" data-rm="'+i+'">Remover</button></div></div>').join('')+'</div><button class="btn sm" data-add="'+k+'">+ Incluir assinatura</button></div>';
   $('vCfg').innerHTML='<div class="box"><h2>Setor</h2><div class="fg"><div class="fc w6"><label>Nome do setor no documento</label><input id="cSet" value="'+esc(c.setor)+'"></div><div class="fc w6"><label>Cidade</label><input id="cCid" value="'+esc(c.cidade)+'"></div></div></div>'
+   +'<div class="box"><h2>Regras do desconto da gratificação BPP</h2><p class="sub">Quanto cada ocorrência tira do BPP. "Uma vez no período" desconta uma vez mesmo que aconteça mais de uma vez; "por ocorrência" desconta a cada vez. As automáticas vêm do Absenteísmo e das Sanções. A soma passa de 100%? A pessoa fica com 0.</p><div class="tab"><table id="cReg"><thead><tr><th>Ocorrência</th><th class="n">Desconta (%)</th><th>Como conta</th><th>De onde vem</th></tr></thead><tbody>'
+     +REGRAS().map(r=>'<tr data-k="'+r.k+'"><td><b>'+esc(r.nome)+'</b></td><td class="n"><input type="number" min="0" max="100" step="1" data-f="peso" value="'+Math.round(r.peso*100)+'" style="width:70px;border:1px solid var(--line);border-radius:6px;padding:4px 6px;text-align:right"></td><td><select data-f="modo" style="border:1px solid var(--line);border-radius:6px;padding:4px 6px;font:inherit"><option value="uma"'+(r.modo!=='cada'?' selected':'')+'>Uma vez no período</option><option value="cada"'+(r.modo==='cada'?' selected':'')+'>Por ocorrência</option></select></td><td class="small">'+(r.auto?'<span class="pill p-plu">automático</span> '+(r.k==='at'||r.k==='fa'?'Absenteísmo':'Sanções e Absenteísmo'):'marcado à mão na avaliação')+'</td></tr>').join('')
+     +'</tbody></table></div><p class="small mut" style="margin:6px 0 0">Férias no período: o painel calcula os dias trabalhados (30 menos os dias de férias que caem no período) e paga proporcional.</p></div>'
    +ass('assHE','Assinaturas · Horas extras')+ass('assGR','Assinaturas · Gratificação BPP')
    +'<div class="box"><h2>Documento de horas extras de '+compNome(COMP)+'</h2><p class="sub">Data e texto que saem no topo. Deixe o texto em branco para o painel montar sozinho com os dias lançados.</p><div class="fg"><div class="fc w3"><label>Data do documento</label><input type="date" id="cEm" value="'+esc(hm0.emissao||'')+'"></div><div class="fc w12"><label>Texto</label><textarea id="cTx" placeholder="'+esc(textoHE(COMP,true))+'">'+esc(hm0.texto||'')+'</textarea></div></div></div>'
    +'<div style="display:flex;gap:8px;align-items:center"><button class="btn pri" id="cOk">Salvar</button><span class="msg" id="cMsg"></span></div>';
@@ -444,7 +485,8 @@ function rCfg(){const c=CFG(),hm0=HM_DB[COMP]||{};
   v.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>b.closest('[data-a]').remove());
   $('cOk').onclick=async()=>{const D=await db(),m=$('cMsg');if(!D){m.className='msg er';m.textContent='Não dá para salvar nesta visualização.';return}
     const lerA=k=>[...$(k).querySelectorAll('[data-a]')].map(r=>({nome:r.querySelector('[data-f=nome]').value.trim(),cargo:r.querySelector('[data-f=cargo]').value.trim()})).filter(a=>a.nome||a.cargo);
-    const nc={setor:$('cSet').value.trim(),cidade:$('cCid').value.trim(),assHE:lerA('assHE'),assGR:lerA('assGR'),atualizadoPor:quem(),atualizadoEm:new Date().toISOString()};
+    const regras=[...$('cReg').querySelectorAll('tbody tr')].map(tr=>{const r=REGRAS().find(x=>x.k===tr.dataset.k);return {k:r.k,nome:r.nome,peso:Math.max(0,Math.min(100,+tr.querySelector('[data-f=peso]').value||0))/100,modo:tr.querySelector('[data-f=modo]').value,auto:r.auto||0}});
+    const nc={setor:$('cSet').value.trim(),cidade:$('cCid').value.trim(),assHE:lerA('assHE'),assGR:lerA('assGR'),regras,atualizadoPor:quem(),atualizadoEm:new Date().toISOString()};
     try{await D.collection('cfg').doc('geral').set(Object.assign({},CFG_DB||{},nc));CFG_DB=Object.assign({},CFG_DB||{},nc);
       const hmx={emissao:$('cEm').value,texto:$('cTx').value.trim()};await D.collection('heMes').doc(COMP).set(hmx);HM_DB[COMP]=hmx;m.className='msg ok';m.textContent='Salvo.';topo()}catch(e){m.className='msg er';m.textContent='Não consegui salvar: '+(e.message||'sem permissão')}}}
 
@@ -495,7 +537,7 @@ function rodape(doc,W){const n=doc.internal.getNumberOfPages(),H=doc.internal.pa
 async function xlsGR(){const X=XL();if(!X)throw new Error('Excel indisponível.');const g=GR(COMP);const t=grTot(g);
   const a=[['AVALIAÇÃO MENSAL - GRATIFICAÇÃO BPP'],['MÊS AVALIAÇÃO '+COMP.slice(5)+'/'+COMP.slice(0,4)],['Período '+br(g.ini)+' a '+br(g.fim)],[CFG().setor],[],['CÓDIGO - MATRÍCULA','NOME','FUNÇÃO','TOTAL PREVISTO','% ATINGIDO BPP','TOTAL GRATIFICAÇÃO','MOTIVO']];
   g.itens.forEach(i=>a.push([+i.mat,i.nome,i.funcao,{v:+i.prev||0,t:'n',z:'"R$" #,##0.00'},{v:pctDe(i),t:'n',z:'0.00%'},{v:valDe(i),t:'n',z:'"R$" #,##0.00'},motivoDe(i)]));
-  a.push(['TOTAL',t.n+' pessoas',null,{v:t.prev,t:'n',z:'"R$" #,##0.00'},null,{v:t.pago,t:'n',z:'"R$" #,##0.00'},null]);a.push([]);a.push(['AVALIAÇÃO DO BPP:']);CFG().criterios.forEach(c=>a.push([Math.round(CFG().pesoCrit*100)+'% - '+c]));
+  a.push(['TOTAL',t.n+' pessoas',null,{v:t.prev,t:'n',z:'"R$" #,##0.00'},null,{v:t.pago,t:'n',z:'"R$" #,##0.00'},null]);a.push([]);a.push(['AVALIAÇÃO DO BPP:']);REGRAS().forEach(r=>a.push([Math.round(r.peso*100)+'% - '+r.nome+(r.modo==='cada'?' (por ocorrência)':'')]));a.push(['Férias no período: proporcional aos dias trabalhados']);
   (g.fora||[]).forEach(f=>a.push(['Obs: '+f.nome+' - MAT '+f.mat+' - '+f.motivo]));
   const ws=X.utils.aoa_to_sheet(a);ws['!cols']=[18,40,22,15,15,18,44].map(w=>({wch:w}));const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,MESES[+COMP.slice(5)-1].toUpperCase());
   await salvarArq('Gratificacao BPP Servicos Gerais - '+compCap(COMP).replace('/',' ')+'.xlsx',new Uint8Array(X.write(wb,{bookType:'xlsx',type:'array'})),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}
@@ -508,7 +550,7 @@ async function pdfGR(){const J=JS();if(!J)throw new Error('PDF indisponível.');
     didParseCell:h=>{if(h.section==='body'&&h.column.index===4&&String(h.cell.raw)!=='100%')h.cell.styles.textColor=[180,35,24]}});
   let y=doc.lastAutoTable.finalY+6;if(y>240){doc.addPage();y=24}
   doc.setFont('helvetica','bold');doc.setFontSize(8.8);doc.setTextColor(30,36,48);doc.text('Avaliação do BPP:',10,y);doc.setFont('helvetica','normal');
-  const cr=CFG().criterios.map(c=>Math.round(CFG().pesoCrit*100)+'% - '+c).join('   ·   ');doc.text(cr,40,y);y+=5;
+  const cr=doc.splitTextToSize(REGRAS().map(r=>Math.round(r.peso*100)+'% - '+r.nome+(r.modo==='cada'?' (por ocorrência)':'')).join('   ·   ')+'   ·   Férias: proporcional aos dias trabalhados',W-50);doc.text(cr,40,y);y+=cr.length*4+1.5;
   (g.fora||[]).forEach(f=>{const l=doc.splitTextToSize('Obs.: '+tc(f.nome)+' (mat. '+f.mat+') - '+f.motivo,W-20);doc.text(l,10,y);y+=l.length*4+1});
   assinaturas(doc,CFG().assGR,y+6,W);rodape(doc,W);
   await salvarArq('Gratificacao BPP Servicos Gerais - '+compCap(COMP).replace('/',' ')+'.pdf',new Uint8Array((await logos(doc)).output('arraybuffer')),'application/pdf')}
