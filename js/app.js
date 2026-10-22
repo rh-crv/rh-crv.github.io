@@ -398,7 +398,7 @@ function blocoFrente(f, lista){
    ===================================================================== */
 // opções que aparecem abaixo do painel no menu (seta)
 const SUBACOES = {
-  quadro:   [{ acao:'ent', nome:'Entrevista de desligamento' }, { acao:'estab', nome:'Estabilidade' }],
+  quadro:   [{ acao:'hcol', nome:'Histórico do colaborador' }, { acao:'ent', nome:'Entrevista de desligamento' }, { acao:'estab', nome:'Estabilidade' }],
   sancoes:  [{ acao:'doc', nome:'Emitir advertência / suspensão / orientação' }],
   ouvidorias: [{ acao:'nova', nome:'Cadastrar ouvidoria' }],
   rd:       [{ acao:'novo', nome:'Cadastrar RD' }, { acao:'aut', nome:'Autorização de desconto' }, { acao:'hist', nome:'Histórico de autorizações' }],
@@ -418,6 +418,7 @@ function executarAcao(acao){
   if (acao === 'aut' && w && typeof w.CRV_AUTORIZACAO === 'function') { fecharJanelasAut(w); w.CRV_AUTORIZACAO(); return true; }
   if (acao === 'hist' && w && typeof w.CRV_AUT_HIST === 'function') { fecharJanelasAut(w); w.CRV_AUT_HIST(); return true; }
   if (acao === 'doc' && w && typeof w.CRV_DOCDISC === 'function') { fecharJanelasAut(w); w.CRV_DOCDISC(); return true; }
+  if (acao === 'hcol' && w && typeof w.CRV_HISTCOL === 'function') { fecharJanelasAut(w); w.CRV_HISTCOL(); return true; }
   if (acao === 'estab' && w && typeof w.CRV_ESTAB === 'function') { fecharJanelasAut(w); w.CRV_ESTAB(); return true; }
   if (acao === 'ent' && w && typeof w.CRV_ENTREVISTA === 'function') { fecharJanelasAut(w); w.CRV_ENTREVISTA(); return true; }
   if (acao === 'termo' && w && typeof w.CRV_TERMO === 'function') { fecharJanelasAut(w); w.CRV_TERMO(); return true; }
@@ -885,6 +886,63 @@ window.CRV_QUADRO = async function(){
     _quadroBase = { mapa:M, referencia:d.referencia || '' }; _quadroBaseRef = chave;
     return _quadroBase;
   } catch(_) { return null; }
+};
+
+/* dados de outro painel (para o histórico do colaborador no Quadro) */
+const _pacCache = {};
+window.CRV_DADOS = async function(painel){
+  try {
+    const { data: d, error } = await sb.from('pacotes').select('referencia,conteudo,atualizado_em').eq('painel', painel).maybeSingle();
+    if (error || !d) return null;
+    const chave = d.atualizado_em || d.referencia;
+    if (_pacCache[painel] && _pacCache[painel].k === chave) return _pacCache[painel].v;
+    let c = d.conteudo;
+    if (c && c.arquivo) c = await lerArquivoPacote(painel, c.arquivo);
+    const o = {};
+    if (c && c.blocos) c.blocos.forEach(b => (b.itens || []).forEach(i => { o[i.nome] = i.valor; }));
+    else if (c && c.dados) { if (Array.isArray(c.dados) && Array.isArray(c.nomes)) c.nomes.forEach((n, i) => o[n] = c.dados[i]); else Object.assign(o, c.dados); }
+    const v = { dados:o, referencia:d.referencia || '' };
+    _pacCache[painel] = { k:chave, v };
+    return v;
+  } catch(_) { return null; }
+};
+window.CRV_REGS = async function(painel, colecao){
+  try {
+    const r = await sb.from('registros').select('doc_id,dados').eq('painel', painel).eq('colecao', colecao).range(0, 4999);
+    return r.error ? [] : (r.data || []).map(x => Object.assign({ _id:x.doc_id }, x.dados || {}));
+  } catch(_) { return []; }
+};
+/* sanções (planilha + emitidas no app) e RD de uma matrícula */
+window.CRV_HIST_COLAB = async function(mat){
+  mat = String(mat || '').trim().replace(/^0+(?=\d)/, '');
+  const mm = v => String(v == null ? '' : v).trim().replace(/^0+(?=\d)/, '');
+  const out = { sanc:[], rd:[], refS:'', refR:'' };
+  const [S, SD, R, RN] = await Promise.all([window.CRV_DADOS('sancoes'), window.CRV_REGS('sancoes', 'documentos'), window.CRV_DADOS('rd'), window.CRV_REGS('rd', 'novos')]);
+  try {
+    const DB = S && S.dados.DB;
+    if (DB && Array.isArray(DB.R)) {
+      out.refS = S.referencia;
+      DB.R.forEach(r => { if (mm(r[1]) !== mat) return;
+        out.sanc.push({ data:r[2], t:r[0] ? 'sus' : 'adv', sq:r[3], dias:r[0] ? r[5] : null, ini:r[6] || '', fim:r[7] || '', assunto:'', motivo:DB.M[r[4]] || '', cat:(DB.CATS || [])[(DB.MC || [])[r[4]]] || '', app:false }); });
+    }
+  } catch(_){}
+  (SD || []).forEach(d => { if (d.excluido || mm(d.mat) !== mat || !d.data) return;
+    out.sanc.push({ data:d.data, t:d.tipo, sq:null, dias:d.tipo === 'sus' ? (parseInt(d.dias, 10) || null) : null, ini:d.tipo === 'sus' ? d.ini || '' : '', fim:d.tipo === 'sus' ? d.fim || '' : '',
+      assunto:d.assunto || d.oAss || '', motivo:String(d.desc || d.obj || '').replace(/\*\*/g, ''), cat:'', app:true, junto:!!d.junto && d.tipo !== 'ori' }); });
+  out.sanc.sort((a, b) => String(a.data).localeCompare(String(b.data)));
+  const mx = { adv:0, sus:0 };
+  out.sanc.forEach(x => { if (x.t === 'ori') return; if (x.sq == null) x.sq = (mx[x.t] || 0) + 1; mx[x.t] = Math.max(mx[x.t] || 0, +x.sq || 0); });
+  out.sanc.reverse();
+  try {
+    const D = R && R.dados.D;
+    if (D && Array.isArray(D.rows)) {
+      out.refR = R.referencia;
+      D.rows.forEach(r => { if (mm(r[2]) !== mat) return; out.rd.push({ rd:r[0], data:r[1], acao:r[10] || '', val:r[11], obs:r[14] || '', fato:'' }); });
+    }
+  } catch(_){}
+  (RN || []).forEach(d => { if (d.excluida || mm(d.mat) !== mat) return; out.rd.push({ rd:d.rd, data:d.data, acao:d.acao || '', val:d.val, obs:d.obs || '', fato:d.fato || '' }); });
+  out.rd.sort((a, b) => String(b.data).localeCompare(String(a.data)));
+  return out;
 };
 
 function jsValor(v){
