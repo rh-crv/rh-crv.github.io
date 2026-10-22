@@ -499,6 +499,8 @@ render();lerPedidos();
 .df-cab{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;padding:15px 20px;border-bottom:1px solid #dde2ea}
 .df-cab h3{margin:0;font-size:18px;flex:1;min-width:260px}.df-cab h3 small{display:block;font-size:12.5px;font-weight:400;color:#5d6a85;margin-top:3px}
 .df-corpo{padding:14px 20px;overflow:auto}
+.df-inline .df-modal{width:100%;box-shadow:none;border:1px solid #e3e7ee;max-height:none}.df-inline .df-corpo{overflow:visible}
+.df-vf{font:inherit;font-size:12px;font-weight:700;border:1px solid #b9dcc8;background:#e6f4ec;color:#1d5c3a;border-radius:7px;padding:4px 9px;cursor:pointer;white-space:nowrap}.df-vf.des{background:#fff;border-color:#dde2ea;color:#5d6a85}.df-vok{font-size:11.5px;color:#1d5c3a;margin-top:3px}
 .df-esc{position:absolute;inset:0;background:rgba(20,24,34,.45);display:flex;align-items:center;justify-content:center;border-radius:16px;z-index:5}.df-esc-c{background:#fff;border-radius:14px;padding:18px;width:min(420px,92%);box-shadow:0 12px 40px rgba(0,0,0,.3)}.df-esc-c h4{margin:0 0 4px;font-size:16px;color:#5c1220}.df-esc-c p{margin:0 0 12px;color:#5d6a85;font-size:13px}.df-esc-c button{display:block;width:100%;text-align:left;font:inherit;border:1px solid #e3d3d7;background:#fff;border-radius:10px;padding:10px 12px;margin:0 0 8px;cursor:pointer}.df-esc-c button:hover{background:#fbf3f5;border-color:#7d1a2c}.df-esc-c button b{display:block;color:#5c1220;font-size:14px}.df-esc-c button small{color:#5d6a85;font-size:12px}.df-esc-c .df-esc-x{text-align:center;color:#5d6a85;border-color:#dde2ea}
 .df-b{font:inherit;font-size:13px;font-weight:600;border:1px solid #dde2ea;background:#fff;color:inherit;border-radius:9px;padding:7px 12px;cursor:pointer;white-space:nowrap}
 .df-b.pri{background:#7d1a2c;border-color:#7d1a2c;color:#fff}.df-b:disabled{opacity:.5;cursor:default}
@@ -554,7 +556,7 @@ async function montar(tx){const q=window.parent&&window.parent.CRV_QUADRO?await 
     const cc=p.cc||a.cc||'',ccd=p.cc?(p.ccd||a.ccd||''):(a.ccd||p.ccd||'');
     if(!p.nome)conf.push('Matrícula não encontrada no Quadro');
     if(dsl)conf.push('Desligado em '+br(p.deslig)+': descontar na rescisão'+(p.cc?' (último centro de custo antes do desligamento)':''));
-    if(p.situacao==='Afastado')conf.push('Afastado no Quadro');
+    if(p.situacao==='Afastado')conf.push('Afastado: desconto em folha normal; bloquear o cartão na Sysprocard durante o afastamento');
     if(a.cc&&p.cc&&String(a.cc)!==String(p.cc))conf.push('Centro de custo mudou: antes '+a.cc+', agora '+p.cc);
     if(!cc)conf.push('Sem centro de custo: informar');
     return{mat:t.mat,nome:p.nome||t.nometxt,func:p.funcao||'',valor:t.valor,marc,cc:String(cc),ccd,desl:p.situacao==='Desligado',conf}});
@@ -577,19 +579,23 @@ async function pdfLinhas(file){
 async function xlsLinhas(file){const X=window.XLSX||(window.parent&&window.parent.XLSX);if(!X)throw new Error('Leitor de Excel indisponível.');const wb=X.read(new Uint8Array(await file.arrayBuffer()),{type:'array'});const out=[];
   wb.SheetNames.forEach(n=>X.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:false}).forEach(r=>out.push(r.map(c=>c==null?'':String(c)).join(' '))));return out}
 /* ---------- cálculos ---------- */
+const sigConf=x=>(x.conf||[]).join(' | ');
+const soInfo=x=>x.conf.length>0&&x.conf.every(t=>/^(Valor pago pela empresa|Josail|Afastado:)/.test(t));
+const verif=x=>!!(x.verif&&x.verif.sig===sigConf(x));
+const pend=x=>!x.desl&&x.conf.length>0&&!soInfo(x)&&!verif(x);
+let VERV=false;
 function calc(){const it=F.itens;it.forEach(x=>{x.desc=descDe(x)});
-  const T={n:it.length,v:0,d:0,e:0,conf:0,desl:0,dv:0};it.forEach(x=>{T.v+=x.valor;T.d+=x.desc;if(!x.desl&&x.conf.length&&!(x.conf.length===1&&/^Valor pago pela empresa/.test(x.conf[0])))T.conf++;if(x.desl){T.desl++;T.dv+=x.desc}});T.e=T.v-T.d;
+  const T={n:it.length,v:0,d:0,e:0,conf:0,desl:0,dv:0};it.forEach(x=>{T.v+=x.valor;T.d+=x.desc;if(pend(x))T.conf++;if(x.desl){T.desl++;T.dv+=x.desc}});T.e=T.v-T.d;
   const C={};it.forEach(x=>{const k=x.cc||'—';const c=C[k]||(C[k]={cc:k,nome:x.ccd,n:0,v:0,d:0,L:[]});c.n++;c.v+=x.valor;c.d+=x.desc;c.L.push(x)});
   Object.values(C).forEach(c=>{const s=F.cc&&F.cc[c.cc];c.s=s||null;if(s){c.nome=s.nome||c.nome;c.depois=s.dif-c.v;c.st=s.dif<0?'est':c.depois<0?'sem':'ok'}else c.st=F.ccRef?'fora':'nd'});
   return{T,C:Object.values(C)}}
 const STC={ok:['Com saldo','df-ok'],sem:['Fica sem saldo','df-am'],est:['Já estourado','df-er'],fora:['Fora do relatório de saldos','df-mu'],nd:['Carregue os saldos','df-mu']};
 /* ---------- tela ---------- */
-function fechar(){if(W){W.remove();W=null}}
-async function abrir(){fechar();W=document.createElement('div');W.className='df-fundo';
+function fechar(){}
+async function abrir(){const aba=document.querySelector('#vtabs [data-v=d]');if(aba&&!aba.classList.contains('on'))aba.click();const sec=document.getElementById('vD');if(W===sec){sec.scrollIntoView({behavior:'smooth',block:'start'});return}W=sec;W.className='box df-inline';
   W.innerHTML='<div class="df-modal" role="dialog" aria-modal="true"><div class="df-cab"><h3>Desconto em folha · Cartão Convênio<small>Carregue o TXT de consumo da Sysprocard do fechamento (21 a 20). Metade só para quem tem crédito de R$ 1.080 na Sysprocard (alojados motoristas e operadores de máquinas); os demais pagam 100%, mesmo alojados; o Josail é pago 100% pela empresa. Centro de custo: carregue a planilha atualizada do sistema; desligados ficam com o centro de custo de antes do desligamento.</small></h3>'
-   +'<select class="df-b" id="dfSel"></select><button class="df-b" id="dfTxt">Carregar TXT do fechamento</button><button class="df-b" id="dfCC">Carregar planilha de centros de custo</button><button class="df-b" id="dfAnt">Trazer do mês anterior (Excel do DP)</button><button class="df-b" id="dfSal">Carregar saldos dos centros de custo</button><button class="df-b pri" id="dfXls">Excel</button><button class="df-b" id="dfPdf">PDF</button><button class="df-b" id="dfX">Fechar</button></div><div class="df-corpo"><p>Carregando…</p></div></div>';
-  document.body.appendChild(W);W.addEventListener('mousedown',e=>{if(e.target===W)fechar()});
-  const g=id=>W.querySelector('#'+id);g('dfX').onclick=fechar;
+   +'<select class="df-b" id="dfSel"></select><button class="df-b" id="dfTxt">Carregar TXT do fechamento</button><button class="df-b" id="dfCC">Carregar planilha de centros de custo</button><button class="df-b" id="dfAnt">Trazer do mês anterior (Excel do DP)</button><button class="df-b" id="dfSal">Carregar saldos dos centros de custo</button><button class="df-b pri" id="dfXls">Excel</button><button class="df-b" id="dfPdf">PDF</button></div><div class="df-corpo"><p>Carregando…</p></div></div>';
+  const g=id=>W.querySelector('#'+id);
   const pick=(acc,fn)=>{const i=document.createElement('input');i.type='file';i.accept=acc;i.onchange=()=>{if(i.files[0])fn(i.files[0])};i.click()};
   g('dfTxt').onclick=()=>pick('.txt,text/plain',async f=>{try{const tx=await lerTxt(f);if(!tx.fim)throw new Error('Não encontrei o período no TXT.');
       const ja=FS.find(x=>x._id===tx.fim.slice(0,7));if(ja&&!confirm('Já existe o fechamento de '+br(ja.ini)+' a '+br(ja.fim)+'. Substituir pelo TXT novo? As marcações feitas à mão serão refeitas.'))return;
@@ -617,7 +623,7 @@ async function abrir(){fechar();W=document.createElement('div');W.className='df-
       F.ccPlan=ref;F.ccPlanEm=new Date().toISOString();await gravar();desenhar('Planilha de centros de custo aplicada: '+nA+' centros de custo atualizados; '+nF+' pessoa(s) que não estão na planilha foram tratadas como desligadas (descontar na rescisão). Desligados mantêm o centro de custo de antes.')}catch(er){desenhar('',er.message)}})};
   g('dfSel').onchange=()=>{F=FS.find(x=>x._id===g('dfSel').value)||null;desenhar()};
   g('dfXls').onclick=()=>F&&excel().catch(er=>desenhar('',er.message));g('dfPdf').onclick=()=>F&&pdfRes().catch(er=>desenhar('',er.message));
-  await lerTodos();FS.forEach(f=>(f.itens||[]).forEach(x=>{if(x.manual)return;x.conf=(x.conf||[]).filter(t=>!/alojamento|como no (mês|fechamento) anterior/.test(t));x.marc=V.excEsp[x.mat]?'NÃO':e1080(ROW[x.mat])?'SIM':''}));F=FS[0]||null;desenhar()}
+  await lerTodos();FS.forEach(f=>(f.itens||[]).forEach(x=>{if(x.manual)return;x.conf=(x.conf||[]).filter(t=>!/alojamento|como no (mês|fechamento) anterior/.test(t)).map(t=>t==='Afastado no Quadro'?'Afastado: desconto em folha normal; bloquear o cartão na Sysprocard durante o afastamento':t);x.marc=V.excEsp[x.mat]?'NÃO':e1080(ROW[x.mat])?'SIM':''}));F=FS[0]||null;desenhar()}
 function desenhar(ok,er){if(!W)return;const g=id=>W.querySelector('#'+id),C=W.querySelector('.df-corpo');
   g('dfSel').innerHTML=FS.length?FS.map(f=>'<option value="'+e_(f._id)+'"'+(F&&F._id===f._id?' selected':'')+'>Fechamento '+br(f.ini)+' a '+br(f.fim)+'</option>').join(''):'<option>Nenhum fechamento</option>';
   ['dfXls','dfPdf','dfSal','dfAnt','dfCC'].forEach(id=>g(id).disabled=!F);
@@ -627,24 +633,32 @@ function desenhar(ok,er){if(!W)return;const g=id=>W.querySelector('#'+id),C=W.qu
   if(F.totalTxt!=null&&Math.abs(F.totalTxt-T.v)>0.02)h+='<div class="df-av er">O total lido ('+brl(T.v)+') não bate com o total do TXT ('+brl(F.totalTxt)+'). Confira o arquivo.</div>';
   const K=[['pes','','Pessoas',T.n,'no TXT da Sysprocard','#7d1a2c'],['pes','','Consumo',  'R$ '+brl(T.v),'custo total do cartão','#5c1220'],['pes','SIM','Desconto em folha','R$ '+brl(T.d),'metade de quem tem crédito R$ 1.080; integral dos demais','#1f3a68'],['pes','EMP','Fica com a empresa','R$ '+brl(T.e),'metade dos R$ 1.080 e quem não desconta','#8a5a00'],['conf','','A conferir',T.conf,'antes de enviar ao DP','#c2410c'],['desl','','Desligados',T.desl,'R$ '+brl(T.dv)+' para a rescisão','#5d6a85'],['cc','','Centros de custo',F.ccRef?sem.length+est.length:'—',F.ccRef?sem.length+' ficam sem saldo · '+est.length+' já estourados':'carregue os saldos','#a3301c']];
   h+='<div class="df-k">'+K.map((k,i)=>'<button data-i="'+i+'" class="'+(TAB===k[0]&&FIL===k[1]?'on':'')+'" style="--kc:'+k[5]+'"><span>'+k[2]+'</span><b>'+k[3]+'</b><small>'+e_(k[4])+'</small></button>').join('')+'</div>';
-  h+='<div class="df-tabs">'+[['pes','Pessoas'],['cc','Centros de custo'],['conf','A conferir ('+T.conf+')'],['desl','Desligados ('+T.desl+')']].map(t=>'<button data-t="'+t[0]+'" class="'+(TAB===t[0]?'on':'')+'">'+t[1]+'</button>').join('')+'</div>';
+  const AFS=F.itens.filter(x=>!x.desl&&x.conf.some(t=>/^Afastado:/.test(t))).sort((a,b)=>a.nome.localeCompare(b.nome));
+  if(AFS.length)h+='<div style="background:#fff4dc;border:1px solid #f0d08a;color:#6b4700;border-radius:10px;padding:9px 12px;margin:0 0 10px;font-size:13px"><b>Bloquear o cartão durante o afastamento:</b> '+AFS.map(x=>e_(tcx(x.nome))+' ('+e_(x.mat)+')').join(', ')+'. O desconto em folha deles segue normal.</div>';
+  h+='<div class="df-tabs">'+[['pes','Pessoas'],['cc','Centros de custo'],['conf','A conferir ('+T.conf+')'+(T.conf?'':' ✓')],['desl','Desligados ('+T.desl+')']].map(t=>'<button data-t="'+t[0]+'" class="'+(TAB===t[0]?'on':'')+'">'+t[1]+'</button>').join('')+'</div>';
   if(TAB==='cc'){
     if(!F.ccRef)h+='<div class="df-av in">Carregue o relatório "Saldos por Centro de Custo" (grupo Vale Refeição) em PDF ou Excel para ver quem tem saldo. O saldo é comparado com o consumo total do cartão.</div>';
     else h+='<div class="df-av in">Relatório de '+e_(F.ccRef)+(F.ccPer?' · período '+e_(F.ccPer):'')+'. Saldo depois = saldo do relatório − consumo total do cartão neste fechamento.</div>';
     const ord={est:0,sem:1,fora:2,nd:3,ok:4};const L=CC.slice().sort((a,b)=>ord[a.st]-ord[b.st]||b.v-a.v);
     h+='<div style="overflow:auto;max-height:58vh"><table class="df-tb"><thead><tr><th>C. custo</th><th>Descrição</th><th class="n">Pessoas</th><th class="n">Consumo</th><th class="n">Desconto</th><th class="n">Saldo antes</th><th class="n">Saldo depois</th><th>Situação</th></tr></thead><tbody>'
      +L.map(c=>'<tr data-cc="'+e_(c.cc)+'" style="cursor:pointer"><td>'+e_(c.cc)+'</td><td>'+e_(c.nome)+'</td><td class="n">'+c.n+'</td><td class="n">'+brl(c.v)+'</td><td class="n">'+brl(c.d)+'</td><td class="n">'+(c.s?brl(c.s.dif):'—')+'</td><td class="n">'+(c.s?brl(c.depois):'—')+'</td><td><span class="df-st '+STC[c.st][1]+'">'+STC[c.st][0]+'</span></td></tr>').join('')+'</tbody></table></div>'}
-  else{let L=F.itens.slice();if(TAB==='conf')L=L.filter(x=>x.conf.length);if(TAB==='desl')L=L.filter(x=>x.desl);if(FIL==='SIM')L=L.filter(x=>x.marc==='SIM');if(FIL==='EMP')L=L.filter(x=>x.marc);if(FIL.startsWith('cc:'))L=L.filter(x=>x.cc===FIL.slice(3));
+  else{let L=F.itens.slice();if(TAB==='conf')L=L.filter(x=>VERV?(!x.desl&&x.conf.length&&!soInfo(x)&&verif(x)):pend(x));if(TAB==='desl')L=L.filter(x=>x.desl);if(FIL==='SIM')L=L.filter(x=>x.marc==='SIM');if(FIL==='EMP')L=L.filter(x=>x.marc);if(FIL.startsWith('cc:'))L=L.filter(x=>x.cc===FIL.slice(3));
     const q=Q.trim().toLowerCase();if(q)L=L.filter(x=>(x.nome+' '+x.mat+' '+x.cc+' '+x.ccd).toLowerCase().includes(q));L.sort((a,b)=>a.nome.localeCompare(b.nome));
+    if(TAB==='conf'&&!L.length&&!q&&!VERV){const nv=F.itens.filter(x=>!x.desl&&x.conf.length&&!soInfo(x)&&verif(x)).length;h+='<p style="padding:14px;background:#e6f4ec;color:#1d5c3a;border-radius:10px;margin:0"><b>Tudo conferido.</b> Não há alertas pendentes neste fechamento.'+(nv?' <button class="df-b" id="dfVV" style="margin-left:8px">Ver verificados ('+nv+')</button>':'')+'</p>'}
+    else{
+    if(TAB==='conf'){const nv=F.itens.filter(x=>!x.desl&&x.conf.length&&!soInfo(x)&&verif(x)).length;h+='<div class="df-tools" style="margin-bottom:6px"><span class="df-msg" style="flex:1">'+(VERV?'Alertas já verificados. Clique em Desfazer para voltar um para A conferir.':'Confira cada alerta e clique em <b>Verificado</b>: ele é salvo e sai desta aba.')+'</span>'+(nv||VERV?'<button class="df-b" id="dfVV">'+(VERV?'Voltar aos pendentes':'Ver verificados ('+nv+')')+'</button>':'')+'</div>'}
     h+='<div class="df-tools"><input id="dfQ" placeholder="Buscar nome, matrícula ou centro de custo" value="'+e_(Q)+'" style="flex:1;min-width:220px">'+(FIL?'<button class="df-b" id="dfLimpa">Limpar filtro</button>':'')+'<span class="df-msg">'+L.length+' pessoas · desconto R$ '+brl(L.reduce((s,x)=>s+x.desc,0))+'</span></div>'
-     +'<div style="overflow:auto;max-height:58vh"><table class="df-tb"><thead><tr><th>Marcação</th><th>Nome</th><th>Matrícula</th><th class="n">Valor</th><th class="n">Desconto</th><th>C. custo</th><th>O que conferir</th></tr></thead><tbody>'
-     +L.map(x=>'<tr><td><select data-m="'+e_(x.mat)+'"><option value=""'+(!x.marc?' selected':'')+'>Integral</option><option value="SIM"'+(x.marc==='SIM'?' selected':'')+'>SIM (metade)</option><option value="NÃO"'+(x.marc==='NÃO'?' selected':'')+'>NÃO (empresa)</option></select></td><td><b>'+e_(tcx(x.nome))+'</b><div style="font-size:12px;color:#5d6a85">'+e_(tcx(x.func))+'</div></td><td>'+e_(x.mat)+'</td><td class="n">'+brl(x.valor)+'</td><td class="n"><b>'+brl(x.desc)+'</b></td><td><input data-c="'+e_(x.mat)+'" value="'+e_(x.cc)+'" style="width:64px;font:inherit;font-size:12.5px;padding:3px 6px;border:1px solid #dde2ea;border-radius:6px"><div style="font-size:11.5px;color:#5d6a85">'+e_(x.ccd)+'</div></td><td style="font-size:12px;color:#8a2a1a">'+e_(x.conf.join(' · '))+'</td></tr>').join('')+'</tbody></table></div>'}
+     +'<div style="overflow:auto;max-height:58vh"><table class="df-tb"><thead><tr><th>Marcação</th><th>Nome</th><th>Matrícula</th><th class="n">Valor</th><th class="n">Desconto</th><th>C. custo</th><th>O que conferir</th>'+(TAB==='conf'?'<th></th>':'')+'</tr></thead><tbody>'
+     +L.map(x=>'<tr><td><select data-m="'+e_(x.mat)+'"><option value=""'+(!x.marc?' selected':'')+'>Integral</option><option value="SIM"'+(x.marc==='SIM'?' selected':'')+'>SIM (metade)</option><option value="NÃO"'+(x.marc==='NÃO'?' selected':'')+'>NÃO (empresa)</option></select></td><td><b>'+e_(tcx(x.nome))+'</b><div style="font-size:12px;color:#5d6a85">'+e_(tcx(x.func))+'</div></td><td>'+e_(x.mat)+'</td><td class="n">'+brl(x.valor)+'</td><td class="n"><b>'+brl(x.desc)+'</b></td><td><input data-c="'+e_(x.mat)+'" value="'+e_(x.cc)+'" style="width:64px;font:inherit;font-size:12.5px;padding:3px 6px;border:1px solid #dde2ea;border-radius:6px"><div style="font-size:11.5px;color:#5d6a85">'+e_(x.ccd)+'</div></td><td style="font-size:12px;color:#8a2a1a">'+e_(x.conf.join(' · '))+(verif(x)?'<div class="df-vok">Verificado por '+e_(String(x.verif.por||'').split(' ')[0])+' em '+e_(new Date(x.verif.em).toLocaleDateString('pt-BR'))+'</div>':'')+'</td>'+(TAB==='conf'?'<td>'+(verif(x)?'<button class="df-vf des" data-vf="'+e_(x.mat)+'" data-des="1">Desfazer</button>':'<button class="df-vf" data-vf="'+e_(x.mat)+'">Verificado</button>')+'</td>':'')+'</tr>').join('')+'</tbody></table></div>'}}
   C.innerHTML=h;
   C.querySelectorAll('.df-k [data-i]').forEach(b=>b.onclick=()=>{const k=K[+b.dataset.i];TAB=k[0];FIL=k[1];desenhar()});
   C.querySelectorAll('.df-tabs [data-t]').forEach(b=>b.onclick=()=>{TAB=b.dataset.t;FIL='';desenhar()});
   C.querySelectorAll('[data-cc]').forEach(r=>r.onclick=()=>{TAB='pes';FIL='cc:'+r.dataset.cc;desenhar()});
   const qi=C.querySelector('#dfQ');if(qi)qi.oninput=()=>{Q=qi.value;clearTimeout(qi._t);qi._t=setTimeout(()=>{desenhar();const n=W.querySelector('#dfQ');n.focus();n.setSelectionRange(n.value.length,n.value.length)},300)};
   const lp=C.querySelector('#dfLimpa');if(lp)lp.onclick=()=>{FIL='';desenhar()};
+  const vv=C.querySelector('#dfVV');if(vv)vv.onclick=()=>{VERV=!VERV;desenhar()};
+  C.querySelectorAll('[data-vf]').forEach(b=>b.onclick=async()=>{const x=F.itens.find(y=>y.mat===b.dataset.vf);b.disabled=true;const ant=x.verif;x.verif=b.dataset.des?null:{sig:sigConf(x),por:quem(),em:new Date().toISOString()};
+    try{await gravar();desenhar(b.dataset.des?'Alerta de '+tcx(x.nome)+' voltou para A conferir.':'Alerta de '+tcx(x.nome)+' verificado e salvo.')}catch(er){x.verif=ant;desenhar('',er.message)}});
   C.querySelectorAll('[data-m]').forEach(s=>s.onchange=async()=>{const x=F.itens.find(y=>y.mat===s.dataset.m);x.marc=s.value;x.manual=true;try{await gravar();desenhar('Marcação de '+tcx(x.nome)+' salva.')}catch(er){desenhar('',er.message)}});
   C.querySelectorAll('[data-c]').forEach(s=>s.onchange=async()=>{const x=F.itens.find(y=>y.mat===s.dataset.c);x.cc=s.value.trim();const c=F.cc&&F.cc[x.cc];if(c)x.ccd=c.nome;x.conf=x.conf.filter(t=>!/^Sem centro de custo/.test(t));try{await gravar();desenhar('Centro de custo de '+tcx(x.nome)+' salvo.')}catch(er){desenhar('',er.message)}})}
 /* ---------- arquivos ---------- */
@@ -700,6 +714,12 @@ async function pdfRes(){const J=(window.jspdf&&window.jspdf.jsPDF)||(window.pare
   await salvarArq(nomeArq('pdf').replace(/\.pdf$/,suf+'.pdf'),new Uint8Array((await (window.parent.CRV_PDF_LOGOS||window.CRV_PDF_LOGOS||(d=>d))(doc,{syspro:true})).output('arraybuffer')),'application/pdf')}
 window.CRV_DESCFOLHA=abrir;
 const hb=document.querySelector('.hacts');if(hb){const b=document.createElement('button');b.className='btn rel';b.textContent='Desconto em folha';b.onclick=abrir;hb.insertBefore(b,hb.firstChild)}
+/* aba "Descontos em folha" dentro do painel (ao lado de Por setor e Nominal) */
+(function(){const vt=document.getElementById('vtabs'),vN=document.getElementById('vN'),vS=document.getElementById('vS');if(!vt||!vN)return;
+  const bt=document.createElement('button');bt.dataset.v='d';bt.textContent='Descontos em folha';vt.appendChild(bt);
+  const sec=document.createElement('section');sec.id='vD';sec.className='box';sec.hidden=true;vN.parentNode.insertBefore(sec,vN.nextSibling);
+  const sync=()=>{const on=vS.hidden&&vN.hidden;sec.hidden=!on;if(on&&W!==sec)abrir()};
+  new MutationObserver(sync).observe(vS,{attributes:true,attributeFilter:['hidden']});new MutationObserver(sync).observe(vN,{attributes:true,attributeFilter:['hidden']});})();
 })();
 </script>
 
