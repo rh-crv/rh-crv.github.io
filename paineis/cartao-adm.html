@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cartão Convênio ADM</title>
+<style>
+:root{--bg:#f4f5f8;--card:#fff;--ink:#1d2433;--mut:#667085;--line:#e4e7ec;--trk:#eef0f4;
+ --acc:#7d1a2c;--acc2:#4a0e1a;--accbg:#f7e9ec;--ok:#2e8a57;--okbg:#e6f3ec;--warn:#b7791f;--warnbg:#fcf1dc;--bad:#b42318;--badbg:#fdecea;--info:#5b5f97;--infobg:#eeeefa;--mutbg:#f1f3f6}
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,sans-serif}
+header{background:linear-gradient(120deg,var(--acc2),var(--acc));color:#fff}
+.hin{max-width:1280px;margin:0 auto;padding:16px 18px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.logo{background:#fff;border-radius:10px;padding:6px 10px;display:flex}.logo img{height:40px;display:block}
+.ttl{flex:1;min-width:220px}.ttl .eb{font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.8;font-weight:700}
+.ttl h1{margin:2px 0 0;font-size:22px}.ttl small{display:block;opacity:.85;font-size:12.5px;margin-top:2px}
+.hacts{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:8px 13px;font:600 13px inherit;font-family:inherit;cursor:pointer}
+header .btn{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.3);color:#fff}header .btn.pri{background:#fff;color:var(--acc2);border-color:#fff}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+main{max-width:1280px;margin:0 auto;padding:16px 18px 40px}
+.per{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.per .lab{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);margin-right:4px}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:99px;padding:5px 12px;font:inherit;font-size:13px;cursor:pointer;color:var(--ink)}
+.chip.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:10px;margin-bottom:14px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;border-left:4px solid var(--c,var(--acc));text-align:left;font:inherit;color:inherit;cursor:pointer}
+.kpi.on{outline:2px solid var(--c,var(--acc));outline-offset:-1px}
+.kpi .l{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--mut)}.kpi .v{font-size:25px;font-weight:700;line-height:1.15;margin-top:2px}.kpi .s{font-size:12px;color:var(--mut)}
+.nota{display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin-bottom:14px}
+.nota input{border:1px solid var(--line);border-radius:8px;padding:7px 10px;font:inherit;width:150px}
+.nota .res{font-size:13.5px}.nota .res b.ok{color:var(--ok)}.nota .res b.bad{color:var(--bad)}
+.vtabs{display:flex;gap:4px;margin:0 0 12px;border-bottom:1px solid var(--line)}
+.vtabs button{border:0;background:none;padding:9px 16px;font:600 14px inherit;font-family:inherit;color:var(--mut);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px}
+.vtabs button.on{color:var(--acc2);border-bottom-color:var(--acc)}
+.box{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.box h2{margin:0 0 2px;font-size:16px}.sub{margin:0 0 10px;color:var(--mut);font-size:12.5px}
+.tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.tools input,.tools select{border:1px solid var(--line);border-radius:8px;padding:7px 10px;font:inherit;background:var(--card)}
+.tools input{min-width:220px;flex:1}.tools .cnt{color:var(--mut);font-size:12.5px;margin-left:auto}
+.tab{overflow:auto;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+table{width:100%;border-collapse:collapse;font-size:13px}th{position:sticky;top:0;background:#f8f9fb;text-align:left;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mut);padding:8px 9px;z-index:1;white-space:nowrap}
+td{padding:7px 9px;border-top:1px solid var(--line);vertical-align:top}td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+td .sm{font-size:11.5px;color:var(--mut)}tfoot td{font-weight:700;background:#f8f9fb}
+.pill{display:inline-block;border-radius:99px;padding:2px 9px;font-size:11.5px;font-weight:700;white-space:nowrap}
+.p-ok{background:var(--okbg);color:var(--ok)}.p-warn{background:var(--warnbg);color:var(--warn)}.p-bad{background:var(--badbg);color:var(--bad)}.p-info{background:var(--infobg);color:var(--info)}
+.mini{border:1px solid var(--line);background:var(--card);border-radius:7px;padding:4px 8px;font:600 12px inherit;font-family:inherit;cursor:pointer;color:var(--ink);white-space:nowrap}
+.mini.pri{background:var(--acc);border-color:var(--acc);color:#fff}.mini.perigo{color:var(--bad);border-color:#e9c0b9}.mini.perigo.conf{background:var(--bad);color:#fff}
+.mapa{display:grid;grid-template-columns:repeat(auto-fill,minmax(54px,1fr));gap:6px}
+.cel{border:1px solid var(--line);border-radius:8px;padding:6px 4px;text-align:center;cursor:pointer;background:var(--card);font:inherit}
+.cel b{display:block;font-size:15px}.cel span{display:block;font-size:10px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cel.uso{background:var(--warnbg);border-color:#e9c98f}.cel.dev{background:var(--okbg);border-color:#b8dcc6}.cel.prob{background:var(--badbg);border-color:#efb7ae}
+.lg{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--mut);margin-bottom:10px}.lg i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px;border:1px solid var(--line)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.hr{display:grid;grid-template-columns:minmax(110px,1fr) 1.6fr auto;gap:10px;align-items:center;padding:5px 4px}
+.hr .t{height:10px;background:var(--trk);border-radius:5px;overflow:hidden;display:flex}.hr .t i{display:block;height:100%}
+.hr .v{font-size:12.5px;white-space:nowrap;color:var(--mut)}.hr .v b{color:var(--ink)}
+.fundo{position:fixed;inset:0;background:rgba(10,20,40,.55);z-index:60;display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;overflow:auto}
+.modal{background:#fff;border-radius:12px;max-width:820px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.mcab{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line)}.mcab h3{margin:0;flex:1;font-size:16px}.mcab small{display:block;color:var(--mut);font-weight:400;font-size:12px}
+.mcorpo{padding:14px 18px;display:grid;grid-template-columns:repeat(12,1fr);gap:10px 12px}
+.c{display:flex;flex-direction:column;gap:4px;grid-column:span 3}.c.w2{grid-column:span 2}.c.w4{grid-column:span 4}.c.w5{grid-column:span 5}.c.w6{grid-column:span 6}.c.w7{grid-column:span 7}.c.w12{grid-column:1/-1}
+.c label{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--mut)}
+.c input,.c select,.c textarea{border:1px solid #d5dbe6;border-radius:7px;padding:7px 9px;font:inherit;background:#f7f9fc;color:var(--ink)}
+.c textarea{min-height:48px;resize:vertical}
+.info{grid-column:1/-1;background:var(--mutbg);border-radius:8px;padding:8px 10px;font-size:12.5px}.info.ok{background:var(--okbg);color:#1d4d33}.info.av{background:var(--warnbg);color:#7a4a00}
+.sec{grid-column:1/-1;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--acc);border-bottom:1px solid var(--line);padding-bottom:4px;margin-top:4px}
+.mpe{display:flex;gap:8px;justify-content:flex-end;align-items:center;padding:12px 18px;border-top:1px solid var(--line)}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#1d2433;color:#fff;padding:9px 14px;border-radius:8px;font-size:13px;z-index:80}
+.foot{color:var(--mut);font-size:12px;margin-top:14px}
+@media (max-width:760px){.mcorpo>*{grid-column:1/-1!important}.grid2{grid-template-columns:1fr}}
+</style></head>
+<body>
+<header><div class="hin">
+  <span class="logo"><img alt="CRV Industrial" src="__CRV_BASE__img/logo-crv.png"></span>
+  <div class="ttl"><div class="eb">Benefícios · Sysprocard</div><h1>Cartão Convênio ADM</h1><small id="sub"></small></div>
+  <div class="hacts"><button class="btn pri" id="bNovo">+ Registrar entrega</button><button class="btn" id="bRel">Relatório do período</button></div>
+</div></header>
+<main>
+  <div class="per" id="per"></div>
+  <div class="kpis" id="kpis"></div>
+  <div class="nota" id="nota"></div>
+  <nav class="vtabs" id="vtabs"><button data-v="l">Lançamentos do período</button><button data-v="m">Mapa dos cartões</button><button data-v="r">Resumo</button></nav>
+  <section class="box" id="vL">
+    <div class="tools"><input id="q" type="search" placeholder="Buscar nome, nº do cartão, matrícula, setor ou solicitante"><select id="fSit"></select><select id="fSol"></select><span class="cnt" id="cnt"></span></div>
+    <div class="tab"><table><thead><tr><th>Entrega</th><th>Cartão</th><th>Colaborador</th><th>Setor / cargo</th><th>Refeição</th><th>Duração</th><th>Creditado</th><th>Consumido</th><th>Solicitante</th><th>Situação</th><th></th></tr></thead><tbody id="tb"></tbody><tfoot id="tf"></tfoot></table></div>
+  </section>
+  <section class="box" id="vM">
+    <h2>Mapa dos cartões 1 a <span id="nc"></span></h2><p class="sub">Situação de cada cartão hoje, pelo último lançamento dele. Clique num cartão para ver o histórico ou entregar.</p>
+    <div class="lg"><span><i style="background:var(--card)"></i>Disponível</span><span><i style="background:var(--warnbg)"></i>Em uso / aguardando devolução</span><span><i style="background:var(--okbg)"></i>Devolvido</span><span><i style="background:var(--badbg)"></i>Bloqueado, troca ou não devolvido</span></div>
+    <div class="mapa" id="mapa"></div>
+  </section>
+  <section id="vR" class="grid2">
+    <div class="box"><h2>Por solicitante</h2><p class="sub">Creditado e consumido no período.</p><div id="rSol"></div></div>
+    <div class="box"><h2>Por setor</h2><p class="sub">Creditado e consumido no período.</p><div id="rSet"></div></div>
+  </section>
+  <p class="foot" id="foot"></p>
+</main>
+<div class="toast" id="toast" hidden></div>
+<script>/*__CRV_DADOS_0__*/</script>
+<script>
+(function(){
+'use strict';
+const NC=(typeof CFG!=='undefined'&&CFG.cartoes)||170;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const nf=n=>Number(n).toLocaleString('pt-BR');
+const moeda=v=>'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const br=s=>s?String(s).slice(0,10).split('-').reverse().join('/'):'';
+const num=v=>{if(v==null||v==='')return 0;if(typeof v==='number')return v;let t=String(v).replace(/[R$\s]/g,'');if(t.includes(','))t=t.replace(/\./g,'').replace(',','.');const x=parseFloat(t);return isNaN(x)?0:x};
+const hojeISO=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+function toast(t){const e=$('toast');e.textContent=t;e.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>e.hidden=true,3200)}
+/* período de fechamento: dia 21 de um mês ao dia 20 do mês seguinte; o período leva o nome do mês em que fecha */
+const perDe=iso=>{const [y,m,d]=iso.split('-').map(Number);let Y=y,M=m;if(d>=21){M++;if(M>12){M=1;Y++}}return Y+'-'+String(M).padStart(2,'0')};
+const perIni=p=>{let [y,m]=p.split('-').map(Number);m--;if(m<1){m=12;y--}return y+'-'+String(m).padStart(2,'0')+'-21'};
+const perFim=p=>p+'-20';
+const perTxt=p=>br(perIni(p))+' a '+br(perFim(p));
+const perCurto=p=>{const M=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];const [y,m]=p.split('-').map(Number);const a=m===1?12:m-1;return `21/${String(a).padStart(2,'0')} a 20/${String(m).padStart(2,'0')}/${String(y).slice(2)}`};
+const proxPer=p=>{let [y,m]=p.split('-').map(Number);m++;if(m>12){m=1;y++}return y+'-'+String(m).padStart(2,'0')};
+const SITS=['Em uso','Aguardando devolução','Devolvido','Aguardando troca de cartão','Bloqueado','Não devolvido (foi embora com o cartão)','Extraviado'];
+const sitCls=s=>s==='Devolvido'?'p-ok':s==='Em uso'||s==='Aguardando devolução'?'p-warn':'p-bad';
+const aberto=s=>s==='Em uso'||s==='Aguardando devolução';
+
+let DB=null,U=[],NOTAS={};
+const S={p:perDe(hojeISO()),v:'l',q:'',sit:'',sol:'',k:''};
+async function carregar(){
+  try{DB=window.claude&&window.claude.use?await window.claude.use('db'):null}catch(_){DB=null}
+  if(!DB){render();return}
+  try{const [a,b]=await Promise.all([DB.collection('usos').get(),DB.collection('notas').get()]);
+    U=a.docs.map(d=>Object.assign({_id:d.id},d.data())).filter(x=>!x.excluido);NOTAS={};b.docs.forEach(d=>NOTAS[d.id]=d.data());
+    if(!U.some(x=>x.periodo===S.p)){const cd=[...new Set(U.map(x=>x.periodo))].sort();if(cd.length)S.p=cd[cd.length-1]}
+  }catch(e){toast('Não consegui ler os registros.')}
+  render();
+}
+const EXTRA=new Set();
+function periodos(){const s=new Set(U.map(x=>x.periodo));s.add(perDe(hojeISO()));EXTRA.forEach(p=>s.add(p));return [...s].sort()}
+const doPer=()=>U.filter(x=>x.periodo===S.p);
+const sel=()=>doPer().filter(x=>(!S.sit||x.situacao===S.sit)&&(!S.sol||x.solicitante===S.sol)&&(!S.k||(S.k==='aberto'?aberto(x.situacao):S.k==='prob'?!aberto(x.situacao)&&x.situacao!=='Devolvido':true))&&(!S.q||[x.nome,x.cartao,x.mat,x.setor,x.solicitante,x.cargo].join(' ').toUpperCase().includes(S.q.toUpperCase())));
+
+function render(){
+  const ps=periodos();
+  $('sub').textContent=`Cartões 1 a ${NC} para prestadores, dobras de turno, folgas e refeições das áreas · fechamento do dia 21 ao dia 20`;
+  $('per').innerHTML='<span class="lab">Período</span>'+ps.map(p=>`<button class="chip${p===S.p?' on':''}" data-p="${p}">${perCurto(p)}</button>`).join('')+`<button class="chip" id="pNovo" title="Abrir o próximo período">+ próximo período</button>`;
+  $('per').querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{S.p=b.dataset.p;S.k='';render()});
+  $('pNovo').onclick=()=>{S.p=proxPer(ps[ps.length-1]);EXTRA.add(S.p);render();toast('Período '+perTxt(S.p)+' aberto.')};
+  const L=doPer(),cred=L.reduce((s,x)=>s+num(x.creditado),0),cons=L.reduce((s,x)=>s+num(x.consumido),0);
+  const ab=L.filter(x=>aberto(x.situacao)),prob=L.filter(x=>!aberto(x.situacao)&&x.situacao!=='Devolvido');
+  const pessoas=new Set(L.map(x=>(x.mat||x.nome).toUpperCase())).size;
+  $('kpis').innerHTML=[
+    ['','Lançamentos',nf(L.length),`${nf(pessoas)} pessoas · ${nf(new Set(L.map(x=>x.cartao)).size)} cartões`,'var(--acc)'],
+    ['','Valor creditado',moeda(cred),'soma do período','var(--info)'],
+    ['','Valor consumido',moeda(cons),cred?Math.round(cons/cred*100)+'% do creditado':'—','var(--ok)'],
+    ['','Saldo não utilizado',moeda(cred-cons),'creditado − consumido','var(--mut)'],
+    ['aberto','Cartões em uso',nf(ab.length),'em uso ou aguardando devolução','var(--warn)'],
+    ['prob','Com pendência',nf(prob.length),'troca, bloqueio ou não devolvido','var(--bad)']
+  ].map(k=>`<button class="kpi${k[0]&&S.k===k[0]?' on':''}" style="--c:${k[4]}" ${k[0]?`data-k="${k[0]}"`:''}><div class="l">${k[1]}</div><div class="v">${k[2]}</div><div class="s">${k[3]}</div></button>`).join('');
+  $('kpis').querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{S.k=S.k===b.dataset.k?'':b.dataset.k;S.v='l';render()});
+  /* conferência com a nota */
+  const nt=NOTAS[S.p]||{};const vn=nt.valor!=null?num(nt.valor):null;
+  let res='Digite o valor da nota da Sysprocard deste período para conferir.';
+  if(vn!=null){const dc=vn-cons,dr=vn-cred;
+    res=`Nota: <b>${moeda(vn)}</b> · × consumido: <b class="${Math.abs(dc)<0.01?'ok':'bad'}">${Math.abs(dc)<0.01?'bate':(dc>0?'nota maior em ':'nota menor em ')+moeda(Math.abs(dc))}</b> · × creditado: <b class="${Math.abs(dr)<0.01?'ok':'bad'}">${Math.abs(dr)<0.01?'bate':(dr>0?'nota maior em ':'nota menor em ')+moeda(Math.abs(dr))}</b>${nt.por?` <span class="sm" style="color:var(--mut)">· lançada por ${esc(String(nt.por).split(' ')[0])} em ${br(nt.em)}</span>`:''}`}
+  $('nota').innerHTML=`<b>Conferência com a nota · ${perTxt(S.p)}</b><input id="nV" placeholder="Valor da nota" value="${vn!=null?vn.toLocaleString('pt-BR',{minimumFractionDigits:2}):''}"><button class="mini pri" id="nS">Salvar valor da nota</button><span class="res">${res}</span>`;
+  $('nS').onclick=async()=>{if(!DB){toast('Não dá para salvar nesta visualização.');return}const v=$('nV').value.trim();
+    try{await DB.collection('notas').doc(S.p).set({valor:v?num(v):null,em:new Date().toISOString(),por:(window.parent&&window.parent.CRV_QUEM)||''});NOTAS[S.p]={valor:v?num(v):null,em:new Date().toISOString(),por:(window.parent&&window.parent.CRV_QUEM)||''};render();toast('Valor da nota salvo.')}catch(e){toast('Sem permissão para salvar.')}};
+  /* abas */
+  $('vL').hidden=S.v!=='l';$('vM').hidden=S.v!=='m';$('vR').hidden=S.v!=='r';
+  $('vtabs').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===S.v));
+  /* filtros */
+  const sols=[...new Set(L.map(x=>x.solicitante).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  $('fSit').innerHTML='<option value="">Todas as situações</option>'+SITS.map(s=>`<option${S.sit===s?' selected':''}>${s}</option>`).join('');
+  $('fSol').innerHTML='<option value="">Todos os solicitantes</option>'+sols.map(s=>`<option${S.sol===s?' selected':''}>${esc(s)}</option>`).join('');
+  /* lista */
+  const LS=sel().sort((a,b)=>(+a.cartao||0)-(+b.cartao||0)||String(a.entrega).localeCompare(String(b.entrega)));
+  $('cnt').textContent=`${nf(LS.length)} lançamentos`;
+  $('tb').innerHTML=LS.map(x=>`<tr data-id="${esc(x._id)}"><td>${br(x.entrega)}</td><td><b>${esc(x.cartao)}</b></td><td><b>${esc(x.nome)}</b><div class="sm">${x.mat?'mat. '+esc(x.mat):esc(x.matTxt||'sem matrícula')}</div></td><td>${esc(x.setor)}<div class="sm">${esc(x.cargo)}</div></td><td>${esc(x.refeicao)}</td><td>${esc(x.duracao)}${/^\d+$/.test(String(x.duracao))?' dias':''}</td><td class="n">${moeda(x.creditado)}</td><td class="n">${moeda(x.consumido)}</td><td>${esc(x.solicitante)}</td>
+    <td><span class="pill ${sitCls(x.situacao)}">${esc(x.situacao)}</span>${x.devolucao?`<div class="sm">devolvido em ${br(x.devolucao)}</div>`:''}${x.obs?`<div class="sm">${esc(x.obs)}</div>`:''}</td>
+    <td style="white-space:nowrap;text-align:right">${aberto(x.situacao)?`<button class="mini pri" data-a="dev">Devolução</button> `:''}<button class="mini" data-a="ed">Editar</button> <button class="mini perigo" data-a="ex">Excluir</button></td></tr>`).join('')||`<tr><td colspan="11" class="sm">Nenhum lançamento neste período${S.q||S.sit||S.sol||S.k?' com esses filtros':''}. Use “+ Registrar entrega”.</td></tr>`;
+  const c2=LS.reduce((s,x)=>s+num(x.creditado),0),u2=LS.reduce((s,x)=>s+num(x.consumido),0);
+  $('tf').innerHTML=LS.length?`<tr><td colspan="6">Total ${LS.length<L.length?'do filtro':'do período'} (${nf(LS.length)})</td><td class="n">${moeda(c2)}</td><td class="n">${moeda(u2)}</td><td colspan="3">Saldo ${moeda(c2-u2)}</td></tr>`:'';
+  $('tb').querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>acao(b));
+  /* mapa */
+  $('nc').textContent=NC;
+  const ult={};U.slice().sort((a,b)=>(a.periodo+a.entrega+(a.cadastradoEm||'')).localeCompare(b.periodo+b.entrega+(b.cadastradoEm||''))).forEach(x=>{if(x.cartao)ult[x.cartao]=x});
+  $('mapa').innerHTML=Array.from({length:NC},(_,i)=>i+1).map(n=>{const x=ult[n];const cls=!x?'':aberto(x.situacao)?'uso':x.situacao==='Devolvido'?'dev':'prob';
+    return `<button class="cel ${cls}" data-c="${n}" title="${x?esc(x.nome+' · '+x.situacao+' · '+perTxt(x.periodo)):'Disponível'}"><b>${n}</b><span>${x?esc(aberto(x.situacao)?String(x.nome).split(' ')[0]:x.situacao==='Devolvido'?'livre':x.situacao.split(' ')[0]):'—'}</span></button>`}).join('');
+  $('mapa').querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>histCartao(+b.dataset.c));
+  /* resumo */
+  const grp=(el,key)=>{const m={};L.forEach(x=>{const k=x[key]||'—';(m[k]=m[k]||{c:0,u:0,n:0});m[k].c+=num(x.creditado);m[k].u+=num(x.consumido);m[k].n++});
+    const E=Object.entries(m).sort((a,b)=>b[1].c-a[1].c),mx=Math.max(1,...E.map(e=>e[1].c));
+    $(el).innerHTML=E.map(([k,v])=>`<div class="hr"><span>${esc(k)} <span class="sm" style="color:var(--mut)">(${v.n})</span></span><span class="t"><i style="width:${v.u/mx*100}%;background:var(--acc)"></i><i style="width:${(v.c-v.u)/mx*100}%;background:#e3c3ca"></i></span><span class="v"><b>${moeda(v.u)}</b> de ${moeda(v.c)}</span></div>`).join('')||'<p class="sub">Sem lançamentos.</p>'};
+  grp('rSol','solicitante');grp('rSet','setor');
+  $('foot').textContent=`Período ${perTxt(S.p)}. As informações ficam salvas no app e podem ser alteradas ou excluídas. O consumido é lançado na devolução do cartão (ou quando chegar o extrato).`;
+}
+$('vtabs').onclick=e=>{const b=e.target.closest('[data-v]');if(b){S.v=b.dataset.v;render()}};
+$('q').oninput=e=>{S.q=e.target.value.trim();render()};
+$('fSit').onchange=e=>{S.sit=e.target.value;render()};
+$('fSol').onchange=e=>{S.sol=e.target.value;render()};
+
+async function acao(b){
+  const id=b.closest('tr').dataset.id,x=U.find(y=>y._id===id);if(!x)return;
+  if(b.dataset.a==='ed')return abrirForm(x);
+  if(b.dataset.a==='dev')return abrirForm(x,true);
+  if(!b.classList.contains('conf')){b.classList.add('conf');b.textContent='Confirmar';setTimeout(()=>{if(b.isConnected){b.classList.remove('conf');b.textContent='Excluir'}},7000);return}
+  try{await DB.collection('usos').doc(id).delete();U=U.filter(y=>y._id!==id);render();toast('Lançamento excluído.')}catch(e){toast('Sem permissão para excluir.')}
+}
+function histCartao(n){
+  const H=U.filter(x=>+x.cartao===n).sort((a,b)=>(b.periodo+b.entrega).localeCompare(a.periodo+a.entrega));
+  const w=document.createElement('div');w.className='fundo';
+  w.innerHTML=`<div class="modal"><div class="mcab"><h3>Cartão nº ${n}<small>${H.length?H.length+' lançamento(s) no histórico':'Sem lançamentos: disponível'}</small></h3><button class="mini pri" id="hE">Entregar este cartão</button> <button class="mini" id="hX">Fechar</button></div>
+  <div style="padding:14px 18px"><div class="tab"><table><thead><tr><th>Período</th><th>Entrega</th><th>Colaborador</th><th>Creditado</th><th>Consumido</th><th>Situação</th></tr></thead><tbody>${H.map(x=>`<tr><td>${perCurto(x.periodo)}</td><td>${br(x.entrega)}</td><td><b>${esc(x.nome)}</b><div class="sm">${esc(x.setor)}</div></td><td class="n">${moeda(x.creditado)}</td><td class="n">${moeda(x.consumido)}</td><td><span class="pill ${sitCls(x.situacao)}">${esc(x.situacao)}</span>${x.devolucao?'<div class="sm">devolvido '+br(x.devolucao)+'</div>':''}</td></tr>`).join('')||'<tr><td colspan="6" class="sm">Nenhum uso registrado.</td></tr>'}</tbody></table></div></div></div>`;
+  document.body.appendChild(w);const fe=()=>w.remove();w.querySelector('#hX').onclick=fe;w.addEventListener('mousedown',e=>{if(e.target===w)fe()});
+  w.querySelector('#hE').onclick=()=>{fe();abrirForm(null,false,n)};
+}
+
+/* ---------- cadastro / edição / devolução ---------- */
+async function buscarMat(m){try{const f=window.parent&&window.parent.CRV_QUADRO;if(typeof f==='function'){const q=await f();return q&&q.mapa&&q.mapa[m]}}catch(_){}return null}
+function abrirForm(x,dev,cartaoPre){
+  const e=x||{};const w=document.createElement('div');w.className='fundo';
+  const sols=[...new Set(U.map(y=>y.solicitante).filter(Boolean))].sort();
+  const refs=[...new Set(['Café / Almoço / Jantar','Almoço / Jantar','Refeições'].concat(U.map(y=>y.refeicao).filter(Boolean)))];
+  const setores=[...new Set(U.map(y=>y.setor).filter(Boolean))].sort();
+  w.innerHTML=`<div class="modal" role="dialog" aria-modal="true"><div class="mcab"><h3>${dev?'Registrar devolução':x?'Editar lançamento':'Registrar entrega de cartão'}<small>Período ${perTxt(x?e.periodo:S.p)}. A matrícula (se for colaborador CRV) puxa nome, setor e cargo do Quadro.</small></h3><button class="mini" id="fX">Fechar</button></div>
+   <div class="mcorpo">
+    <div class="sec">Cartão e colaborador</div>
+    <div class="c w2"><label>Nº do cartão *</label><input id="fC" inputmode="numeric" value="${esc(e.cartao||cartaoPre||'')}"></div>
+    <div class="c w2"><label>Data da entrega *</label><input id="fE" type="date" value="${esc(e.entrega||hojeISO())}"></div>
+    <div class="c w2"><label>Matrícula</label><input id="fM" inputmode="numeric" placeholder="se tiver" value="${esc(e.mat||'')}"></div>
+    <div class="c w6"><label>Nome do colaborador / prestador *</label><input id="fN" value="${esc(e.nome||'')}"></div>
+    <div class="c w6"><label>Setor / empresa</label><input id="fS" list="dlS" value="${esc(e.setor||'')}" placeholder="Ex.: CTT / CRV-MG"><datalist id="dlS">${setores.map(s=>`<option value="${esc(s)}">`).join('')}</datalist></div>
+    <div class="c w6"><label>Cargo</label><input id="fG" value="${esc(e.cargo||'')}"></div>
+    <div class="info" id="fI">${x?'Dados já preenchidos.':'Digite o nº do cartão e, se for colaborador CRV, a matrícula.'}</div>
+    <div class="sec">Crédito</div>
+    <div class="c w4"><label>Tipo de refeição</label><input id="fR" list="dlR" value="${esc(e.refeicao||'Café / Almoço / Jantar')}"><datalist id="dlR">${refs.map(s=>`<option value="${esc(s)}">`).join('')}</datalist></div>
+    <div class="c w2"><label>Duração (dias)</label><input id="fD" value="${esc(e.duracao||'')}" placeholder="ou Mensal"></div>
+    <div class="c w3"><label>Valor creditado (R$) *</label><input id="fV" inputmode="decimal" value="${e.creditado!=null&&e.creditado!==''?num(e.creditado).toLocaleString('pt-BR',{minimumFractionDigits:2}):''}"></div>
+    <div class="c w3"><label>Responsável solicitante</label><input id="fP" list="dlP" value="${esc(e.solicitante||'')}"><datalist id="dlP">${sols.map(s=>`<option value="${esc(s)}">`).join('')}</datalist></div>
+    <div class="sec">Devolução e consumo</div>
+    <div class="c w4"><label>Situação</label><select id="fT">${SITS.map(s=>`<option${(dev?'Devolvido':(e.situacao||'Em uso'))===s?' selected':''}>${s}</option>`).join('')}</select></div>
+    <div class="c w4"><label>Data da devolução</label><input id="fDv" type="date" value="${esc(e.devolucao||(dev?hojeISO():''))}"></div>
+    <div class="c w4"><label>Valor consumido (R$)</label><input id="fU" inputmode="decimal" value="${e.consumido!=null&&e.consumido!==''&&(x)?num(e.consumido).toLocaleString('pt-BR',{minimumFractionDigits:2}):''}" placeholder="lançar na devolução"></div>
+    <div class="c w12"><label>Observações</label><textarea id="fO">${esc(e.obs||'')}</textarea></div>
+    ${x?'':`<div class="c w4"><label>Período</label><select id="fPer">${periodos().concat([proxPer(periodos().slice(-1)[0])]).filter((v,i,a)=>a.indexOf(v)===i).map(p=>`<option value="${p}"${p===S.p?' selected':''}>${perTxt(p)}</option>`).join('')}</select></div>`}
+   </div>
+   <div class="mpe"><span id="fMsg" style="flex:1;color:var(--mut);font-size:12.5px"></span><button class="btn" id="fCan">Cancelar</button><button class="btn pri" id="fOk">${x?'Salvar':'Registrar entrega'}</button></div></div>`;
+  document.body.appendChild(w);
+  const g=id=>w.querySelector('#'+id),fe=()=>w.remove();
+  g('fX').onclick=fe;g('fCan').onclick=fe;w.addEventListener('mousedown',ev=>{if(ev.target===w)fe()});
+  const checaCartao=()=>{const n=+g('fC').value;if(!n)return;
+    if(n<1||n>NC){g('fI').className='info av';g('fI').textContent=`O cartão precisa ser de 1 a ${NC}.`;return}
+    const em=U.filter(y=>+y.cartao===n&&aberto(y.situacao)&&(!x||y._id!==x._id));
+    if(em.length){g('fI').className='info av';g('fI').innerHTML=`Atenção: o cartão ${n} ainda está <b>em uso</b> com ${esc(em[0].nome)} (entregue em ${br(em[0].entrega)}). Registre a devolução antes de entregar de novo.`}
+    else if(!x){g('fI').className='info ok';g('fI').textContent=`Cartão ${n} disponível.`}};
+  g('fC').addEventListener('input',checaCartao);if(cartaoPre)checaCartao();
+  let tm=null;g('fM').addEventListener('input',()=>{clearTimeout(tm);tm=setTimeout(async()=>{const m=g('fM').value.trim().replace(/^0+(?=\d)/,'');if(!m)return;const c=await buscarMat(m);
+    if(!c){g('fI').className='info av';g('fI').textContent='Matrícula não encontrada no Quadro da empresa 5. Preencha à mão.';return}
+    g('fN').value=c.nome;g('fG').value=c.funcao;if(!g('fS').value)g('fS').value=c.setor+' / CRV-MG';g('fI').className='info ok';g('fI').innerHTML=`<b>${esc(c.nome)}</b> · ${esc(c.funcao)} · ${esc(c.setor)} · ${esc(c.situacao)}`},450)});
+  g('fT').onchange=()=>{if(g('fT').value==='Devolvido'&&!g('fDv').value)g('fDv').value=hojeISO()};
+  g('fOk').onclick=async()=>{
+    const msg=g('fMsg');const d={cartao:+g('fC').value||'',entrega:g('fE').value,mat:g('fM').value.trim(),nome:g('fN').value.trim(),setor:g('fS').value.trim(),cargo:g('fG').value.trim(),refeicao:g('fR').value.trim(),duracao:g('fD').value.trim(),
+      creditado:num(g('fV').value),consumido:num(g('fU').value),solicitante:g('fP').value.trim(),situacao:g('fT').value,devolucao:g('fDv').value,obs:g('fO').value.trim()};
+    const falta=[!d.cartao&&'nº do cartão',!d.entrega&&'data da entrega',!d.nome&&'nome',!g('fV').value.trim()&&'valor creditado'].filter(Boolean);
+    if(falta.length){msg.style.color='var(--bad)';msg.textContent='Falta preencher: '+falta.join(', ')+'.';return}
+    if(d.cartao<1||d.cartao>NC){msg.style.color='var(--bad)';msg.textContent=`Nº do cartão de 1 a ${NC}.`;return}
+    if(d.consumido>d.creditado+0.009){msg.style.color='var(--warn)';if(!g('fOk').dataset.ok){g('fOk').dataset.ok=1;msg.textContent='O consumido está maior que o creditado. Clique de novo para salvar assim mesmo.';return}}
+    if(!DB){msg.style.color='var(--bad)';msg.textContent='Não dá para salvar nesta visualização.';return}
+    const quem=(window.parent&&window.parent.CRV_QUEM)||'';
+    try{
+      if(x){await DB.collection('usos').doc(x._id).update(Object.assign({},d,{alteradoEm:new Date().toISOString(),alteradoPor:quem}));Object.assign(x,d)}
+      else{const per=g('fPer')?g('fPer').value:S.p;const reg=Object.assign({},d,{periodo:per,cadastradoEm:new Date().toISOString(),cadastradoPor:quem});const ref=await DB.collection('usos').add(reg);U.push(Object.assign({_id:ref&&ref.id?ref.id:('n'+Date.now())},reg));S.p=per}
+      fe();render();toast(x?(dev?'Devolução registrada.':'Lançamento atualizado.'):'Entrega registrada.');
+      if(!x)carregar();
+    }catch(e){msg.style.color='var(--bad)';msg.textContent='Não consegui salvar: '+((e&&e.message)||'sem permissão para editar este painel.')}
+  };
+  setTimeout(()=>g(dev?'fU':x?'fN':'fC').focus(),60);
+}
+
+/* ---------- relatório do período (igual à planilha) ---------- */
+async function salvar(nome,bytes,tipo){const D=window.claude&&window.claude.use?await window.claude.use('downloads'):null;if(D)return D.save({filename:nome,data:bytes});
+  const u=URL.createObjectURL(new Blob([bytes],{type:tipo}));const a=document.createElement('a');a.href=u;a.download=nome;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},4000)}
+const COLS=[['Data da Entrega',x=>br(x.entrega)],['Nº Cartão Syspro',x=>x.cartao],['Nome do Colaborador',x=>x.nome],['Matrícula',x=>x.mat||x.matTxt||'N/A'],['Setor',x=>x.setor],['Cargo',x=>x.cargo],['Tipo de Refeição',x=>x.refeicao],['Duração (dias)',x=>x.duracao],['Valor Creditado (R$)',x=>num(x.creditado)],['Valor Consumido (R$)',x=>num(x.consumido)],['Responsável Solicitante',x=>x.solicitante],['Observações',x=>[x.situacao,x.devolucao?'devolvido em '+br(x.devolucao):'',x.obs].filter(Boolean).join(' · ')]];
+function abrirRel(){
+  const w=document.createElement('div');w.className='fundo';const ps=periodos();
+  w.innerHTML=`<div class="modal" style="max-width:520px"><div class="mcab"><h3>Relatório do período<small>No mesmo formato da planilha Syspro ADM, com o total creditado e consumido para bater com a nota.</small></h3><button class="mini" id="rX">Fechar</button></div>
+   <div class="mcorpo"><div class="c w12"><label>Período</label><select id="rP">${ps.map(p=>`<option value="${p}"${p===S.p?' selected':''}>${perTxt(p)}</option>`).join('')}</select></div>
+   <div class="c w12" style="flex-direction:row;gap:16px"><label style="display:flex;gap:6px;align-items:center;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink)"><input type="radio" name="rF" value="pdf" checked> PDF</label><label style="display:flex;gap:6px;align-items:center;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink)"><input type="radio" name="rF" value="xlsx"> Excel</label></div></div>
+   <div class="mpe"><span id="rMsg" style="flex:1;color:var(--mut);font-size:12.5px"></span><button class="btn pri" id="rG">Gerar relatório</button></div></div>`;
+  document.body.appendChild(w);const fe=()=>w.remove();w.querySelector('#rX').onclick=fe;w.addEventListener('mousedown',e=>{if(e.target===w)fe()});
+  w.querySelector('#rG').onclick=async()=>{const p=w.querySelector('#rP').value,f=w.querySelector('input[name=rF]:checked').value;
+    const L=U.filter(x=>x.periodo===p).sort((a,b)=>String(a.nome).localeCompare(String(b.nome)));if(!L.length){w.querySelector('#rMsg').textContent='Sem lançamentos nesse período.';return}
+    try{await gerarRel(p,L,f);fe()}catch(e){w.querySelector('#rMsg').textContent='Não consegui gerar: '+(e.message||e)}};
+}
+async function gerarRel(p,L,f){
+  const cred=L.reduce((s,x)=>s+num(x.creditado),0),cons=L.reduce((s,x)=>s+num(x.consumido),0),nt=NOTAS[p]&&NOTAS[p].valor!=null?num(NOTAS[p].valor):null;
+  const nome=`Syspro - ADM Fechamento ${perIni(p).slice(8,10)}-${perIni(p).slice(5,7)} a 20-${p.slice(5,7)}-${p.slice(0,4)}`;
+  const per=`Período: ${br(perIni(p)).slice(0,6)}${perIni(p).slice(2,4)} a ${br(perFim(p)).slice(0,6)}${p.slice(2,4)}`;
+  if(f==='xlsx'){const X=window.XLSX||(window.parent&&window.parent.XLSX);if(!X)throw new Error('gerador de Excel indisponível');
+    const aoa=[[],['Controle Operacional de Cartões Alimentação'],[],['Syspro ADM','','','','','','','','','','',per],[],COLS.map(c=>c[0])].concat(L.map(x=>COLS.map(c=>c[1](x)))).concat([['','','','','','','','Total',cred,cons,'',''],['','','','','','','','Saldo',cred-cons,'','','']]);
+    if(nt!=null)aoa.push(['','','','','','','','Valor da nota',nt,'','','Diferença nota × consumido: '+(nt-cons).toFixed(2).replace('.',',')]);
+    const ws=X.utils.aoa_to_sheet(aoa);ws['!cols']=[12,10,34,10,22,24,22,10,14,14,18,30].map(w=>({wch:w}));ws['!merges']=[{s:{r:1,c:0},e:{r:2,c:11}},{s:{r:3,c:0},e:{r:3,c:10}}];
+    const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,('Syspro - ADM ('+perCurto(p).replace(/\//g,'-')+')').slice(0,31));
+    await salvar(nome+'.xlsx',new Uint8Array(X.write(wb,{bookType:'xlsx',type:'array'})),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');return}
+  const J=(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF);if(!J)throw new Error('gerador de PDF indisponível');
+  const doc=new J({orientation:'landscape',unit:'mm',format:'a4'});
+  doc.setFont('helvetica','bold');doc.setFontSize(14);doc.text('Controle Operacional de Cartões Alimentação · Syspro ADM',12,14);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text(`${per} · ${L.length} lançamentos · creditado ${moeda(cred)} · consumido ${moeda(cons)} · saldo ${moeda(cred-cons)}${nt!=null?' · nota '+moeda(nt)+' (diferença × consumido '+moeda(Math.abs(nt-cons)<0.005?0:nt-cons)+')':''}`,12,20);
+  doc.autoTable({startY:24,head:[COLS.map(c=>c[0])],body:L.map(x=>COLS.map((c,i)=>{const v=c[1](x);return i===8||i===9?moeda(v):String(v??'')})),foot:[['','','','','','','','Total',moeda(cred),moeda(cons),'','']],
+    styles:{fontSize:6.8,cellPadding:1.2},headStyles:{fillColor:[125,26,44],fontSize:6.8},footStyles:{fillColor:[238,241,245],textColor:20,fontStyle:'bold'},columnStyles:{8:{halign:'right'},9:{halign:'right'}},margin:{left:8,right:8}});
+  await salvar(nome+'.pdf',new Uint8Array(doc.output('arraybuffer')),'application/pdf');
+}
+$('bNovo').onclick=()=>abrirForm(null);
+$('bRel').onclick=abrirRel;
+window.CRV_NOVO=()=>abrirForm(null);window.CRV_RELATORIO=abrirRel;
+render();carregar();
+})();
+</script>
+</body></html>

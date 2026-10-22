@@ -142,7 +142,8 @@ async function carregarCatalogo(){
   const NOVOS = [
     { id:'cartao-alimentacao', frente:'Benefícios', nome:'Cartão Alimentação', nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.1 },
     { id:'cartao-convenio',    frente:'Benefícios', nome:'Cartão Convênio',    nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.2 },
-    { id:'cartao-premium',     frente:'Benefícios', nome:'Cartão Premium',     nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.3 }
+    { id:'cartao-premium',     frente:'Benefícios', nome:'Cartão Premium',     nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.3 },
+    { id:'cartao-adm',         frente:'Benefícios', nome:'Cartão Convênio ADM', nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.4 }
   ].filter(n => !E.paineis.some(x => x.id === n.id));
   if (NOVOS.length && E.perfil && E.perfil.papel === 'admin') {
     await sb.from('paineis').insert(NOVOS.map((n, i) => ({ ...n, ordem: (sp ? sp.ordem : 40) + 1 + i })));
@@ -150,7 +151,7 @@ async function carregarCatalogo(){
     if (!r2.error) E.paineis = (r2.data || []).filter(x => x.id !== 'rs' && x.id !== 'absenteismo-gestao');
   }
   // os cartões ficam logo abaixo do Sysprocard
-  if (sp) { const ix = E.paineis.indexOf(sp); const cs = E.paineis.filter(x => x.id.startsWith('cartao-')).sort((a,b) => a.id < b.id ? -1 : 1);
+  if (sp) { const ix = E.paineis.indexOf(sp); const OC = ['cartao-alimentacao','cartao-convenio','cartao-adm','cartao-premium']; const cs = E.paineis.filter(x => x.id.startsWith('cartao-')).sort((a,b) => OC.indexOf(a.id) - OC.indexOf(b.id));
     if (cs.length) { E.paineis = E.paineis.filter(x => !x.id.startsWith('cartao-')); E.paineis.splice(E.paineis.indexOf(E.paineis.find(x => x.id === 'sysprocard')) + 1, 0, ...cs); } }
   E.metas = {};
   (m.data || []).forEach(r => E.metas[r.painel] = r);
@@ -405,6 +406,7 @@ const SUBACOES = {
   'cartao-alimentacao': [{ acao:'rel', nome:'Relatório de conferência' }],
   'cartao-convenio':    [{ acao:'termo', nome:'Termo de opção' }, { acao:'rel', nome:'Relatório de conferência' }],
   'cartao-premium':     [{ acao:'rel', nome:'Relatório de conferência' }],
+  'cartao-adm':         [{ acao:'novo', nome:'Registrar entrega' }, { acao:'rel', nome:'Relatório do período' }],
   crachas:  [{ acao:'novo', nome:'Cadastrar crachá de treinamento' }],
   farmacia: [{ acao:'aut', nome:'Autorização de desconto' }, { acao:'hist', nome:'Histórico de autorizações' }]
 };
@@ -790,6 +792,7 @@ const MODELOS_LISTA = ['quadro','admissoes','rescisoes','experiencia','fat','cur
 const MODELOS = Object.fromEntries(MODELOS_LISTA.map(id => [id, `paineis/${id}.html`]));
 // painéis que usam o mesmo arquivo de painel
 ['cartao-alimentacao','cartao-convenio','cartao-premium'].forEach(id => MODELOS[id] = 'paineis/cartoes.html');
+MODELOS['cartao-adm'] = 'paineis/cartao-adm.html';
 // recursos que dependem do Claude e não funcionam no app
 const AVISOS = { curriculos: 'Recrutamento e Seleção fica aqui dentro, no quadro "Recrutamento e Seleção". A leitura automática de currículos por IA só funciona dentro do Claude; aqui você consulta, cadastra e acompanha.' };
 
