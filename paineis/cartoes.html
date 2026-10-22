@@ -550,9 +550,9 @@ async function montar(tx){const q=window.parent&&window.parent.CRV_QUADRO?await 
     if(V.excEsp[t.mat]){marc='NÃO';conf.push('Valor pago pela empresa ('+V.excEsp[t.mat][1]+'): sem desconto')}
     else if(e1080(r))marc='SIM';
     const dsl=p.situacao==='Desligado';
-    const cc=dsl?(a.cc||p.cc||''):(p.cc||a.cc||''),ccd=dsl?(a.ccd||p.ccd||''):(p.ccd||a.ccd||'');
+    const cc=p.cc||a.cc||'',ccd=p.cc?(p.ccd||a.ccd||''):(a.ccd||p.ccd||'');
     if(!p.nome)conf.push('Matrícula não encontrada no Quadro');
-    if(dsl)conf.push('Desligado em '+br(p.deslig)+': descontar na rescisão'+(a.cc?' (centro de custo de antes do desligamento)':''));
+    if(dsl)conf.push('Desligado em '+br(p.deslig)+': descontar na rescisão'+(p.cc?' (último centro de custo antes do desligamento)':''));
     if(p.situacao==='Afastado')conf.push('Afastado no Quadro');
     if(a.cc&&p.cc&&String(a.cc)!==String(p.cc))conf.push('Centro de custo mudou: antes '+a.cc+', agora '+p.cc);
     if(!cc)conf.push('Sem centro de custo: informar');
@@ -601,8 +601,7 @@ async function abrir(){fechar();W=document.createElement('div');W.className='df-
       const H=A[hi].map(c=>String(c||'').trim().toUpperCase());const ix=k=>H.findIndex(h=>h.startsWith(k));const iM=ix('MARCA'),iMat=ix('MATRIC'),iCC=ix('C.CUSTO'),iD=ix('DESC. C');
       const P={};A.slice(hi+1).forEach(r=>{if(!r||r[iMat]==null)return;P[String(+r[iMat])]={marc:String(r[iM]||'').trim().toUpperCase().replace('NAO','NÃO'),cc:r[iCC]!=null?String(r[iCC]):'',ccd:r[iD]||''}});
       let nM=0,nC=0,nD=0;F.itens.forEach(x=>{const a=P[x.mat];if(!a)return;
-        if(x.desl&&a.cc&&String(x.cc)!==String(a.cc)){x.cc=a.cc;x.ccd=a.ccd||x.ccd;nC++}
-        else if(!x.cc&&a.cc){x.cc=a.cc;x.ccd=(F.cc&&F.cc[a.cc]&&F.cc[a.cc].nome)||a.ccd;x.conf=x.conf.filter(t=>!/^Sem centro de custo/.test(t));nC++}
+        if(!x.cc&&a.cc){x.cc=a.cc;x.ccd=(F.cc&&F.cc[a.cc]&&F.cc[a.cc].nome)||a.ccd;x.conf=x.conf.filter(t=>!/^Sem centro de custo/.test(t));nC++}
         else if(x.cc&&a.cc&&String(x.cc)!==String(a.cc)&&!x.conf.some(t=>/^Centro de custo mudou/.test(t))){x.conf.push('Centro de custo mudou: antes '+a.cc+', agora '+x.cc);nD++}});
       await gravar();desenhar('Mês anterior: '+nC+' centros de custo preenchidos e '+nD+' mudanças de centro de custo apontadas.')}catch(er){desenhar('',er.message)}})};
   g('dfCC').onclick=()=>{if(!F)return desenhar('','Carregue primeiro o TXT do fechamento.');pick('.xlsx,.xls,.csv',async f=>{try{const X=window.XLSX||(window.parent&&window.parent.XLSX);const wb=X.read(new Uint8Array(await f.arrayBuffer()),{type:'array'});
