@@ -15,6 +15,7 @@ header:after{content:"";position:absolute;left:0;right:0;bottom:0;height:4px;bac
 .ttl h1{margin:2px 0 0;font-size:21px}.ttl small{display:block;opacity:.85;font-size:12.5px;margin-top:2px}
 .comp{display:flex;gap:8px;align-items:center;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:6px 10px}
 .comp label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;opacity:.85}
+.comp .nav{border:0;background:rgba(255,255,255,.16);color:#fff;border-radius:7px;width:28px;height:28px;font-size:18px;line-height:1;cursor:pointer}.comp .nav:hover{background:rgba(255,255,255,.3)}
 .comp select{font:inherit;font-weight:700;border:0;border-radius:7px;padding:5px 8px;background:#fff;color:var(--pet2)}
 .btn{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:8px 13px;font:600 13px inherit;font-family:inherit;cursor:pointer;white-space:nowrap}
 .btn:hover{border-color:#c9c4bb}.btn.pri{background:var(--ter);border-color:var(--ter);color:#fff}.btn.pri:hover{background:#a84a26}
@@ -86,7 +87,7 @@ tfoot td{font-weight:700;background:#faf7f2;border-top:1px solid var(--line)}
 <header><div class="hin">
   <span class="logo"><img alt="CRV Industrial" src="__CRV_BASE__img/logo-crv.png"></span>
   <div class="ttl"><div class="eb">Gestão de Pessoas · Serviços Gerais</div><h1>Horas extras e Gratificação BPP</h1><small id="sub"></small></div>
-  <div class="comp"><label for="selComp">Mês</label><select id="selComp"></select></div>
+  <div class="comp"><button class="nav" id="mAnt" title="Mês anterior">‹</button><label for="selComp">Mês</label><select id="selComp"></select><button class="nav" id="mProx" title="Próximo mês">›</button></div>
 </div></header>
 <main>
   <nav class="vtabs" id="vtabs"><button data-v="g" class="on">Visão geral</button><button data-v="h">Horas extras</button><button data-v="b">Gratificação BPP</button><button data-v="c">Por colaborador</button><button data-v="cfg">Assinaturas e textos</button></nav>
@@ -136,7 +137,8 @@ const CFG=()=>Object.assign({setor:'Serviços Gerais',cidade:'Capinópolis - MG'
 function HE(){const m={};(P0.he||[]).forEach(x=>m[x.id]=Object.assign({fonte:'hist'},x));Object.entries(HE_DB).forEach(([id,x])=>m[id]=Object.assign({},m[id]||{},x,{id,fonte:'app'}));
   return Object.values(m).filter(x=>!x.excluida).map(x=>{const c=x.ini!=null&&x.fim!=null?((x.fim-x.ini)%1440+1440)%1440-(+x.intervalo||0):null;x.calc=c;x.min=x.qtd!=null?x.qtd:c;return x})}
 function GR(c){return GR_DB[c]||(P0.grat||{})[c]||null}
-function comps(){const s=new Set([...Object.keys(P0.grat||{}),...Object.keys(GR_DB),...HE().map(x=>x.comp)]);const h=hoje().slice(0,7);s.add(h);s.add(addMes(h,-1));return [...s].filter(Boolean).sort()}
+function comps(){const s=new Set([...Object.keys(P0.grat||{}),...Object.keys(GR_DB),...HE().map(x=>x.comp)]);const h=hoje().slice(0,7);s.add(h);s.add(addMes(h,-1));const mx=[...s].filter(Boolean).sort().pop();s.add(addMes(mx,1));s.add(addMes(mx,2));EXTRA.forEach(c=>s.add(c));return [...s].filter(Boolean).sort()}
+const EXTRA=new Set();
 let COMP='',V='g';
 /* pessoa pelo Quadro */
 const pessoa=m=>{const q=QD[String(m)];return q?{nome:q.nome,funcao:q.funcao,adm:q.admissao,sit:q.situacao,ccd:q.ccd||'',setor:q.setor}:null};
@@ -150,11 +152,12 @@ function daSecao(){const e=new Set(equipe().map(p=>p.mat));const sec=new Set();e
   return Object.entries(QD).filter(([m,q])=>q.situacao!=='Desligado'&&sec.has(q.ccd)&&!e.has(m)).map(([m,q])=>({mat:m,nome:q.nome,funcao:q.funcao})).sort((a,b)=>a.nome.localeCompare(b.nome))}
 
 /* ---------- topo ---------- */
-function topo(){const cs=comps();if(!COMP||!cs.includes(COMP)){const g=Object.keys(Object.assign({},P0.grat,GR_DB)).sort();COMP=cs.includes(hoje().slice(0,7))&&(HE().some(x=>x.comp===hoje().slice(0,7))||GR(hoje().slice(0,7)))?hoje().slice(0,7):(g[g.length-1]||cs[cs.length-1])}
+function topo(){if(COMP)EXTRA.add(COMP);const cs=comps();if(!COMP||!cs.includes(COMP)){const g=Object.keys(Object.assign({},P0.grat,GR_DB)).sort();COMP=cs.includes(hoje().slice(0,7))&&(HE().some(x=>x.comp===hoje().slice(0,7))||GR(hoje().slice(0,7)))?hoje().slice(0,7):(g[g.length-1]||cs[cs.length-1])}
   $('selComp').innerHTML=cs.slice().reverse().map(c=>'<option value="'+c+'"'+(c===COMP?' selected':'')+'>'+compCap(c)+'</option>').join('');
   $('sub').textContent=CFG().setor+' · lançamentos mensais de horas extras e da avaliação BPP';
   $('foot').textContent='Histórico: '+(P0.origem||'planilhas do setor')+'. Lançamentos novos são digitados aqui no app. Nome, função e admissão vêm do Quadro pela matrícula.';}
 $('selComp').onchange=()=>{COMP=$('selComp').value;render()};
+const irMes=n=>{COMP=addMes(COMP,n);EXTRA.add(COMP);render()};$('mAnt').onclick=()=>irMes(-1);$('mProx').onclick=()=>irMes(1);
 $('vtabs').onclick=e=>{const b=e.target.closest('[data-v]');if(!b)return;V=b.dataset.v;render()};
 function render(){topo();document.querySelectorAll('#vtabs button').forEach(b=>b.classList.toggle('on',b.dataset.v===V));
   [['g','vG'],['h','vH'],['b','vB'],['c','vC'],['cfg','vCfg']].forEach(([k,id])=>$(id).hidden=V!==k);
@@ -209,7 +212,7 @@ function rHE(){let L=heDoMes();const q=FH.q.trim().toLowerCase();if(q)L=L.filter
   const tot=L.reduce((s,x)=>s+(x.min||0),0),pm={};L.forEach(x=>{pm[x.mat]=pm[x.mat]||{mat:x.mat,nome:x.nome,v:0,n:0};pm[x.mat].v+=x.min||0;pm[x.mat].n++});
   const pl=Object.values(pm).sort((a,b)=>a.nome.localeCompare(b.nome)),fil=FH.mat||FH.mot||FH.ano;
   let h='<div class="box"><div class="tools"><div><h2 style="margin:0">Horas extras · '+(FH.ano?COMP.slice(0,4):compCap(COMP))+'</h2><p class="sub" style="margin:2px 0 0">'+L.length+' lançamentos · '+pl.length+' pessoas · '+hm(tot)+' horas</p></div><span class="esp"></span>'
-   +'<button class="btn pri" id="hNovo">+ Lançar horas extras</button><button class="btn" id="hXls">Excel</button><button class="btn tea" id="hPdf">Imprimir para assinatura</button></div>';
+   +'<button class="btn" id="hProx" title="Ir para o próximo mês">Próximo mês ›</button><button class="btn pri" id="hNovo">+ Lançar horas extras</button><button class="btn" id="hXls">Excel</button><button class="btn tea" id="hPdf">Imprimir para assinatura</button></div>';
   if(fil)h+='<div class="av in">Filtro: '+[FH.ano?'ano inteiro':'',FH.mat?'colaborador '+esc(FH.mat):'',FH.mot?'motivo "'+esc(FH.mot)+'"':''].filter(Boolean).join(' · ')+' <button class="btn sm" id="hLimpa" style="margin-left:8px">Limpar filtro</button></div>';
   const al=L.filter(x=>alertasHE(x).length);if(al.length)h+='<div class="av"><b>'+al.length+' lançamento(s) para conferir</b> (marcados com ⚠). Passe o mouse no ⚠ para ver o motivo; use Editar para corrigir.</div>';
   h+='<div class="tools"><input type="search" id="hQ" placeholder="Buscar nome, matrícula ou motivo" value="'+esc(FH.q)+'"></div>';
@@ -219,7 +222,7 @@ function rHE(){let L=heDoMes();const q=FH.q.trim().toLowerCase();if(q)L=L.filter
   if(pl.length)h+='<div class="box"><h2>Total por colaborador</h2><p class="sub">Para o lançamento na folha. Clique para filtrar os lançamentos da pessoa.</p><div class="tab"><table><thead><tr><th>Mat.</th><th>Colaborador</th><th class="n">Lançamentos</th><th class="n">Horas</th></tr></thead><tbody>'
    +pl.map(p=>'<tr class="go" data-fm="'+esc(p.mat)+'"><td>'+esc(p.mat)+'</td><td>'+esc(tc(p.nome))+'</td><td class="n">'+p.n+'</td><td class="n"><b>'+hm(p.v)+'</b></td></tr>').join('')+'</tbody><tfoot><tr><td colspan="3">Total</td><td class="n">'+hm(tot)+'</td></tr></tfoot></table></div></div>';
   $('vH').innerHTML=h;
-  $('hNovo').onclick=()=>formHE();$('hXls').onclick=()=>xlsHE().catch(e=>toast(e.message));$('hPdf').onclick=()=>pdfHE().catch(e=>toast(e.message));
+  $('hNovo').onclick=()=>formHE();$('hProx').onclick=()=>irMes(1);$('hXls').onclick=()=>xlsHE().catch(e=>toast(e.message));$('hPdf').onclick=()=>pdfHE().catch(e=>toast(e.message));
   const lp=$('hLimpa');if(lp)lp.onclick=()=>{FH.mat='';FH.mot='';FH.ano=false;rHE()};
   const qi=$('hQ');qi.oninput=()=>{FH.q=qi.value;clearTimeout(qi.t);qi.t=setTimeout(()=>{rHE();const n=$('hQ');n.focus();n.setSelectionRange(n.value.length,n.value.length)},250)};
   $('vH').querySelectorAll('[data-fm]').forEach(r=>r.onclick=()=>{FH.mat=FH.mat===r.dataset.fm?'':r.dataset.fm;rHE()});
@@ -294,7 +297,7 @@ async function rGR(){const g0=GR(COMP);
     $('gIni').onclick=async()=>{const g=novoGR();try{await salvarGR(g);toast('Avaliação de '+compNome(COMP)+' criada.');rGR()}catch(e){toast(e.message)}};return}
   const g=g0,crs=CFG().criterios,t=grTot(g);
   let h='<div class="box"><div class="tools"><div><h2 style="margin:0">Avaliação mensal · Gratificação BPP · '+compCap(COMP)+'</h2><p class="sub" style="margin:2px 0 0">'+t.n+' avaliados · pago R$ '+brl(t.pago)+' de R$ '+brl(t.prev)+' previstos · '+t.desc+' com desconto <span class="salvo" id="gSalvo"></span></p></div><span class="esp"></span>'
-   +'<button class="btn" id="gAdd">+ Incluir pessoa</button><button class="btn" id="gXls">Excel</button><button class="btn tea" id="gPdf">Imprimir para assinatura</button></div>'
+   +'<button class="btn" id="gProx" title="Lançar o período seguinte">Próximo período ›</button><button class="btn" id="gAdd">+ Incluir pessoa</button><button class="btn" id="gXls">Excel</button><button class="btn tea" id="gPdf">Imprimir para assinatura</button></div>'
    +'<div class="fg" style="margin-bottom:10px"><div class="fc w3"><label>Período: de</label><input type="date" id="gIniD" value="'+esc(g.ini)+'"></div><div class="fc w3"><label>até</label><input type="date" id="gFimD" value="'+esc(g.fim)+'"></div><div class="fc w6"><label>Como funciona</label><span class="small mut" style="padding-top:6px">Cada critério marcado tira '+Math.round(CFG().pesoCrit*100)+'% ('+crs.join(', ')+'). "Dias" é para quem trabalhou só parte do período (ex.: 11 dias = 11/30). Se a gestão definir outro percentual, digite em "% manual".</span></div></div>'
    +'<div id="gOc"></div>'
    +'<div class="tab gt"><table><thead><tr><th>Mat.</th><th>Nome</th><th class="n">Previsto</th><th>Critérios (−'+Math.round(CFG().pesoCrit*100)+'% cada)</th><th class="n">Dias</th><th class="n">% manual</th><th class="n">% atingido</th><th class="n">Gratificação</th><th>Motivo / observação</th><th></th></tr></thead><tbody>'
@@ -321,7 +324,7 @@ async function rGR(){const g0=GR(COMP);
   $('vB').querySelectorAll('[data-fk]').forEach(inp=>inp.onchange=()=>{const x=ed();x.fora[+inp.dataset.fk].motivo=inp.value;agendarGR(x)});
   $('vB').querySelectorAll('[data-volta]').forEach(b=>b.onclick=()=>{const x=ed(),f=x.fora.splice(+b.dataset.volta,1)[0];const q=pessoa(f.mat)||{};x.itens.push({mat:f.mat,nome:q.nome||f.nome,funcao:q.funcao||'',prev:f.prev||150,crit:[],dias:'',motivo:''});x.itens.sort((a,b)=>a.nome.localeCompare(b.nome));agendarGR(x);rGR()});
   $('vB').querySelectorAll('[data-tira]').forEach(b=>b.onclick=()=>{const x=ed();x.fora.splice(+b.dataset.tira,1);agendarGR(x);rGR()});
-  $('gAdd').onclick=()=>incluirGR();$('gXls').onclick=()=>xlsGR().catch(e=>toast(e.message));$('gPdf').onclick=()=>pdfGR().catch(e=>toast(e.message));
+  $('gAdd').onclick=()=>incluirGR();$('gProx').onclick=()=>irMes(1);$('gXls').onclick=()=>xlsGR().catch(e=>toast(e.message));$('gPdf').onclick=()=>pdfGR().catch(e=>toast(e.message));
   sugestoes(g);
 }
 /* ocorrências do período (absenteísmo e sanções) para ajudar a marcar os critérios — não marca sozinho */
