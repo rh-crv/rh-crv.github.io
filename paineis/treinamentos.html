@@ -369,6 +369,14 @@ tbody tr.go:hover{background:var(--surface-2)}
       <div class="card-h"><h2>Qualidade dos lançamentos</h2><span class="hint">Pontos para conferir na planilha · clique para ver as linhas</span></div>
       <div class="ql" id="ql"></div>
     </section>
+    <section class="card" id="titCard">
+      <div class="card-h"><h2>Conferir títulos</h2><span class="hint" id="titHint"></span></div>
+      <div class="tbar">
+        <div class="fld grow"><label for="titQ">Filtrar por título</label><input id="titQ" type="search" placeholder="Digite parte do título" autocomplete="off"></div>
+        <div class="chips" id="titChips" role="group" aria-label="Mostrar"><button type="button" class="chip" data-t="todos" aria-pressed="true">Todos os títulos</button><button type="button" class="chip" data-t="par" aria-pressed="false">Só os parecidos</button></div>
+      </div>
+      <div class="tbl-wrap" style="max-height:520px"><table id="tTit"></table></div>
+    </section>
     <section class="card" id="cronCard">
       <div class="card-h"><h2>Cronograma completo</h2><span class="hint" id="cronHint"></span></div>
       <div class="tbar">
@@ -527,7 +535,7 @@ function openDetail(title, sub, rows, action, keep) {
   renderDetail(); $("#ovl").hidden = false; $(".dbody").scrollTop = 0; $("#dClose").focus();
 }
 const edBtn = row => { const id = (window.CRV_TR_ID || {})[row]; return id ? `<button type="button" class="tr-ed" data-ed="${esc(id)}" title="Corrigir este lançamento">Editar</button>` : ""; };
-document.addEventListener("click", e => { const b = e.target.closest(".tr-ed"); if (!b) return; e.preventDefault(); e.stopPropagation(); if (typeof window.CRV_NOVOS_EDITAR === "function") { closeDetail(); window.CRV_NOVOS_EDITAR(b.dataset.ed); } }, true);
+document.addEventListener("click", e => { const b = e.target.closest(".tr-ed"); if (!b || !b.dataset.ed) return; e.preventDefault(); e.stopPropagation(); if (typeof window.CRV_NOVOS_EDITAR === "function") { closeDetail(); window.CRV_NOVOS_EDITAR(b.dataset.ed); } }, true);
 function renderDetail() {
   const r = DET.rows;
   $("#tDet").innerHTML = `<thead><tr><th class="r">Linha</th><th>Data</th><th>Treinamento</th><th>Setor</th><th>Tipo</th><th class="r">Treinados</th><th class="r">Carga</th><th>Eficácia</th><th>Situação</th><th></th></tr></thead><tbody>` +
@@ -535,6 +543,7 @@ function renderDetail() {
   const left = r.length - DET.limit; $("#dMais").hidden = left <= 0; if (left > 0) $("#dMais").textContent = `Mostrar mais ${nf(Math.min(150, left))} (faltam ${nf(left)})`;
 }
 function closeDetail() { $("#ovl").hidden = true; }
+window.CRV_TR = { ROWS, openDetail };
 $("#dClose").onclick = closeDetail;
 $("#ovl").addEventListener("click", e => { if (e.target.id === "ovl") closeDetail(); });
 $("#dMais").onclick = () => { DET.limit += 150; renderDetail(); };
@@ -1152,4 +1161,43 @@ window.CRV_NOVO=()=>abrir();
 </script>
 <!-- ===== fim: cadastro de novos ===== -->
 
+<script>
+/* ---------- Conferir títulos: lista em ordem alfabética, aponta títulos parecidos (letra a mais, acento, espaço) e corrige todos de uma vez ---------- */
+(function(){
+const el=id=>document.getElementById(id);if(!el('tTit')||!window.CRV_TR)return;const ROWS=window.CRV_TR.ROWS,openDetail=window.CRV_TR.openDetail;
+const e_=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const nz=t=>String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,' ').trim();
+function lev(a,b){if(a===b)return 0;const m=a.length,n=b.length;if(Math.abs(m-n)>3)return 9;let p=Array.from({length:n+1},(_,j)=>j);for(let i=1;i<=m;i++){const c=[i];for(let j=1;j<=n;j++)c[j]=Math.min(p[j]+1,c[j-1]+1,p[j-1]+(a[i-1]===b[j-1]?0:1));p=c}return p[n]}
+const G={};ROWS.forEach(r=>{(G[r.t]=G[r.t]||[]).push(r)});
+const T=Object.keys(G).sort((a,b)=>a.localeCompare(b,'pt'));const N=T.map(nz);
+const PAR={};T.forEach((t,i)=>{for(let j=i+1;j<T.length;j++){const a=N[i],b=N[j];const lim=Math.min(a.length,b.length)>=12?2:1;
+  if(a===b||lev(a,b)<=lim||(a.replace(/ /g,'')===b.replace(/ /g,''))){(PAR[t]=PAR[t]||[]).push(T[j]);(PAR[T[j]]=PAR[T[j]]||[]).push(t)}}});
+const S={q:'',t:'todos'};
+function render(){const q=nz(S.q);let L=T.filter(t=>(!q||nz(t).includes(q))&&(S.t!=='par'||PAR[t]));
+  const np=T.filter(t=>PAR[t]).length;
+  el('titHint').textContent=T.length+' títulos diferentes'+(np?' · '+np+' parecidos com outro (podem ser erro de digitação)':'');
+  el('tTit').innerHTML='<thead><tr><th>Título</th><th class="r">Lançamentos</th><th>Parecido com</th><th></th></tr></thead><tbody>'
+   +(L.map(t=>{const rs=G[t],ap=rs.filter(r=>(window.CRV_TR_ID||{})[r.row]).length;return '<tr><td class="w"><b>'+e_(t)+'</b></td><td class="r">'+rs.length+'</td><td>'+((PAR[t]||[]).map(x=>'<span class="pill" style="background:#fff4dc;color:#7a5200;border-radius:99px;padding:1px 8px;font-size:12px;margin:0 4px 3px 0;display:inline-block" title="'+G[x].length+' lançamento(s)">'+e_(x)+' ('+G[x].length+')</span>').join('')||'<span class="muted">—</span>')+'</td>'
+     +'<td style="white-space:nowrap;text-align:right"><button type="button" class="tr-ed tr-x" data-ver="'+e_(t)+'" style="margin-right:4px">Ver</button>'+(ap?'<button type="button" class="tr-ed tr-x" data-cor="'+e_(t)+'">Corrigir título</button>':'')+'</td></tr>'}).join('')||'<tr><td colspan="4" class="empty">Nenhum título com esse filtro.</td></tr>')+'</tbody>';
+  el('titChips').querySelectorAll('[data-t]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.t===S.t)));
+  el('tTit').querySelectorAll('[data-ver]').forEach(b=>b.onclick=e=>{e.stopPropagation();const t=b.dataset.ver;openDetail(t,'Todos os lançamentos com este título',G[t])});
+  el('tTit').querySelectorAll('[data-cor]').forEach(b=>b.onclick=e=>{e.stopPropagation();corrigir(b.dataset.cor)})}
+el('titQ').addEventListener('input',e=>{S.q=e.target.value;render()});
+el('titChips').addEventListener('click',e=>{const b=e.target.closest('[data-t]');if(!b)return;S.t=b.dataset.t;render()});
+function corrigir(t){const ids=G[t].map(r=>(window.CRV_TR_ID||{})[r.row]).filter(Boolean);const ac=x=>(x.match(/[À-ÿ]/g)||[]).length;const sug=(PAR[t]||[]).slice().sort((a,b)=>G[b].length-G[a].length||ac(b)-ac(a)||a.length-b.length)[0]||t;
+  const w=document.createElement('div');w.className='nv-fundo';w.innerHTML='<div class="nv-modal" role="dialog" aria-modal="true" style="max-width:560px"><div class="nv-cab"><h3>Corrigir título<small>Troca o título em todos os '+ids.length+' lançamento(s) com "'+e_(t)+'".</small></h3><button class="nv-x" aria-label="Fechar">×</button></div>'
+   +'<div class="nv-corpo"><div class="nv-c w12"><label for="ctNovo">Título correto</label><input id="ctNovo" list="ctDl" value="'+e_(sug)+'"><datalist id="ctDl">'+T.filter(x=>x!==t).map(x=>'<option value="'+e_(x)+'">').join('')+'</datalist></div>'
+   +'<p style="font-size:13px;color:#5d6a85;margin:10px 0 0">Escolha um título que já existe para juntar os lançamentos, ou digite o certo. Datas, setores, participantes e horas não mudam.</p></div>'
+   +'<div class="nv-pe"><span class="esp" id="ctMsg"></span><button class="nv-b sec" id="ctCan">Cancelar</button><button class="nv-b pri" id="ctOk">Corrigir '+ids.length+' lançamento(s)</button></div></div>';
+  document.body.appendChild(w);const fe=()=>w.remove();w.querySelector('.nv-x').onclick=fe;el('ctCan').onclick=fe;
+  let ok=false;el('ctOk').onclick=async()=>{if(ok)return;const nv=(window.CRV_CORR_TIT||(x=>x))(String(el('ctNovo').value||'').trim().toUpperCase());const m=el('ctMsg');
+    if(!nv){m.style.color='#8a2a1a';m.textContent='Digite o título correto.';return}if(nv===t){m.style.color='#8a2a1a';m.textContent='É o mesmo título.';return}
+    ok=true;el('ctOk').disabled=true;m.style.color='#5d6a85';m.textContent='Corrigindo…';
+    try{const D=window.claude&&window.claude.use?await window.claude.use('db'):null;if(!D)throw new Error('Não dá para salvar nesta visualização.');const quem=(window.parent&&window.parent.CRV_QUEM)||'';
+      for(const id of ids)await D.collection('novos').doc(id).update({titulo:nv,alteradoPor:quem,alteradoEm:new Date().toISOString(),tituloAntes:t});
+      m.style.color='#1d5c3a';m.textContent=ids.length+' lançamento(s) corrigido(s). Atualizando o painel…';setTimeout(()=>{const r=window.parent&&window.parent.CRV_RECARREGAR;if(typeof r==='function')r();else location.reload()},600)}
+    catch(e){ok=false;el('ctOk').disabled=false;m.style.color='#8a2a1a';m.textContent='Não consegui corrigir: '+((e&&e.message)||'sem permissão')}}}
+render();
+})();
+</script>
 </body></html>
