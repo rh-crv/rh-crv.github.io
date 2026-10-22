@@ -90,10 +90,11 @@ tfoot td{font-weight:700;background:#faf7f2;border-top:1px solid var(--line)}
   <div class="comp"><button class="nav" id="mAnt" title="Mês anterior">‹</button><label for="selComp">Mês</label><select id="selComp"></select><button class="nav" id="mProx" title="Próximo mês">›</button></div>
 </div></header>
 <main>
-  <nav class="vtabs" id="vtabs"><button data-v="g" class="on">Visão geral</button><button data-v="h">Horas extras</button><button data-v="b">Gratificação BPP</button><button data-v="c">Por colaborador</button><button data-v="cfg">Assinaturas e textos</button></nav>
+  <nav class="vtabs" id="vtabs"><button data-v="g" class="on">Visão geral</button><button data-v="h">Horas extras</button><button data-v="b">Gratificação BPP</button><button data-v="m">Mês a mês</button><button data-v="c">Por colaborador</button><button data-v="cfg">Assinaturas e textos</button></nav>
   <section id="vG"></section>
   <section id="vH" hidden></section>
   <section id="vB" hidden></section>
+  <section id="vM" hidden></section>
   <section id="vC" hidden></section>
   <section id="vCfg" hidden></section>
   <p class="foot" id="foot"></p>
@@ -160,8 +161,8 @@ $('selComp').onchange=()=>{COMP=$('selComp').value;render()};
 const irMes=n=>{COMP=addMes(COMP,n);EXTRA.add(COMP);render()};$('mAnt').onclick=()=>irMes(-1);$('mProx').onclick=()=>irMes(1);
 $('vtabs').onclick=e=>{const b=e.target.closest('[data-v]');if(!b)return;V=b.dataset.v;render()};
 function render(){topo();document.querySelectorAll('#vtabs button').forEach(b=>b.classList.toggle('on',b.dataset.v===V));
-  [['g','vG'],['h','vH'],['b','vB'],['c','vC'],['cfg','vCfg']].forEach(([k,id])=>$(id).hidden=V!==k);
-  if(V==='g')rGeral();if(V==='h')rHE();if(V==='b')rGR();if(V==='c')rCol();if(V==='cfg')rCfg()}
+  [['g','vG'],['h','vH'],['b','vB'],['m','vM'],['c','vC'],['cfg','vCfg']].forEach(([k,id])=>$(id).hidden=V!==k);
+  if(V==='g')rGeral();if(V==='h')rHE();if(V==='b')rGR();if(V==='m')rMes();if(V==='c')rCol();if(V==='cfg')rCfg()}
 
 /* ---------- cálculo da gratificação ---------- */
 function pctDe(i){if(i.pctMan!=null&&i.pctMan!=='')return Math.max(0,Math.min(1,+i.pctMan));if(!i.crit&&i.pct!=null)return +i.pct;
@@ -344,6 +345,69 @@ function incluirGR(){const x0=GR(COMP),ja=new Set((x0.itens||[]).map(i=>i.mat).c
   w.querySelectorAll('[name=iS]').forEach(r=>r.onchange=()=>{g('#iMat').value=r.value;info()});
   g('#iOk').onclick=()=>{const m=g('#iMat').value.trim().replace(/^0+(?=\d)/,''),q=pessoa(m);if(!q){g('#iMsg').className='esp msg er';g('#iMsg').textContent='Matrícula não encontrada no Quadro.';return}if(ja.has(m)){g('#iMsg').className='esp msg er';g('#iMsg').textContent='Essa pessoa já está nesta avaliação.';return}
     const x=grEditavel(COMP);x.itens.push({mat:m,nome:q.nome,funcao:q.funcao,prev:+g('#iPrev').value||0,crit:[],dias:'',motivo:''});x.itens.sort((a,b)=>a.nome.localeCompare(b.nome));agendarGR(x);w.remove();OCK='';rGR()}}
+
+/* ---------- Mês a mês ---------- */
+const FM={ano:'',ver:'res'};
+function dadosMes(ano){const H=HE(),cs=comps().filter(c=>c.startsWith(ano)&&(H.some(x=>x.comp===c)||GR(c)));
+  const res=cs.map(c=>{const h=H.filter(x=>x.comp===c),g=GR(c),t=grTot(g);return {c,hmin:h.reduce((s,x)=>s+(x.min||0),0),hn:h.length,hp:new Set(h.map(x=>x.mat)).size,hd:new Set(h.map(x=>x.data)).size,g:!!g,prev:t.prev,pago:t.pago,desc:t.desc,av:t.n,ini:g&&g.ini,fim:g&&g.fim}});
+  const P={};const pe=(m,n)=>P[m]||(P[m]={mat:m,nome:n,h:{},g:{},pct:{}});
+  H.filter(x=>x.comp.startsWith(ano)).forEach(x=>{const p=pe(x.mat,x.nome);p.h[x.comp]=(p.h[x.comp]||0)+(x.min||0)});
+  cs.forEach(c=>{const g=GR(c);(g&&g.itens||[]).forEach(i=>{const p=pe(i.mat,i.nome);p.g[c]=valDe(i);p.pct[c]=pctDe(i)})});
+  const L=Object.values(P).map(p=>{const q=pessoa(p.mat);if(q)p.nome=q.nome;return p}).sort((a,b)=>a.nome.localeCompare(b.nome));return {cs,res,L}}
+function rMes(){const anos=[...new Set(comps().map(c=>c.slice(0,4)))].sort();if(!FM.ano)FM.ano=COMP.slice(0,4);const {cs,res,L}=dadosMes(FM.ano);
+  const T=res.reduce((a,r)=>{a.h+=r.hmin;a.n+=r.hn;a.prev+=r.prev;a.pago+=r.pago;a.desc+=r.desc;return a},{h:0,n:0,prev:0,pago:0,desc:0});
+  const M=c=>MESES[+c.slice(5)-1].slice(0,3)+'/'+c.slice(2,4);
+  let h='<div class="box"><div class="tools"><div><h2 style="margin:0">Mês a mês · '+FM.ano+'</h2><p class="sub" style="margin:2px 0 0">O que foi autorizado em cada mês: horas extras e gratificação BPP. Clique no mês para abrir os lançamentos.</p></div><span class="esp"></span>'
+   +(anos.length>1?'<select id="mAno" class="btn">'+anos.map(a=>'<option'+(a===FM.ano?' selected':'')+'>'+a+'</option>').join('')+'</select>':'')
+   +'<button class="btn" id="mXls">Excel</button><button class="btn tea" id="mPdf">PDF</button></div>'
+   +'<div class="tab"><table><thead><tr><th>Mês</th><th class="n">Horas extras</th><th class="n">Lançamentos</th><th class="n">Pessoas</th><th class="n">Dias</th><th>Período do BPP</th><th class="n">Gratificação prevista</th><th class="n">Gratificação paga</th><th class="n">Diferença</th><th class="n">Com desconto</th></tr></thead><tbody>'
+   +res.map(r=>'<tr><td><b>'+compCap(r.c)+'</b></td><td class="n go" data-mh="'+r.c+'" style="cursor:pointer"><b>'+(r.hmin?hm(r.hmin):'—')+'</b></td><td class="n">'+(r.hn||'—')+'</td><td class="n">'+(r.hp||'—')+'</td><td class="n">'+(r.hd||'—')+'</td>'
+     +'<td class="small">'+(r.g?br(r.ini)+' a '+br(r.fim):'<span class="mut">sem avaliação</span>')+'</td><td class="n go" data-mg="'+r.c+'" style="cursor:pointer">'+(r.g?'R$ '+brl(r.prev):'—')+'</td><td class="n go" data-mg="'+r.c+'" style="cursor:pointer"><b>'+(r.g?'R$ '+brl(r.pago):'—')+'</b></td><td class="n">'+(r.g&&r.prev-r.pago>0.004?'<span style="color:var(--bad)">− R$ '+brl(r.prev-r.pago)+'</span>':r.g?'—':'')+'</td><td class="n">'+(r.g?(r.desc?'<span class="pill p-ter">'+r.desc+'</span>':'0')+' de '+r.av:'—')+'</td></tr>').join('')
+   +'</tbody><tfoot><tr><td>Total '+FM.ano+'</td><td class="n">'+hm(T.h)+'</td><td class="n">'+T.n+'</td><td></td><td></td><td></td><td class="n">R$ '+brl(T.prev)+'</td><td class="n">R$ '+brl(T.pago)+'</td><td class="n">'+(T.prev-T.pago>0.004?'− R$ '+brl(T.prev-T.pago):'—')+'</td><td class="n">'+T.desc+'</td></tr></tfoot></table></div></div>';
+  h+='<div class="box"><div class="tools"><div><h2 style="margin:0">Por pessoa e mês</h2><p class="sub" style="margin:2px 0 0">Clique no nome para ver o histórico completo da pessoa.</p></div><span class="esp"></span><button class="btn'+(FM.ver==='res'?' pri':'')+'" data-ver="res">Horas e gratificação</button><button class="btn'+(FM.ver==='h'?' pri':'')+'" data-ver="h">Só horas extras</button><button class="btn'+(FM.ver==='g'?' pri':'')+'" data-ver="g">Só gratificação</button></div>'
+   +'<div class="tab" style="max-height:64vh"><table><thead><tr><th>Mat.</th><th>Colaborador</th>'+cs.map(c=>'<th class="n">'+M(c)+'</th>').join('')+'<th class="n">Total</th></tr></thead><tbody>'
+   +L.map(p=>{let th=0,tg=0;const cel=cs.map(c=>{const hh=p.h[c],gg=p.g[c];th+=hh||0;tg+=gg||0;const a=[];
+      if(FM.ver!=='g'&&hh)a.push('<div style="color:var(--tea);font-weight:700">'+hm(hh)+' h</div>');
+      if(FM.ver!=='h'&&gg!=null)a.push('<div'+(p.pct[c]<1?' style="color:var(--bad)" title="'+pc(p.pct[c])+' do BPP"':'')+'>R$ '+brl(gg)+'</div>');
+      return '<td class="n small">'+(a.join('')||'<span class="mut">—</span>')+'</td>'}).join('');
+      return '<tr><td>'+esc(p.mat)+'</td><td class="go" data-col="'+esc(p.mat)+'" style="cursor:pointer"><b>'+esc(tc(p.nome))+'</b></td>'+cel+'<td class="n small">'+(FM.ver!=='g'&&th?'<div style="color:var(--tea);font-weight:700">'+hm(th)+' h</div>':'')+(FM.ver!=='h'&&tg?'<div><b>R$ '+brl(tg)+'</b></div>':'')+'</td></tr>'}).join('')
+   +'</tbody></table></div><p class="foot" style="margin:6px 0 0">Em vermelho: mês em que a pessoa recebeu menos que o previsto no BPP. Horas extras em horas (h:min). O valor em reais das horas extras sai na folha, porque depende do salário de cada um.</p></div>';
+  $('vM').innerHTML=h;
+  const a=$('mAno');if(a)a.onchange=()=>{FM.ano=a.value;rMes()};
+  $('vM').querySelectorAll('[data-ver]').forEach(b=>b.onclick=()=>{FM.ver=b.dataset.ver;rMes()});
+  $('vM').querySelectorAll('[data-mh]').forEach(b=>b.onclick=()=>{COMP=b.dataset.mh;V='h';render()});
+  $('vM').querySelectorAll('[data-mg]').forEach(b=>b.onclick=()=>{COMP=b.dataset.mg;V='b';render()});
+  $('vM').querySelectorAll('[data-col]').forEach(b=>b.onclick=()=>ficha(b.dataset.col));
+  $('mXls').onclick=()=>xlsMes().catch(e=>toast(e.message));$('mPdf').onclick=()=>pdfMes().catch(e=>toast(e.message))}
+async function xlsMes(){const X=XL();if(!X)throw new Error('Excel indisponível.');const {cs,res,L}=dadosMes(FM.ano);const RS='"R$" #,##0.00';
+  const hx=m=>m?{v:m/1440,t:'n',z:'[h]:mm'}:null;
+  const a=[['CRV INDUSTRIAL · '+CFG().setor+' · Horas extras e gratificação BPP mês a mês · '+FM.ano],[],['Mês','Horas extras','Lançamentos','Pessoas','Dias','Período do BPP','Gratificação prevista','Gratificação paga','Diferença','Pessoas com desconto','Avaliados']];
+  res.forEach(r=>a.push([compCap(r.c),hx(r.hmin),r.hn,r.hp,r.hd,r.g?br(r.ini)+' a '+br(r.fim):'sem avaliação',r.g?{v:r.prev,t:'n',z:RS}:null,r.g?{v:r.pago,t:'n',z:RS}:null,r.g?{v:r.pago-r.prev,t:'n',z:RS}:null,r.g?r.desc:null,r.g?r.av:null]));
+  const e=res.length+3;a.push(['TOTAL',{f:'SUM(B4:B'+e+')',t:'n',z:'[h]:mm'},{f:'SUM(C4:C'+e+')'},null,null,null,{f:'SUM(G4:G'+e+')',t:'n',z:RS},{f:'SUM(H4:H'+e+')',t:'n',z:RS},{f:'SUM(I4:I'+e+')',t:'n',z:RS},{f:'SUM(J4:J'+e+')'},null]);
+  const w1=X.utils.aoa_to_sheet(a);w1['!cols']=[16,13,12,9,7,24,19,18,14,18,10].map(w=>({wch:w}));
+  const mk=(tit,f,z)=>{const b=[[tit],[],['Mat.','Colaborador'].concat(cs.map(compCap),['Total'])];L.forEach(p=>{const v=cs.map(c=>f(p,c));if(!v.some(x=>x!=null))return;b.push([+p.mat,p.nome].concat(v.map(x=>x==null?null:{v:x,t:'n',z}),[{v:v.reduce((s,x)=>s+(x||0),0),t:'n',z}]))});const w=X.utils.aoa_to_sheet(b);w['!cols']=[9,40].concat(cs.map(()=>({wch:13})).map(x=>x.wch),[13]).map(x=>({wch:x}));return w};
+  const wb=X.utils.book_new();X.utils.book_append_sheet(wb,w1,'Resumo por mês');
+  X.utils.book_append_sheet(wb,mk('Horas extras por pessoa e mês (h:mm)',(p,c)=>p.h[c]?p.h[c]/1440:null,'[h]:mm'),'Horas por pessoa');
+  X.utils.book_append_sheet(wb,mk('Gratificação BPP paga por pessoa e mês',(p,c)=>p.g[c]!=null?p.g[c]:null,RS),'Gratificação por pessoa');
+  await salvarArq('Servicos Gerais - mes a mes '+FM.ano+'.xlsx',new Uint8Array(X.write(wb,{bookType:'xlsx',type:'array'})),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}
+async function pdfMes(){const J=JS();if(!J)throw new Error('PDF indisponível.');const {cs,res,L}=dadosMes(FM.ano);const doc=new J({unit:'mm',format:'a4',orientation:'landscape'}),W=297;
+  cabPDF(doc,'Horas extras e Gratificação BPP · mês a mês · '+FM.ano,'CRV Industrial · '+CFG().setor,W);
+  const T=res.reduce((a,r)=>{a.h+=r.hmin;a.n+=r.hn;a.prev+=r.prev;a.pago+=r.pago;a.desc+=r.desc;return a},{h:0,n:0,prev:0,pago:0,desc:0});
+  const st={styles:{fontSize:7.8,cellPadding:1.3,lineColor:[225,222,216],lineWidth:.1},headStyles:{fillColor:[36,65,79]},footStyles:{fillColor:[246,240,233],textColor:[30,36,48],fontStyle:'bold'},margin:{left:10,right:10,top:20},showFoot:'lastPage'};
+  doc.autoTable(Object.assign({},st,{startY:24,head:[['Mês','Horas extras','Lançamentos','Pessoas','Dias','Período do BPP','Gratif. prevista','Gratif. paga','Diferença','Com desconto']],
+    body:res.map(r=>[compCap(r.c),r.hmin?hm(r.hmin):'—',r.hn||'—',r.hp||'—',r.hd||'—',r.g?br(r.ini)+' a '+br(r.fim):'sem avaliação',r.g?'R$ '+brl(r.prev):'—',r.g?'R$ '+brl(r.pago):'—',r.g&&r.prev-r.pago>0.004?'- R$ '+brl(r.prev-r.pago):'—',r.g?r.desc+' de '+r.av:'—']),
+    foot:[['Total '+FM.ano,hm(T.h),T.n,'','','','R$ '+brl(T.prev),'R$ '+brl(T.pago),T.prev-T.pago>0.004?'- R$ '+brl(T.prev-T.pago):'—',T.desc]],
+    columnStyles:{1:{halign:'right',fontStyle:'bold'},2:{halign:'center'},3:{halign:'center'},4:{halign:'center'},6:{halign:'right'},7:{halign:'right',fontStyle:'bold'},8:{halign:'right'},9:{halign:'center'}}}));
+  const M=c=>MESES[+c.slice(5)-1].slice(0,3)+'/'+c.slice(2,4);
+  const tab=(tit,f,fmt,foot)=>{let y=doc.lastAutoTable.finalY+8;if(y>170){doc.addPage();y=24}doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(22,48,60);doc.text(tit,10,y);
+    const rows=L.map(p=>({p,v:cs.map(c=>f(p,c))})).filter(r=>r.v.some(x=>x!=null));
+    doc.autoTable(Object.assign({},st,{startY:y+2,head:[['Mat.','Colaborador'].concat(cs.map(M),['Total'])],body:rows.map(r=>[r.p.mat,tc(r.p.nome)].concat(r.v.map(x=>x==null?'—':fmt(x)),[fmt(r.v.reduce((s,x)=>s+(x||0),0))])),
+      foot:[['','Total'].concat(cs.map(c=>fmt(rows.reduce((s,r)=>s+(f(r.p,c)||0),0))),[fmt(rows.reduce((s,r)=>s+r.v.reduce((a,x)=>a+(x||0),0),0))])],
+      columnStyles:Object.assign({0:{cellWidth:14},1:{cellWidth:58}},Object.fromEntries(cs.map((c,i)=>[i+2,{halign:'right'}]).concat([[cs.length+2,{halign:'right',fontStyle:'bold'}]])))}))};
+  tab('Horas extras por pessoa e mês (h:min)',(p,c)=>p.h[c]||null,hm);
+  tab('Gratificação BPP paga por pessoa e mês',(p,c)=>p.g[c]!=null?p.g[c]:null,v=>'R$ '+brl(v));
+  rodape(doc,W);
+  await salvarArq('Servicos Gerais - mes a mes '+FM.ano+'.pdf',new Uint8Array((await logos(doc)).output('arraybuffer')),'application/pdf')}
 
 /* ---------- Por colaborador ---------- */
 const FC={q:''};
