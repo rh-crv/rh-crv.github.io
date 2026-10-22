@@ -535,7 +535,7 @@ let DB=null;const db=async()=>{if(DB)return DB;try{DB=window.claude&&window.clau
 const ROW={};V.rows.forEach(r=>{ROW[String(r.mat)]=r});
 let FS=[],F=null,W=null,TAB='pes',FIL='',Q='';
 async function lerTodos(){const D=await db();if(!D){FS=[];return}try{const s=await D.collection('fechamentos').get();FS=s.docs.map(d=>Object.assign({_id:d.id},d.data())).filter(x=>!x.excluido).sort((a,b)=>String(b._id).localeCompare(String(a._id)))}catch(_){FS=[]}}
-async function gravar(){const D=await db();if(!D)throw new Error('O registro não está disponível nesta visualização.');F.atualizadoEm=new Date().toISOString();F.por=quem();const o=Object.assign({},F);delete o._id;await D.collection('fechamentos').doc(F._id).set(o)}
+async function gravar(){const D=await db();if(!D)throw new Error('O registro não está disponível nesta visualização.');F.atualizadoEm=new Date().toISOString();F.por=quem();const o=Object.assign({},F);delete o._id;delete o._ccOk;await D.collection('fechamentos').doc(F._id).set(o)}
 /* metade só para quem está na relação da Sysprocard com crédito de R$ 1.080 (alojados motoristas e operadores de máquinas); demais pagam 100%; quem é pago pela empresa (excEsp) não desconta */
 const e1080=r=>r&&r.lim!=null&&Math.abs(Number(r.lim)-1080)<0.1;
 const descDe=x=>x.marc==='SIM'?Math.round(x.valor*50)/100:x.marc==='NÃO'?0:x.valor;
@@ -586,7 +586,7 @@ const pend=x=>!x.desl&&x.conf.length>0&&!soInfo(x)&&!verif(x);
 let VERV=false;
 function calc(){const it=F.itens;it.forEach(x=>{x.desc=descDe(x)});
   const T={n:it.length,v:0,d:0,e:0,conf:0,desl:0,dv:0};it.forEach(x=>{T.v+=x.valor;T.d+=x.desc;if(pend(x))T.conf++;if(x.desl){T.desl++;T.dv+=x.desc}});T.e=T.v-T.d;
-  const C={};it.forEach(x=>{const k=x.cc||'—';const c=C[k]||(C[k]={cc:k,nome:x.ccd,n:0,v:0,d:0,L:[]});c.n++;c.v+=x.valor;c.d+=x.desc;c.L.push(x)});
+  const C={};it.forEach(x=>{const k=x.cc||'—';const c=C[k]||(C[k]={cc:k,nome:k==='—'?'Sem centro de custo (informar)':x.ccd,n:0,v:0,d:0,L:[]});c.n++;c.v+=x.valor;c.d+=x.desc;c.L.push(x)});
   Object.values(C).forEach(c=>{const s=F.cc&&F.cc[c.cc];c.s=s||null;if(s){c.nome=s.nome||c.nome;c.depois=s.dif-c.v;c.st=s.dif<0?'est':c.depois<0?'sem':'ok'}else c.st=F.ccRef?'fora':'nd'});
   return{T,C:Object.values(C)}}
 const STC={ok:['Com saldo','df-ok'],sem:['Fica sem saldo','df-am'],est:['Já estourado','df-er'],fora:['Fora do relatório de saldos','df-mu'],nd:['Carregue os saldos','df-mu']};
@@ -623,8 +623,16 @@ async function abrir(){const aba=document.querySelector('#vtabs [data-v=d]');if(
       F.ccPlan=ref;F.ccPlanEm=new Date().toISOString();await gravar();desenhar('Planilha de centros de custo aplicada: '+nA+' centros de custo atualizados; '+nF+' pessoa(s) que não estão na planilha foram tratadas como desligadas (descontar na rescisão). Desligados mantêm o centro de custo de antes.')}catch(er){desenhar('',er.message)}})};
   g('dfSel').onchange=()=>{F=FS.find(x=>x._id===g('dfSel').value)||null;desenhar()};
   g('dfXls').onclick=()=>F&&excel().catch(er=>desenhar('',er.message));g('dfPdf').onclick=()=>F&&pdfRes().catch(er=>desenhar('',er.message));
-  await lerTodos();FS.forEach(f=>(f.itens||[]).forEach(x=>{if(x.manual)return;x.conf=(x.conf||[]).filter(t=>!/alojamento|como no (mês|fechamento) anterior/.test(t)).map(t=>t==='Afastado no Quadro'?'Afastado: desconto em folha normal; bloquear o cartão na Sysprocard durante o afastamento':t);x.marc=V.excEsp[x.mat]?'NÃO':e1080(ROW[x.mat])?'SIM':''}));F=FS[0]||null;desenhar()}
-function desenhar(ok,er){if(!W)return;const g=id=>W.querySelector('#'+id),C=W.querySelector('.df-corpo');
+  await lerTodos();FS.forEach(f=>(f.itens||[]).forEach(x=>{if(x.manual)return;x.conf=(x.conf||[]).filter(t=>!/alojamento|como no (mês|fechamento) anterior/.test(t)).map(t=>t==='Afastado no Quadro'?'Afastado: desconto em folha normal; bloquear o cartão na Sysprocard durante o afastamento':t);x.marc=V.excEsp[x.mat]?'NÃO':e1080(ROW[x.mat])?'SIM':''}));await ccDesligados();F=FS[0]||null;desenhar()}
+/* desligados: centro de custo = o último em que a pessoa estava (base de demitidos do Quadro); nunca fica em branco */
+async function ccDesligados(lista){let M={};try{const q=window.parent&&window.parent.CRV_QUADRO?await window.parent.CRV_QUADRO():null;M=(q&&q.mapa)||{}}catch(_){}
+  for(const f of (lista||FS)){let mud=false;(f.itens||[]).forEach(x=>{const p=M[x.mat];if(!p)return;
+    if(p.situacao==='Desligado'&&!x.desl){x.desl=true;x.conf=(x.conf||[]).filter(t=>!/^Desligado/.test(t));x.conf.push('Desligado em '+br(p.deslig)+': descontar na rescisão');mud=true}
+    if(!x.desl||x.ccMan)return;
+    const cc=String(p.cc||'');if(cc&&String(x.cc||'')!==cc){x.cc=cc;x.ccd=(f.cc&&f.cc[cc]&&f.cc[cc].nome)||p.ccd||x.ccd;mud=true}
+    if(x.cc)x.conf=(x.conf||[]).filter(t=>!/^Sem centro de custo/.test(t))});
+    if(mud){try{const D=await db();if(D){const o=Object.assign({},f);delete o._id;delete o._ccOk;await D.collection('fechamentos').doc(f._id).set(o)}}catch(e){console.warn('ccDesligados',e)}}}}
+function desenhar(ok,er){if(!W)return;if(F&&!F._ccOk){F._ccOk=true;const f0=F;ccDesligados([f0]).then(()=>{if(F===f0)desenhar(ok,er)})}const g=id=>W.querySelector('#'+id),C=W.querySelector('.df-corpo');
   g('dfSel').innerHTML=FS.length?FS.map(f=>'<option value="'+e_(f._id)+'"'+(F&&F._id===f._id?' selected':'')+'>Fechamento '+br(f.ini)+' a '+br(f.fim)+'</option>').join(''):'<option>Nenhum fechamento</option>';
   ['dfXls','dfPdf','dfSal','dfAnt','dfCC'].forEach(id=>g(id).disabled=!F);
   if(!F){C.innerHTML=(er?'<div class="df-av er">'+e_(er)+'</div>':'')+'<div class="df-vazio">Nenhum fechamento carregado. Clique em <b>Carregar TXT do fechamento</b> e escolha o arquivo de consumo da Sysprocard.</div>';return}
@@ -642,7 +650,7 @@ function desenhar(ok,er){if(!W)return;const g=id=>W.querySelector('#'+id),C=W.qu
     const ord={est:0,sem:1,fora:2,nd:3,ok:4};const L=CC.slice().sort((a,b)=>ord[a.st]-ord[b.st]||b.v-a.v);
     h+='<div style="overflow:auto;max-height:58vh"><table class="df-tb"><thead><tr><th>C. custo</th><th>Descrição</th><th class="n">Pessoas</th><th class="n">Consumo</th><th class="n">Desconto</th><th class="n">Saldo antes</th><th class="n">Saldo depois</th><th>Situação</th></tr></thead><tbody>'
      +L.map(c=>'<tr data-cc="'+e_(c.cc)+'" style="cursor:pointer"><td>'+e_(c.cc)+'</td><td>'+e_(c.nome)+'</td><td class="n">'+c.n+'</td><td class="n">'+brl(c.v)+'</td><td class="n">'+brl(c.d)+'</td><td class="n">'+(c.s?brl(c.s.dif):'—')+'</td><td class="n">'+(c.s?brl(c.depois):'—')+'</td><td><span class="df-st '+STC[c.st][1]+'">'+STC[c.st][0]+'</span></td></tr>').join('')+'</tbody></table></div>'}
-  else{let L=F.itens.slice();if(TAB==='conf')L=L.filter(x=>VERV?(!x.desl&&x.conf.length&&!soInfo(x)&&verif(x)):pend(x));if(TAB==='desl')L=L.filter(x=>x.desl);if(FIL==='SIM')L=L.filter(x=>x.marc==='SIM');if(FIL==='EMP')L=L.filter(x=>x.marc);if(FIL.startsWith('cc:'))L=L.filter(x=>x.cc===FIL.slice(3));
+  else{let L=F.itens.slice();if(TAB==='conf')L=L.filter(x=>VERV?(!x.desl&&x.conf.length&&!soInfo(x)&&verif(x)):pend(x));if(TAB==='desl')L=L.filter(x=>x.desl);if(FIL==='SIM')L=L.filter(x=>x.marc==='SIM');if(FIL==='EMP')L=L.filter(x=>x.marc);if(FIL.startsWith('cc:'))L=L.filter(x=>FIL.slice(3)==='—'?!x.cc:x.cc===FIL.slice(3));
     const q=Q.trim().toLowerCase();if(q)L=L.filter(x=>(x.nome+' '+x.mat+' '+x.cc+' '+x.ccd).toLowerCase().includes(q));L.sort((a,b)=>a.nome.localeCompare(b.nome));
     if(TAB==='conf'&&!L.length&&!q&&!VERV){const nv=F.itens.filter(x=>!x.desl&&x.conf.length&&!soInfo(x)&&verif(x)).length;h+='<p style="padding:14px;background:#e6f4ec;color:#1d5c3a;border-radius:10px;margin:0"><b>Tudo conferido.</b> Não há alertas pendentes neste fechamento.'+(nv?' <button class="df-b" id="dfVV" style="margin-left:8px">Ver verificados ('+nv+')</button>':'')+'</p>'}
     else{
@@ -661,7 +669,7 @@ function desenhar(ok,er){if(!W)return;const g=id=>W.querySelector('#'+id),C=W.qu
   C.querySelectorAll('[data-vf]').forEach(b=>b.onclick=async()=>{const x=F.itens.find(y=>y.mat===b.dataset.vf);b.disabled=true;const ant=x.verif;x.verif=b.dataset.des?null:{sig:sigConf(x),por:quem(),em:new Date().toISOString()};
     try{await gravar();desenhar(b.dataset.des?'Alerta de '+tcx(x.nome)+' voltou para A conferir.':'Alerta de '+tcx(x.nome)+' verificado e salvo.')}catch(er){x.verif=ant;desenhar('',er.message)}});
   C.querySelectorAll('[data-m]').forEach(s=>s.onchange=async()=>{const x=F.itens.find(y=>y.mat===s.dataset.m);x.marc=s.value;x.manual=true;try{await gravar();desenhar('Marcação de '+tcx(x.nome)+' salva.')}catch(er){desenhar('',er.message)}});
-  C.querySelectorAll('[data-c]').forEach(s=>s.onchange=async()=>{const x=F.itens.find(y=>y.mat===s.dataset.c);x.cc=s.value.trim();const c=F.cc&&F.cc[x.cc];if(c)x.ccd=c.nome;x.conf=x.conf.filter(t=>!/^Sem centro de custo/.test(t));try{await gravar();desenhar('Centro de custo de '+tcx(x.nome)+' salvo.')}catch(er){desenhar('',er.message)}})}
+  C.querySelectorAll('[data-c]').forEach(s=>s.onchange=async()=>{const x=F.itens.find(y=>y.mat===s.dataset.c);x.cc=s.value.trim();x.ccMan=true;const c=F.cc&&F.cc[x.cc];if(c)x.ccd=c.nome;x.conf=x.conf.filter(t=>!/^Sem centro de custo/.test(t));try{await gravar();desenhar('Centro de custo de '+tcx(x.nome)+' salvo.')}catch(er){desenhar('',er.message)}})}
 /* ---------- arquivos ---------- */
 async function salvarArq(nome,bytes,tipo){const DL=window.claude&&window.claude.use?await window.claude.use('downloads').catch(()=>null):null;if(DL)return DL.save({filename:nome,data:bytes});const u=URL.createObjectURL(new Blob([bytes],{type:tipo}));const a=document.createElement('a');a.href=u;a.download=nome;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},4000)}
 const nomeArq=ext=>'Sysprocard Convenio Desc. Folha - '+br(F.ini).slice(0,5).replace('/','-')+' a '+br(F.fim).replace(/\//g,'-')+'.'+ext;
