@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Serviços Gerais · Horas extras e gratificação</title>
+<style>
+:root{--bg:#f4f3f1;--card:#fff;--ink:#1f2430;--mut:#66707f;--line:#e5e3df;--trk:#efede9;
+ --pet:#24414f;--pet2:#16303c;--ter:#c0582f;--terbg:#fbeee7;--amb:#c98a17;--ambbg:#fcf3dd;--tea:#1f7f86;--teabg:#e3f2f3;--plu:#7a4f8f;--plubg:#f2ebf6;
+ --ok:#2f7a55;--okbg:#e5f2eb;--bad:#b42318;--badbg:#fdecea}
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{background:linear-gradient(115deg,var(--pet2),var(--pet) 60%,#3b4e44);color:#fff;position:relative}
+header:after{content:"";position:absolute;left:0;right:0;bottom:0;height:4px;background:linear-gradient(90deg,var(--ter),var(--amb),var(--tea))}
+.hin{max-width:1280px;margin:0 auto;padding:16px 18px 20px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.logo{background:#fff;border-radius:10px;padding:6px 10px;display:flex}.logo img{height:40px;display:block}
+.ttl{flex:1;min-width:240px}.ttl .eb{font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.8;font-weight:700}
+.ttl h1{margin:2px 0 0;font-size:21px}.ttl small{display:block;opacity:.85;font-size:12.5px;margin-top:2px}
+.comp{display:flex;gap:8px;align-items:center;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:6px 10px}
+.comp label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;opacity:.85}
+.comp select{font:inherit;font-weight:700;border:0;border-radius:7px;padding:5px 8px;background:#fff;color:var(--pet2)}
+.btn{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:8px 13px;font:600 13px inherit;font-family:inherit;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:#c9c4bb}.btn.pri{background:var(--ter);border-color:var(--ter);color:#fff}.btn.pri:hover{background:#a84a26}
+.btn.tea{background:var(--tea);border-color:var(--tea);color:#fff}.btn.sm{padding:4px 9px;font-size:12px}.btn.perigo{color:var(--bad);border-color:#efc2bb}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+main{max-width:1280px;margin:0 auto;padding:16px 18px 40px}
+.vtabs{display:flex;gap:4px;margin:0 0 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.vtabs button{border:0;background:none;padding:9px 15px;font:600 14px inherit;font-family:inherit;color:var(--mut);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px}
+.vtabs button.on{color:var(--pet2);border-bottom-color:var(--ter)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:10px;margin-bottom:14px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;border-left:4px solid var(--c,var(--ter));text-align:left;font:inherit;color:inherit;cursor:pointer}
+.kpi:hover{box-shadow:0 2px 10px rgba(0,0,0,.06)}
+.kpi .l{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--mut)}.kpi .v{font-size:25px;font-weight:750;line-height:1.15;margin-top:2px}.kpi .s{font-size:12px;color:var(--mut)}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:14px}
+.box h2{margin:0 0 2px;font-size:16px}.box .sub{margin:0 0 12px;color:var(--mut);font-size:13px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}.tools .esp{flex:1}
+.tools input[type=search]{border:1px solid var(--line);border-radius:8px;padding:7px 10px;font:inherit;min-width:220px;flex:1;max-width:360px}
+.tab{overflow:auto}table{border-collapse:collapse;width:100%;font-size:13px}
+th{text-align:left;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--mut);font-weight:700;padding:8px;border-bottom:1px solid var(--line);white-space:nowrap;background:#faf9f7;position:sticky;top:0}
+td{padding:7px 8px;border-bottom:1px solid var(--trk);vertical-align:top}tr.go{cursor:pointer}tr.go:hover td{background:#faf7f2}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}td.c,th.c{text-align:center}
+tfoot td{font-weight:700;background:#faf7f2;border-top:1px solid var(--line)}
+.mut{color:var(--mut)}.small{font-size:12px}
+.pill{display:inline-block;border-radius:99px;padding:1px 8px;font-size:11.5px;font-weight:700;white-space:nowrap}
+.p-ter{background:var(--terbg);color:#8a3a1a}.p-amb{background:var(--ambbg);color:#7a5200}.p-tea{background:var(--teabg);color:#14595e}.p-plu{background:var(--plubg);color:#5a3570}.p-ok{background:var(--okbg);color:#1d5c3a}.p-bad{background:var(--badbg);color:#8a2a1a}
+.av{background:var(--ambbg);border:1px solid #efd9a4;color:#6b4a00;border-radius:10px;padding:9px 12px;font-size:13px;margin-bottom:10px}
+.av.in{background:#eef3f5;border-color:#d3e0e5;color:#24414f}
+.bars{display:flex;flex-direction:column;gap:6px}
+.hb{display:grid;grid-template-columns:minmax(120px,210px) 1fr 90px;gap:10px;align-items:center;border:0;background:none;font:inherit;color:inherit;text-align:left;padding:3px 4px;border-radius:7px;cursor:pointer}
+.hb:hover{background:#f7f4ef}.hb .t{height:14px;background:var(--trk);border-radius:99px;overflow:hidden;display:flex}.hb .t i{display:block;height:100%}
+.hb .n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}.hb .v{text-align:right;font-size:12.5px;font-variant-numeric:tabular-nums}
+.cols{display:flex;align-items:flex-end;gap:10px;height:170px;padding:6px 4px 0;border-bottom:1px solid var(--line)}
+.col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;height:100%;border:0;background:none;font:inherit;cursor:pointer;color:inherit;padding:0}
+.col .b{width:100%;max-width:46px;border-radius:6px 6px 0 0;min-height:2px}.col small{font-size:11.5px;color:var(--mut)}.col b{font-size:12px}
+.col.on .b{outline:2px solid var(--pet2);outline-offset:1px}
+.leg{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--mut);margin-top:6px}.leg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+/* janelas */
+.fundo{position:fixed;inset:0;background:rgba(20,26,34,.55);z-index:60;display:flex;align-items:flex-start;justify-content:center;padding:22px 12px;overflow:auto}
+.jan{background:#fff;border-radius:14px;width:min(980px,100%);box-shadow:0 20px 60px rgba(0,0,0,.35);display:flex;flex-direction:column}
+.jan.st{width:min(620px,100%)}
+.jcab{display:flex;gap:10px;align-items:flex-start;padding:14px 18px;border-bottom:1px solid var(--line)}.jcab h3{margin:0;flex:1;font-size:16px}.jcab small{display:block;color:var(--mut);font-weight:400;font-size:12.5px;margin-top:2px}
+.jcorpo{padding:14px 18px}.jpe{display:flex;gap:8px;align-items:center;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--line)}.jpe .esp{flex:1;font-size:13px}
+.x{border:0;background:none;font-size:22px;line-height:1;cursor:pointer;color:var(--mut)}
+.fg{display:grid;grid-template-columns:repeat(12,1fr);gap:10px 12px}
+.fc{display:flex;flex-direction:column;gap:4px}.fc label{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--mut)}
+.fc input,.fc select,.fc textarea{border:1px solid var(--line);border-radius:8px;padding:7px 9px;font:inherit;background:#fbfaf8;color:var(--ink)}
+.fc textarea{min-height:64px;resize:vertical}
+.w2{grid-column:span 2}.w3{grid-column:span 3}.w4{grid-column:span 4}.w5{grid-column:span 5}.w6{grid-column:span 6}.w8{grid-column:span 8}.w12{grid-column:span 12}
+.pes{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:6px;max-height:210px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:8px;background:#fbfaf8}
+.pes label{display:flex;gap:7px;align-items:center;font-size:13px;cursor:pointer;padding:3px 4px;border-radius:6px;text-transform:none;letter-spacing:0;font-weight:400;color:var(--ink)}.pes label:hover{background:#f1eee8}
+.lin input{width:96px;border:1px solid var(--line);border-radius:6px;padding:4px 6px;font:inherit;font-size:13px}
+.lin td{vertical-align:middle}
+.msg{font-size:13px}.msg.er{color:var(--bad)}.msg.ok{color:var(--ok)}
+/* gratificação */
+.gt td{vertical-align:middle}.gt input[type=number],.gt input.tx{border:1px solid var(--line);border-radius:6px;padding:4px 6px;font:inherit;font-size:13px;background:#fff}
+.gt input[type=number]{width:70px;text-align:right}.gt input.tx{width:100%;min-width:180px}
+.crit{display:flex;gap:4px;flex-wrap:wrap}.crit label{display:flex;gap:4px;align-items:center;border:1px solid var(--line);border-radius:7px;padding:2px 6px;font-size:11.5px;cursor:pointer;white-space:nowrap;background:#fff}
+.crit label.on{background:var(--terbg);border-color:#e9b9a3;color:#8a3a1a;font-weight:700}
+.sug{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px}.sug span{font-size:11px;border-radius:6px;padding:1px 6px;background:var(--plubg);color:#5a3570}
+.pct{font-weight:750;font-variant-numeric:tabular-nums}.pct.b{color:var(--bad)}
+.salvo{font-size:12.5px;color:var(--mut)}
+.foot{color:var(--mut);font-size:12px;margin-top:10px}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#1d2433;color:#fff;padding:9px 14px;border-radius:8px;font-size:13px;z-index:80}
+@media (max-width:900px){.grid2{grid-template-columns:1fr}.w2,.w3,.w4,.w5,.w6,.w8{grid-column:span 12}.hb{grid-template-columns:120px 1fr 70px}}
+</style>
+</head>
+<body>
+<header><div class="hin">
+  <span class="logo"><img alt="CRV Industrial" src="__CRV_BASE__img/logo-crv.png"></span>
+  <div class="ttl"><div class="eb">Gestão de Pessoas · Serviços Gerais</div><h1>Horas extras e Gratificação BPP</h1><small id="sub"></small></div>
+  <div class="comp"><label for="selComp">Mês</label><select id="selComp"></select></div>
+</div></header>
+<main>
+  <nav class="vtabs" id="vtabs"><button data-v="g" class="on">Visão geral</button><button data-v="h">Horas extras</button><button data-v="b">Gratificação BPP</button><button data-v="c">Por colaborador</button><button data-v="cfg">Assinaturas e textos</button></nav>
+  <section id="vG"></section>
+  <section id="vH" hidden></section>
+  <section id="vB" hidden></section>
+  <section id="vC" hidden></section>
+  <section id="vCfg" hidden></section>
+  <p class="foot" id="foot"></p>
+</main>
+<div class="toast" id="toast" hidden></div>
+<script>/*__CRV_DADOS_0__*/</script>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const br=s=>s?String(s).slice(0,10).split('-').reverse().join('/'):'';
+const brl=v=>(+v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const nf=v=>(+v||0).toLocaleString('pt-BR');
+const tc=s=>String(s||'').toLowerCase().replace(/(^|[\s\/(.-])(\S)/g,(m,a,b)=>a+b.toUpperCase()).replace(/ (Da|De|Do|Dos|Das|E) /g,m=>m.toLowerCase());
+const hm=m=>m==null||isNaN(m)?'':Math.floor(m/60)+':'+String(Math.round(m%60)).padStart(2,'0');
+const hmT=m=>m==null||isNaN(m)?'':String(Math.floor(m/60)).padStart(2,'0')+':'+String(Math.round(m%60)).padStart(2,'0');
+const toMin=s=>{const m=String(s||'').match(/^(\d{1,2}):(\d{2})/);return m?(+m[1])*60+(+m[2]):null};
+const MESES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const compNome=c=>c?MESES[+c.slice(5,7)-1]+'/'+c.slice(0,4):'';
+const compCap=c=>{const t=compNome(c);return t.charAt(0).toUpperCase()+t.slice(1)};
+const hoje=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const addMes=(c,n)=>{let y=+c.slice(0,4),m=+c.slice(5,7)-1+n;y+=Math.floor(m/12);m=((m%12)+12)%12;return y+'-'+String(m+1).padStart(2,'0')};
+const addDia=(iso,n)=>{const d=new Date(iso+'T12:00:00');d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)};
+function toast(t){const e=$('toast');e.textContent=t;e.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>e.hidden=true,3200)}
+const quem=()=>(window.parent&&window.parent.CRV_QUEM)||'';
+const P0=(typeof SG!=='undefined'&&SG)||{he:[],heMes:{},grat:{},cfg:{}};
+
+/* ---------- banco ---------- */
+let DB=null;const db=async()=>{if(DB)return DB;try{DB=window.claude&&window.claude.use?await window.claude.use('db'):null}catch(_){DB=null}return DB};
+let HE_DB={},GR_DB={},HM_DB={},CFG_DB=null,QD={};
+async function carregar(){
+  const D=await db();
+  if(D){try{const [a,b,c,d]=await Promise.all([D.collection('he').get(),D.collection('grat').get(),D.collection('heMes').get(),D.collection('cfg').get()]);
+    HE_DB={};a.docs.forEach(x=>HE_DB[x.id]=x.data());GR_DB={};b.docs.forEach(x=>GR_DB[x.id]=x.data());HM_DB={};c.docs.forEach(x=>HM_DB[x.id]=x.data());
+    const g=d.docs.find(x=>x.id==='geral');CFG_DB=g?g.data():null}catch(e){console.warn(e)}}
+  try{const f=window.parent&&window.parent.CRV_QUADRO;if(typeof f==='function'){const q=await f();QD=(q&&q.mapa)||{}}}catch(_){}
+}
+const CFG=()=>Object.assign({setor:'Serviços Gerais',cidade:'Capinópolis - MG',assHE:[],assGR:[],criterios:['Não uso do EPI','Comportamento','Atestado','Falta sem justificativa'],pesoCrit:.25},P0.cfg||{},CFG_DB||{});
+/* horas extras: pacote (histórico) + app; um registro do app com o mesmo id substitui o do pacote */
+function HE(){const m={};(P0.he||[]).forEach(x=>m[x.id]=Object.assign({fonte:'hist'},x));Object.entries(HE_DB).forEach(([id,x])=>m[id]=Object.assign({},m[id]||{},x,{id,fonte:'app'}));
+  return Object.values(m).filter(x=>!x.excluida).map(x=>{const c=x.ini!=null&&x.fim!=null?((x.fim-x.ini)%1440+1440)%1440-(+x.intervalo||0):null;x.calc=c;x.min=x.qtd!=null?x.qtd:c;return x})}
+function GR(c){return GR_DB[c]||(P0.grat||{})[c]||null}
+function comps(){const s=new Set([...Object.keys(P0.grat||{}),...Object.keys(GR_DB),...HE().map(x=>x.comp)]);const h=hoje().slice(0,7);s.add(h);s.add(addMes(h,-1));return [...s].filter(Boolean).sort()}
+let COMP='',V='g';
+/* pessoa pelo Quadro */
+const pessoa=m=>{const q=QD[String(m)];return q?{nome:q.nome,funcao:q.funcao,adm:q.admissao,sit:q.situacao,ccd:q.ccd||'',setor:q.setor}:null};
+/* equipe: quem está na última gratificação + quem teve hora extra; sugestões da mesma seção no Quadro */
+function equipe(){const m={};const cs=Object.keys(Object.assign({},P0.grat,GR_DB)).sort();const ult=cs.length?GR(cs[cs.length-1]):null;
+  (ult&&ult.itens||[]).forEach(i=>m[i.mat]={mat:i.mat,nome:i.nome,funcao:i.funcao,prev:i.prev});
+  HE().forEach(x=>{if(!m[x.mat])m[x.mat]={mat:x.mat,nome:x.nome,funcao:x.funcao}});
+  Object.values(m).forEach(p=>{const q=pessoa(p.mat);if(q){p.nome=q.nome;p.funcao=q.funcao;p.sit=q.sit;p.adm=q.adm}});
+  return Object.values(m).sort((a,b)=>a.nome.localeCompare(b.nome))}
+function daSecao(){const e=new Set(equipe().map(p=>p.mat));const sec=new Set();equipe().forEach(p=>{const q=QD[p.mat];if(q&&q.ccd)sec.add(q.ccd)});
+  return Object.entries(QD).filter(([m,q])=>q.situacao!=='Desligado'&&sec.has(q.ccd)&&!e.has(m)).map(([m,q])=>({mat:m,nome:q.nome,funcao:q.funcao})).sort((a,b)=>a.nome.localeCompare(b.nome))}
+
+/* ---------- topo ---------- */
+function topo(){const cs=comps();if(!COMP||!cs.includes(COMP)){const g=Object.keys(Object.assign({},P0.grat,GR_DB)).sort();COMP=cs.includes(hoje().slice(0,7))&&(HE().some(x=>x.comp===hoje().slice(0,7))||GR(hoje().slice(0,7)))?hoje().slice(0,7):(g[g.length-1]||cs[cs.length-1])}
+  $('selComp').innerHTML=cs.slice().reverse().map(c=>'<option value="'+c+'"'+(c===COMP?' selected':'')+'>'+compCap(c)+'</option>').join('');
+  $('sub').textContent=CFG().setor+' · lançamentos mensais de horas extras e da avaliação BPP';
+  $('foot').textContent='Histórico: '+(P0.origem||'planilhas do setor')+'. Lançamentos novos são digitados aqui no app. Nome, função e admissão vêm do Quadro pela matrícula.';}
+$('selComp').onchange=()=>{COMP=$('selComp').value;render()};
+$('vtabs').onclick=e=>{const b=e.target.closest('[data-v]');if(!b)return;V=b.dataset.v;render()};
+function render(){topo();document.querySelectorAll('#vtabs button').forEach(b=>b.classList.toggle('on',b.dataset.v===V));
+  [['g','vG'],['h','vH'],['b','vB'],['c','vC'],['cfg','vCfg']].forEach(([k,id])=>$(id).hidden=V!==k);
+  if(V==='g')rGeral();if(V==='h')rHE();if(V==='b')rGR();if(V==='c')rCol();if(V==='cfg')rCfg()}
+
+/* ---------- cálculo da gratificação ---------- */
+function pctDe(i){if(i.pctMan!=null&&i.pctMan!=='')return Math.max(0,Math.min(1,+i.pctMan));if(!i.crit&&i.pct!=null)return +i.pct;
+  const n=(i.crit||[]).length;let p=Math.max(0,1-n*CFG().pesoCrit);if(i.dias!=null&&i.dias!=='')p=p*Math.min(30,+i.dias)/30;return Math.round(p*10000)/10000}
+const valDe=i=>Math.round((+i.prev||0)*pctDe(i)*100)/100;
+function motivoDe(i){const a=[];(i.crit||[]).forEach(c=>a.push(c));if(i.dias!=null&&i.dias!=='')a.push('referente a '+i.dias+' dias trabalhados');const t=a.join(', ');return [t,i.motivo].filter(Boolean).join(' · ')}
+function grTot(g){const t={prev:0,pago:0,n:0,desc:0};(g&&g.itens||[]).forEach(i=>{t.n++;t.prev+=+i.prev||0;const v=valDe(i);t.pago+=v;if(pctDe(i)<1)t.desc++});return t}
+
+/* ---------- Visão geral ---------- */
+function rGeral(){const H=HE(),cs=comps().filter(c=>H.some(x=>x.comp===c)||GR(c));const Hc=H.filter(x=>x.comp===COMP),g=GR(COMP),t=grTot(g);
+  const min=Hc.reduce((s,x)=>s+(x.min||0),0),pp=new Set(Hc.map(x=>x.mat)),dias=new Set(Hc.map(x=>x.data));
+  let h='<div class="kpis">'
+   +kp('h','Horas extras',hm(min)||'0:00',Hc.length+' lançamentos · '+dias.size+' dias','var(--tea)')
+   +kp('h','Pessoas com hora extra',pp.size,'no mês de '+compNome(COMP),'var(--pet)')
+   +kp('b','Gratificação paga',g?'R$ '+brl(t.pago):'—',g?'de R$ '+brl(t.prev)+' previstos ('+(t.prev?Math.round(t.pago/t.prev*100):0)+'%)':'avaliação ainda não lançada','var(--ter)')
+   +kp('b','Com desconto no BPP',g?t.desc:'—',g?'de '+t.n+' avaliados':'','var(--amb)')+'</div>';
+  // horas por mês
+  const mx=Math.max(1,...cs.map(c=>H.filter(x=>x.comp===c).reduce((s,x)=>s+(x.min||0),0)));
+  h+='<div class="grid2"><div class="box"><h2>Horas extras por mês</h2><p class="sub">Clique no mês para ver os lançamentos.</p><div class="cols">'+cs.map(c=>{const v=H.filter(x=>x.comp===c).reduce((s,x)=>s+(x.min||0),0);return '<button class="col'+(c===COMP?' on':'')+'" data-mh="'+c+'"><b>'+(v?hm(v):'')+'</b><span class="b" style="height:'+(v/mx*130)+'px;background:var(--tea)"></span><small>'+MESES[+c.slice(5)-1].slice(0,3)+'</small></button>'}).join('')+'</div></div>';
+  const gm=Math.max(1,...cs.map(c=>grTot(GR(c)).prev));
+  h+='<div class="box"><h2>Gratificação BPP por mês</h2><p class="sub">Pago × previsto. Clique para abrir a avaliação do mês.</p><div class="cols">'+cs.map(c=>{const x=grTot(GR(c));return '<button class="col'+(c===COMP?' on':'')+'" data-mg="'+c+'"><b>'+(x.prev?Math.round(x.pago/x.prev*100)+'%':'')+'</b><span style="display:flex;gap:2px;align-items:flex-end;width:100%;max-width:52px;height:130px"><span class="b" style="flex:1;height:'+(x.prev/gm*130)+'px;background:#d9d3c9"></span><span class="b" style="flex:1;height:'+(x.pago/gm*130)+'px;background:var(--ter)"></span></span><small>'+MESES[+c.slice(5)-1].slice(0,3)+(x.prev?'':' · sem avaliação')+'</small></button>'}).join('')+'</div><div class="leg"><span><i style="background:#d9d3c9"></i>Previsto</span><span><i style="background:var(--ter)"></i>Pago</span></div></div></div>';
+  // quem mais fez hora extra (ano) e motivos
+  const ano=COMP.slice(0,4),Ha=H.filter(x=>x.comp.startsWith(ano)),pm={},mm={};Ha.forEach(x=>{pm[x.mat]=pm[x.mat]||{mat:x.mat,nome:x.nome,v:0};pm[x.mat].v+=x.min||0;const k=normMot(x.motivo);mm[k]=(mm[k]||0)+(x.min||0)});
+  const pl=Object.values(pm).sort((a,b)=>b.v-a.v),pmx=pl.length?pl[0].v:1,ml=Object.entries(mm).sort((a,b)=>b[1]-a[1]),mmx=ml.length?ml[0][1]:1;
+  h+='<div class="grid2"><div class="box"><h2>Quem mais fez hora extra em '+ano+'</h2><p class="sub">Clique para ver o histórico da pessoa.</p><div class="bars">'+pl.slice(0,12).map(p=>'<button class="hb" data-col="'+esc(p.mat)+'"><span class="n">'+esc(tc(p.nome))+'</span><span class="t"><i style="width:'+(p.v/pmx*100)+'%;background:var(--tea)"></i></span><span class="v">'+hm(p.v)+'</span></button>').join('')+'</div></div>';
+  h+='<div class="box"><h2>Motivos das horas extras em '+ano+'</h2><p class="sub">Horas somadas por motivo. Clique para ver os lançamentos.</p><div class="bars">'+ml.map(([k,v])=>'<button class="hb" data-mot="'+esc(k)+'"><span class="n">'+esc(k)+'</span><span class="t"><i style="width:'+(v/mmx*100)+'%;background:var(--amb)"></i></span><span class="v">'+hm(v)+'</span></button>').join('')+'</div></div></div>';
+  // descontos BPP no ano
+  const dl=[];Object.keys(Object.assign({},P0.grat,GR_DB)).filter(c=>c.startsWith(ano)).sort().forEach(c=>(GR(c).itens||[]).forEach(i=>{if(pctDe(i)<1)dl.push({c,i})}));
+  h+='<div class="box"><h2>Descontos no BPP em '+ano+'</h2><p class="sub">'+dl.length+' desconto(s) no ano. Clique na linha para ver o histórico da pessoa.</p><div class="tab"><table><thead><tr><th>Mês</th><th>Matrícula</th><th>Nome</th><th class="n">% atingido</th><th class="n">Recebeu</th><th>Motivo</th></tr></thead><tbody>'
+   +(dl.reverse().map(({c,i})=>'<tr class="go" data-col="'+esc(i.mat)+'"><td>'+compCap(c)+'</td><td>'+esc(i.mat)+'</td><td>'+esc(tc(i.nome))+'</td><td class="n">'+pc(pctDe(i))+'</td><td class="n">R$ '+brl(valDe(i))+'</td><td class="small">'+esc(motivoDe(i)||'—')+'</td></tr>').join('')||'<tr><td colspan="6" class="mut">Nenhum desconto no ano.</td></tr>')+'</tbody></table></div></div>';
+  $('vG').innerHTML=h;
+  $('vG').querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{V=b.dataset.go;render()});
+  $('vG').querySelectorAll('[data-mh]').forEach(b=>b.onclick=()=>{COMP=b.dataset.mh;V='h';render()});
+  $('vG').querySelectorAll('[data-mg]').forEach(b=>b.onclick=()=>{COMP=b.dataset.mg;V='b';render()});
+  $('vG').querySelectorAll('[data-col]').forEach(b=>b.onclick=()=>ficha(b.dataset.col));
+  $('vG').querySelectorAll('[data-mot]').forEach(b=>b.onclick=()=>{FH.mot=b.dataset.mot;FH.ano=true;V='h';render()});
+}
+const kp=(go,l,v,s,c)=>'<button class="kpi" data-go="'+go+'" style="--c:'+c+'"><div class="l">'+l+'</div><div class="v">'+v+'</div><div class="s">'+esc(s)+'</div></button>';
+const pc=p=>(Math.round(p*10000)/100).toLocaleString('pt-BR',{maximumFractionDigits:2})+'%';
+const normMot=m=>{const t=String(m||'').trim().replace(/\s+/g,' ');if(!t)return 'Sem motivo';return t.charAt(0).toUpperCase()+t.slice(1)};
+
+/* ---------- Horas extras ---------- */
+const FH={q:'',mat:'',mot:'',ano:false};
+function heDoMes(){return HE().filter(x=>FH.ano?x.comp.slice(0,4)===COMP.slice(0,4):x.comp===COMP)}
+function alertasHE(x){const a=[];if(x.qtd!=null&&x.calc!=null&&x.qtd!==x.calc)a.push('Quantidade digitada '+hm(x.qtd)+' e o horário dá '+hm(x.calc));const q=pessoa(x.mat);if(q&&x.adm&&q.adm&&q.adm!==x.adm)a.push('Admissão na planilha '+br(x.adm)+', no Quadro '+br(q.adm));if(!q)a.push('Matrícula fora do Quadro');return a}
+function rHE(){let L=heDoMes();const q=FH.q.trim().toLowerCase();if(q)L=L.filter(x=>(x.nome+' '+x.mat+' '+x.motivo).toLowerCase().includes(q));if(FH.mat)L=L.filter(x=>x.mat===FH.mat);if(FH.mot)L=L.filter(x=>normMot(x.motivo)===FH.mot);
+  L.sort((a,b)=>a.data.localeCompare(b.data)||a.nome.localeCompare(b.nome));
+  const tot=L.reduce((s,x)=>s+(x.min||0),0),pm={};L.forEach(x=>{pm[x.mat]=pm[x.mat]||{mat:x.mat,nome:x.nome,v:0,n:0};pm[x.mat].v+=x.min||0;pm[x.mat].n++});
+  const pl=Object.values(pm).sort((a,b)=>a.nome.localeCompare(b.nome)),fil=FH.mat||FH.mot||FH.ano;
+  let h='<div class="box"><div class="tools"><div><h2 style="margin:0">Horas extras · '+(FH.ano?COMP.slice(0,4):compCap(COMP))+'</h2><p class="sub" style="margin:2px 0 0">'+L.length+' lançamentos · '+pl.length+' pessoas · '+hm(tot)+' horas</p></div><span class="esp"></span>'
+   +'<button class="btn pri" id="hNovo">+ Lançar horas extras</button><button class="btn" id="hXls">Excel</button><button class="btn tea" id="hPdf">Imprimir para assinatura</button></div>';
+  if(fil)h+='<div class="av in">Filtro: '+[FH.ano?'ano inteiro':'',FH.mat?'colaborador '+esc(FH.mat):'',FH.mot?'motivo "'+esc(FH.mot)+'"':''].filter(Boolean).join(' · ')+' <button class="btn sm" id="hLimpa" style="margin-left:8px">Limpar filtro</button></div>';
+  const al=L.filter(x=>alertasHE(x).length);if(al.length)h+='<div class="av"><b>'+al.length+' lançamento(s) para conferir</b> (marcados com ⚠). Passe o mouse no ⚠ para ver o motivo; use Editar para corrigir.</div>';
+  h+='<div class="tools"><input type="search" id="hQ" placeholder="Buscar nome, matrícula ou motivo" value="'+esc(FH.q)+'"></div>';
+  h+='<div class="tab" style="max-height:62vh"><table><thead><tr><th>Data</th><th>Mat.</th><th>Colaborador</th><th>Função</th><th>Admissão</th><th>Motivo</th><th class="c">Início</th><th class="c">Fim</th><th class="n">Horas</th><th></th></tr></thead><tbody>'
+   +(L.map(x=>{const a=alertasHE(x),p=pessoa(x.mat);return '<tr><td>'+br(x.data)+'</td><td>'+esc(x.mat)+'</td><td><b>'+esc(tc(p?p.nome:x.nome))+'</b>'+(x.fonte==='hist'?' <span class="pill p-plu" title="Veio da planilha">planilha</span>':'')+'</td><td class="small">'+esc(tc(p?p.funcao:x.funcao))+'</td><td>'+br(p&&p.adm||x.adm)+'</td><td>'+esc(x.motivo)+'</td><td class="c">'+hmT(x.ini)+'</td><td class="c">'+hmT(x.fim)+'</td><td class="n"><b>'+hm(x.min)+'</b>'+(a.length?' <span title="'+esc(a.join(' · '))+'" style="cursor:help">⚠</span>':'')+'</td><td style="white-space:nowrap"><button class="btn sm" data-ed="'+esc(x.id)+'">Editar</button> <button class="btn sm perigo" data-ex="'+esc(x.id)+'">Excluir</button></td></tr>'}).join('')||'<tr><td colspan="10" class="mut" style="padding:16px">Nenhuma hora extra lançada neste mês. Clique em <b>+ Lançar horas extras</b>.</td></tr>')
+   +'</tbody>'+(L.length?'<tfoot><tr><td colspan="8">Total</td><td class="n">'+hm(tot)+'</td><td></td></tr></tfoot>':'')+'</table></div></div>';
+  if(pl.length)h+='<div class="box"><h2>Total por colaborador</h2><p class="sub">Para o lançamento na folha. Clique para filtrar os lançamentos da pessoa.</p><div class="tab"><table><thead><tr><th>Mat.</th><th>Colaborador</th><th class="n">Lançamentos</th><th class="n">Horas</th></tr></thead><tbody>'
+   +pl.map(p=>'<tr class="go" data-fm="'+esc(p.mat)+'"><td>'+esc(p.mat)+'</td><td>'+esc(tc(p.nome))+'</td><td class="n">'+p.n+'</td><td class="n"><b>'+hm(p.v)+'</b></td></tr>').join('')+'</tbody><tfoot><tr><td colspan="3">Total</td><td class="n">'+hm(tot)+'</td></tr></tfoot></table></div></div>';
+  $('vH').innerHTML=h;
+  $('hNovo').onclick=()=>formHE();$('hXls').onclick=()=>xlsHE().catch(e=>toast(e.message));$('hPdf').onclick=()=>pdfHE().catch(e=>toast(e.message));
+  const lp=$('hLimpa');if(lp)lp.onclick=()=>{FH.mat='';FH.mot='';FH.ano=false;rHE()};
+  const qi=$('hQ');qi.oninput=()=>{FH.q=qi.value;clearTimeout(qi.t);qi.t=setTimeout(()=>{rHE();const n=$('hQ');n.focus();n.setSelectionRange(n.value.length,n.value.length)},250)};
+  $('vH').querySelectorAll('[data-fm]').forEach(r=>r.onclick=()=>{FH.mat=FH.mat===r.dataset.fm?'':r.dataset.fm;rHE()});
+  $('vH').querySelectorAll('[data-ed]').forEach(b=>b.onclick=()=>formHE(HE().find(x=>x.id===b.dataset.ed)));
+  $('vH').querySelectorAll('[data-ex]').forEach(b=>b.onclick=async()=>{if(!b.classList.contains('cf')){b.classList.add('cf');b.textContent='Confirmar';return}
+    const D=await db();if(!D)return toast('Não dá para salvar nesta visualização.');try{await D.collection('he').doc(b.dataset.ex).set(Object.assign({},HE().find(x=>x.id===b.dataset.ex)||{},{excluida:true,excluidaPor:quem(),excluidaEm:new Date().toISOString()}));HE_DB[b.dataset.ex]={excluida:true};toast('Lançamento excluído.');rHE()}catch(e){toast('Não consegui excluir: '+(e.message||'sem permissão'))}});
+}
+/* formulário: várias pessoas de uma vez (mesma data e motivo), horário por pessoa */
+function formHE(ed){const eq=equipe(),mots=[...new Set(HE().map(x=>String(x.motivo||'').trim()).filter(Boolean))].sort();
+  const w=document.createElement('div');w.className='fundo';
+  const d0=ed||{data:'',motivo:'',ini:null,fim:null};
+  w.innerHTML='<div class="jan"><div class="jcab"><h3>'+(ed?'Editar hora extra':'Lançar horas extras')+'<small>'+(ed?'Corrija o que estiver errado e salve.':'Escolha a data, o motivo e as pessoas. O horário padrão vai para todos e pode ser ajustado em cada linha.')+'</small></h3><button class="x" data-x>×</button></div>'
+   +'<div class="jcorpo"><div class="fg">'
+   +'<div class="fc w3"><label>Data *</label><input type="date" id="fData" value="'+esc(d0.data)+'"></div>'
+   +'<div class="fc w5"><label>Motivo *</label><input id="fMot" list="dlMot" value="'+esc(d0.motivo)+'" placeholder="Ex.: Feriado, Serviço Externo - Alojamento"><datalist id="dlMot">'+mots.map(m=>'<option value="'+esc(m)+'">').join('')+'</datalist></div>'
+   +'<div class="fc w2"><label>Início</label><input type="time" id="fIni" value="'+hmT(d0.ini)+'"></div><div class="fc w2"><label>Fim</label><input type="time" id="fFim" value="'+hmT(d0.fim)+'"></div>'
+   +(ed?'':'<div class="fc w12"><label>Pessoas * <span style="text-transform:none;font-weight:400">(<a href="#" id="fTodos">marcar todos</a> · <a href="#" id="fNenhum">desmarcar</a>)</span></label><div class="pes" id="fPes">'+eq.map(p=>'<label><input type="checkbox" value="'+esc(p.mat)+'"> '+esc(tc(p.nome))+' <span class="mut small">'+esc(p.mat)+'</span></label>').join('')+'</div></div>'
+     +'<div class="fc w4"><label>Outra matrícula</label><div style="display:flex;gap:6px"><input id="fMat" inputmode="numeric" placeholder="Matrícula" style="flex:1"><button class="btn sm" id="fAdd" type="button">Incluir</button></div><span class="small mut" id="fMatInfo"></span></div>')
+   +'<div class="fc w12"><label>'+(ed?'Colaborador':'Conferência por pessoa')+'</label><div class="tab"><table class="lin"><thead><tr><th>Mat.</th><th>Colaborador</th><th>Início</th><th>Fim</th><th>Intervalo (min)</th><th class="n">Horas</th><th>Aviso</th></tr></thead><tbody id="fLin"></tbody></table></div><span class="small mut">Se passar da meia-noite (ex.: 23:00 às 07:20) a conta já considera o dia seguinte. Intervalo é opcional: só preencha se a pausa não deve ser paga.</span></div>'
+   +'</div></div><div class="jpe"><span class="esp msg" id="fMsg"></span><button class="btn" data-x>Cancelar</button><button class="btn pri" id="fSalvar">'+(ed?'Salvar alterações':'Salvar lançamentos')+'</button></div></div>';
+  document.body.appendChild(w);const g=s=>w.querySelector(s);const fechar=()=>w.remove();w.querySelectorAll('[data-x]').forEach(b=>b.onclick=fechar);
+  const SEL=new Map();// mat -> {mat,nome,funcao,adm,ini,fim,intervalo}
+  if(ed)SEL.set(ed.mat,{mat:ed.mat,nome:ed.nome,funcao:ed.funcao,adm:ed.adm,ini:ed.ini,fim:ed.fim,intervalo:ed.intervalo||0,qtd:ed.qtd});
+  const linhas=()=>{const ini=toMin(g('#fIni').value),fim=toMin(g('#fFim').value),dt=g('#fData').value,H=HE();
+    g('#fLin').innerHTML=[...SEL.values()].map(p=>{const i=p.ini!=null?p.ini:ini,f=p.fim!=null?p.fim:fim;const c=i!=null&&f!=null?((f-i)%1440+1440)%1440-(+p.intervalo||0):null;
+      const dup=dt&&H.some(x=>x.mat===p.mat&&x.data===dt&&(!ed||x.id!==ed.id)&&x.ini!=null&&i!=null&&ov(x.ini,x.min,i,c));
+      return '<tr data-m="'+esc(p.mat)+'"><td>'+esc(p.mat)+'</td><td>'+esc(tc(p.nome))+'</td><td><input type="time" data-k="ini" value="'+hmT(i)+'"></td><td><input type="time" data-k="fim" value="'+hmT(f)+'"></td><td><input type="number" min="0" step="5" data-k="intervalo" value="'+(+p.intervalo||0)+'"></td><td class="n"><b>'+hm(c)+'</b></td><td class="small" style="color:var(--bad)">'+(dup?'Já existe hora extra desta pessoa nesse horário':'')+(c!=null&&c>12*60?' Mais de 12 horas: confira':'')+'</td></tr>'}).join('')||'<tr><td colspan="7" class="mut">Marque as pessoas acima.</td></tr>';
+    g('#fLin').querySelectorAll('input').forEach(inp=>inp.onchange=()=>{const p=SEL.get(inp.closest('tr').dataset.m);const k=inp.dataset.k;p[k]=k==='intervalo'?(+inp.value||0):toMin(inp.value);delete p.qtd;linhas()})};
+  const ov=(a,am,b,bm)=>a<b+(bm||0)&&b<a+(am||0);
+  ['#fIni','#fFim','#fData'].forEach(s=>g(s).onchange=()=>{if(s!=='#fData')SEL.forEach(p=>{p.ini=null;p.fim=null;delete p.qtd});linhas()});
+  if(!ed){const marca=(m,on)=>{if(on){const e=eq.find(x=>x.mat===m)||{mat:m};const q=pessoa(m)||{};SEL.set(m,{mat:m,nome:q.nome||e.nome||'',funcao:q.funcao||e.funcao||'',adm:q.adm||'',ini:null,fim:null,intervalo:0})}else SEL.delete(m)};
+    g('#fPes').onchange=e=>{if(e.target.type==='checkbox'){marca(e.target.value,e.target.checked);linhas()}};
+    g('#fTodos').onclick=e=>{e.preventDefault();g('#fPes').querySelectorAll('input').forEach(c=>{c.checked=true;marca(c.value,true)});linhas()};
+    g('#fNenhum').onclick=e=>{e.preventDefault();g('#fPes').querySelectorAll('input').forEach(c=>{c.checked=false});SEL.clear();linhas()};
+    const mi=g('#fMat');mi.oninput=()=>{const q=pessoa(mi.value.trim());g('#fMatInfo').textContent=q?tc(q.nome)+' · '+tc(q.funcao)+(q.sit&&q.sit!=='Ativo'?' · '+q.sit:''):(mi.value.trim()?'Não encontrei no Quadro':'')};
+    g('#fAdd').onclick=()=>{const m=mi.value.trim().replace(/^0+(?=\d)/,'');const q=pessoa(m);if(!q){g('#fMatInfo').textContent='Não encontrei essa matrícula no Quadro';return}marca(m,true);mi.value='';g('#fMatInfo').textContent=tc(q.nome)+' incluída';linhas()}}
+  linhas();
+  let salvando=false;
+  g('#fSalvar').onclick=async()=>{if(salvando)return;salvando=true;g('#fSalvar').disabled=true;try{if(await salvarF()===false){salvando=false;g('#fSalvar').disabled=false}}catch(e){salvando=false;g('#fSalvar').disabled=false}};
+  const salvarF=async()=>{const msg=g('#fMsg');const data=g('#fData').value,mot=g('#fMot').value.trim();
+    if(!data||!mot){msg.className='esp msg er';msg.textContent='Preencha a data e o motivo.';return false}
+    if(!SEL.size){msg.className='esp msg er';msg.textContent='Escolha ao menos uma pessoa.';return false}
+    const ini=toMin(g('#fIni').value),fim=toMin(g('#fFim').value);const L=[...SEL.values()].map(p=>({mat:p.mat,nome:p.nome,funcao:p.funcao,adm:p.adm,ini:p.ini!=null?p.ini:ini,fim:p.fim!=null?p.fim:fim,intervalo:+p.intervalo||0,qtd:p.qtd}));
+    if(L.some(x=>x.ini==null||x.fim==null)){msg.className='esp msg er';msg.textContent='Informe o horário de início e fim de todos.';return false}
+    const D=await db();if(!D){msg.className='esp msg er';msg.textContent='Não dá para salvar nesta visualização.';return false}
+    msg.className='esp msg';msg.textContent='Salvando…';
+    try{const comp=ed?ed.comp:COMP;const agora=new Date().toISOString();
+      for(const x of L){const rec={comp,data,mat:x.mat,nome:x.nome,funcao:x.funcao,adm:x.adm,motivo:mot,ini:x.ini,fim:x.fim,intervalo:x.intervalo};if(x.qtd!=null&&ed&&x.ini===ed.ini&&x.fim===ed.fim)rec.qtd=x.qtd;
+        if(ed){rec.alteradoPor=quem();rec.alteradoEm=agora;await D.collection('he').doc(ed.id).set(Object.assign({},rec,{criadoPor:ed.criadoPor||'',criadoEm:ed.criadoEm||''}));HE_DB[ed.id]=rec}
+        else{rec.criadoPor=quem();rec.criadoEm=agora;const r=await D.collection('he').add(rec);HE_DB[r.id||('n'+Date.now()+x.mat)]=rec}}
+      fechar();toast(ed?'Lançamento corrigido.':L.length+' lançamento(s) salvos.');render()}
+    catch(e){msg.className='esp msg er';msg.textContent='Não consegui salvar: '+(e.message||'sem permissão');return false}};
+}
+
+/* ---------- Gratificação BPP ---------- */
+let OC=null,OCK='';
+async function ocorr(g){const k=COMP+g.ini+g.fim+(g.itens||[]).length;if(OCK===k)return OC;OCK=k;OC=null;
+  try{const f=window.parent&&window.parent.CRV_OCORR;if(typeof f==='function'&&g.ini&&g.fim)OC=await f((g.itens||[]).map(i=>i.mat),g.ini,g.fim)}catch(_){}return OC}
+let GSAVE=null;
+async function salvarGR(g){const D=await db();if(!D)throw new Error('Não dá para salvar nesta visualização.');g.atualizadoPor=quem();g.atualizadoEm=new Date().toISOString();await D.collection('grat').doc(g.comp).set(g);GR_DB[g.comp]=g}
+function agendarGR(g){const s=$('gSalvo');if(s)s.textContent='Salvando…';clearTimeout(GSAVE);GSAVE=setTimeout(()=>salvarGR(g).then(()=>{const e=$('gSalvo');if(e)e.textContent='Salvo às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}).catch(e=>{const x=$('gSalvo');if(x)x.textContent='Não salvou: '+(e.message||'sem permissão')}),600)}
+/* edição de um mês que veio da planilha: copia para o app ao mexer */
+const grEditavel=c=>{let g=GR(c);if(!g)return null;if(!GR_DB[c]){g=JSON.parse(JSON.stringify(g));g.comp=c;g.itens.forEach(i=>{i.hist=true});GR_DB[c]=g}return GR_DB[c]};
+function novoGR(){const cs=Object.keys(Object.assign({},P0.grat,GR_DB)).filter(c=>c<COMP).sort();const ant=cs.length?GR(cs[cs.length-1]):null;
+  const ini=ant&&ant.fim?addDia(ant.fim,1):COMP+'-01',fim=ant&&ant.fim?addMes(ant.fim.slice(0,7),1)+ant.fim.slice(7):'';
+  const it=(ant?ant.itens:equipe()).map(i=>{const q=pessoa(i.mat)||{};return {mat:i.mat,nome:q.nome||i.nome,funcao:q.funcao||i.funcao,prev:+i.prev||150,crit:[],dias:'',motivo:''}}).filter(i=>{const q=pessoa(i.mat);return !q||q.sit!=='Desligado'});
+  const fora=[];(ant?ant.itens:[]).forEach(i=>{const q=pessoa(i.mat);if(q&&q.sit==='Desligado')fora.push({mat:i.mat,nome:q.nome,motivo:'Desligado(a)'})});
+  (ant&&ant.fora||[]).forEach(f=>{const q=pessoa(f.mat);if(!q||q.sit==='Desligado')return;if(!fora.some(x=>x.mat===f.mat))fora.push({mat:f.mat,nome:q.nome||f.nome,motivo:f.motivo})});
+  return {comp:COMP,ini,fim,itens:it.sort((a,b)=>a.nome.localeCompare(b.nome)),fora,criadoPor:quem(),criadoEm:new Date().toISOString()}}
+async function rGR(){const g0=GR(COMP);
+  if(!g0){$('vB').innerHTML='<div class="box"><h2>Gratificação BPP · '+compCap(COMP)+'</h2><p class="sub">A avaliação deste mês ainda não foi lançada.</p><div class="av in">Ao começar, o painel traz a equipe e o valor previsto de cada um da última avaliação, todos com 100%. Quem foi desligado sai sozinho. Depois é só marcar os critérios de quem teve desconto.</div><button class="btn pri" id="gIni">Começar a avaliação de '+compNome(COMP)+'</button></div>';
+    $('gIni').onclick=async()=>{const g=novoGR();try{await salvarGR(g);toast('Avaliação de '+compNome(COMP)+' criada.');rGR()}catch(e){toast(e.message)}};return}
+  const g=g0,crs=CFG().criterios,t=grTot(g);
+  let h='<div class="box"><div class="tools"><div><h2 style="margin:0">Avaliação mensal · Gratificação BPP · '+compCap(COMP)+'</h2><p class="sub" style="margin:2px 0 0">'+t.n+' avaliados · pago R$ '+brl(t.pago)+' de R$ '+brl(t.prev)+' previstos · '+t.desc+' com desconto <span class="salvo" id="gSalvo"></span></p></div><span class="esp"></span>'
+   +'<button class="btn" id="gAdd">+ Incluir pessoa</button><button class="btn" id="gXls">Excel</button><button class="btn tea" id="gPdf">Imprimir para assinatura</button></div>'
+   +'<div class="fg" style="margin-bottom:10px"><div class="fc w3"><label>Período: de</label><input type="date" id="gIniD" value="'+esc(g.ini)+'"></div><div class="fc w3"><label>até</label><input type="date" id="gFimD" value="'+esc(g.fim)+'"></div><div class="fc w6"><label>Como funciona</label><span class="small mut" style="padding-top:6px">Cada critério marcado tira '+Math.round(CFG().pesoCrit*100)+'% ('+crs.join(', ')+'). "Dias" é para quem trabalhou só parte do período (ex.: 11 dias = 11/30). Se a gestão definir outro percentual, digite em "% manual".</span></div></div>'
+   +'<div id="gOc"></div>'
+   +'<div class="tab gt"><table><thead><tr><th>Mat.</th><th>Nome</th><th class="n">Previsto</th><th>Critérios (−'+Math.round(CFG().pesoCrit*100)+'% cada)</th><th class="n">Dias</th><th class="n">% manual</th><th class="n">% atingido</th><th class="n">Gratificação</th><th>Motivo / observação</th><th></th></tr></thead><tbody>'
+   +g.itens.map((i,ix)=>{const p=pctDe(i);return '<tr data-i="'+ix+'"><td>'+esc(i.mat)+'</td><td><b>'+esc(tc(i.nome))+'</b><div class="small mut">'+esc(tc(i.funcao))+'</div><div class="sug" id="sg'+ix+'"></div></td>'
+     +'<td class="n"><input type="number" min="0" step="10" data-k="prev" value="'+esc(i.prev)+'"></td>'
+     +'<td><div class="crit">'+crs.map(c=>{const on=(i.crit||[]).includes(c);return '<label class="'+(on?'on':'')+'"><input type="checkbox" data-c="'+esc(c)+'"'+(on?' checked':'')+' hidden>'+esc(c)+'</label>'}).join('')+'</div>'+(i.hist&&!i.crit?'<div class="small mut">da planilha: '+pc(+i.pct)+'</div>':'')+'</td>'
+     +'<td class="n"><input type="number" min="0" max="30" data-k="dias" value="'+esc(i.dias==null?'':i.dias)+'" placeholder="30"></td>'
+     +'<td class="n"><input type="number" min="0" max="100" step="0.01" data-k="pctMan" value="'+(i.pctMan!=null&&i.pctMan!==''?Math.round(i.pctMan*10000)/100:'')+'" placeholder="—"></td>'
+     +'<td class="n"><span class="pct'+(p<1?' b':'')+'">'+pc(p)+'</span></td><td class="n"><b>R$ '+brl(valDe(i))+'</b></td>'
+     +'<td><input class="tx" data-k="motivo" value="'+esc(i.motivo||'')+'" placeholder="Ex.: auditoria interna"><div class="small mut">'+esc((i.crit||[]).concat(i.dias?['referente a '+i.dias+' dias trabalhados']:[]).join(', '))+'</div></td>'
+     +'<td><button class="btn sm perigo" data-fora="'+ix+'" title="Tirar desta avaliação (férias, afastamento...)">Tirar</button></td></tr>'}).join('')
+   +'</tbody><tfoot><tr><td colspan="2">Total · '+t.n+' pessoas</td><td class="n">R$ '+brl(t.prev)+'</td><td colspan="4"></td><td class="n">R$ '+brl(t.pago)+'</td><td colspan="2"></td></tr></tfoot></table></div>';
+  h+='<div style="margin-top:12px"><h2 style="font-size:14px;margin:0 0 6px">Fora da avaliação deste mês</h2><p class="sub" style="margin:0 0 6px">Saem no documento como observação (ex.: férias no período, afastada, desligada).</p>'
+   +((g.fora||[]).map((f,k)=>'<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px"><span style="min-width:260px"><b>'+esc(tc(f.nome))+'</b> <span class="mut small">mat. '+esc(f.mat)+'</span></span><input class="tx" data-fk="'+k+'" value="'+esc(f.motivo)+'" style="flex:1;border:1px solid var(--line);border-radius:6px;padding:5px 7px;font:inherit"><button class="btn sm" data-volta="'+k+'">Voltar para a avaliação</button><button class="btn sm perigo" data-tira="'+k+'">Remover</button></div>').join('')||'<p class="mut small" style="margin:0">Ninguém fora da avaliação.</p>')+'</div></div>';
+  $('vB').innerHTML=h;
+  const ed=()=>grEditavel(COMP);
+  $('gIniD').onchange=()=>{const x=ed();x.ini=$('gIniD').value;agendarGR(x);OCK='';sugestoes(x)};$('gFimD').onchange=()=>{const x=ed();x.fim=$('gFimD').value;agendarGR(x);OCK='';sugestoes(x)};
+  $('vB').querySelectorAll('tr[data-i]').forEach(tr=>{const ix=+tr.dataset.i;
+    tr.querySelectorAll('input[data-k]').forEach(inp=>inp.onchange=()=>{const x=ed(),i=x.itens[ix],k=inp.dataset.k;
+      if(k==='pctMan')i.pctMan=inp.value===''?null:Math.max(0,Math.min(100,+inp.value))/100;else if(k==='prev')i.prev=+inp.value||0;else if(k==='dias')i.dias=inp.value===''?'':Math.max(0,Math.min(30,+inp.value));else i[k]=inp.value;
+      if(k!=='motivo'){i.crit=i.crit||[];delete i.pct}agendarGR(x);if(k!=='motivo')rGR()});
+    tr.querySelectorAll('input[data-c]').forEach(cb=>cb.onchange=()=>{const x=ed(),i=x.itens[ix];i.crit=i.crit||[];const c=cb.dataset.c;if(cb.checked){if(!i.crit.includes(c))i.crit.push(c)}else i.crit=i.crit.filter(y=>y!==c);delete i.pct;agendarGR(x);rGR()})});
+  $('vB').querySelectorAll('[data-fora]').forEach(b=>b.onclick=()=>{const x=ed(),i=x.itens.splice(+b.dataset.fora,1)[0];x.fora=x.fora||[];x.fora.push({mat:i.mat,nome:i.nome,motivo:'Durante o período apurado está de férias',prev:i.prev});agendarGR(x);rGR()});
+  $('vB').querySelectorAll('[data-fk]').forEach(inp=>inp.onchange=()=>{const x=ed();x.fora[+inp.dataset.fk].motivo=inp.value;agendarGR(x)});
+  $('vB').querySelectorAll('[data-volta]').forEach(b=>b.onclick=()=>{const x=ed(),f=x.fora.splice(+b.dataset.volta,1)[0];const q=pessoa(f.mat)||{};x.itens.push({mat:f.mat,nome:q.nome||f.nome,funcao:q.funcao||'',prev:f.prev||150,crit:[],dias:'',motivo:''});x.itens.sort((a,b)=>a.nome.localeCompare(b.nome));agendarGR(x);rGR()});
+  $('vB').querySelectorAll('[data-tira]').forEach(b=>b.onclick=()=>{const x=ed();x.fora.splice(+b.dataset.tira,1);agendarGR(x);rGR()});
+  $('gAdd').onclick=()=>incluirGR();$('gXls').onclick=()=>xlsGR().catch(e=>toast(e.message));$('gPdf').onclick=()=>pdfGR().catch(e=>toast(e.message));
+  sugestoes(g);
+}
+/* ocorrências do período (absenteísmo e sanções) para ajudar a marcar os critérios — não marca sozinho */
+async function sugestoes(g){const o=await ocorr(g);const box=$('gOc');if(!box)return;
+  if(!o){box.innerHTML='';return}
+  let n=0;g.itens.forEach((i,ix)=>{const p=o.P[String(i.mat)];const el=$('sg'+ix);if(!el||!p)return;const s=[];
+    if(p.at.length)s.push(p.at.length+' dia(s) de atestado: '+p.at.map(d=>br(d).slice(0,5)).join(', '));if(p.fa.length)s.push(p.fa.length+' falta(s): '+p.fa.map(d=>br(d).slice(0,5)).join(', '));
+    if(p.su.length)s.push('suspensão: '+p.su.map(d=>br(d).slice(0,5)).join(', '));p.adv.forEach(a=>s.push('advertência '+br(a.data).slice(0,5)+(a.motivo?' ('+a.motivo+')':'')));p.sus.forEach(a=>s.push('suspensão '+br(a.data).slice(0,5)+(a.motivo?' ('+a.motivo+')':'')));
+    if(s.length){n++;el.innerHTML=s.map(t=>'<span title="Do painel de Absenteísmo/Sanções">'+esc(t)+'</span>').join('')}});
+  const fimAbs=o.abs&&g.fim&&o.abs<g.fim;
+  box.innerHTML='<div class="av in">'+(n?'<b>'+n+' pessoa(s) com ocorrência no período</b> (em roxo, embaixo do nome), tiradas do Absenteísmo e das Sanções. Confira e marque o critério se for o caso; o painel não desconta sozinho.':'Nenhum atestado, falta ou sanção registrado no período para esta equipe.')+(fimAbs?' <b>Atenção:</b> o absenteísmo carregado vai só até '+br(o.abs)+'.':'')+'</div>'}
+function incluirGR(){const x0=GR(COMP),ja=new Set((x0.itens||[]).map(i=>i.mat).concat((x0.fora||[]).map(f=>f.mat))),sec=daSecao().filter(p=>!ja.has(p.mat));
+  const w=document.createElement('div');w.className='fundo';w.innerHTML='<div class="jan st"><div class="jcab"><h3>Incluir pessoa na avaliação<small>Pela matrícula ou da mesma seção no Quadro.</small></h3><button class="x" data-x>×</button></div><div class="jcorpo"><div class="fg"><div class="fc w6"><label>Matrícula</label><input id="iMat" inputmode="numeric"></div><div class="fc w6"><label>Valor previsto (R$)</label><input id="iPrev" type="number" value="150"></div><div class="fc w12"><span id="iInfo" class="small mut"></span></div>'
+   +(sec.length?'<div class="fc w12"><label>Da mesma seção, fora da avaliação</label><div class="pes">'+sec.map(p=>'<label><input type="radio" name="iS" value="'+esc(p.mat)+'"> '+esc(tc(p.nome))+' <span class="mut small">'+esc(tc(p.funcao))+'</span></label>').join('')+'</div></div>':'')+'</div></div><div class="jpe"><span class="esp msg" id="iMsg"></span><button class="btn" data-x>Cancelar</button><button class="btn pri" id="iOk">Incluir</button></div></div>';
+  document.body.appendChild(w);const g=s=>w.querySelector(s);w.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>w.remove());
+  const info=()=>{const q=pessoa(g('#iMat').value.trim());g('#iInfo').textContent=q?tc(q.nome)+' · '+tc(q.funcao)+' · '+(q.sit||''):''};g('#iMat').oninput=info;
+  w.querySelectorAll('[name=iS]').forEach(r=>r.onchange=()=>{g('#iMat').value=r.value;info()});
+  g('#iOk').onclick=()=>{const m=g('#iMat').value.trim().replace(/^0+(?=\d)/,''),q=pessoa(m);if(!q){g('#iMsg').className='esp msg er';g('#iMsg').textContent='Matrícula não encontrada no Quadro.';return}if(ja.has(m)){g('#iMsg').className='esp msg er';g('#iMsg').textContent='Essa pessoa já está nesta avaliação.';return}
+    const x=grEditavel(COMP);x.itens.push({mat:m,nome:q.nome,funcao:q.funcao,prev:+g('#iPrev').value||0,crit:[],dias:'',motivo:''});x.itens.sort((a,b)=>a.nome.localeCompare(b.nome));agendarGR(x);w.remove();OCK='';rGR()}}
+
+/* ---------- Por colaborador ---------- */
+const FC={q:''};
+function linhasCol(){const H=HE(),ano=COMP.slice(0,4),m={};const P=(mat,nome)=>m[mat]||(m[mat]={mat,nome,he:0,nhe:0,gr:0,prev:0,meses:0,desc:0});
+  H.filter(x=>x.comp.startsWith(ano)).forEach(x=>{const p=P(x.mat,x.nome);p.he+=x.min||0;p.nhe++});
+  Object.keys(Object.assign({},P0.grat,GR_DB)).filter(c=>c.startsWith(ano)).forEach(c=>(GR(c).itens||[]).forEach(i=>{const p=P(i.mat,i.nome);p.gr+=valDe(i);p.prev+=+i.prev||0;p.meses++;if(pctDe(i)<1)p.desc++}));
+  Object.values(m).forEach(p=>{const q=pessoa(p.mat);if(q)p.nome=q.nome,p.sit=q.sit});return Object.values(m).sort((a,b)=>a.nome.localeCompare(b.nome))}
+function rCol(){const ano=COMP.slice(0,4);let L=linhasCol();const q=FC.q.trim().toLowerCase();if(q)L=L.filter(p=>(p.nome+' '+p.mat).toLowerCase().includes(q));
+  $('vC').innerHTML='<div class="box"><div class="tools"><div><h2 style="margin:0">Por colaborador · '+ano+'</h2><p class="sub" style="margin:2px 0 0">Clique na pessoa para ver mês a mês.</p></div><span class="esp"></span><input type="search" id="cQ" placeholder="Buscar nome ou matrícula" value="'+esc(FC.q)+'"></div>'
+   +'<div class="tab"><table><thead><tr><th>Mat.</th><th>Colaborador</th><th class="n">Horas extras</th><th class="n">Lançamentos</th><th class="n">Meses avaliados</th><th class="n">Meses com desconto</th><th class="n">Gratificação recebida</th><th class="n">de previsto</th></tr></thead><tbody>'
+   +L.map(p=>'<tr class="go" data-col="'+esc(p.mat)+'"><td>'+esc(p.mat)+'</td><td><b>'+esc(tc(p.nome))+'</b>'+(p.sit&&p.sit!=='Ativo'?' <span class="pill p-bad">'+esc(p.sit)+'</span>':'')+'</td><td class="n">'+hm(p.he)+'</td><td class="n">'+p.nhe+'</td><td class="n">'+p.meses+'</td><td class="n">'+(p.desc?'<span class="pill p-ter">'+p.desc+'</span>':'0')+'</td><td class="n">R$ '+brl(p.gr)+'</td><td class="n mut">R$ '+brl(p.prev)+'</td></tr>').join('')+'</tbody></table></div></div>';
+  const qi=$('cQ');qi.oninput=()=>{FC.q=qi.value;clearTimeout(qi.t);qi.t=setTimeout(()=>{rCol();const n=$('cQ');n.focus();n.setSelectionRange(n.value.length,n.value.length)},250)};
+  $('vC').querySelectorAll('[data-col]').forEach(r=>r.onclick=()=>ficha(r.dataset.col))}
+function ficha(mat){const H=HE().filter(x=>x.mat===mat).sort((a,b)=>a.data.localeCompare(b.data)),q=pessoa(mat),cs=Object.keys(Object.assign({},P0.grat,GR_DB)).sort();
+  const nome=(q&&q.nome)||(H[0]&&H[0].nome)||'';const meses=[...new Set(H.map(x=>x.comp).concat(cs.filter(c=>(GR(c).itens||[]).some(i=>i.mat===mat)||(GR(c).fora||[]).some(f=>f.mat===mat))))].sort().reverse();
+  const w=document.createElement('div');w.className='fundo';
+  w.innerHTML='<div class="jan"><div class="jcab"><h3>'+esc(tc(nome))+'<small>Matrícula '+esc(mat)+(q?' · '+esc(tc(q.funcao))+' · admissão '+br(q.adm)+' · '+esc(q.sit||''):'')+'</small></h3><button class="x" data-x>×</button></div><div class="jcorpo">'
+   +(meses.map(c=>{const hh=H.filter(x=>x.comp===c),g=GR(c),i=g&&(g.itens||[]).find(y=>y.mat===mat),f=g&&(g.fora||[]).find(y=>y.mat===mat);const tot=hh.reduce((s,x)=>s+(x.min||0),0);
+      return '<div class="box" style="padding:12px 14px"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><b style="font-size:15px;flex:1">'+compCap(c)+'</b>'+(hh.length?'<span class="pill p-tea">'+hm(tot)+' de hora extra</span>':'')
+       +(i?'<span class="pill '+(pctDe(i)<1?'p-ter':'p-ok')+'">BPP '+pc(pctDe(i))+' · R$ '+brl(valDe(i))+'</span>':f?'<span class="pill p-amb">Fora da avaliação: '+esc(f.motivo)+'</span>':'')+'</div>'
+       +(i&&motivoDe(i)?'<div class="small" style="margin-top:4px">Motivo do desconto: '+esc(motivoDe(i))+'</div>':'')
+       +(hh.length?'<table style="margin-top:6px"><tbody>'+hh.map(x=>'<tr><td>'+br(x.data)+'</td><td>'+esc(x.motivo)+'</td><td>'+hmT(x.ini)+' às '+hmT(x.fim)+'</td><td class="n"><b>'+hm(x.min)+'</b></td></tr>').join('')+'</tbody></table>':'')+'</div>'}).join('')||'<p class="mut">Nenhum lançamento.</p>')
+   +'</div></div>';document.body.appendChild(w);w.querySelector('[data-x]').onclick=()=>w.remove();w.addEventListener('mousedown',e=>{if(e.target===w)w.remove()})}
+
+/* ---------- Assinaturas e textos ---------- */
+function rCfg(){const c=CFG(),hm0=HM_DB[COMP]||{};
+  const ass=(k,t)=>'<div class="box"><h2>'+t+'</h2><p class="sub">Nome e cargo de quem assina. Saem nesta ordem no documento.</p><div id="'+k+'">'+(c[k]||[]).map((a,i)=>'<div class="fg" style="margin-bottom:6px" data-a="'+i+'"><div class="fc w5"><input data-f="nome" value="'+esc(a.nome)+'" placeholder="Nome"></div><div class="fc w5"><input data-f="cargo" value="'+esc(a.cargo)+'" placeholder="Cargo"></div><div class="fc w2"><button class="btn sm perigo" data-rm="'+i+'">Remover</button></div></div>').join('')+'</div><button class="btn sm" data-add="'+k+'">+ Incluir assinatura</button></div>';
+  $('vCfg').innerHTML='<div class="box"><h2>Setor</h2><div class="fg"><div class="fc w6"><label>Nome do setor no documento</label><input id="cSet" value="'+esc(c.setor)+'"></div><div class="fc w6"><label>Cidade</label><input id="cCid" value="'+esc(c.cidade)+'"></div></div></div>'
+   +ass('assHE','Assinaturas · Horas extras')+ass('assGR','Assinaturas · Gratificação BPP')
+   +'<div class="box"><h2>Documento de horas extras de '+compNome(COMP)+'</h2><p class="sub">Data e texto que saem no topo. Deixe o texto em branco para o painel montar sozinho com os dias lançados.</p><div class="fg"><div class="fc w3"><label>Data do documento</label><input type="date" id="cEm" value="'+esc(hm0.emissao||'')+'"></div><div class="fc w12"><label>Texto</label><textarea id="cTx" placeholder="'+esc(textoHE(COMP,true))+'">'+esc(hm0.texto||'')+'</textarea></div></div></div>'
+   +'<div style="display:flex;gap:8px;align-items:center"><button class="btn pri" id="cOk">Salvar</button><span class="msg" id="cMsg"></span></div>';
+  const v=$('vCfg');
+  v.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{const k=b.dataset.add;const box=$(k);const i=box.children.length;box.insertAdjacentHTML('beforeend','<div class="fg" style="margin-bottom:6px" data-a="'+i+'"><div class="fc w5"><input data-f="nome" placeholder="Nome"></div><div class="fc w5"><input data-f="cargo" placeholder="Cargo"></div><div class="fc w2"><button class="btn sm perigo" onclick="this.closest(\'[data-a]\').remove()">Remover</button></div></div>')});
+  v.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>b.closest('[data-a]').remove());
+  $('cOk').onclick=async()=>{const D=await db(),m=$('cMsg');if(!D){m.className='msg er';m.textContent='Não dá para salvar nesta visualização.';return}
+    const lerA=k=>[...$(k).querySelectorAll('[data-a]')].map(r=>({nome:r.querySelector('[data-f=nome]').value.trim(),cargo:r.querySelector('[data-f=cargo]').value.trim()})).filter(a=>a.nome||a.cargo);
+    const nc={setor:$('cSet').value.trim(),cidade:$('cCid').value.trim(),assHE:lerA('assHE'),assGR:lerA('assGR'),atualizadoPor:quem(),atualizadoEm:new Date().toISOString()};
+    try{await D.collection('cfg').doc('geral').set(Object.assign({},CFG_DB||{},nc));CFG_DB=Object.assign({},CFG_DB||{},nc);
+      const hmx={emissao:$('cEm').value,texto:$('cTx').value.trim()};await D.collection('heMes').doc(COMP).set(hmx);HM_DB[COMP]=hmx;m.className='msg ok';m.textContent='Salvo.';topo()}catch(e){m.className='msg er';m.textContent='Não consegui salvar: '+(e.message||'sem permissão')}}}
+
+/* ---------- textos e arquivos ---------- */
+function textoHE(c,auto){const hm0=HM_DB[c]||{};if(!auto&&hm0.texto)return hm0.texto;const L=HE().filter(x=>x.comp===c);const ds=[...new Set(L.map(x=>x.data))].sort();
+  const ms=[...new Set(ds.map(d=>d.slice(0,7)))].map(m=>MESES[+m.slice(5)-1]+'/'+m.slice(0,4));
+  const porMes={};ds.forEach(d=>{(porMes[d.slice(0,7)]=porMes[d.slice(0,7)]||[]).push(d)});
+  const dias=Object.values(porMes).map(a=>a.map(d=>d.slice(8)).join(', ')+'/'+a[0].slice(5,7)+'/'+a[0].slice(0,4)).join(' e ');
+  return 'Solicitamos o pagamento das horas extras abaixo relacionadas, referentes aos serviços prestados pelos colaboradores do setor '+CFG().setor.replace(/^.*- */,'')+', realizadas no período de '+(ms.join(' e ')||compNome(c))+', em razão de atividades executadas após a jornada de trabalho'+(ds.length?' nos dias '+dias:'')+'.'}
+function dataExtenso(iso){const d=iso||hoje();return CFG().cidade+', '+(+d.slice(8))+' de '+MESES[+d.slice(5,7)-1]+' de '+d.slice(0,4)}
+const JS=()=>(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF);
+const XL=()=>window.XLSX||(window.parent&&window.parent.XLSX);
+async function salvarArq(nome,bytes,tipo){const DL=window.claude&&window.claude.use?await window.claude.use('downloads').catch(()=>null):null;if(DL)return DL.save({filename:nome,data:bytes});
+  const u=URL.createObjectURL(new Blob([bytes],{type:tipo}));const a=document.createElement('a');a.href=u;a.download=nome;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),3000)}
+const logos=doc=>(window.parent.CRV_PDF_LOGOS||window.CRV_PDF_LOGOS||(d=>d))(doc);
+function assinaturas(doc,lista,y,W){const n=lista.length;if(!n)return y;const H=doc.internal.pageSize.getHeight();if(y>H-40){doc.addPage();y=30}
+  const por=Math.min(3,n),lw=Math.min(70,(W-20-(por-1)*12)/por);let row=0;
+  for(let i=0;i<n;i+=por){const g=lista.slice(i,i+por),tw=g.length*lw+(g.length-1)*12;let x=(W-tw)/2;const yy=y+row*26+14;
+    g.forEach(a=>{doc.setDrawColor(60,66,80);doc.setLineWidth(.3);doc.line(x,yy,x+lw,yy);doc.setFont('helvetica','bold');doc.setFontSize(8.8);doc.setTextColor(30,36,48);doc.text(String(a.nome||''),x+lw/2,yy+4.5,{align:'center'});doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(90,96,110);doc.text(String(a.cargo||''),x+lw/2,yy+8.6,{align:'center'});x+=lw+12});row++}
+  return y+row*26+10}
+function cabPDF(doc,t1,t2,W){doc.setFillColor(36,65,79);doc.rect(0,0,W,2.2,'F');doc.setFillColor(192,88,47);doc.rect(0,2.2,W,.9,'F');doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(22,48,60);doc.text(t1,10,12);doc.setFont('helvetica','normal');doc.setFontSize(8.8);doc.setTextColor(70,76,88);doc.text(t2,10,17.5)}
+/* horas extras: Excel e PDF */
+function linhasHE(){return HE().filter(x=>x.comp===COMP).sort((a,b)=>a.data.localeCompare(b.data)||a.nome.localeCompare(b.nome)).map(x=>{const p=pessoa(x.mat)||{};return Object.assign({},x,{nome:p.nome||x.nome,funcao:p.funcao||x.funcao,adm:p.adm||x.adm})})}
+async function xlsHE(){const X=XL();if(!X)throw new Error('Excel indisponível.');const L=linhasHE();if(!L.length)throw new Error('Nenhuma hora extra lançada neste mês.');
+  const a=[['CRV INDUSTRIAL · Solicitação de pagamento de horas extras'],[dataExtenso((HM_DB[COMP]||{}).emissao||(P0.heMes&&P0.heMes[COMP]||{}).emissao)],[textoHE(COMP)],['SETOR: '+CFG().setor],[],['DATA','MAT.','COLABORADOR','FUNÇÃO','ADMISSÃO','MOTIVO','HORA INICIAL','HORA FINAL','QUANT. HORAS']];
+  L.forEach(x=>a.push([br(x.data),+x.mat,x.nome,x.funcao,br(x.adm),x.motivo,hmT(x.ini),hmT(x.fim),hm(x.min)]));
+  const tot=L.reduce((s,x)=>s+(x.min||0),0);a.push(['TOTAL',null,null,null,null,null,null,null,hm(tot)]);a.push([]);a.push(['TOTAL POR COLABORADOR']);a.push(['MAT.','COLABORADOR','QUANT. HORAS']);
+  const pm={};L.forEach(x=>{pm[x.mat]=pm[x.mat]||{n:x.nome,v:0};pm[x.mat].v+=x.min||0});Object.entries(pm).sort((p,q)=>p[1].n.localeCompare(q[1].n)).forEach(([m,p])=>a.push([+m,p.n,hm(p.v)]));
+  const ws=X.utils.aoa_to_sheet(a);ws['!cols']=[11,8,38,18,11,30,12,11,13].map(w=>({wch:w}));const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,'Horas extras');
+  await salvarArq('Horas extras Servicos Gerais - '+compCap(COMP).replace('/',' ')+'.xlsx',new Uint8Array(X.write(wb,{bookType:'xlsx',type:'array'})),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}
+async function pdfHE(){const J=JS();if(!J)throw new Error('PDF indisponível.');const L=linhasHE();if(!L.length)throw new Error('Nenhuma hora extra lançada neste mês.');
+  const doc=new J({unit:'mm',format:'a4'}),W=210;const em=(HM_DB[COMP]||{}).emissao||(P0.heMes&&P0.heMes[COMP]||{}).emissao||hoje();
+  cabPDF(doc,'Solicitação de pagamento de horas extras','CRV Industrial · '+CFG().setor+' · '+compCap(COMP),W);
+  doc.setFontSize(9);doc.setTextColor(30,36,48);doc.text(dataExtenso(em),W-10,25,{align:'right'});
+  const tx=doc.splitTextToSize(textoHE(COMP),W-20);doc.setFontSize(9.2);doc.text(tx,10,31);let y=31+tx.length*4.3+2;
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.text('SETOR: ',10,y);doc.setFont('helvetica','normal');doc.text(CFG().setor,23,y);y+=3;
+  const tot=L.reduce((s,x)=>s+(x.min||0),0);
+  doc.autoTable({startY:y,head:[['Data','Mat.','Colaborador','Função','Admissão','Motivo','Início','Fim','Horas']],body:L.map(x=>[br(x.data),x.mat,tc(x.nome),tc(x.funcao),br(x.adm),x.motivo,hmT(x.ini),hmT(x.fim),hm(x.min)]),
+    foot:[['Total','','','','','','','',hm(tot)]],showFoot:'lastPage',styles:{fontSize:7.6,cellPadding:1.2,lineColor:[225,222,216],lineWidth:.1},headStyles:{fillColor:[36,65,79],fontSize:7.6},footStyles:{fillColor:[246,240,233],textColor:[30,36,48],fontStyle:'bold'},
+    columnStyles:{0:{cellWidth:16},1:{cellWidth:11,halign:'center'},2:{cellWidth:44},3:{cellWidth:24},4:{cellWidth:16},5:{cellWidth:'auto'},6:{cellWidth:11,halign:'center'},7:{cellWidth:11,halign:'center'},8:{cellWidth:13,halign:'right',fontStyle:'bold'}},margin:{left:10,right:10,top:20}});
+  y=doc.lastAutoTable.finalY+5;const pm={};L.forEach(x=>{pm[x.mat]=pm[x.mat]||{n:x.nome,v:0,c:0};pm[x.mat].v+=x.min||0;pm[x.mat].c++});const pl=Object.entries(pm).sort((p,q)=>p[1].n.localeCompare(q[1].n));
+  if(y>235){doc.addPage();y=22}doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(22,48,60);doc.text('Total por colaborador',10,y);
+  doc.autoTable({startY:y+2,head:[['Mat.','Colaborador','Lançamentos','Horas']],body:pl.map(([m,p])=>[m,tc(p.n),p.c,hm(p.v)]),foot:[['','Total',L.length,hm(tot)]],showFoot:'lastPage',tableWidth:120,styles:{fontSize:7.6,cellPadding:1.1},headStyles:{fillColor:[192,88,47]},footStyles:{fillColor:[246,240,233],textColor:[30,36,48],fontStyle:'bold'},columnStyles:{0:{cellWidth:14},2:{halign:'center',cellWidth:22},3:{halign:'right',cellWidth:18,fontStyle:'bold'}},margin:{left:10}});
+  assinaturas(doc,CFG().assHE,doc.lastAutoTable.finalY+8,W);rodape(doc,W);
+  await salvarArq('Horas extras Servicos Gerais - '+compCap(COMP).replace('/',' ')+'.pdf',new Uint8Array((await logos(doc)).output('arraybuffer')),'application/pdf')}
+function rodape(doc,W){const n=doc.internal.getNumberOfPages(),H=doc.internal.pageSize.getHeight();for(let p=1;p<=n;p++){doc.setPage(p);doc.setFont('helvetica','normal');doc.setFontSize(7.2);doc.setTextColor(130,136,148);doc.text('Emitido em '+new Date().toLocaleDateString('pt-BR')+' por '+quem()+' · Página '+p+' de '+n,W-10,H-6,{align:'right'})}}
+/* gratificação: Excel e PDF */
+async function xlsGR(){const X=XL();if(!X)throw new Error('Excel indisponível.');const g=GR(COMP);const t=grTot(g);
+  const a=[['AVALIAÇÃO MENSAL - GRATIFICAÇÃO BPP'],['MÊS AVALIAÇÃO '+COMP.slice(5)+'/'+COMP.slice(0,4)],['Período '+br(g.ini)+' a '+br(g.fim)],[CFG().setor],[],['CÓDIGO - MATRÍCULA','NOME','FUNÇÃO','TOTAL PREVISTO','% ATINGIDO BPP','TOTAL GRATIFICAÇÃO','MOTIVO']];
+  g.itens.forEach(i=>a.push([+i.mat,i.nome,i.funcao,{v:+i.prev||0,t:'n',z:'"R$" #,##0.00'},{v:pctDe(i),t:'n',z:'0.00%'},{v:valDe(i),t:'n',z:'"R$" #,##0.00'},motivoDe(i)]));
+  a.push(['TOTAL',t.n+' pessoas',null,{v:t.prev,t:'n',z:'"R$" #,##0.00'},null,{v:t.pago,t:'n',z:'"R$" #,##0.00'},null]);a.push([]);a.push(['AVALIAÇÃO DO BPP:']);CFG().criterios.forEach(c=>a.push([Math.round(CFG().pesoCrit*100)+'% - '+c]));
+  (g.fora||[]).forEach(f=>a.push(['Obs: '+f.nome+' - MAT '+f.mat+' - '+f.motivo]));
+  const ws=X.utils.aoa_to_sheet(a);ws['!cols']=[18,40,22,15,15,18,44].map(w=>({wch:w}));const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,MESES[+COMP.slice(5)-1].toUpperCase());
+  await salvarArq('Gratificacao BPP Servicos Gerais - '+compCap(COMP).replace('/',' ')+'.xlsx',new Uint8Array(X.write(wb,{bookType:'xlsx',type:'array'})),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}
+async function pdfGR(){const J=JS();if(!J)throw new Error('PDF indisponível.');const g=GR(COMP),t=grTot(g);const doc=new J({unit:'mm',format:'a4'}),W=210;
+  cabPDF(doc,'Avaliação mensal · Gratificação BPP','CRV Industrial · '+CFG().setor,W);
+  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(30,36,48);doc.text('MÊS AVALIAÇÃO '+COMP.slice(5)+'/'+COMP.slice(0,4),10,26);doc.setFont('helvetica','normal');doc.setFontSize(9.2);doc.text('Período '+br(g.ini)+' a '+br(g.fim),10,31);
+  doc.autoTable({startY:35,head:[['Matrícula','Nome','Função','Previsto','% BPP','Gratificação','Motivo']],body:g.itens.map(i=>[i.mat,tc(i.nome),tc(i.funcao),'R$ '+brl(i.prev),pc(pctDe(i)),'R$ '+brl(valDe(i)),motivoDe(i)]),
+    foot:[['','Total · '+t.n+' pessoas','','R$ '+brl(t.prev),'','R$ '+brl(t.pago),'']],showFoot:'lastPage',styles:{fontSize:7.8,cellPadding:1.3,lineColor:[225,222,216],lineWidth:.1},headStyles:{fillColor:[36,65,79]},footStyles:{fillColor:[246,240,233],textColor:[30,36,48],fontStyle:'bold'},
+    columnStyles:{0:{cellWidth:15,halign:'center'},1:{cellWidth:52},2:{cellWidth:26},3:{cellWidth:18,halign:'right'},4:{cellWidth:14,halign:'right',fontStyle:'bold'},5:{cellWidth:20,halign:'right',fontStyle:'bold'},6:{cellWidth:'auto'}},margin:{left:10,right:10,top:20},
+    didParseCell:h=>{if(h.section==='body'&&h.column.index===4&&String(h.cell.raw)!=='100%')h.cell.styles.textColor=[180,35,24]}});
+  let y=doc.lastAutoTable.finalY+6;if(y>240){doc.addPage();y=24}
+  doc.setFont('helvetica','bold');doc.setFontSize(8.8);doc.setTextColor(30,36,48);doc.text('Avaliação do BPP:',10,y);doc.setFont('helvetica','normal');
+  const cr=CFG().criterios.map(c=>Math.round(CFG().pesoCrit*100)+'% - '+c).join('   ·   ');doc.text(cr,40,y);y+=5;
+  (g.fora||[]).forEach(f=>{const l=doc.splitTextToSize('Obs.: '+tc(f.nome)+' (mat. '+f.mat+') - '+f.motivo,W-20);doc.text(l,10,y);y+=l.length*4+1});
+  assinaturas(doc,CFG().assGR,y+6,W);rodape(doc,W);
+  await salvarArq('Gratificacao BPP Servicos Gerais - '+compCap(COMP).replace('/',' ')+'.pdf',new Uint8Array((await logos(doc)).output('arraybuffer')),'application/pdf')}
+
+/* atalhos do menu do app */
+window.CRV_SG=a=>{if(a==='she'){V='h';render();formHE()}if(a==='sgr'){COMP=hoje().slice(0,7);V='b';render()}};
+carregar().then(render);
+})();
+</script>
+</body></html>

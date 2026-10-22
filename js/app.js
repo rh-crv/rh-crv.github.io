@@ -143,10 +143,11 @@ async function carregarCatalogo(){
     { id:'cartao-alimentacao', frente:'Benefícios', nome:'Cartão Alimentação', nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.1 },
     { id:'cartao-convenio',    frente:'Benefícios', nome:'Cartão Convênio',    nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.2 },
     { id:'cartao-premium',     frente:'Benefícios', nome:'Cartão Premium',     nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.3 },
-    { id:'cartao-adm',         frente:'Benefícios', nome:'Cartão Convênio ADM', nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.4 }
+    { id:'cartao-adm',         frente:'Benefícios', nome:'Cartão Convênio ADM', nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.4 },
+    { id:'servicos-gerais',    frente:'Outros controles', nome:'Serviços Gerais · Horas extras e gratificação', nivel:'controlado', ordem:90 }
   ].filter(n => !E.paineis.some(x => x.id === n.id));
   if (NOVOS.length && E.perfil && E.perfil.papel === 'admin') {
-    await sb.from('paineis').insert(NOVOS.map((n, i) => ({ ...n, ordem: (sp ? sp.ordem : 40) + 1 + i })));
+    await sb.from('paineis').insert(NOVOS.map((n, i) => ({ ...n, ordem: n.id.startsWith('cartao-') ? (sp ? sp.ordem : 40) + 1 + i : n.ordem })));
     const r2 = await sb.from('paineis').select('*').order('ordem');
     if (!r2.error) E.paineis = (r2.data || []).filter(x => x.id !== 'rs' && x.id !== 'absenteismo-gestao');
   }
@@ -412,7 +413,8 @@ const SUBACOES = {
   'cartao-premium':     [{ acao:'rel', nome:'Relatório de conferência' }],
   'cartao-adm':         [{ acao:'novo', nome:'Registrar entrega' }, { acao:'sem', nome:'Créditos da semana' }, { acao:'rel', nome:'Relatório do período' }],
   crachas:  [{ acao:'novo', nome:'Cadastrar crachá de treinamento' }],
-  farmacia: [{ acao:'aut', nome:'Autorização de desconto' }, { acao:'hist', nome:'Histórico de autorizações' }]
+  farmacia: [{ acao:'aut', nome:'Autorização de desconto' }, { acao:'hist', nome:'Histórico de autorizações' }],
+  'servicos-gerais': [{ acao:'she', nome:'Lançar horas extras' }, { acao:'sgr', nome:'Gratificação do mês' }]
 };
 function fecharJanelasAut(w){ try { w.document.querySelectorAll('.aut-fundo,.ent-fundo,.of-fundo,.nv-fundo,.rl-fundo,.es-fundo,.ds-fundo,.ct-fundo,.jf-fundo,.ft-fundo,.df-fundo').forEach(x => x.remove()); } catch(_){} }
 function executarAcao(acao){
@@ -434,6 +436,7 @@ function executarAcao(acao){
   if (acao === 'rel' && w && typeof w.CRV_RELATORIO === 'function') { fecharJanelasAut(w); w.CRV_RELATORIO(); return true; }
   if (acao === 'novo' && w && typeof w.CRV_NOVO === 'function') { fecharJanelasAut(w); w.CRV_NOVO(); return true; }
   if (acao === 'nova' && w && typeof w.CRV_OUV_NOVA === 'function') { fecharJanelasAut(w); w.CRV_OUV_NOVA(); return true; }
+  if ((acao === 'she' || acao === 'sgr') && w && typeof w.CRV_SG === 'function') { w.CRV_SG(acao); return true; }
   return false;
 }
 async function telaPainel(id, acao){
@@ -801,7 +804,7 @@ async function registrar(painel, acao, detalhe){
    ===================================================================== */
 const MODELOS_LISTA = ['quadro','admissoes','rescisoes','experiencia','fat','curriculos','perfil','absenteismo','absenteismo-gestao',
   'ferias','sancoes','sysprocard','unimed','uniodonto','farmacia','jovem','renapsi','treinamentos','crachas','pesquisas','lideres',
-  'conexao','rd','fadiga','processos','ouvidorias','recepcao','alojamentos','onibus','gratificacao'];
+  'conexao','rd','fadiga','processos','ouvidorias','recepcao','alojamentos','onibus','gratificacao','servicos-gerais'];
 const MODELOS = Object.fromEntries(MODELOS_LISTA.map(id => [id, `paineis/${id}.html`]));
 // painéis que usam o mesmo arquivo de painel
 ['cartao-alimentacao','cartao-convenio','cartao-premium'].forEach(id => MODELOS[id] = 'paineis/cartoes.html');
@@ -956,6 +959,31 @@ window.CRV_DADOS = async function(painel){
     _pacCache[painel] = { k:chave, v };
     return v;
   } catch(_) { return null; }
+};
+/* Ocorrências de um grupo de matrículas num período: atestado/falta/suspensão (absenteísmo do Quadro) e advertências/suspensões (Sanções).
+   Retorna { abs:'yyyy-mm-dd' (até quando há absenteísmo), P:{ mat:{ at:[iso], fa:[iso], su:[iso], adv:[{data,motivo}], sus:[{data,motivo,dias}] } } } */
+window.CRV_OCORR = async function(mats, ini, fim){
+  const M = new Set((mats || []).map(m => String(m).replace(/^0+(?=\d)/, '')));
+  const P = {}; const pe = m => P[m] || (P[m] = { at:[], fa:[], su:[], adv:[], sus:[] });
+  const den = d => !ini || !fim || (d >= ini && d <= fim);
+  let abs = '';
+  try {
+    const Q = await window.CRV_DADOS('quadro'); const A = Q && Q.dados.ABSD, D = Q && Q.dados.D, DM = Q && Q.dados.DM;
+    if (A && D) {
+      abs = A.last || '';
+      const base = Date.UTC(2026, 0, 1), iso = k => new Date(base + k * 864e5).toISOString().slice(0, 10);
+      const mat = A.PR.map(x => { if (x == null || (Array.isArray(x) && typeof x[0] === 'string')) return null; const r = x >= 0 ? D[x] : (DM || [])[-x - 1]; return r ? String(r[0]) : null; });
+      (A.O || []).forEach(([pi, d, t]) => { const m = mat[pi]; if (!m || !M.has(m)) return; const di = iso(d); if (!den(di)) return; pe(m)[['at','fa','su'][t] || 'at'].push(di); });
+    }
+  } catch(_){}
+  try {
+    const S = await window.CRV_DADOS('sancoes'); const DB = S && S.dados.DB;
+    if (DB && Array.isArray(DB.R)) DB.R.forEach(r => { const m = String(r[1]).replace(/^0+(?=\d)/, ''); if (!M.has(m) || !r[2] || !den(r[2])) return; (r[0] ? pe(m).sus : pe(m).adv).push({ data:r[2], motivo:(DB.M || [])[r[4]] || '', dias:r[0] ? r[5] : null }); });
+    const SD = await window.CRV_REGS('sancoes', 'documentos');
+    (SD || []).forEach(d => { const m = String(d.mat || '').replace(/^0+(?=\d)/, ''); if (d.excluido || !M.has(m) || !d.data || !den(d.data)) return; if (d.tipo === 'adv') pe(m).adv.push({ data:d.data, motivo:d.assunto || '' }); else if (d.tipo === 'sus') pe(m).sus.push({ data:d.data, motivo:d.assunto || '', dias:d.dias || null }); });
+  } catch(_){}
+  Object.values(P).forEach(o => Object.values(o).forEach(a => a.sort((x, y) => String(x.data || x).localeCompare(String(y.data || y)))));
+  return { abs, P };
 };
 window.CRV_REGS = async function(painel, colecao){
   try {
