@@ -831,7 +831,7 @@ async function telaModelo(p, cfg, acao){
       podeEditar: () => podeEditar(p), ehAdmin: () => ehAdmin() });
     let novos = [];
     if (PAINEIS_COM_NOVOS.includes(p.id)) {
-      const r = await sb.from('registros').select('doc_id,dados').eq('painel', p.id).eq('colecao', 'novos').range(0, 4999);
+      const r = await sb.from('registros').select('doc_id,dados').eq('painel', p.id).eq('colecao', COLECAO_NOVOS[p.id] || 'novos').range(0, 4999);
       if (!r.error) novos = (r.data || []).filter(x => x.dados && !x.dados.excluida).map(x => ({ _id: x.doc_id, dados: x.dados }));
     }
     window.CRV_RECARREGAR = () => { if (location.hash.startsWith('#/p/' + encodeURIComponent(p.id))) telaPainel(p.id); };
@@ -926,7 +926,8 @@ function cssCapa(p){
   return `<style id="crv-capa">${r}</style>`;
 }
 
-const PAINEIS_COM_NOVOS = ['rd', 'fadiga', 'treinamentos'];
+const PAINEIS_COM_NOVOS = ['rd', 'fadiga', 'treinamentos', 'sancoes'];
+const COLECAO_NOVOS = { sancoes:'documentos' };
 function montarModelo(tpl, conteudo, referencia, p, novos){
   const nomeOk = n => /^[A-Za-z_$][\w$]*$/.test(n);
   const base = location.href.split('#')[0].replace(/[^/]*$/, '');
