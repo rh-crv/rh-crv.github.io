@@ -426,34 +426,63 @@ function abrirTermo(){
 async function imgData(u){const r=await fetch(u);const b=await r.blob();return await new Promise(ok=>{const fr=new FileReader();fr.onload=()=>ok(fr.result);fr.readAsDataURL(b)})}
 async function pdfTermo(d){
   const J=(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF);if(!J)throw new Error('gerador de PDF indisponível');
-  const doc=new J({unit:'mm',format:'a4'});let logo=null;try{logo=await imgData('__CRV_BASE__img/logo-crv.png')}catch(_){}
-  const L=22,W=166,M=105;let y=14;
-  if(logo){try{doc.addImage(logo,'PNG',M-35,y,70,22)}catch(_){}}
-  y=48;doc.setFont('helvetica','bold');doc.setFontSize(12);doc.text('Termo de Opção',M,y,{align:'center'});
-  y+=9;doc.setFont('helvetica','normal');doc.setFontSize(11.5);doc.text('Cartão Convênio-Sysprocard',M,y,{align:'center'});
-  const par=(t,gap=1.5,bold)=>{doc.setFont('helvetica',bold?'bold':'normal');doc.setFontSize(11);const ls=doc.splitTextToSize(t,W);ls.forEach((l,i)=>{doc.text(l,L,y,i<ls.length-1?{align:'justify',maxWidth:W}:{});y+=6.2});y+=gap};
+  const doc=new J({unit:'mm',format:'a4'});
+  const NAVY=[31,58,104],INK=[40,46,58],MUT=[110,116,128],GREEN=[110,150,60];
+  const L=18,R=192,W=R-L;
   const v=n=>Number(n).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-  y+=16;
-  par(`Eu ${d.nome}, matrícula: ${d.mat}, CPF ${d.cpf}.`,0);
-  par('Declaro para todos os fins que em virtude dos esclarecimentos apresentados pela Empresa, tenho pleno conhecimento da minha obrigação e responsabilidade em optar pela forma de recebimento do ticket refeição através do Cartão Convênio, de forma física, sendo pessoal e intransferível.',6);
-  par('O ticket refeição através do cartão convênio Syspro somente é aceito em estabelecimentos que atendam aos segmentos de refeição: restaurante, padaria e lanchonetes.',d.modelo==='aloj'?0:6);
+  const cpfF=c=>{const x=String(c||'').replace(/\D/g,'');return x.length===11?x.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4'):c};
+  /* texto corrido com trechos em negrito: [[texto,negrito],...] */
+  const rich=(segs,y,fs=10,lh=5.6)=>{
+    doc.setFontSize(fs);const words=[];
+    segs.forEach(([t,bd])=>String(t).split(/(\s+)/).forEach(w=>{if(w==='')return;words.push({w,bd:!!bd})}));
+    let x=L;const lines=[[]];
+    words.forEach(o=>{doc.setFont('helvetica',o.bd?'bold':'normal');const ww=doc.getTextWidth(o.w);
+      if(/^\s+$/.test(o.w)){if(x===L)return;}
+      if(x+ww>R&&!/^\s+$/.test(o.w)){lines.push([]);x=L;}
+      if(/^\s+$/.test(o.w)&&x===L)return;
+      lines[lines.length-1].push({...o,x});x+=ww;});
+    lines.forEach(ln=>{ln.forEach(o=>{doc.setFont('helvetica',o.bd?'bold':'normal');doc.setTextColor(...INK);doc.text(o.w,o.x,y)});y+=lh});
+    return y;
+  };
+  const sec=(t,y)=>{doc.setFont('helvetica','bold');doc.setFontSize(10.5);doc.setTextColor(...NAVY);doc.text(t,L,y);return y+7};
+  /* cabeçalho */
+  doc.setFillColor(...NAVY);doc.rect(0,0,210,4,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(...NAVY);doc.text('CRV INDUSTRIAL',L,21);
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...MUT);doc.text('UNIDADE CAPINÓPOLIS',L,26.5);
+  doc.setDrawColor(...GREEN);doc.setLineWidth(0.6);doc.line(L,32,R,32);
+  doc.setFont('helvetica','bold');doc.setFontSize(19);doc.setTextColor(...NAVY);doc.text('TERMO DE OPÇÃO',L,45);
+  doc.setFont('helvetica','normal');doc.setFontSize(11);doc.setTextColor(...INK);doc.text('Cartão Convênio Sysprocard',L,52);
+  /* dados do colaborador */
+  doc.setFillColor(238,241,245);doc.roundedRect(L,58,W,22,2,2,'F');
+  doc.setFontSize(10);doc.setTextColor(...INK);
+  doc.setFont('helvetica','bold');doc.text('Colaborador:',L+0.5,66.5);doc.setFont('helvetica','normal');doc.text(String(d.nome),L+24.5,66.5);
+  doc.setFont('helvetica','bold');doc.text('Matrícula:',L+0.5,72);doc.setFont('helvetica','normal');doc.text(String(d.mat),L+0.5+doc.getTextWidth('Matrícula:')+2,72);
+  doc.setFont('helvetica','bold');doc.text('CPF:',L+40,72);const wc=doc.getTextWidth('CPF:');doc.setFont('helvetica','normal');doc.text(cpfF(d.cpf),L+40+wc+2,72);
+  /* corpo */
+  let y=rich([['Declaro que recebi os esclarecimentos da empresa e opto pelo recebimento do ticket-refeição por meio do Cartão Convênio Sysprocard físico, conforme as condições abaixo.']],93)+3;
+  y=sec('1. UTILIZAÇÃO DO CARTÃO',y);
+  y=rich([['O cartão é pessoal e intransferível. Sua utilização é restrita a estabelecimentos do segmento de refeições, como restaurantes, padarias e lanchonetes, que aceitem o Cartão Convênio Sysprocard.']],y)+3;
   if(d.modelo==='aloj'){
-    par(`Valor creditado: R$ ${v(d.valor)}.`,0);
-    par('Declaro ainda ser ciente que haverá desconto de 50% em folha de pagamento mensal.',0);
-    par('Fica acordado que este valor será tratado conforme política da empresa para a respectiva função, sendo que, para as classes de motoristas e operadores de máquinas agrícolas, o custo será dividido em 50% pago pela empresa e 50% descontado em folha de pagamento do colaborador.',0);
-    par('A saber do período de apuração que compreende entre dia 21 do mês atual até dia 20 do mês subsequente, sendo cobrado no 5º dia útil do mês dos provimentos o valor utilizado no período de apuração.',6);
-    par('Dessa forma, o benefício será concedido considerando o valor de:',0);
-    [[`Almoço: R$ ${v(d.almoco||18)}`],[`Jantar: R$ ${v(d.jantar||18)}`]].forEach(x=>{doc.circle(L+5,y-1.3,0.8,'F');doc.text(x[0],L+9,y);y+=6.2});
-    y+=8;
+    y=sec('2. CRÉDITO E PARTICIPAÇÃO NO CUSTO',y);
+    y=rich([['O valor creditado é de '],['R$ '+v(d.valor),1],['. Para motoristas e operadores de máquinas agrícolas, conforme a política da empresa aplicável à respectiva função, o custo é dividido em '],['50% pagos pela empresa',1],[' e '],['50% descontados em folha de pagamento do colaborador',1],['.']],y);
+    y=rich([['Valores de referência por refeição: '],['almoço: R$ '+v(d.almoco||18),1],[' e '],['jantar: R$ '+v(d.jantar||18),1],['.']],y)+3;
   }else{
-    par('Declaro ainda ser ciente que haverá desconto em folha de pagamento mensal, a saber do período de apuração que compreende entre dia 21 do mês atual até dia 20 do mês subsequente, sendo cobrado no 5º dia útil do mês dos provimentos o valor utilizado no período de apuração.',14);
-    par(`Valor crédito R$ ${v(d.valor)} sendo descontado em folha.`,16);
+    y=sec('2. CRÉDITO E DESCONTO EM FOLHA',y);
+    y=rich([['O valor do crédito é de '],['R$ '+v(d.valor),1],['. Declaro estar ciente e de acordo com o desconto em folha de pagamento do valor utilizado no período de apuração.']],y)+3;
   }
-  y+=10;doc.setLineWidth(0.3);doc.line(L+8,y,L+W-8,y);doc.setFontSize(11);doc.setFont('helvetica','normal');doc.text('Colaborador',M,y+5,{align:'center'});
-  const dt=new Date(d.data+'T12:00:00');y+=24;doc.text(`Capinópolis, ${String(dt.getDate()).padStart(2,'0')} de ${MESX[dt.getMonth()]} de ${dt.getFullYear()}`,M,y,{align:'center'});
-  y=262;doc.setLineWidth(0.4);doc.line(14,y,196,y);
-  doc.setFont('helvetica','bold');doc.setFontSize(10.5);doc.text('CRV INDUSTRIAL LTDA – UNIDADE CAPINÓPOLIS',M,y+6,{align:'center'});
-  doc.setFont('helvetica','normal');doc.setFontSize(10);['CNPJ nº 03.937.452/0004-35','Rodovia MG-226, s/nº, km 63, Zona Rural, Capinópolis, Minas Gerais','Telefone: (34) 3263-8100 - CEP. 38.360-000'].forEach((t,i)=>doc.text(t,M,y+11+i*4.6,{align:'center'}));
+  y=sec('3. PERÍODO DE APURAÇÃO E COBRANÇA',y);
+  y=rich([['O período de apuração compreende o '],['dia 21 de um mês ao dia 20 do mês subsequente',1],['. O desconto correspondente ao valor utilizado, observada a participação prevista neste termo, será realizado na folha de pagamento, com cobrança no '],['5º dia útil',1],[', conforme o processamento da empresa.']],y)+3;
+  y=sec('4. CIÊNCIA DAS CONDIÇÕES',y);
+  y=rich([['Declaro que li e compreendi as condições de utilização do cartão e de desconto em folha descritas neste termo, estando de acordo com a opção registrada.']],y);
+  /* data e assinatura */
+  const dt=new Date(d.data+'T12:00:00');
+  doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(...INK);
+  doc.text(`Capinópolis/MG, ${String(dt.getDate()).padStart(2,'0')} de ${MESX[dt.getMonth()].toLowerCase()} de ${dt.getFullYear()}.`,105,Math.max(y+30,232),{align:'center'});
+  const ya=Math.max(y+50,252);doc.setDrawColor(...INK);doc.setLineWidth(0.3);doc.line(55,ya,155,ya);doc.text('Assinatura do colaborador',105,ya+5,{align:'center'});
+  /* rodapé */
+  doc.setDrawColor(215,220,228);doc.setLineWidth(0.3);doc.line(L,271,R,271);
+  doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(...INK);doc.text('CRV INDUSTRIAL LTDA - UNIDADE CAPINÓPOLIS | CNPJ 03.937.452/0004-35',105,276,{align:'center'});
+  doc.setFont('helvetica','normal');doc.setTextColor(...MUT);doc.text('Rodovia MG-226, s/nº, km 63, Zona Rural, Capinópolis/MG - CEP 38.360-000',105,280.2,{align:'center'});doc.text('Telefone: (34) 3263-8100',105,284.4,{align:'center'});
   await salvar(`Termo de opcao Cartao Convenio - ${String(d.nome).split(' ')[0]} ${d.mat}.pdf`,new Uint8Array(doc.output('arraybuffer')),'application/pdf');
 }
 if(T==='convenio'){const b=document.createElement('button');b.className='btn rel';b.id='bT';b.textContent='Termo de opção';b.onclick=abrirTermo;document.querySelector('.hacts').insertBefore(b,document.getElementById('bR'));}
