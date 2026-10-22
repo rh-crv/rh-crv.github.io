@@ -539,7 +539,7 @@ function renderJ(){
       r+='<tr class="det"><td colspan="7"><div class="dg"><div><h4>Histórico mês a mês</h4><table><tr><th>Mês</th><th>Radar</th><th>Faltas</th><th>Atest.</th><th>Média</th><th>Reg.</th></tr>'+hist(j.n)+"</table></div>"
        +"<div><h4>Frequência em "+esc(m.label)+"</h4><ul>"+(ds(j.fa,"Falta")+ds(j.at,"Atestado")+ds(j.ab,"Falta abonada")+ds(j.fj||[],"Falta justificada")+ds(j.fe,"Férias")||"<li>Sem ausências no mês.</li>")+(j.rec?"<li>"+pl(j.rec,"dia","dias")+" de recesso ou feriado</li>":"")+(j.esq?"<li>"+pl(j.esq,"registro","registros")+" de ponto por esquecimento</li>":"")+(j.sis?"<li>"+pl(j.sis,"registro","registros")+" com sistema inoperante</li>":"")+"</ul>"
        +'<h4 style="margin-top:14px">Notas nas aulas teóricas</h4><ul>'+(j.notas.map(x=>"<li>"+dm(x[0],m)+": <b>"+x[1]+"</b></li>").join("")||"<li>Sem nota lançada.</li>")+(j.sn.length?"<li>Presente sem nota: "+j.sn.map(d=>dm(d,m)).join(", ")+"</li>":"")+"</ul></div>"
-       +"<div><h4>Registros pedagógicos</h4><ul>"+(j.oc.map(x=>"<li>"+dm(x.d,m)+" · "+esc(x.lab)+" ("+esc(x.loc)+")</li>").join("")||"<li>Nenhum registro no mês.</li>")+'</ul><h4 style="margin-top:14px">Contrato</h4><ul>'+(j.mat?"<li>Matrícula CRV: "+esc(j.mat)+"</li><li>Matrícula Bittar: "+esc(j.matb)+"</li><li>Setor: "+esc(j.setor)+"</li><li>Jornada: "+esc(j.jor)+"</li>":"")+(()=>{const bb=BASE.find(x=>nkey(x.nome)===nkey(j.n));return bb?"<li>Idade: "+esc(idTxt(bb))+"</li>":"";})()+'<li>Início: '+dBR(j.ini)+"</li><li>Término previsto: "+dBR(j.fim)+"</li></ul></div>"+fbMini(j.n)+"</div></td></tr>";
+       +"<div><h4>Registros pedagógicos</h4><ul>"+(j.oc.map(x=>"<li>"+dm(x.d,m)+" · "+esc(x.lab)+" ("+esc(x.loc)+")</li>").join("")||"<li>Nenhum registro no mês.</li>")+'</ul><h4 style="margin-top:14px">Contrato</h4><ul>'+(j.mat?"<li>Matrícula CRV: "+esc(j.mat)+"</li><li>Matrícula Bittar: "+esc(j.matb)+"</li><li>Setor: "+esc(j.setor)+"</li><li>Jornada: "+esc(j.jor)+"</li>":"")+(()=>{const bb=BASE.find(x=>nkey(x.nome)===nkey(j.n));return bb?"<li>Idade: "+esc(idTxt(bb))+"</li>":"";})()+'<li>Início: '+dBR(j.ini)+"</li><li>Término previsto: "+dBR(j.fim)+"</li></ul>"+(()=>{const bb=BASE.find(x=>nkey(x.nome)===nkey(j.n));return bb&&window.CRV_JOV_BTN?window.CRV_JOV_BTN(bb):"";})()+"</div>"+fbMini(j.n)+"</div></td></tr>";
     }
     return r;}).join(""):'<tr><td colspan="7" class="empty">Nenhum aprendiz com esse filtro.</td></tr>';
 }
@@ -1166,13 +1166,24 @@ async function listaAt(){if(!PRONTO)await atualizar();const M=modal('Atestados d
       doc.autoTable({startY:24,head:[H],body:linhas,styles:{fontSize:8,cellPadding:1.4},headStyles:{fillColor:[91,63,158]},margin:{left:12,right:12}});await salvar('atestados-jovens-aprendizes.pdf',new Uint8Array(doc.output('arraybuffer')),'application/pdf')}};
   draw()}
 
+
+/* registrar desligamento: escolher o jovem e lançar data e motivo */
+async function desl(){if(!PRONTO)await atualizar();const M=modal('Registrar desligamento do programa','Escolha o jovem. Depois informe a data de saída e o motivo.');let q='';
+  const draw=()=>{const L=BASE.filter(b=>b.st!=='A confirmar'&&(!q||(NM(b)+' '+b.mat+' '+(b[JC.instK]||'')).toLowerCase().includes(q))).sort((a,c)=>((a.st==='Desligado')-(c.st==='Desligado'))||String(NM(a)).localeCompare(String(NM(c))));
+    M.C.innerHTML='<input id="jfDq" class="jf-b" style="width:100%;font-weight:400;margin-bottom:10px" placeholder="Digite o nome ou a matrícula" value="'+e_(q)+'"><div style="overflow:auto;max-height:60vh"><table class="jf-tb"><thead><tr><th>Jovem</th><th>Situação</th><th>Setor</th><th></th></tr></thead><tbody>'
+     +(L.length?L.map(b=>{const k=chave(b),r=REG[k]||{};return '<tr><td><b>'+e_(tc(NM(b)))+'</b><div style="font-size:12px;color:var(--mut)">Mat. '+e_(b.mat||'–')+'</div></td><td>'+e_(b.st)+(b.desl?' em '+e_(JC.iso?i2b(b.desl):b.desl):'')+(b.motivo?'<div style="font-size:12px;color:var(--mut)">'+e_(b.motivo)+'</div>':'')+'</td><td>'+e_(b.setor||'–')+'</td><td style="text-align:right"><button class="jf-b '+(b.st==='Desligado'?'':'pri')+'" data-k="'+e_(k)+'">'+(b.st==='Desligado'?(r.baixa?'Ver / corrigir':'Informar motivo'):'Desligar')+'</button></td></tr>'}).join(''):'<tr><td colspan="4" style="color:var(--mut)">Ninguém encontrado.</td></tr>')+'</tbody></table></div>';
+    const qi=M.C.querySelector('#jfDq');qi.oninput=()=>{q=qi.value.toLowerCase();clearTimeout(qi._t);qi._t=setTimeout(()=>{draw();const n=M.C.querySelector('#jfDq');n.focus();n.setSelectionRange(n.value.length,n.value.length)},250)};
+    M.C.querySelectorAll('[data-k]').forEach(x=>x.onclick=()=>ficha(x.dataset.k,'bx'))};
+  draw();setTimeout(()=>{const n=M.C.querySelector('#jfDq');if(n)n.focus()},60)}
+document.addEventListener('click',ev=>{const f=ev.target.closest('.fjb');if(!f||f.closest('#bastb'))return;ev.preventDefault();ev.stopPropagation();ficha(f.dataset.fj,f.dataset.aba)},true);
+window.CRV_JOV_DESL=desl;
 window.CRV_JOV_BTN=b=>{const k=chave(b),r=REG[k]||{};const sai=b.st==='Desligado'?(r.baixa?'':'<button type="button" class="fjb" data-fj="'+e_(k)+'" data-aba="bx" style="color:#a3301c">Informar motivo da saída</button>'):(r.baixa?'':'<button type="button" class="fjb" data-fj="'+e_(k)+'" data-aba="bx">Desligar</button>');
   return '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px"><button type="button" class="fjb" data-fj="'+e_(k)+'">Abrir ficha</button>'+sai+'</div>'};
 window.CRV_NOVO=()=>{try{go('bas')}catch(_){}novo()};window.CRV_JOV_FICHA=ficha;window.CRV_JOV_CHAVE=chave;window.CRV_JOV_REG=k=>REG[k]||{};window.CRV_JOV_AT=listaAt;
 /* botões na aba Base de jovens */
 (function(){const t=document.querySelector('#bas .tools');if(!t)return;
-  t.insertAdjacentHTML('beforeend','<button type="button" class="btn2" id="jfNovo" style="background:#5b3f9e;color:#fff;border-color:#5b3f9e">+ Cadastrar jovem</button><button type="button" class="btn2" id="jfAts">Atestados</button>');
-  document.getElementById('jfNovo').onclick=novo;document.getElementById('jfAts').onclick=listaAt})();
+  t.insertAdjacentHTML('beforeend','<button type="button" class="btn2" id="jfNovo" style="background:#5b3f9e;color:#fff;border-color:#5b3f9e">+ Cadastrar jovem</button><button type="button" class="btn2" id="jfDesl" style="background:#a3301c;color:#fff;border-color:#a3301c">Registrar desligamento</button><button type="button" class="btn2" id="jfAts">Atestados</button>');
+  document.getElementById('jfNovo').onclick=novo;document.getElementById('jfDesl').onclick=desl;document.getElementById('jfAts').onclick=listaAt})();
 atualizar();
 })();
 </script>
