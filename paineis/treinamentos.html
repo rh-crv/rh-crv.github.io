@@ -1084,12 +1084,21 @@ function abrir(reg){
   if(CFG.aoMudar)CFG.aoMudar(ctx);
   if(ed){const m=CFG.campos.find(c=>c.tipo==='mat');if(m&&d0[m.k])ctx.info(m.info,'ok','Dados já preenchidos. Mude a matrícula para buscar de novo no Quadro.')}
   /* lista */
+  let LISTA=[],salvando=false,confirmaDup='';
+  const assin=d=>JSON.stringify(CFG.campos.filter(c=>c.k&&c.tipo!=='info'&&c.tipo!=='sec').map(c=>String(d[c.k]==null?'':d[c.k]).trim().toUpperCase()));
   const listar=async()=>{
     const h=el('lista');const D=await db();
     if(!D){h.innerHTML='<p style="padding:8px;margin:0;color:#5d6a85">O registro não está disponível nesta visualização.</p>';return}
     try{const s=await D.collection('novos').get();
-      const L=s.docs.map(x=>({_id:x.id,dados:x.data()})).filter(x=>!x.dados.excluida).sort((a,b)=>(b.dados.cadastradoEm||'')<(a.dados.cadastradoEm||'')?-1:1);
-      h.innerHTML=L.length?`<table><thead><tr>${CFG.colunas.map(c=>`<th>${esc(c[0])}</th>`).join('')}<th>Por</th><th></th></tr></thead><tbody>${L.map(x=>`<tr data-id="${esc(x._id)}">${CFG.colunas.map(c=>`<td>${c[1](x.dados,{esc,brData})}</td>`).join('')}<td>${esc(String(x.dados.cadastradoPor||'').split(' ')[0])}<div style="color:#5d6a85;font-size:11px">${x.dados.cadastradoEm?esc(new Date(x.dados.cadastradoEm).toLocaleDateString('pt-BR')):''}</div></td><td style="white-space:nowrap;text-align:right"><button type="button" class="nv-mini" data-ac="ed">Editar</button><button type="button" class="nv-mini perigo" data-ac="ex">Excluir</button></td></tr>`).join('')}</tbody></table>`:'<p style="padding:8px;margin:0;color:#5d6a85">Nenhum registro cadastrado no app ainda.</p>';
+      const L=s.docs.map(x=>({_id:x.id,dados:x.data()})).filter(x=>!x.dados.excluida).sort((a,b)=>(b.dados.cadastradoEm||'')<(a.dados.cadastradoEm||'')?-1:1);LISTA=L;
+      /* repetidos: mesmo conteúdo cadastrado com menos de 5 minutos de diferença (clique repetido no botão) */
+      const grp={};L.forEach(x=>{(grp[assin(x.dados)]=grp[assin(x.dados)]||[]).push(x)});const ACID=[];const IGUAL=new Set();
+      Object.values(grp).forEach(g=>{if(g.length<2)return;g.forEach(x=>IGUAL.add(x._id));const o=g.slice().sort((a,b)=>String(a.dados.cadastradoEm).localeCompare(String(b.dados.cadastradoEm)));
+        for(let i=1;i<o.length;i++){const dt=new Date(o[i].dados.cadastradoEm)-new Date(o[i-1].dados.cadastradoEm);if(dt>=0&&dt<5*60000&&!o[i].dados.repetidoConfirmado)ACID.push(o[i])}});
+      h.innerHTML=L.length?`<table><thead><tr>${CFG.colunas.map(c=>`<th>${esc(c[0])}</th>`).join('')}<th>Por</th><th></th></tr></thead><tbody>${L.map(x=>`<tr data-id="${esc(x._id)}"${IGUAL.has(x._id)?' style="background:#fff4dc"':''}>${CFG.colunas.map(c=>`<td>${c[1](x.dados,{esc,brData})}</td>`).join('')}<td>${esc(String(x.dados.cadastradoPor||'').split(' ')[0])}<div style="color:#5d6a85;font-size:11px">${x.dados.cadastradoEm?esc(new Date(x.dados.cadastradoEm).toLocaleDateString('pt-BR')):''}</div></td><td style="white-space:nowrap;text-align:right"><button type="button" class="nv-mini" data-ac="ed">Editar</button><button type="button" class="nv-mini perigo" data-ac="ex">Excluir</button></td></tr>`).join('')}</tbody></table>`:'<p style="padding:8px;margin:0;color:#5d6a85">Nenhum registro cadastrado no app ainda.</p>';
+      if(ACID.length){h.insertAdjacentHTML('afterbegin',`<div style="background:#fdecea;color:#8a2a1a;border:1px solid #f2b8ae;border-radius:8px;padding:8px 10px;margin:0 0 8px;font-size:13px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="flex:1"><b>${ACID.length} lançamento(s) repetido(s) sem querer:</b> mesmo conteúdo cadastrado com menos de 5 minutos de diferença (marcados em amarelo). O primeiro de cada fica.</span><button type="button" class="nv-mini perigo" id="nvLimpa">Excluir repetidos</button></div>`);
+        const lb=h.querySelector('#nvLimpa');lb.onclick=async()=>{if(!lb.classList.contains('conf')){lb.classList.add('conf');lb.textContent='Confirmar: excluir '+ACID.length;return}lb.disabled=true;
+          try{for(const x of ACID)await D.collection('novos').doc(x._id).update({excluida:true,excluidaEm:new Date().toISOString(),excluidaPor:((window.parent&&window.parent.CRV_QUEM)||'')+' (repetido)'});recarregar(ACID.length+' repetido(s) excluído(s).')}catch(e){el('msg').style.color='#8a2a1a';el('msg').textContent='Não consegui excluir: '+((e&&e.message)||'sem permissão.');lb.disabled=false}}}
       h.querySelectorAll('[data-ac]').forEach(b=>b.onclick=async()=>{
         const id=b.closest('tr').dataset.id,x=L.find(y=>y._id===id);if(!x)return;
         if(b.dataset.ac==='ed'){fechar();abrir(x);return}
@@ -1101,18 +1110,25 @@ function abrir(reg){
   };
   listar();
   el('salvar').onclick=async()=>{
+    if(salvando)return;salvando=true;
+    const btn=el('salvar'),trava=v=>{salvando=v;btn.disabled=v;btn.style.opacity=v?'.55':''};trava(true);
+    try{if(await salvar()===false)trava(false)}catch(e){trava(false)}
+  };
+  const salvar=async()=>{
     const msg=el('msg');const d=ler();
     const falta=CFG.campos.filter(c=>c.obr&&(!c.quando||c.quando(d))&&!d[c.k]).map(c=>c.rot.toLowerCase());
-    if(falta.length){msg.style.color='#8a2a1a';msg.textContent='Falta preencher: '+falta.join(', ')+'.';return}
-    const erro=CFG.validar?CFG.validar(d):'';if(erro){msg.style.color='#8a2a1a';msg.textContent=erro;return}
-    const D=await db();if(!D){msg.style.color='#8a2a1a';msg.textContent='Não dá para salvar nesta visualização.';return}
+    if(falta.length){msg.style.color='#8a2a1a';msg.textContent='Falta preencher: '+falta.join(', ')+'.';return false}
+    const erro=CFG.validar?CFG.validar(d):'';if(erro){msg.style.color='#8a2a1a';msg.textContent=erro;return false}
+    const D=await db();if(!D){msg.style.color='#8a2a1a';msg.textContent='Não dá para salvar nesta visualização.';return false}
     const quem=(window.parent&&window.parent.CRV_QUEM)||'';
+    let conf=false;if(!ed){const sg=assin(d),ig=LISTA.find(x=>assin(x.dados)===sg);conf=!!ig;
+      if(ig&&confirmaDup!==sg){confirmaDup=sg;msg.style.color='#8a2a1a';msg.textContent='Já existe um lançamento igual a este'+(ig.dados.cadastradoEm?', cadastrado em '+new Date(ig.dados.cadastradoEm).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):'')+'. Se for mesmo outro, clique em Cadastrar de novo.';return false}}
     msg.style.color='#5d6a85';msg.textContent='Salvando…';
     try{
       if(ed)await D.collection('novos').doc(ed._id).update(Object.assign({},d,{alteradoPor:quem,alteradoEm:new Date().toISOString()}));
-      else await D.collection('novos').add(Object.assign({},d,{cadastradoPor:quem,cadastradoEm:new Date().toISOString()}));
+      else await D.collection('novos').add(Object.assign({},d,{cadastradoPor:quem,cadastradoEm:new Date().toISOString()},conf?{repetidoConfirmado:true}:{}));
       recarregar(ed?'Alterações salvas.':'Registro cadastrado.');
-    }catch(e){msg.style.color='#8a2a1a';msg.textContent='Não consegui salvar: '+((e&&e.message)||'sem permissão para editar este painel.')}
+    }catch(e){msg.style.color='#8a2a1a';msg.textContent='Não consegui salvar: '+((e&&e.message)||'sem permissão para editar este painel.');return false}
   };
   const recarregar=t=>{msg2(t);setTimeout(()=>{const r=window.parent&&window.parent.CRV_RECARREGAR;if(typeof r==='function')r();else location.reload()},500)};
   const msg2=t=>{el('msg').style.color='#1d5c3a';el('msg').textContent=t+' Atualizando o painel…'};
