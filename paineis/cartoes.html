@@ -610,11 +610,11 @@ async function abrir(){fechar();W=document.createElement('div');W.className='df-
       const hi=A.findIndex(r=>r&&r.some(c=>/MATRIC/.test(nz(c)))&&r.some(c=>/CENTRO/.test(nz(c))));if(hi<0)throw new Error('Não encontrei as colunas Matrícula e Centro de Custo na planilha.');
       const H=A[hi].map(nz),iMat=H.findIndex(h=>/MATRIC/.test(h)),iC=H.findIndex(h=>/COD.*CENTRO|CENTRO.*COD/.test(h)),iD=H.findIndex(h=>/DESC.*CENTRO/.test(h));if(iC<0)throw new Error('Não encontrei a coluna do código do centro de custo.');
       const P={};A.slice(hi+1).forEach(r=>{if(r&&r[iMat]!=null&&r[iC]!=null)P[String(+r[iMat])]={cc:String(r[iC]).trim(),ccd:iD>=0?String(r[iD]||'').trim():''}});
-      let nA=0,nF=0;const ref=f.name;F.itens.forEach(x=>{x.conf=x.conf.filter(t=>!/^Não está na planilha de centro de custo|^Centro de custo mudou|^Sem centro de custo/.test(t));const a=P[x.mat];
-        if(x.desl){if(!x.cc)x.conf.push('Sem centro de custo: informar');return}
+      let nA=0,nF=0;const ref=f.name;F.itens.forEach(x=>{x.conf=x.conf.filter(t=>!/^Não está na planilha de centro de custo|^Centro de custo mudou|^Sem centro de custo|^Desligado \(não está mais/.test(t));const a=P[x.mat];if(x.deslPlan&&a){x.desl=false;x.deslPlan=false}
+        if(x.desl&&!x.deslPlan){if(!x.cc)x.conf.push('Sem centro de custo: informar');return}
         if(a){if(String(x.cc)!==a.cc)nA++;x.cc=a.cc;x.ccd=a.ccd||(F.cc&&F.cc[a.cc]&&F.cc[a.cc].nome)||x.ccd}
-        else{nF++;x.conf.push('Não está na planilha de centro de custo: ficou o do Quadro ('+(x.cc||'sem')+'), confirmar')}});
-      F.ccPlan=ref;F.ccPlanEm=new Date().toISOString();await gravar();desenhar('Planilha de centros de custo aplicada: '+nA+' centros de custo atualizados; '+nF+' pessoa(s) ativas não estão na planilha (ver A conferir). Desligados mantêm o centro de custo de antes.')}catch(er){desenhar('',er.message)}})};
+        else{nF++;x.desl=true;x.deslPlan=true;x.conf.push('Desligado (não está mais na planilha de centro de custo): descontar na rescisão; centro de custo de antes do desligamento ('+(x.cc||'sem')+')')}});
+      F.ccPlan=ref;F.ccPlanEm=new Date().toISOString();await gravar();desenhar('Planilha de centros de custo aplicada: '+nA+' centros de custo atualizados; '+nF+' pessoa(s) que não estão na planilha foram tratadas como desligadas (descontar na rescisão). Desligados mantêm o centro de custo de antes.')}catch(er){desenhar('',er.message)}})};
   g('dfSel').onchange=()=>{F=FS.find(x=>x._id===g('dfSel').value)||null;desenhar()};
   g('dfXls').onclick=()=>F&&excel().catch(er=>desenhar('',er.message));g('dfPdf').onclick=()=>F&&pdfRes().catch(er=>desenhar('',er.message));
   await lerTodos();FS.forEach(f=>(f.itens||[]).forEach(x=>{if(x.manual)return;x.conf=(x.conf||[]).filter(t=>!/alojamento|como no (mês|fechamento) anterior/.test(t));x.marc=V.excEsp[x.mat]?'NÃO':e1080(ROW[x.mat])?'SIM':''}));F=FS[0]||null;desenhar()}
