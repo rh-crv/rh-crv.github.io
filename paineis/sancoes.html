@@ -546,4 +546,217 @@ setupFilters();render();
 (async()=>{try{DL=window.claude&&window.claude.use?await window.claude.use('downloads'):null}catch(e){DL=null}if(DL){render();if(DW.length)dwShow()}})();
 </script>
 
+<!-- ===== Documentos disciplinares (advertência, suspensão, orientação) ===== -->
+<style>
+.ds-btn{margin-left:auto;background:#e9a23b;color:#2b1d00;border:0;border-radius:8px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap}
+.ds-fundo{position:fixed;inset:0;background:rgba(10,20,40,.55);z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding:22px 12px;overflow:auto}
+.ds-modal{background:#fff;color:#14213d;border-radius:12px;width:100%;max-width:940px;box-shadow:0 20px 60px rgba(0,0,0,.35);font-size:13px}
+.ds-cab{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid #e0e5ef}
+.ds-cab h3{margin:0;font-size:16px;flex:1}.ds-cab small{color:#5d6a85;font-weight:400;display:block;font-size:11.5px}
+.ds-corpo{padding:14px 18px;display:grid;grid-template-columns:repeat(12,1fr);gap:10px 12px}
+.ds-c{display:flex;flex-direction:column;gap:4px;grid-column:span 3}.ds-c.w2{grid-column:span 2}.ds-c.w4{grid-column:span 4}.ds-c.w6{grid-column:span 6}.ds-c.w8{grid-column:span 8}.ds-c.w9{grid-column:span 9}.ds-c.w12{grid-column:1/-1}
+.ds-c label{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#5d6a85}
+.ds-c input,.ds-c select,.ds-c textarea{border:1px solid #d5dbe6;border-radius:7px;padding:7px 9px;font:inherit;background:#f7f9fc;color:#14213d}
+.ds-c textarea{min-height:70px;resize:vertical;line-height:1.45}
+.ds-sec{grid-column:1/-1;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#1f3a68;border-bottom:1px solid #e0e5ef;padding-bottom:4px;margin-top:6px;display:flex;gap:8px;align-items:center}
+.ds-info{grid-column:1/-1;background:#f2f5fa;border-radius:8px;padding:8px 10px;font-size:12.5px}.ds-info.ok{background:#e9f5ee;color:#1d5c3a}.ds-info.av{background:#fdf1da;color:#8a5a00}.ds-info.er{background:#fdecea;color:#8a2a1a}
+.ds-tipos{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}
+.ds-tipos button{border:1px solid #d5dbe6;background:#fff;border-radius:99px;padding:7px 14px;font-weight:700;font-size:13px;cursor:pointer;color:#14213d}
+.ds-tipos button.on{background:#1f3a68;border-color:#1f3a68;color:#fff}
+.ds-top{grid-column:1/-1;border:1px solid #e0e5ef;border-radius:8px;padding:8px 10px;display:grid;grid-template-columns:1fr auto;gap:6px}
+.ds-top input,.ds-top textarea{border:1px solid #d5dbe6;border-radius:6px;padding:6px 8px;font:inherit;background:#f7f9fc}
+.ds-top textarea{grid-column:1/-1;min-height:54px}
+.ds-mini{border:1px solid #d5dbe6;background:#fff;border-radius:7px;padding:4px 9px;font-size:11.5px;cursor:pointer;font-weight:600;color:#14213d}
+.ds-mini.perigo{color:#a3301c;border-color:#e7b8b0}.ds-mini.perigo.conf{background:#a3301c;color:#fff}
+.ds-pe{display:flex;gap:8px;justify-content:flex-end;align-items:center;padding:12px 18px;border-top:1px solid #e0e5ef;flex-wrap:wrap}.ds-pe .esp{flex:1;color:#5d6a85;font-size:12px}
+.ds-b{border:0;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer;font-size:13px}.ds-b.sec{background:#eef1f5;color:#14213d}.ds-b.pri{background:#1f3a68;color:#fff}
+.ds-lista{grid-column:1/-1;max-height:200px;overflow:auto;border:1px solid #e0e5ef;border-radius:8px}
+.ds-lista table{width:100%;border-collapse:collapse;font-size:12px}.ds-lista th{position:sticky;top:0;background:#f7f9fc;text-align:left;padding:6px 8px;font-size:10.5px;text-transform:uppercase;color:#5d6a85}.ds-lista td{padding:6px 8px;border-top:1px solid #eef1f5}
+@media (max-width:700px){.ds-corpo>*{grid-column:1/-1!important}}
+</style>
+<script>
+(function(){
+'use strict';
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const br=s=>s?String(s).slice(0,10).split('-').reverse().join('/'):'';
+const hoje=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const dObj=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
+const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const addD=(s,n)=>{const d=dObj(s);d.setDate(d.getDate()+n);return iso(d)};
+const MES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const NUM=['ZERO','UM','DOIS','TRÊS','QUATRO','CINCO','SEIS','SETE','OITO','NOVE','DEZ','ONZE','DOZE','TREZE','QUATORZE','QUINZE','DEZESSEIS','DEZESSETE','DEZOITO','DEZENOVE','VINTE','VINTE E UM','VINTE E DOIS','VINTE E TRÊS','VINTE E QUATRO','VINTE E CINCO','VINTE E SEIS','VINTE E SETE','VINTE E OITO','VINTE E NOVE','TRINTA'];
+const tc=s=>String(s||'').toLowerCase().replace(/(^|[\s\/(.-])(\S)/g,(m,a,b)=>a+b.toUpperCase()).replace(/ (Da|De|Do|Dos|Das|E) /g,m=>m.toLowerCase()).replace(/\b(Ii|Iii|Iv|Vi|Vii|Ctt|Crv|Mg)\b/g,m=>m.toUpperCase());
+const TIT={adv:'ADVERTÊNCIA ESCRITA',sus:'SUSPENSÃO DISCIPLINAR',ori:'ORIENTAÇÃO DISCIPLINAR'};
+const ENQ=[
+ ['h','Art. 482, alínea “h”, da CLT - ato de indisciplina ou de insubordinação'],
+ ['e','Art. 482, alínea “e”, da CLT - desídia no desempenho das respectivas funções'],
+ ['b','Art. 482, alínea “b”, da CLT - incontinência de conduta ou mau procedimento'],
+ ['j','Art. 482, alínea “j”, da CLT - ato lesivo da honra ou da boa fama praticado no serviço'],
+ ['f','Art. 482, alínea “f”, da CLT - embriaguez habitual ou em serviço'],
+ ['158','Art. 158, parágrafo único, alínea “b”, da CLT - recusa injustificada ao uso de EPI'],
+ ['outro','Outro (escrever)']];
+const CONDUTA_PADRAO='O colaborador deverá cumprir as normas e os procedimentos internos da empresa. Em caso de reincidência ou novo descumprimento, poderão ser adotadas medidas disciplinares mais severas, considerando a gravidade e as circunstâncias de cada ocorrência, conforme a legislação trabalhista vigente e as normas internas.';
+const FINAL_PADRAO=v=>`Esta orientação ${v?'complementa a '+v+' referente à mesma ocorrência e ':''}tem finalidade educativa e preventiva, sem constituir nova penalidade pelo mesmo fato.`;
+let DB=null;const db=async()=>{if(DB)return DB;try{DB=window.claude&&window.claude.use?await window.claude.use('db'):null}catch(_){DB=null}return DB};
+const quem=()=>(window.parent&&window.parent.CRV_QUEM)||'';
+async function quadro(m){try{const f=window.parent&&window.parent.CRV_QUADRO;if(typeof f==='function'){const q=await f();return q&&q.mapa&&q.mapa[m]}}catch(_){}return null}
+
+function abrir(pre){
+  const e=pre||{};let tipo=e.tipo||'adv';let TOP=(e.topicos||[{t:'',x:''}]).map(x=>Object.assign({},x));
+  const w=document.createElement('div');w.className='ds-fundo';
+  w.innerHTML=`<div class="ds-modal" role="dialog" aria-modal="true"><div class="ds-cab"><h3>Documento disciplinar<small>A matrícula puxa os dados do Quadro. Para destacar em negrito no PDF, escreva entre **asteriscos** (ex.: **11/10/2026, às 13h50**).</small></h3><button class="ds-mini" id="dX">Fechar</button></div>
+   <div class="ds-corpo">
+    <div class="ds-tipos" id="dT"><button data-t="adv">Advertência escrita</button><button data-t="sus">Suspensão disciplinar</button><button data-t="ori">Orientação disciplinar</button></div>
+    <div class="ds-sec">Colaborador</div>
+    <div class="ds-c w2"><label>Matrícula *</label><input id="dM" inputmode="numeric" value="${esc(e.mat||'')}"></div>
+    <div class="ds-c w6"><label>Nome</label><input id="dN" value="${esc(e.nome||'')}"></div>
+    <div class="ds-c w4"><label>CPF</label><input id="dCpf" value="${esc(e.cpf||'')}"></div>
+    <div class="ds-c w6"><label>Departamento</label><input id="dDep" value="${esc(e.dep||'')}"></div>
+    <div class="ds-c w4"><label>Função</label><input id="dFun" value="${esc(e.func||'')}"></div>
+    <div class="ds-c w2"><label>Admissão</label><input id="dAdm" type="date" value="${esc(e.adm||'')}"></div>
+    <div class="ds-info" id="dI">Digite a matrícula para puxar os dados do Quadro (empresa 5).</div>
+    <div class="ds-sec">Documento</div>
+    <div class="ds-c w3"><label>Data do documento</label><input id="dData" type="date" value="${esc(e.data||hoje())}"></div>
+    <div class="ds-c w9"><label>Assunto *</label><input id="dAss" value="${esc(e.assunto||'')}" placeholder="Ex.: CARONA SEM AUTORIZAÇÃO E CONDUÇÃO INSEGURA"></div>
+    <div class="ds-c w12" id="wDesc"><label id="lDesc">1. Descrição da não conformidade *</label><textarea id="dDesc" style="min-height:110px" placeholder="O que aconteceu: dia, hora, local/frota, o que o colaborador fez, como foi apurado e qual norma foi descumprida.">${esc(e.desc||'')}</textarea></div>
+    <div class="ds-c w6" id="wEnq"><label>2. Enquadramento disciplinar</label><select id="dEnq">${ENQ.map(x=>`<option value="${x[0]}"${(e.enq||'h')===x[0]?' selected':''}>${esc(x[1])}</option>`).join('')}</select></div>
+    <div class="ds-c w6" id="wEnq2"><label>Complemento do enquadramento</label><input id="dEnqC" value="${esc(e.enqC!=null?e.enqC:'em referência ao descumprimento das normas internas de segurança')}"></div>
+    <div class="ds-c w12" id="wEnqO" hidden><label>Enquadramento (texto livre)</label><input id="dEnqO" value="${esc(e.enqO||'')}"></div>
+    <div class="ds-c w2" id="wDias"><label>Dias de suspensão</label><input id="dDias" inputmode="numeric" value="${esc(e.dias||'1')}"></div>
+    <div class="ds-c w3" id="wIni"><label>Início da suspensão</label><input id="dIni" type="date" value="${esc(e.ini||addD(hoje(),1))}"></div>
+    <div class="ds-c w3" id="wFim"><label>Término</label><input id="dFim" type="date" value="${esc(e.fim||'')}" readonly></div>
+    <div class="ds-c w4" id="wRet"><label>Retorno</label><input id="dRet" value="${esc(e.ret||'no primeiro dia de trabalho previsto na escala após essa data, no horário habitual')}"></div>
+    <div class="ds-c w12" id="wPen"><label>3. Penalidade aplicada (texto que sai no documento)</label><textarea id="dPen" style="min-height:52px">${esc(e.pen||'')}</textarea></div>
+    <div class="ds-c w12" id="wCond"><label>4. Conduta esperada</label><textarea id="dCond">${esc(e.cond||CONDUTA_PADRAO)}</textarea></div>
+    <div class="ds-sec" id="sOri">Orientação disciplinar <label style="margin-left:auto;font-size:12px;text-transform:none;letter-spacing:0;color:#14213d;display:flex;gap:6px;align-items:center;font-weight:600" id="lJunto"><input type="checkbox" id="dJunto" ${e.junto?'checked':''}> Gerar também a orientação desta ocorrência (no mesmo PDF)</label></div>
+    <div id="wOri" style="grid-column:1/-1;display:grid;grid-template-columns:repeat(12,1fr);gap:10px 12px">
+      <div class="ds-c w12"><label>Assunto da orientação</label><input id="dOAss" value="${esc(e.oAss||'')}" placeholder="Ex.: CONDUÇÃO SEGURA E TRANSPORTE DE PASSAGEIROS"></div>
+      <div class="ds-c w12"><label>1. Objetivo da orientação</label><textarea id="dObj">${esc(e.obj||'')}</textarea></div>
+      <div class="ds-c w12"><label>Tópicos da orientação (2, 3, 4…)</label></div>
+      <div id="dTop" style="grid-column:1/-1;display:flex;flex-direction:column;gap:8px"></div>
+      <div class="ds-c w12" style="flex-direction:row"><button type="button" class="ds-mini" id="dAddT">+ adicionar tópico</button></div>
+      <div class="ds-c w12"><label>Finalidade educativa e preventiva (último tópico)</label><textarea id="dFin">${esc(e.fin||'')}</textarea></div>
+    </div>
+    <div class="ds-sec">Assinaturas</div>
+    <div class="ds-c w6"><label>Gestão de RH – nome (opcional)</label><input id="dRh" value="${esc(e.rh||'')}" placeholder="deixe em branco para assinar à mão"></div>
+    <div class="ds-c w6"><label>Testemunhas</label><input value="Saem em branco para preencher à mão" disabled></div>
+    <div class="ds-sec">Documentos já emitidos</div>
+    <div class="ds-lista" id="dL"><p style="padding:8px;margin:0;color:#5d6a85">Carregando…</p></div>
+   </div>
+   <div class="ds-pe"><span class="esp" id="dMsg"></span><button class="ds-b sec" id="dC">Cancelar</button><button class="ds-b pri" id="dG">Gerar PDF</button></div></div>`;
+  document.body.appendChild(w);
+  const g=id=>w.querySelector('#'+id),fe=()=>w.remove();g('dX').onclick=fe;g('dC').onclick=fe;w.addEventListener('mousedown',ev=>{if(ev.target===w)fe()});
+  const penTxt=()=>{const n=Math.max(1,parseInt(g('dDias').value,10)||1);const nn=String(n).padStart(2,'0')+' ('+(NUM[n]||n)+') '+(n===1?'DIA':'DIAS');
+    return tipo==='sus'?`Fica aplicada a penalidade de **SUSPENSÃO DISCIPLINAR DE ${nn}**, ${n===1?'com início e término em **'+br(g('dIni').value)+'**':'com início em **'+br(g('dIni').value)+'** e término em **'+br(g('dFim').value)+'**'}. O retorno deverá ocorrer ${g('dRet').value.trim()}.`
+      :'Diante da não conformidade constatada e considerando a gravidade e os riscos envolvidos, fica aplicada ao colaborador a penalidade de **ADVERTÊNCIA ESCRITA**.'};
+  let penManual=!!e.pen;
+  const calcFim=()=>{const n=Math.max(1,parseInt(g('dDias').value,10)||1);if(g('dIni').value)g('dFim').value=addD(g('dIni').value,n-1);if(!penManual)g('dPen').value=penTxt()};
+  g('dPen').addEventListener('input',()=>penManual=true);['dDias','dIni','dRet'].forEach(k=>g(k).addEventListener('input',()=>{penManual=false;calcFim()}));
+  const sync=()=>{w.querySelectorAll('#dT button').forEach(b=>b.classList.toggle('on',b.dataset.t===tipo));
+    const ori=tipo==='ori',sus=tipo==='sus',junto=g('dJunto').checked;
+    ['wDesc','wEnq','wEnq2','wPen','wCond'].forEach(k=>g(k).hidden=ori);['wDias','wIni','wFim','wRet'].forEach(k=>g(k).hidden=!sus);
+    g('wEnqO').hidden=ori||g('dEnq').value!=='outro';g('lJunto').style.display=ori?'none':'flex';g('wOri').style.display=ori||junto?'grid':'none';
+    if(!g('dFin').value.trim()||g('dFin').dataset.auto==='1'){g('dFin').value=FINAL_PADRAO(ori?'':(sus?'suspensão':'advertência'));g('dFin').dataset.auto='1'}
+    if(!penManual)g('dPen').value=penTxt();};
+  g('dFin').addEventListener('input',()=>g('dFin').dataset.auto='0');if(!e.fin)g('dFin').dataset.auto='1';
+  w.querySelector('#dT').onclick=ev=>{const b=ev.target.closest('[data-t]');if(b){tipo=b.dataset.t;penManual=false;sync()}};
+  g('dEnq').onchange=sync;g('dJunto').onchange=sync;
+  const drawTop=()=>{g('dTop').innerHTML=TOP.map((t,i)=>`<div class="ds-top"><input data-i="${i}" data-k="t" placeholder="Título do tópico ${i+2} (ex.: TRANSPORTE DE PASSAGEIROS)" value="${esc(t.t)}"><button type="button" class="ds-mini perigo" data-del="${i}">tirar</button><textarea data-i="${i}" data-k="x" placeholder="O que o colaborador deve fazer / não fazer">${esc(t.x)}</textarea></div>`).join('');
+    g('dTop').querySelectorAll('[data-k]').forEach(i=>i.oninput=()=>{TOP[+i.dataset.i][i.dataset.k]=i.value});g('dTop').querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{TOP.splice(+b.dataset.del,1);drawTop()})};
+  g('dAddT').onclick=()=>{TOP.push({t:'',x:''});drawTop()};drawTop();
+  /* matrícula */
+  let tm=null,ult='';const puxar=async()=>{const m=g('dM').value.trim().replace(/^0+(?=\d)/,'');if(!m||m===ult)return;ult=m;const c=await quadro(m);
+    if(!c){g('dI').className='ds-info av';g('dI').textContent='Matrícula não encontrada no Quadro da empresa 5. Preencha à mão.';return}
+    g('dN').value=c.nome;g('dCpf').value=c.cpf||'';g('dDep').value=c.setor;g('dFun').value=c.funcao;g('dAdm').value=(c.admissao||'').slice(0,10);
+    g('dI').className='ds-info ok';g('dI').innerHTML=`<b>${esc(c.nome)}</b> · ${esc(c.funcao)} · ${esc(c.setor)} · ${esc(c.situacao)}${c.situacao!=='Ativo'?' <b style="color:#a3301c">(não está ativo)</b>':''}`;
+    histPessoa(m)};
+  g('dM').addEventListener('input',()=>{clearTimeout(tm);tm=setTimeout(puxar,450)});
+  /* anteriores da pessoa (documentos emitidos no app) */
+  let LISTA=[];
+  const histPessoa=m=>{const L=LISTA.filter(x=>String(x.mat)===String(m));if(L.length)g('dI').innerHTML+=`<br>Documentos já emitidos no app para esta matrícula: ${L.map(x=>esc(x.titulo)+' em '+br(x.data)).join('; ')}.`};
+  const listar=async()=>{const D=await db();const h=g('dL');if(!D){h.innerHTML='<p style="padding:8px;margin:0;color:#5d6a85">Registro indisponível nesta visualização.</p>';return}
+    try{const s=await D.collection('documentos').get();LISTA=s.docs.map(d=>Object.assign({_id:d.id},d.data())).filter(x=>!x.excluido).sort((a,b)=>(b.emitidoEm||'')<(a.emitidoEm||'')?-1:1);
+      h.innerHTML=LISTA.length?`<table><thead><tr><th>Data</th><th>Documento</th><th>Colaborador</th><th>Assunto</th><th>Por</th><th></th></tr></thead><tbody>${LISTA.map(x=>`<tr data-id="${esc(x._id)}"><td>${br(x.data)}</td><td>${esc(x.titulo)}</td><td><b>${esc(tc(x.nome))}</b> · ${esc(x.mat)}</td><td>${esc(x.assunto||x.oAss||'')}</td><td>${esc(String(x.por||'').split(' ')[0])}</td><td style="white-space:nowrap;text-align:right"><button class="ds-mini" data-a="re">Reimprimir</button> <button class="ds-mini" data-a="ab">Abrir para editar</button> <button class="ds-mini perigo" data-a="ex">Excluir</button></td></tr>`).join('')}</tbody></table>`:'<p style="padding:8px;margin:0;color:#5d6a85">Nenhum documento emitido ainda.</p>';
+      h.querySelectorAll('[data-a]').forEach(b=>b.onclick=async()=>{const x=LISTA.find(y=>y._id===b.closest('tr').dataset.id);if(!x)return;
+        if(b.dataset.a==='re'){try{await pdf(x)}catch(er){g('dMsg').textContent='Não consegui gerar: '+er.message}return}
+        if(b.dataset.a==='ab'){fe();abrir(x);return}
+        if(!b.classList.contains('conf')){b.classList.add('conf');b.textContent='Confirmar exclusão';setTimeout(()=>{if(b.isConnected){b.classList.remove('conf');b.textContent='Excluir'}},7000);return}
+        try{await D.collection('documentos').doc(x._id).update({excluido:true,excluidoEm:new Date().toISOString(),excluidoPor:quem()});listar()}catch(er){g('dMsg').textContent='Sem permissão para excluir.'}});
+    }catch(_){h.innerHTML='<p style="padding:8px;margin:0;color:#8a2a1a">Não consegui ler o registro.</p>'}};
+  listar();
+  calcFim();sync();if(e.mat){ult=String(e.mat);}
+  g('dG').onclick=async()=>{const msg=g('dMsg');
+    const d={tipo,titulo:TIT[tipo],mat:g('dM').value.trim(),nome:g('dN').value.trim().toUpperCase(),cpf:g('dCpf').value.trim(),dep:g('dDep').value.trim().toUpperCase(),func:g('dFun').value.trim().toUpperCase(),adm:g('dAdm').value,
+      data:g('dData').value||hoje(),assunto:g('dAss').value.trim().toUpperCase(),desc:g('dDesc').value.trim(),enq:g('dEnq').value,enqC:g('dEnqC').value.trim(),enqO:g('dEnqO').value.trim(),
+      dias:g('dDias').value.trim(),ini:g('dIni').value,fim:g('dFim').value,ret:g('dRet').value.trim(),pen:g('dPen').value.trim(),cond:g('dCond').value.trim(),
+      junto:tipo!=='ori'&&g('dJunto').checked,oAss:g('dOAss').value.trim().toUpperCase(),obj:g('dObj').value.trim(),topicos:TOP.filter(t=>t.t.trim()||t.x.trim()).map(t=>({t:t.t.trim(),x:t.x.trim()})),fin:g('dFin').value.trim(),rh:g('dRh').value.trim()};
+    const falta=[!d.mat&&'matrícula',!d.nome&&'nome',tipo!=='ori'&&!d.assunto&&'assunto',tipo!=='ori'&&!d.desc&&'descrição',(tipo==='ori'||d.junto)&&!d.obj&&'objetivo da orientação',tipo==='sus'&&!d.ini&&'início da suspensão'].filter(Boolean);
+    if(falta.length){msg.style.color='#a3301c';msg.textContent='Falta preencher: '+falta.join(', ')+'.';return}
+    if(tipo==='ori'&&!d.oAss)d.oAss=d.assunto;
+    try{await pdf(d);const D=await db();if(D){try{await D.collection('documentos').add(Object.assign({},d,{emitidoEm:new Date().toISOString(),por:quem()}));listar()}catch(_){}}
+      msg.style.color='#1d5c3a';msg.textContent='PDF gerado. Imprima, colha as assinaturas e arquive.'}catch(er){msg.style.color='#a3301c';msg.textContent='Não consegui gerar: '+(er.message||er)}};
+  if(!e.mat)setTimeout(()=>g('dM').focus(),60);
+}
+
+/* ---------- PDF no modelo ---------- */
+async function pdf(d){
+  const J=(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF);if(!J)throw new Error('gerador de PDF indisponível');
+  const doc=new J({unit:'mm',format:'a4'});
+  const NAVY=[31,58,104],INK=[40,46,58],MUT=[110,116,128],GREEN=[110,150,60];const L=18,R=192,W=R-L;
+  const segs=t=>{const out=[];String(t||'').split(/(\*\*[^*]+\*\*)/).forEach(p=>{if(!p)return;if(/^\*\*[^*]+\*\*$/.test(p))out.push([p.slice(2,-2),1]);else out.push([p,0])});return out};
+  const rich=(S,y,fs=9.6,lh=4.7)=>{doc.setFontSize(fs);const words=[];S.forEach(([t,bd])=>String(t).split(/(\s+)/).forEach(w=>{if(w!=='')words.push({w,bd:!!bd})}));
+    let x=L;let lines=[[]];words.forEach(o=>{if(/\n/.test(o.w)){const n=(o.w.match(/\n/g)||[]).length;for(let k=0;k<n;k++){lines.push([]);}x=L;return}
+      doc.setFont('helvetica',o.bd?'bold':'normal');const ww=doc.getTextWidth(o.w);const sp=/^\s+$/.test(o.w);if(sp&&x===L)return;if(x+ww>R&&!sp){lines.push([]);x=L}if(sp&&x===L)return;lines[lines.length-1].push({...o,x});x+=ww});
+    lines.forEach(ln=>{if(y>262){doc.addPage();cab2();y=20}ln.forEach(o=>{doc.setFont('helvetica',o.bd?'bold':'normal');doc.setTextColor(...INK);doc.text(o.w,o.x,y)});y+=lh});return y};
+  const cab2=()=>{doc.setFillColor(...NAVY);doc.rect(0,0,210,4,'F')};
+  const sec=(t,y)=>{if(y>255){doc.addPage();cab2();y=20}doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(...NAVY);doc.text(t,L,y);return y+5.6};
+  const rodape=()=>{doc.setDrawColor(215,220,228);doc.setLineWidth(0.3);doc.line(L,276,R,276);doc.setFont('helvetica','bold');doc.setFontSize(7.3);doc.setTextColor(...INK);doc.text('CRV INDUSTRIAL LTDA - UNIDADE CAPINÓPOLIS | CNPJ 03.937.452/0004-35',105,280.5,{align:'center'});
+    doc.setFont('helvetica','normal');doc.setTextColor(...MUT);doc.text('Rodovia MG-226, s/nº, km 63, Zona Rural, Capinópolis/MG - CEP 38.360-000',105,284.3,{align:'center'});doc.text('Telefone: (34) 3263-8100',105,288,{align:'center'})};
+  const lab=(t,v,x,y)=>{doc.setFont('helvetica','bold');doc.text(t,x,y);const w=doc.getTextWidth(t);doc.setFont('helvetica','normal');doc.text(String(v||''),x+w+1.6,y);return x+w+1.6+doc.getTextWidth(String(v||''))};
+  const dt=dObj(d.data);const dataTxt=`Capinópolis/MG, ${String(dt.getDate()).padStart(2,'0')} de ${MES[dt.getMonth()]} de ${dt.getFullYear()}.`;
+  const pagina=(titulo,assunto)=>{
+    cab2();doc.setFont('helvetica','bold');doc.setFontSize(13.5);doc.setTextColor(...NAVY);doc.text('CRV INDUSTRIAL',L,19);
+    doc.setFont('helvetica','normal');doc.setFontSize(7.8);doc.setTextColor(...MUT);doc.text('UNIDADE CAPINÓPOLIS',L,24);
+    doc.setDrawColor(...GREEN);doc.setLineWidth(0.6);doc.line(L,29,R,29);
+    doc.setFont('helvetica','bold');doc.setFontSize(18);doc.setTextColor(...NAVY);doc.text(titulo,L,41);
+    doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(...INK);doc.text(dataTxt,L,47);
+    doc.setFillColor(238,241,245);doc.roundedRect(L,52,W,25,2,2,'F');doc.setFontSize(9.6);doc.setTextColor(...INK);
+    lab('Colaborador:',d.nome,L+1,58.5);let x=lab('Matrícula:',d.mat,L+1,63.6);lab('CPF:',d.cpf,x+5,63.6);lab('Departamento:',d.dep,L+1,68.7);x=lab('Função:',d.func,L+1,73.8);lab('Admissão:',br(d.adm),x+5,73.8);
+    doc.setFontSize(9.8);doc.setTextColor(...INK);x=lab('ASSUNTO:',assunto,L,88);return 97};
+  const assinaturas=y=>{if(y>222){doc.addPage();cab2();y=30}
+    let ys=Math.max(y+22,236);const c1=L+5,c2=118;
+    doc.setDrawColor(...INK);doc.setLineWidth(0.3);doc.line(L,ys,L+78,ys);doc.line(c2-4,ys,R,ys);
+    doc.setFont('helvetica','bold');doc.setFontSize(8.8);doc.text('Colaborador',L+39,ys+4.5,{align:'center'});doc.text('Gestão de RH',(c2-4+R)/2,ys+4.5,{align:'center'});
+    doc.setFont('helvetica','normal');doc.setFontSize(7.8);doc.text(`${d.nome} | Matrícula: ${d.mat}`,L+39,ys+9,{align:'center'});doc.text('Nome: '+(d.rh||'______________________________________'),(c2-4+R)/2,ys+9,{align:'center'});
+    ys+=21;doc.line(L,ys-5,L+78,ys-5);doc.line(c2-4,ys-5,R,ys-5);
+    doc.text('Testemunha - Nome: ______________________________',L,ys);doc.text('CPF: _____________________________________________',L,ys+4.3);
+    doc.text('Testemunha - Nome: ______________________________',c2-4,ys);doc.text('CPF: _____________________________________________',c2-4,ys+4.3)};
+  const ciencia=y=>{y=sec('CIÊNCIA DO COLABORADOR',y+1);return rich([['Declaro que recebi e tomei ciência deste documento. Minha assinatura registra o recebimento e a ciência, sem implicar concordância com todos os fatos descritos.']],y)};
+  const ENQT={h:'Art. 482, alínea “h”, da CLT - ato de indisciplina ou de insubordinação',e:'Art. 482, alínea “e”, da CLT - desídia no desempenho das respectivas funções',b:'Art. 482, alínea “b”, da CLT - incontinência de conduta ou mau procedimento',j:'Art. 482, alínea “j”, da CLT - ato lesivo da honra ou da boa fama praticado no serviço',f:'Art. 482, alínea “f”, da CLT - embriaguez habitual ou em serviço','158':'Art. 158, parágrafo único, alínea “b”, da CLT - recusa injustificada ao uso de EPI'};
+  const docPenal=()=>{let y=pagina(TIT[d.tipo],d.assunto);
+    y=sec('1. DESCRIÇÃO DA NÃO CONFORMIDADE',y);y=rich(segs(d.desc),y)+2;
+    y=sec('2. ENQUADRAMENTO DISCIPLINAR',y);y=rich(d.enq==='outro'?segs(d.enqO):[[ENQT[d.enq],1]].concat(d.enqC?[[', '+d.enqC+'.']]:[['.']]),y)+2;
+    y=sec('3. PENALIDADE APLICADA',y);y=rich(segs(d.pen),y)+2;
+    y=sec('4. CONDUTA ESPERADA',y);y=rich(segs(d.cond),y)+2;
+    y=ciencia(y);assinaturas(y);rodape()};
+  const docOri=()=>{let y=pagina('ORIENTAÇÃO DISCIPLINAR',d.oAss||d.assunto);
+    y=sec('1. OBJETIVO DA ORIENTAÇÃO',y);y=rich(segs(d.obj),y)+2;let n=2;
+    (d.topicos||[]).forEach(t=>{y=sec(n+'. '+String(t.t||'').toUpperCase(),y);y=rich(segs(t.x),y)+2;n++});
+    y=sec(n+'. FINALIDADE EDUCATIVA E PREVENTIVA',y);y=rich(segs(d.fin),y)+2;
+    y=ciencia(y);assinaturas(y);rodape()};
+  if(d.tipo==='ori')docOri();else{docPenal();if(d.junto){doc.addPage();docOri()}}
+  const nome=`${d.tipo==='adv'?'Advertencia':d.tipo==='sus'?'Suspensao':'Orientacao'}${d.junto?' e Orientacao':''} - ${String(d.nome).split(' ')[0]} ${d.mat} - ${br(d.data).split('/').join('-')}.pdf`;
+  const bytes=new Uint8Array(doc.output('arraybuffer'));
+  const DL=window.claude&&window.claude.use?await window.claude.use('downloads'):null;
+  if(DL)return DL.save({filename:nome,data:bytes});
+  const u=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));const a=document.createElement('a');a.href=u;a.download=nome;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},4000);
+}
+function montarBotao(){const alvo=document.querySelector('header .hin')||document.querySelector('header');if(!alvo||document.querySelector('.ds-btn'))return;
+  const b=document.createElement('button');b.className='ds-btn';b.type='button';b.textContent='Emitir advertência / suspensão / orientação';b.onclick=()=>abrir();alvo.appendChild(b)}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',montarBotao);else montarBotao();
+window.CRV_DOCDISC=abrir;
+})();
+</script>
+<!-- ===== fim: documentos disciplinares ===== -->
+
 </body></html>
