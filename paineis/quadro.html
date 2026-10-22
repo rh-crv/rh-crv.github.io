@@ -1,4 +1,11 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style><style>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}.dsetor th.cf{background:#efe7fb;color:#5b3f9e}.dsetor td.cf .nb{background:#efe7fb;color:#5b3f9e}
+.dsetor th.cm{background:#e3effc;color:#1f5f9e}.dsetor td.cm .nb{background:#e3effc;color:#1f5f9e}
+.dsetor td.tot .nb{background:#1f2a3d;color:#fff}
+.dsetor .necv{font-weight:700;font-variant-numeric:tabular-nums}
+.dsetor .pv.f{background:#fdecea!important;color:#a3301c!important;border-color:#f2b8ae!important}
+.dsetor .pv.c{background:#e6f4ec!important;color:#1d5c3a!important;border-color:#a8d5bb!important}
+.dsetor tr.totr td{border-top:2px solid var(--line);background:rgba(127,127,127,.05)}
+</style><style>
 .hst{margin-top:18px;border-top:2px solid var(--line,#e0e5ef);padding-top:14px}
 .hst h3{margin:0 0 10px;font-size:16px}
 .hst h3 .sm{font-weight:400;margin-left:6px}
@@ -506,7 +513,7 @@ button.tile:hover,button.act:hover{transform:translateY(-2px);box-shadow:var(--s
     <div class="acts" id="acts"></div>
 
     <h2 class="sech">Quadro por setor</h2>
-    <div class="tile scroll"><table class="nom dept"><thead><tr><th>Setor</th><th class="num">Quadro</th><th class="num">Experiência</th><th class="num">Safra</th><th class="num">Menos de 1 ano</th><th class="num">Mulheres</th><th>Necessidade informada</th></tr></thead><tbody id="ab"></tbody></table></div>
+    <div class="tile scroll"><table class="nom dept dsetor"><thead><tr><th>Setor</th><th class="num">Total</th><th class="num">Experiência</th><th class="num">Safra</th><th class="num">Efetivos</th><th class="num cf">Mulheres</th><th class="num cm">Homens</th><th class="num">Necessidade</th><th>Situação</th></tr></thead><tbody id="ab"></tbody></table></div><p class="foot" id="abFoot"></p>
 
     <h2 class="sech">Quadro por seção</h2>
     <div class="tools" style="margin-top:0">
@@ -831,9 +838,22 @@ function geral(){
     +'<button class="act" data-tab="p"><span class="num">'+nf(vag)+'</span><div class="tt">vagas em aberto na previsão</div><p>Soma das seções e funções abaixo da necessidade informada pelas áreas (todas as áreas, sem filtro).</p><span class="go">Abrir previsão</span></button>';
   const nb=(L,t)=>L.length?'<button class="nb"'+w(t,L)+'>'+nf(L.length)+'</button>':'<span class="nb z">0</span>';
   const PG=prevData(),R0=D.filter(r=>(!st.con||r[CON]==st.con)&&fAE(r)&&(!st.sit||r[SIT]==st.sit));
-  $('ab').innerHTML=AREAS.map(a=>{const L=R0.filter(r=>r[AREA]==a),gs=PG.filter(g=>g.G.dp==a);
-    const pv=gs.length?gs.map(g=>{const gp=g.rows.reduce((s,r)=>s+r.p,0),gt=g.rows.reduce((s,r)=>s+r.t,0),gf=g.rows.reduce((s,r)=>s+(r.d<0?-r.d:0),0);return '<button class="depn" data-pgo="'+g.gi+'" title="Abrir na aba Previsão">'+(gs.length>1||g.G.g!=a?esc(g.G.g)+': ':'')+'temos '+nf(gt)+' de '+nf(gp)+'</button> '+(gf?'<span class="pv f">'+nf(gf)+' vagas em aberto</span>':'<span class="pv c">Completo</span>')}).join('<br>'):'<span class="sm">não informada</span>';
-    return '<tr'+(st.area==a?' style="background:var(--amber-soft)"':'')+'><td data-l="Setor"><button class="depn" data-k="area" data-v="'+esc(a)+'" title="Filtrar o painel por este setor">'+esc(a)+'</button><div class="sm">'+new Set(L.map(r=>r.dk)).size+' seções</div></td><td data-l="Quadro" class="num">'+nb(L,a)+'</td><td data-l="Experiência" class="num">'+nb(L.filter(r=>r[CON]=='Experiência'),a+' · em experiência')+'</td><td data-l="Safra" class="num">'+nb(L.filter(r=>r[CON]=='Safra'),a+' · safra')+'</td><td data-l="Menos de 1 ano" class="num">'+nb(L.filter(r=>r.t<365),a+' · menos de 1 ano de casa')+'</td><td data-l="Mulheres" class="num">'+nb(L.filter(r=>r[SEX]=='F'),a+' · mulheres')+'</td><td data-l="Necessidade informada">'+pv+'</td></tr>'}).join('');
+  const AREAS_Q=AREAS.filter(a=>!/^(Afastados|Desistentes)$/i.test(a));
+  const tot={t:0,e:0,s:0,ef:0,f:0,m:0,ne:0,va:0,ou:0};
+  $('ab').innerHTML=AREAS_Q.map(a=>{const L=R0.filter(r=>r[AREA]==a),gs=PG.filter(g=>g.G.dp==a);
+    const ex=L.filter(r=>r[CON]=='Experiência'),sa=L.filter(r=>r[CON]=='Safra'),ef=L.filter(r=>r[CON]=='Efetivo'),ou=L.filter(r=>r[CON]!='Experiência'&&r[CON]!='Safra'&&r[CON]!='Efetivo'),fe=L.filter(r=>r[SEX]=='F'),ho=L.filter(r=>r[SEX]!='F');
+    let va=0;const lab=[];
+    gs.forEach(g=>{const gp=g.rows.reduce((s2,r)=>s2+r.p,0),gt=g.rows.reduce((s2,r)=>s2+r.t,0),gf=g.rows.reduce((s2,r)=>s2+(r.d<0?-r.d:0),0);va+=gf;
+      lab.push('<button class="depn necv" data-pgo="'+g.gi+'" title="Abrir na aba Previsão: temos '+nf(gt)+' de '+nf(gp)+'">'+nf(gp)+'</button>'+(gs.length>1||g.G.g!=a?'<div class="sm">'+esc(g.G.g)+' · temos '+nf(gt)+'</div>':''));tot.ne+=gp});
+    const nec=gs.length?lab.join(''):'<span class="sm">—</span>';tot.t+=L.length;tot.e+=ex.length;tot.s+=sa.length;tot.ef+=ef.length;tot.f+=fe.length;tot.m+=ho.length;tot.va+=va;tot.ou+=ou.length;
+    const sit=va?'<span class="pv f">'+nf(va)+(va===1?' vaga em aberto':' vagas em aberto')+'</span>':'<span class="pv c">Atendido</span>';
+    return '<tr'+(st.area==a?' style="background:var(--amber-soft)"':'')+'><td data-l="Setor"><button class="depn" data-k="area" data-v="'+esc(a)+'" title="Filtrar o painel por este setor">'+esc(a)+'</button><div class="sm">'+new Set(L.map(r=>r.dk)).size+' seções</div></td>'
+      +'<td data-l="Total" class="num tot">'+nb(L,a)+(ou.length?'<div class="sm">'+nf(ou.length)+' '+esc([...new Set(ou.map(r=>String(r[CON]).toLowerCase()))].join(', '))+'</div>':'')+'</td>'
+      +'<td data-l="Experiência" class="num">'+nb(ex,a+' · em experiência')+'</td><td data-l="Safra" class="num">'+nb(sa,a+' · safra')+'</td><td data-l="Efetivos" class="num">'+nb(ef,a+' · efetivos')+'</td>'
+      +'<td data-l="Mulheres" class="num cf">'+nb(fe,a+' · mulheres')+'</td><td data-l="Homens" class="num cm">'+nb(ho,a+' · homens')+'</td>'
+      +'<td data-l="Necessidade" class="num">'+nec+'</td><td data-l="Situação">'+sit+'</td></tr>'}).join('')
+    +'<tr class="totr"><td><b>Total</b><div class="sm">sem afastados e desistentes</div></td><td class="num"><b>'+nf(tot.t)+'</b></td><td class="num"><b>'+nf(tot.e)+'</b></td><td class="num"><b>'+nf(tot.s)+'</b></td><td class="num"><b>'+nf(tot.ef)+'</b></td><td class="num cf"><b>'+nf(tot.f)+'</b></td><td class="num cm"><b>'+nf(tot.m)+'</b></td><td class="num"><b>'+nf(tot.ne)+'</b></td><td>'+(tot.va?'<span class="pv f">'+nf(tot.va)+' vagas em aberto</span>':'<span class="pv c">Atendido</span>')+'</td></tr>';
+  {const af=R0.filter(r=>/^(Afastados|Desistentes)$/i.test(r[AREA]));$('abFoot').textContent='Sem afastados e desistentes'+(af.length?' ('+nf(af.length)+' pessoas, que seguem no total geral do quadro)':'')+'. Necessidade: total previsto pelas áreas na aba Previsão; clique no número para abrir. Setor sem necessidade informada ou com o quadro completo aparece como Atendido.'+(tot.ou?' O total inclui '+nf(tot.ou)+' contrato por prazo determinado, fora de experiência, safra e efetivos.':'');}
   /* tabela de seções */
   const PB=prevByDep(),g=new Map();R.forEach(r=>{(g.get(r.dk)||g.set(r.dk,[]).get(r.dk)).push(r)});
   let T=[...g].map(([k,L])=>({k:k,d:DEPS.get(k),L:L,n:L.length,e:L.filter(r=>r[CON]=='Experiência'),s:L.filter(r=>r[CON]=='Safra'),v:L.filter(r=>r.t<365),f:L.filter(r=>r[SEX]=='F'),p:PB.get(k)}));
