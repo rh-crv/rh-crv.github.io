@@ -789,12 +789,12 @@ function renderBase(){
   $("basa").innerHTML='<option value="">Todos os setores</option>'+areas.map(a=>"<option"+(a===av?" selected":"")+">"+esc(a)+"</option>").join("");
   const L=baseList(),js=calc(MESES[cur]).js,has=b=>js.some(j=>nkey(j.n)===nkey(b.nome));
   $("bascnt").textContent=L.length+" de "+BASE.length+" jovens";
-  $("bastb").innerHTML=L.length?L.map(b=>'<tr'+(has(b)?' class="j" tabindex="0" data-k="'+esc(nkey(b.nome))+'"':"")+'><td data-l="Mat. CRV">'+esc(b.mat)+'</td><td data-l="Mat. Bittar">'+esc(b.matb)+'</td><td><span class="nm">'+esc(tcase(b.nome))+'</span><div class="sm">CPF '+esc(b.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,"$1.$2.$3-$4"))+'</div><button type="button" class="fjb" style="margin-top:5px" data-fj="'+esc(String(b.mat||'').trim()||('cpf'+String(b.cpf||'').replace(/\D/g,'')))+'" title="Dados, atestados e baixa">Abrir ficha</button></td><td data-l="Idade">'+(idade(b)===null?'<span class="sm">Não informada</span>':'<b'+(idade(b)<18&&b.st!=="Desligado"?' style="color:var(--amber-ink)"':"")+'>'+idade(b)+' anos</b><div class="sm">'+esc(b.nasc)+(idade(b)<18&&b.st!=="Desligado"?" · 18 em "+esc(aniv(b,18)):"")+"</div>")+'</td><td><span class="pill '+BST[b.st]+'">'+esc(b.st)+'</span></td><td data-l="Setor">'+celSetor(b)+'</td><td data-l="Jornada">'+esc(b.jor)+'</td><td data-l="Início">'+esc(b.ini)+'</td><td data-l="Término">'+esc(b.fim)+'</td><td data-l="Observação"><span class="sm">'+esc(baseObs(b))+"</span></td></tr>").join(""):'<tr><td colspan="10" class="empty">Nenhum jovem com esse filtro.</td></tr>';
+  $("bastb").innerHTML=L.length?L.map(b=>'<tr'+(has(b)?' class="j" tabindex="0" data-k="'+esc(nkey(b.nome))+'"':"")+'><td data-l="Mat. CRV">'+esc(b.mat)+'</td><td data-l="Mat. Bittar">'+esc(b.matb)+'</td><td><span class="nm">'+esc(tcase(b.nome))+'</span><div class="sm">CPF '+esc(b.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,"$1.$2.$3-$4"))+'</div>'+(window.CRV_JOV_BTN?window.CRV_JOV_BTN(b):'')+'</td><td data-l="Idade">'+(idade(b)===null?'<span class="sm">Não informada</span>':'<b'+(idade(b)<18&&b.st!=="Desligado"?' style="color:var(--amber-ink)"':"")+'>'+idade(b)+' anos</b><div class="sm">'+esc(b.nasc)+(idade(b)<18&&b.st!=="Desligado"?" · 18 em "+esc(aniv(b,18)):"")+"</div>")+'</td><td><span class="pill '+BST[b.st]+'">'+esc(b.st)+'</span></td><td data-l="Setor">'+celSetor(b)+'</td><td data-l="Jornada">'+esc(b.jor)+'</td><td data-l="Início">'+esc(b.ini)+'</td><td data-l="Término">'+esc(b.fim)+'</td><td data-l="Observação"><span class="sm">'+esc(baseObs(b))+"</span></td></tr>").join(""):'<tr><td colspan="10" class="empty">Nenhum jovem com esse filtro.</td></tr>';
 }
 ["basb","bass","basa","basi"].forEach(id=>$(id).addEventListener("input",renderBase));
 $("bask").addEventListener("click",e=>{const b=e.target.closest("[data-s]");if(b){if(b.dataset.s==="menor"){$("bass").value="";$("basi").value="m";}else{$("bass").value=b.dataset.s;$("basi").value="";}renderBase();}});
 const abrirBase=e=>{
-  const fj=e.target.closest(".fjb");if(fj){if(e.type==="click"&&window.CRV_JOV_FICHA)window.CRV_JOV_FICHA(fj.dataset.fj);return}
+  const fj=e.target.closest(".fjb");if(fj){if(e.type==="click"&&window.CRV_JOV_FICHA)window.CRV_JOV_FICHA(fj.dataset.fj,fj.dataset.aba);return}
   const ok=e.target.closest(".setok");if(ok&&e.type==="click"){const i=ok.parentElement.querySelector("input");salvarSetor(ok.dataset.mat,i.value);return}
   const mud=e.target.closest(".setmud");if(mud&&e.type==="click"){SETOR_MAN[mud.dataset.mat]=Object.assign({},SETOR_MAN[mud.dataset.mat],{editar:true});renderBase();return}
   if(e.target.closest(".setin")){if(e.type==="keydown"&&e.key==="Enter"&&e.target.tagName==="INPUT")salvarSetor(e.target.dataset.mat,e.target.value);return}
@@ -1022,11 +1022,15 @@ render();
 </style>
 <script>
 (function(){
+const JC=Object.assign({inst:'Instituto João Bittar',nomeK:'nome',instK:'matb',iso:false,caixa:true},window.JCFG||{});
 const e_=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const hojeI=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const i2b=s=>s?String(s).slice(0,10).split('-').reverse().join('/'):'';
 const b2i=s=>/^\d{2}\/\d{2}\/\d{4}$/.test(s||'')?s.slice(6)+'-'+s.slice(3,5)+'-'+s.slice(0,2):'';
 const addD=(s,n)=>{const d=new Date(s+'T12:00:00');d.setDate(d.getDate()+n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const tc=s=>String(s||'').toLowerCase().replace(/(^|\s)\S/g,c=>c.toUpperCase()).replace(/ (Da|De|Do|Dos|Das|E) /g,(m,p)=>' '+p.toLowerCase()+' ');
+const NM=b=>b[JC.nomeK]||'';
+const toB=iso=>JC.iso?(iso||''):i2b(iso),fromB=v=>JC.iso?(v||''):b2i(v);
 const quem=()=>(window.parent&&window.parent.CRV_QUEM)||'';
 const pl=(n,a,b)=>n+' '+(n===1?a:b);
 const MOTIVOS=['Término do contrato','Efetivado na CRV','A pedido do aprendiz (art. 433, IV, CLT)','Desempenho insuficiente ou inadaptação (art. 433, I, CLT)','Falta disciplinar grave (art. 433, II, CLT)','Ausência injustificada à escola com perda do ano letivo (art. 433, III, CLT)','Completou 24 anos','Outro'];
@@ -1040,11 +1044,11 @@ async function carregar(){const D=await db();if(!D)return;
 /* aplica no BASE: jovens cadastrados no app, complementos e baixas */
 function aplicar(){
   for(let i=BASE.length-1;i>=0;i--)if(BASE[i]._app)BASE.splice(i,1);
-  BASE.forEach(b=>{if(b._orig===undefined)b._orig={st:b.st,desl:b.desl};b.st=b._orig.st;b.desl=b._orig.desl;delete b.motivo;delete b._baixa;delete b.comp});
+  BASE.forEach(b=>{if(b._orig===undefined)b._orig={st:b.st,desl:b.desl,setor:b.setor};b.st=b._orig.st;b.desl=b._orig.desl;if(!JC.caixa)b.setor=b._orig.setor;delete b.motivo;delete b._baixa;delete b.comp});
   Object.entries(REG).forEach(([k,r])=>{if(r.excluido)return;let b=BASE.find(x=>chave(x)===k);
-    if(!b&&r.novo&&r.dados){const d=r.dados;b={mat:d.mat||'',nome:String(d.nome||'').toUpperCase(),ini:i2b(d.ini),fim:i2b(d.fim),jor:d.jor||'',setor:String(d.setor||'A definir').toUpperCase(),cbo:d.cbo||'',cpf:String(d.cpf||'').replace(/\D/g,''),matb:d.matb||'',st:d.ini&&d.ini>hojeI()?'Stand-by':'Ativo',desl:'',nasc:i2b(d.nasc),_app:true};BASE.push(b)}
-    if(!b)return;b.comp=r.dados||{};
-    if(r.baixa&&r.baixa.data){b.motivo=r.baixa.motivo==='Outro'?(r.baixa.obs||'Outro'):r.baixa.motivo;b._baixa=r.baixa;if(r.baixa.data<=hojeI()){b.st='Desligado';b.desl=i2b(r.baixa.data)}else b.motivo='Saída programada para '+i2b(r.baixa.data)+' · '+b.motivo}});
+    if(!b&&r.novo&&r.dados){const d=r.dados;b={mat:d.mat||'',ini:toB(d.ini),fim:toB(d.fim),jor:d.jor||'',setor:JC.caixa?String(d.setor||'A definir').toUpperCase():(d.setor||''),cbo:d.cbo||'',cpf:String(d.cpf||'').replace(/\D/g,''),st:d.ini&&d.ini>hojeI()?'Stand-by':'Ativo',desl:'',nasc:toB(d.nasc),_app:true};b[JC.nomeK]=JC.caixa?String(d.nome||'').toUpperCase():tc(d.nome);b[JC.instK]=d.matb||'';BASE.push(b)}
+    if(!b)return;b.comp=r.dados||{};if(!JC.caixa&&!b._app&&r.dados&&r.dados.setor)b.setor=r.dados.setor;
+    if(r.baixa&&r.baixa.data){b.motivo=r.baixa.motivo==='Outro'?(r.baixa.obs||'Outro'):r.baixa.motivo;b._baixa=r.baixa;if(r.baixa.data<=hojeI()){b.st='Desligado';b.desl=toB(r.baixa.data)}else b.motivo='Saída programada para '+i2b(r.baixa.data)+' · '+b.motivo}});
   BASE.forEach(b=>{b._ats=ATS.filter(a=>a.chave===chave(b))})}
 async function atualizar(){await carregar();aplicar();PRONTO=true;try{MESES.forEach(m=>{delete m._c})}catch(_){}try{renderBase()}catch(_){}try{render()}catch(_){}}
 window.CRV_JOV_ATUALIZAR=atualizar;
@@ -1054,7 +1058,7 @@ function modal(tit,sub){fechar();W=document.createElement('div');W.className='jf
   document.body.appendChild(W);W.querySelector('[data-x]').onclick=fechar;W.addEventListener('mousedown',ev=>{if(ev.target===W)fechar()});return{C:W.querySelector('.jf-corpo'),R:W.querySelector('.jf-rod'),msg:(t,c)=>{const m=W.querySelector('.jf-rod .msg');m.style.color=c||'';m.textContent=t}}}
 async function salvarReg(k,r){const D=await db();if(!D)throw new Error('O registro não está disponível nesta visualização.');r.atualizadoEm=new Date().toISOString();r.atualizadoPor=quem();await D.collection('jovens').doc(k).set(r);REG[k]=r}
 
-const CAMPOS=[['sec','Contrato'],['mat','Matrícula CRV','w3',1],['matb','Matrícula Instituto João Bittar','w3'],['ini','Início do contrato','w3','date'],['fim','Término do contrato','w3','date'],
+const CAMPOS=[['sec','Contrato'],['mat','Matrícula CRV','w3',1],['matb','Matrícula '+JC.inst,'w3'],['ini','Início do contrato','w3','date'],['fim','Término do contrato','w3','date'],
  ['setor','Setor','w6','setor'],['jor','Jornada','w3',0,'Ex.: 13:00 às 19:00'],['cbo','CBO','w3'],
  ['sec','Dados pessoais'],['nome','Nome completo *','w8'],['cpf','CPF','w4'],['nasc','Data de nascimento','w3','date'],['sexo','Sexo','w3','sexo'],['tel','Telefone do jovem','w3'],['email','E-mail','w3'],
  ['end','Endereço','w8'],['cidade','Cidade','w4'],
@@ -1077,7 +1081,7 @@ async function novo(){const M=modal('Cadastrar jovem aprendiz','Entra na Base de
   M.R.querySelector('[data-c]').onclick=fechar;
   const g=k=>M.C.querySelector('[data-k='+k+']');let tm;
   g('mat').addEventListener('input',()=>{clearTimeout(tm);tm=setTimeout(async()=>{const m=g('mat').value.trim().replace(/^0+(?=\d)/,'');if(!m)return;
-    if(BASE.some(b=>String(b.mat)===m)){M.C.querySelector('#jfInfo').className='jf-av er';M.C.querySelector('#jfInfo').textContent='Essa matrícula já está na Base de jovens.';return}
+    if(BASE.some(b=>String(b.mat)===m&&!b._app||String(b.mat)===m)){M.C.querySelector('#jfInfo').className='jf-av er';M.C.querySelector('#jfInfo').textContent='Essa matrícula já está na Base de jovens.';return}
     try{const f=window.parent&&window.parent.CRV_QUADRO;const q=typeof f==='function'?await f():null;const c=q&&q.mapa&&q.mapa[m];
       if(c){if(!g('nome').value)g('nome').value=c.nome;if(!g('cpf').value)g('cpf').value=c.cpf||'';if(!g('setor').value)g('setor').value=c.setor||'';if(!g('ini').value)g('ini').value=(c.admissao||'').slice(0,10);
         M.C.querySelector('#jfInfo').className='jf-av ok';M.C.querySelector('#jfInfo').textContent='Encontrado no Quadro: '+c.nome+' · '+c.funcao+' · '+c.setor+' · '+c.situacao+'.'}
@@ -1091,13 +1095,13 @@ async function novo(){const M=modal('Cadastrar jovem aprendiz','Entra na Base de
 
 /* ficha do jovem: dados, atestados e desligamento */
 async function ficha(k,aba,aviso){if(!PRONTO)await atualizar();const b=BASE.find(x=>chave(x)===k);if(!b)return;const r=REG[k]||{};aba=aba||'dados';
-  const M=modal(tcase(b.nome),'Mat. CRV '+(b.mat||'–')+' · mat. Bittar '+(b.matb||'–')+' · '+(b.setor||'setor a definir')+' · '+b.st+(b.desl?' em '+b.desl:''));
-  const T=[['dados','Dados'],['at','Atestados ('+(b._ats||[]).length+')'],['bx',b.st==='Desligado'?'Desligamento':'Dar baixa']];
+  const M=modal(tc(NM(b)),'Mat. CRV '+(b.mat||'–')+' · mat. '+JC.inst.replace('Instituto ','')+' '+(b[JC.instK]||'–')+' · '+(b.setor||'setor a definir')+' · '+b.st+(b.desl?' em '+b.desl:''));
+  const T=[['dados','Dados'],['at','Atestados ('+(b._ats||[]).length+')'],['bx',b.st==='Desligado'||r.baixa?'Desligamento':'Desligar do programa']];
   const draw=()=>{M.R.querySelectorAll('button').forEach(x=>x.remove());
     let h='<div class="jf-tabs">'+T.map(t=>'<button data-t="'+t[0]+'" class="'+(aba===t[0]?'on':'')+'">'+t[1]+'</button>').join('')+'</div>';
-    if(aba==='dados'){const d=Object.assign({mat:b.mat,matb:b.matb,ini:b2i(b.ini),fim:b2i(b.fim),setor:b.setor,jor:b.jor,cbo:b.cbo,nome:tcase(b.nome),cpf:b.cpf,nasc:b2i(b.nasc)},r.dados||{});
-      const ro=b._app?[]:['mat','matb','ini','fim','nome','cpf','nasc','cbo'];
-      h+='<div class="jf-g">'+(b._app?'':'<div class="jf-av in">Os campos de contrato e identificação vêm da base do Instituto. Complete aqui contato, responsável e escola. O setor pode ser ajustado.</div>')+CAMPOS.map(c=>campoH(c,d,ro)).join('')+'</div>';
+    if(aba==='dados'){const d=Object.assign({mat:b.mat,matb:b[JC.instK],ini:fromB(b.ini),fim:fromB(b.fim),setor:b.setor,jor:b.jor,cbo:b.cbo,nome:tc(NM(b)),cpf:b.cpf,nasc:fromB(b.nasc)},r.dados||{});
+      const ro=b._app?[]:['mat','matb','ini','fim','nome','cpf'].concat(b.nasc?['nasc']:[]);
+      h+='<div class="jf-g">'+(b._app?'':'<div class="jf-av in">Os campos de contrato e identificação vêm da relação de '+e_(JC.inst)+'. Complete aqui contato, responsável e escola. O setor pode ser ajustado.</div>')+CAMPOS.map(c=>campoH(c,d,ro)).join('')+'</div>';
       M.R.insertAdjacentHTML('beforeend',(b._app?'<button class="jf-b dan" data-del>Excluir cadastro</button>':'')+'<button class="jf-b pri" data-s>Salvar dados</button>')}
     else if(aba==='at'){const L=(b._ats||[]).slice().sort((a,c)=>String(c.ini).localeCompare(String(a.ini))),dias=L.reduce((s,a)=>s+(+a.dias||0),0);
       const m30=L.filter(a=>a.ini>=addD(hojeI(),-30)).length;
@@ -1115,25 +1119,25 @@ async function ficha(k,aba,aviso){if(!PRONTO)await atualizar();const b=BASE.find
        +'<div style="grid-column:1/-1"><button class="jf-b pri" data-addat>Registrar atestado</button></div></div>'
        +'<div style="margin-top:14px;overflow:auto"><table class="jf-tb"><thead><tr><th>Período</th><th>Dias</th><th>Tipo</th><th>CID</th><th>Entregue</th><th>Por</th><th></th></tr></thead><tbody>'
        +(L.length?L.map(a=>'<tr><td>'+i2b(a.ini)+(+a.dias>1?' a '+i2b(a.fim):'')+'</td><td>'+e_(a.dias)+'</td><td>'+e_(a.tipo)+(a.obs?'<div style="font-size:12px;color:var(--mut)">'+e_(a.obs)+'</div>':'')+'</td><td>'+e_(a.cid||'–')+'</td><td>'+i2b(a.entregue)+'</td><td>'+e_(String(a.por||'').split(' ')[0])+'</td><td><button class="jf-b dan" data-rmat="'+e_(a._id)+'">Excluir</button></td></tr>').join(''):'<tr><td colspan="7" style="color:var(--mut)">Nenhum atestado registrado no app.</td></tr>')+'</tbody></table></div>'}
-    else{const bx=r.baixa||{};
-      h+='<div class="jf-g">'+(b.st==='Desligado'&&!r.baixa?'<div class="jf-av in">Desligado em '+e_(b.desl)+' conforme a base do Instituto.</div>':'')
-       +(r.baixa?'<div class="jf-av ok">Baixa registrada no app: '+i2b(bx.data)+' · '+e_(bx.motivo)+(bx.por?' · por '+e_(String(bx.por).split(' ')[0]):'')+'</div>':'')
-       +(b.st!=='Desligado'||r.baixa?'<div class="jf-c w3"><label>Data de saída *</label><input type="date" data-b="data" value="'+e_(bx.data||hojeI())+'"></div>'
+    else{const bx=r.baixa||{},jaBase=b.st==='Desligado'&&!r.baixa;
+      h+='<div class="jf-g">'+(jaBase?'<div class="jf-av in">Desligado em '+e_(b.desl)+' conforme a relação de '+e_(JC.inst)+'. Registre aqui o motivo da saída.</div>':'')
+       +(r.baixa?'<div class="jf-av ok">Saída registrada: '+i2b(bx.data)+' · '+e_(bx.motivo)+(bx.por?' · por '+e_(String(bx.por).split(' ')[0]):'')+'</div>':'')
+       +'<div class="jf-c w3"><label>Data de saída *</label><input type="date" data-b="data" value="'+e_(bx.data||(jaBase?fromB(b.desl):'')||hojeI())+'"></div>'
        +'<div class="jf-c w9"><label>Motivo *</label><select data-b="motivo">'+MOTIVOS.map(m=>'<option'+(bx.motivo===m?' selected':'')+'>'+m+'</option>').join('')+'</select></div>'
        +'<div class="jf-c w12"><label>Observação / detalhe do motivo</label><textarea data-b="obs">'+e_(bx.obs||'')+'</textarea></div>'
-       +'<div class="jf-av in">A baixa tira o jovem dos ativos a partir da data de saída. No mês da saída, o vale-alimentação fica proporcional aos dias, como já acontece com os desligados da base.</div>':'')+'</div>';
-      if(b.st!=='Desligado'||r.baixa)M.R.insertAdjacentHTML('beforeend',(r.baixa?'<button class="jf-b" data-desf>Desfazer baixa</button>':'')+'<button class="jf-b pri" data-bx>'+(r.baixa?'Salvar alteração':'Dar baixa')+'</button>')}
+       +'<div class="jf-av in">O jovem sai dos ativos a partir da data de saída. Data futura fica como saída programada até o dia.</div></div>';
+      M.R.insertAdjacentHTML('beforeend',(r.baixa?'<button class="jf-b" data-desf>Desfazer</button>':'')+'<button class="jf-b pri" data-bx>'+(r.baixa?'Salvar alteração':jaBase?'Registrar motivo':'Desligar do programa')+'</button>')}
     M.C.innerHTML=h;
     M.C.querySelectorAll('[data-t]').forEach(x=>x.onclick=()=>{aba=x.dataset.t;M.msg('');draw()});
     const S=M.R.querySelector('[data-s]');if(S)S.onclick=async()=>{const d=lerCampos(M.C);d.cpf=(d.cpf||'').replace(/\D/g,'');if(!d.nome)return M.msg('Informe o nome.','#a3301c');
       const ia=idadeI(d.nasc);if(ia!==null&&ia<18&&!d.resp)return M.msg('Jovem menor de 18 anos: informe o responsável.','#a3301c');
-      try{await salvarReg(k,Object.assign({},r,{dados:d}));if(!b._app&&d.setor&&d.setor.toUpperCase()!==String(b.setor).toUpperCase()){try{await salvarSetor(b.mat,d.setor)}catch(_){}}
+      try{await salvarReg(k,Object.assign({},r,{dados:d}));if(JC.caixa&&!b._app&&d.setor&&d.setor.toUpperCase()!==String(b.setor).toUpperCase()&&typeof salvarSetor==='function'){try{await salvarSetor(b.mat,d.setor)}catch(_){}}
         await atualizar();ficha(k,'dados','Dados salvos.')}catch(er){M.msg(er.message,'#a3301c')}};
     const DEL=M.R.querySelector('[data-del]');if(DEL)DEL.onclick=async()=>{if(!DEL.dataset.c){DEL.dataset.c=1;DEL.textContent='Confirmar exclusão';return}
       try{await salvarReg(k,Object.assign({},r,{excluido:true}));fechar();await atualizar()}catch(er){M.msg(er.message,'#a3301c')}};
     const ga=n=>M.C.querySelector('[data-a='+n+']');
     if(ga('ini')){const fim=()=>{const i=ga('ini').value,n=parseInt(ga('dias').value,10)||1;ga('fim').value=i?i2b(addD(i,n-1)):''};ga('ini').onchange=fim;ga('dias').oninput=fim;
-      M.C.querySelector('[data-addat]').onclick=async()=>{const a={chave:k,mat:b.mat||'',nome:b.nome,entregue:ga('entregue').value,ini:ga('ini').value,dias:parseInt(ga('dias').value,10)||0,tipo:ga('tipo').value,cid:ga('cid').value.trim().toUpperCase(),prof:ga('prof').value.trim(),obs:ga('obs').value.trim(),por:quem(),em:new Date().toISOString()};
+      M.C.querySelector('[data-addat]').onclick=async()=>{const a={chave:k,mat:b.mat||'',nome:NM(b),entregue:ga('entregue').value,ini:ga('ini').value,dias:parseInt(ga('dias').value,10)||0,tipo:ga('tipo').value,cid:ga('cid').value.trim().toUpperCase(),prof:ga('prof').value.trim(),obs:ga('obs').value.trim(),por:quem(),em:new Date().toISOString()};
         if(!a.ini||!a.dias)return M.msg('Informe o início e a quantidade de dias.','#a3301c');a.fim=addD(a.ini,a.dias-1);
         const D=await db();if(!D)return M.msg('Não dá para salvar nesta visualização.','#a3301c');
         try{await D.collection('atestados').add(a);await atualizar();ficha(k,'at','Atestado registrado.')}catch(er){M.msg(er.message,'#a3301c')}}}
@@ -1152,17 +1156,19 @@ async function listaAt(){if(!PRONTO)await atualizar();const M=modal('Atestados d
     const rep={};L.forEach(a=>rep[a.chave]=(rep[a.chave]||0)+1);const r3=Object.values(rep).filter(n=>n>=3).length;
     M.C.innerHTML='<div class="jf-k"><div><span>Atestados</span><b>'+L.length+'</b></div><div><span>Dias</span><b>'+dd+'</b></div><div><span>Jovens</span><b>'+pp+'</b></div><div><span>Com 3 ou mais</span><b>'+r3+'</b></div></div>'
      +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><select id="jfM" class="jf-b"><option value="">Todos os meses</option>'+ms.map(m=>'<option value="'+m+'"'+(m===mes?' selected':'')+'>'+m.slice(5)+'/'+m.slice(0,4)+'</option>').join('')+'</select><input id="jfQ" class="jf-b" style="flex:1;min-width:180px;font-weight:400" placeholder="Buscar jovem" value="'+e_(q)+'"><button class="jf-b" id="jfX">Excel</button><button class="jf-b" id="jfP">PDF</button></div>'
-     +'<div style="overflow:auto"><table class="jf-tb"><thead><tr><th>Jovem</th><th>Período</th><th>Dias</th><th>Tipo</th><th>CID</th><th>Entregue</th></tr></thead><tbody>'+(L.length?L.map(a=>'<tr data-k="'+e_(a.chave)+'" style="cursor:pointer"><td><b>'+e_(tcase(a.nome))+'</b><div style="font-size:12px;color:var(--mut)">Mat. '+e_(a.mat||'–')+(rep[a.chave]>=3?' <span class="jf-tag">'+rep[a.chave]+' no filtro</span>':'')+'</div></td><td>'+i2b(a.ini)+(+a.dias>1?' a '+i2b(a.fim):'')+'</td><td>'+e_(a.dias)+'</td><td>'+e_(a.tipo)+'</td><td>'+e_(a.cid||'–')+'</td><td>'+i2b(a.entregue)+'</td></tr>').join(''):'<tr><td colspan="6" style="color:var(--mut)">Nenhum atestado registrado.</td></tr>')+'</tbody></table></div>';
+     +'<div style="overflow:auto"><table class="jf-tb"><thead><tr><th>Jovem</th><th>Período</th><th>Dias</th><th>Tipo</th><th>CID</th><th>Entregue</th></tr></thead><tbody>'+(L.length?L.map(a=>'<tr data-k="'+e_(a.chave)+'" style="cursor:pointer"><td><b>'+e_(tc(a.nome))+'</b><div style="font-size:12px;color:var(--mut)">Mat. '+e_(a.mat||'–')+(rep[a.chave]>=3?' <span class="jf-tag">'+rep[a.chave]+' no filtro</span>':'')+'</div></td><td>'+i2b(a.ini)+(+a.dias>1?' a '+i2b(a.fim):'')+'</td><td>'+e_(a.dias)+'</td><td>'+e_(a.tipo)+'</td><td>'+e_(a.cid||'–')+'</td><td>'+i2b(a.entregue)+'</td></tr>').join(''):'<tr><td colspan="6" style="color:var(--mut)">Nenhum atestado registrado.</td></tr>')+'</tbody></table></div>';
     M.C.querySelector('#jfM').onchange=ev=>{mes=ev.target.value;draw()};const qi=M.C.querySelector('#jfQ');qi.oninput=()=>{q=qi.value.toLowerCase();clearTimeout(qi._t);qi._t=setTimeout(()=>{draw();const n=M.C.querySelector('#jfQ');n.focus();n.setSelectionRange(n.value.length,n.value.length)},300)};
     M.C.querySelectorAll('tr[data-k]').forEach(t=>t.onclick=()=>ficha(t.dataset.k,'at'));
-    const linhas=L.map(a=>[tcase(a.nome),a.mat||'',i2b(a.ini),i2b(a.fim),a.dias,a.tipo,a.cid||'',i2b(a.entregue),a.obs||'']);const H=['Jovem','Matrícula','Início','Fim','Dias','Tipo','CID','Entregue em','Observação'];
+    const linhas=L.map(a=>[tc(a.nome),a.mat||'',i2b(a.ini),i2b(a.fim),a.dias,a.tipo,a.cid||'',i2b(a.entregue),a.obs||'']);const H=['Jovem','Matrícula','Início','Fim','Dias','Tipo','CID','Entregue em','Observação'];
     const salvar=async(nome,bytes,tipo)=>{const DL=window.claude&&window.claude.use?await window.claude.use('downloads').catch(()=>null):null;if(DL)return DL.save({filename:nome,data:bytes});const u=URL.createObjectURL(new Blob([bytes],{type:tipo}));const x=document.createElement('a');x.href=u;x.download=nome;document.body.appendChild(x);x.click();setTimeout(()=>{x.remove();URL.revokeObjectURL(u)},4000)};
     M.C.querySelector('#jfX').onclick=async()=>{const X=window.XLSX||(window.parent&&window.parent.XLSX);if(!X)return M.msg('Excel indisponível.','#a3301c');const ws=X.utils.aoa_to_sheet([H,...linhas]);ws['!cols']=[36,10,11,11,6,24,8,12,40].map(w=>({wch:w}));const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,'Atestados');await salvar('atestados-jovens-aprendizes.xlsx',new Uint8Array(X.write(wb,{bookType:'xlsx',type:'array'})),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')};
-    M.C.querySelector('#jfP').onclick=async()=>{const J=(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF);if(!J)return M.msg('PDF indisponível.','#a3301c');const doc=new J({unit:'mm',format:'a4',orientation:'landscape'});doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text('CRV INDUSTRIAL · Atestados dos jovens aprendizes (Instituto João Bittar)',12,14);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text((mes?'Mês '+mes.slice(5)+'/'+mes.slice(0,4):'Todos os meses')+' · '+L.length+' atestados · '+dd+' dias · emitido em '+new Date().toLocaleDateString('pt-BR'),12,20);
+    M.C.querySelector('#jfP').onclick=async()=>{const J=(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF);if(!J)return M.msg('PDF indisponível.','#a3301c');const doc=new J({unit:'mm',format:'a4',orientation:'landscape'});doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text('CRV INDUSTRIAL · Atestados dos jovens aprendizes ('+JC.inst+')',12,14);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text((mes?'Mês '+mes.slice(5)+'/'+mes.slice(0,4):'Todos os meses')+' · '+L.length+' atestados · '+dd+' dias · emitido em '+new Date().toLocaleDateString('pt-BR'),12,20);
       doc.autoTable({startY:24,head:[H],body:linhas,styles:{fontSize:8,cellPadding:1.4},headStyles:{fillColor:[91,63,158]},margin:{left:12,right:12}});await salvar('atestados-jovens-aprendizes.pdf',new Uint8Array(doc.output('arraybuffer')),'application/pdf')}};
   draw()}
 
-window.CRV_NOVO=()=>{try{go('bas')}catch(_){}novo()};window.CRV_JOV_FICHA=ficha;window.CRV_JOV_AT=listaAt;
+window.CRV_JOV_BTN=b=>{const k=chave(b),r=REG[k]||{};const sai=b.st==='Desligado'?(r.baixa?'':'<button type="button" class="fjb" data-fj="'+e_(k)+'" data-aba="bx" style="color:#a3301c">Informar motivo da saída</button>'):(r.baixa?'':'<button type="button" class="fjb" data-fj="'+e_(k)+'" data-aba="bx">Desligar</button>');
+  return '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px"><button type="button" class="fjb" data-fj="'+e_(k)+'">Abrir ficha</button>'+sai+'</div>'};
+window.CRV_NOVO=()=>{try{go('bas')}catch(_){}novo()};window.CRV_JOV_FICHA=ficha;window.CRV_JOV_CHAVE=chave;window.CRV_JOV_REG=k=>REG[k]||{};window.CRV_JOV_AT=listaAt;
 /* botões na aba Base de jovens */
 (function(){const t=document.querySelector('#bas .tools');if(!t)return;
   t.insertAdjacentHTML('beforeend','<button type="button" class="btn2" id="jfNovo" style="background:#5b3f9e;color:#fff;border-color:#5b3f9e">+ Cadastrar jovem</button><button type="button" class="btn2" id="jfAts">Atestados</button>');

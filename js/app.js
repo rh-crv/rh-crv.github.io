@@ -401,6 +401,7 @@ const SUBACOES = {
   quadro:   [{ acao:'hcol', nome:'Histórico do colaborador' }, { acao:'ent', nome:'Entrevista de desligamento' }, { acao:'estab', nome:'Estabilidade' }],
   curriculos: [{ acao:'ctr', nome:'Em contratação' }],
   jovem:    [{ acao:'novo', nome:'Cadastrar jovem' }, { acao:'atj', nome:'Atestados' }],
+  renapsi:  [{ acao:'novo', nome:'Cadastrar jovem' }, { acao:'atj', nome:'Atestados' }],
   sancoes:  [{ acao:'doc', nome:'Emitir advertência / suspensão / orientação' }],
   ouvidorias: [{ acao:'nova', nome:'Cadastrar ouvidoria' }],
   rd:       [{ acao:'novo', nome:'Cadastrar RD' }, { acao:'aut', nome:'Autorização de desconto' }, { acao:'hist', nome:'Histórico de autorizações' }],
