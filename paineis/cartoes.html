@@ -51,6 +51,19 @@ td{padding:8px 10px;border-top:1px solid var(--line);vertical-align:top}td .sm{f
 .verif{background:#fff7e6;border:2px solid #e9a23b;border-radius:12px;padding:12px 16px;margin-bottom:14px}
 .verif h2{margin:0 0 2px;font-size:16px;color:#7a4a00}.verif .sub{margin:0 0 8px;font-size:12.5px;color:#7a5a20}
 .verif table{background:#fff;border-radius:8px;overflow:hidden}.verif td,.verif th{font-size:13px}
+.vtabs{display:flex;gap:4px;margin:0 0 12px;border-bottom:1px solid var(--line)}
+.vtabs button{border:0;background:none;padding:9px 16px;font:600 14px inherit;font-family:inherit;color:var(--mut);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px}
+.vtabs button.on{color:var(--acc2);border-bottom-color:var(--acc)}
+.cov2{columns:2;column-gap:28px}.cov2 .hr{break-inside:avoid}
+@media (max-width:900px){.cov2{columns:1}}
+header .btn.rel{background:#fff;color:var(--acc2);border-color:#fff}
+.rl-fundo{position:fixed;inset:0;background:rgba(10,20,40,.55);z-index:60;display:flex;align-items:flex-start;justify-content:center;padding:28px 12px;overflow:auto}
+.rl{background:#fff;border-radius:12px;max-width:620px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.rl-cab{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line)}.rl-cab h3{margin:0;flex:1;font-size:16px}.rl-cab small{display:block;color:var(--mut);font-weight:400;font-size:12px}
+.rl-corpo{padding:14px 18px}.rl-op{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer}
+.rl-op input{margin-top:3px}.rl-op b{display:block}.rl-op span{font-size:12.5px;color:var(--mut)}
+.rl-lin{display:flex;gap:16px;flex-wrap:wrap;margin:10px 0 0;font-size:13px}.rl-lin label{display:flex;gap:6px;align-items:center;cursor:pointer}
+.rl-pe{display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--line)}
 .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#1d2433;color:#fff;padding:9px 14px;border-radius:8px;font-size:13px;z-index:50}
 .selb{display:flex;gap:8px;align-items:center;background:var(--accbg);border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:13px;flex-wrap:wrap}
 @media (max-width:900px){.read{grid-template-columns:1fr}.read>div+div{border-left:0;border-top-width:3px}.grid2{grid-template-columns:1fr}}
@@ -60,21 +73,21 @@ td{padding:8px 10px;border-top:1px solid var(--line);vertical-align:top}td .sm{f
 <header><div class="hin">
   <span class="logo"><img alt="CRV Industrial" src="__CRV_BASE__img/logo-crv.png"></span>
   <div class="ttl"><div class="eb">Benefícios · Sysprocard</div><h1 id="tit">Cartão</h1><small id="sub"></small></div>
-  <div class="hacts"><button class="btn" id="bX">Excel</button><button class="btn" id="bP">PDF</button></div>
+  <div class="hacts"><button class="btn rel" id="bR">Relatório de conferência</button><button class="btn" id="bX">Excel</button><button class="btn" id="bP">PDF</button></div>
 </div></header>
 <main>
   <section class="verif" id="verif" hidden></section>
   <section class="read" id="read"></section>
   <section class="kpis" id="kpis"></section>
-  <section class="grid2">
-    <div class="box"><h2>Cobertura por departamento</h2><p class="sub" id="covSub"></p><div class="lg" id="covLg"></div><div id="cov"></div></div>
-    <div class="box"><h2 id="g2t">Por gerência</h2><p class="sub" id="g2s"></p><div id="g2"></div></div>
+  <nav class="vtabs" id="vtabs"><button data-v="s">Por setor</button><button data-v="n">Nominal</button></nav>
+  <section class="box" id="vS">
+    <h2>Cobertura por setor</h2><p class="sub" id="covSub"></p><div class="lg" id="covLg"></div><div id="cov" class="cov2"></div>
   </section>
-  <section class="box">
+  <section class="box" id="vN">
     <h2 id="lt">Lista</h2><p class="sub" id="ls"></p>
     <div class="tools">
       <input id="q" type="search" placeholder="Buscar nome, matrícula ou função">
-      <select id="fCat"></select><select id="fDep"></select><select id="fGer"></select><select id="fSit"></select>
+      <select id="fCat"></select><select id="fDep"></select><select id="fSit"></select>
       <span class="cnt" id="cnt"></span>
     </div>
     <div class="selb" id="selb" hidden></div>
@@ -161,12 +174,11 @@ async function marcar(mats,desfazer){
 }
 
 /* ---------- filtros ---------- */
-const S={cat:'',dep:'',ger:'',sit:'',q:'',lim:150,dl:''};
+const S={cat:'',dep:'',ger:'',sit:'',q:'',lim:150,dl:'',v:'s'};
 const deps=[...new Set(R.map(r=>r.dep))].sort((a,b)=>a.localeCompare(b));
 const gers=[...new Set(R.map(r=>r.ger).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
 $('fCat').innerHTML='<option value="">Todas as situações do cartão</option>'+ORD.map(k=>`<option value="${k}">${CATS[k].l}</option>`).join('')+'<option value="pedido">Já solicitados (marcados no app)</option>';
-$('fDep').innerHTML='<option value="">Todos os departamentos</option>'+deps.map(d=>`<option>${esc(d)}</option>`).join('');
-$('fGer').innerHTML='<option value="">Todas as gerências</option>'+gers.map(d=>`<option>${esc(d)}</option>`).join('');
+$('fDep').innerHTML='<option value="">Todos os setores</option>'+deps.map(d=>`<option>${esc(d)}</option>`).join('');
 $('fSit').innerHTML='<option value="">Situação no Quadro: todas</option>'+['Ativo','Afastado','Desligado','Fora do quadro'].map(x=>`<option>${x}</option>`).join('');
 const sel=(skip)=>R.filter(r=>(skip==='cat'||!S.cat||(S.cat==='pedido'?!!PED[r.mat]&&PEDE.has(r.k):r.k===S.cat))&&(skip==='dep'||!S.dep||r.dep===S.dep)&&(skip==='ger'||!S.ger||r.ger===S.ger)&&(!S.sit||r.sit===S.sit)&&(!S.dl||(S.dl==='exc'?!!(EXC[r.mat]&&EXC[r.mat].on):S.dl==='aloj'?regra(r).v===1080:difLim(r)===S.dl))&&(!S.q||(r.nome+' '+r.mat+' '+r.func).toUpperCase().includes(S.q.toUpperCase())));
 const alvo=r=>(r.sit==='Ativo'||(T==='convenio'&&r.sit==='Afastado'))&&(T!=='premium'||r.eleg);
@@ -190,7 +202,7 @@ function render(){
   if(n('desl')+n('fora'))faz.push(`Bloquear/conferir ${nf(n('desl')+n('fora'))} cartão(ões) ativos de quem não está na empresa`);
   if(T!=='convenio'&&n('bloq'))faz.push(`Conferir ${nf(n('bloq'))} ${T==='premium'?'elegíveis':'ativos'} com cartão bloqueado`);
   if(T==='premium'&&n('regra'))faz.push(`Revisar ${nf(n('regra'))} Premium fora da regra`);
-  $('read').innerHTML=`<div><h3>Onde estamos</h3><p>${T==='convenio'?`<b>${nf(aOk)} de ${nf(A.length)}</b> ${grupo} (${pc(aOk,A.length)}) estão com o convênio liberado. ${nf(n('bloq'))} têm o cartão emitido sem convênio liberado e <b>${nf(n('falta'))}</b> ainda não têm cartão.`:`<b>${nf(aOk)} de ${nf(A.length)}</b> ${grupo} (${pc(aOk,A.length)}) têm o cartão ativo.${T==='premium'?' '+PREM_TXT:''}`}${top?` Departamento com mais pendências: <b>${esc(top[0])}</b> (${nf(top[1])}).`:''}</p></div>
+  $('read').innerHTML=`<div><h3>Onde estamos</h3><p>${T==='convenio'?`<b>${nf(aOk)} de ${nf(A.length)}</b> ${grupo} (${pc(aOk,A.length)}) estão com o convênio liberado. ${nf(n('bloq'))} têm o cartão emitido sem convênio liberado e <b>${nf(n('falta'))}</b> ainda não têm cartão.`:`<b>${nf(aOk)} de ${nf(A.length)}</b> ${grupo} (${pc(aOk,A.length)}) têm o cartão ativo.${T==='premium'?' '+PREM_TXT:''}`}${top?` Setor com mais pendências: <b>${esc(top[0])}</b> (${nf(top[1])}).`:''}</p></div>
    <div><h3>Ponto de atenção</h3><p>${att.length?att.join('; ')+'.':'Nenhum cartão ativo de quem já saiu da empresa.'}</p></div>
    <div><h3>O que fazer</h3><p>${faz.length?faz.join('. ')+'.':'Nada pendente.'} Use “Marcar pedido” na lista para acompanhar o que já foi solicitado.</p></div>`;
   /* destaque: limites acima da regra para verificar */
@@ -200,7 +212,7 @@ function render(){
     $('verif').hidden=!AV.length;
     $('verif').innerHTML=AV.length?`<h2>⚠ A verificar: limite acima da regra (${pend.length}${feitos.length?' · '+feitos.length+' já verificado'+(feitos.length>1?'s':''):''})</h2>
       <p class="sub">Liberados com limite maior que o permitido e que não estão nas exceções. Confira e marque como verificado (pode anotar o que foi visto).</p>
-      <div class="tab"><table><thead><tr><th>Colaborador</th><th>Departamento</th><th>Limite atual</th><th>Regra</th><th>Por que está aqui</th><th></th></tr></thead><tbody>${AV.sort((a,b)=>(VER[a.mat]&&VER[a.mat].ok?1:0)-(VER[b.mat]&&VER[b.mat].ok?1:0)).map(r=>{const g=regra(r),v=VER[r.mat]&&VER[r.mat].ok?VER[r.mat]:null;
+      <div class="tab"><table><thead><tr><th>Colaborador</th><th>Setor</th><th>Limite atual</th><th>Regra</th><th>Por que está aqui</th><th></th></tr></thead><tbody>${AV.sort((a,b)=>(VER[a.mat]&&VER[a.mat].ok?1:0)-(VER[b.mat]&&VER[b.mat].ok?1:0)).map(r=>{const g=regra(r),v=VER[r.mat]&&VER[r.mat].ok?VER[r.mat]:null;
         const pq=limAtual(r)===1080&&!r.aloj?'Tem R$ 1.080 mas não está na base de alojamento de '+br(C.alojRef):g.v===180&&limAtual(r)===200?'É da Indústria (regra R$ 180) e tem R$ 200':'Limite maior que a faixa da regra';
         return `<tr style="${v?'opacity:.55':''}"><td><b>${esc(r.N)}</b><div class="sm">${esc(r.mat)} · ${esc(r.F)}</div></td><td>${esc(tc(r.dep))}</td><td><b>${moeda(limAtual(r))}</b></td><td>${moeda(g.v)}</td><td>${esc(pq)}${v?`<div class="sm">Verificado em ${br(v.em)}${v.por?' por '+esc(String(v.por).split(' ')[0]):''}${v.nota?' · '+esc(v.nota):''}</div>`:''}</td>
           <td style="text-align:right;white-space:nowrap">${v?`<button class="mini" data-ver="${esc(r.mat)}" data-ok="0">Desfazer</button>`:`<input data-nota="${esc(r.mat)}" placeholder="Anotação (opcional)" style="border:1px solid var(--line);border-radius:6px;padding:4px 6px;font:inherit;font-size:12px;width:150px"> <button class="mini pri" data-ver="${esc(r.mat)}" data-ok="1">Verificado</button>`}</td></tr>`}).join('')}</tbody></table></div>`:'';
@@ -216,19 +228,18 @@ function render(){
       `<button class="kpi${S.dl==='aloj'?' on':''}" style="--c:var(--acc)" data-dl="aloj"><div class="l">Alojados com direito a R$ 1.080</div><div class="v">${nf(al)}</div><div class="s">operadores e motoristas no alojamento</div></button>`+
       `<button class="kpi${S.dl==='exc'?' on':''}" style="--c:var(--warn)" data-dl="exc"><div class="l">Exceções de R$ 540</div><div class="v">${nf(ex)}</div><div class="s">${ex?'marcadas na lista':'marque na lista com “Exceção 540”'}</div></button>`})():'')+
     (pedidos?`<button class="kpi${S.cat==='pedido'?' on':''}" style="--c:var(--info)" data-k="pedido"><div class="l">Já solicitados</div><div class="v">${nf(pedidos)}</div><div class="s">pedidos e bloqueios marcados no app</div></button>`:'');
-  $('kpis').querySelectorAll('[data-dl]').forEach(b=>b.onclick=()=>{S.dl=S.dl===b.dataset.dl?'':b.dataset.dl;S.lim=150;render();$('lt').scrollIntoView({behavior:'smooth',block:'start'})});
-  $('kpis').querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{S.cat=S.cat===b.dataset.k?'':b.dataset.k;$('fCat').value=S.cat;S.lim=150;render();$('lt').scrollIntoView({behavior:'smooth',block:'start'})});
+  $('kpis').querySelectorAll('[data-dl]').forEach(b=>b.onclick=()=>{S.dl=S.dl===b.dataset.dl?'':b.dataset.dl;S.lim=150;S.v='n';render();$('lt').scrollIntoView({behavior:'smooth',block:'start'})});
+  $('kpis').querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{S.cat=S.cat===b.dataset.k?'':b.dataset.k;$('fCat').value=S.cat;S.lim=150;S.v='n';render();$('lt').scrollIntoView({behavior:'smooth',block:'start'})});
   /* cobertura por departamento (público do cartão) */
   const COL={ok:'var(--ok)',bloq:'var(--warn)',falta:'var(--bad)'};
-  $('covSub').textContent=`Público: ${grupo}. Clique para filtrar a lista.`;
+  $('covSub').textContent=`Público: ${grupo}. Ordenado pelos setores com mais pendências. Clique num setor para ver as pessoas.`;
   $('covLg').innerHTML=[['ok',CATS.ok.l],['bloq',CATS.bloq.l],['falta','Sem cartão']].map(x=>`<span><i style="background:${COL[x[0]]}"></i>${x[1]}</span>`).join('');
   const bars=(el,key,list)=>{const m={};list.forEach(r=>{const k=r[key]||'—';(m[k]=m[k]||{ok:0,bloq:0,falta:0,t:0});if(m[k][r.k]!=null)m[k][r.k]++;m[k].t++});
     const E=Object.entries(m).sort((a,b)=>(b[1].t-b[1].ok)-(a[1].t-a[1].ok)||b[1].t-a[1].t);
     $(el).innerHTML=E.length?E.map(([k,v])=>`<button class="hr${S[key]===k?' on':''}" data-${key}="${esc(k)}" title="${esc(k)}: ${v.ok} com cartão, ${v.bloq} bloqueado, ${v.falta} sem cartão"><span class="n">${esc(tc(k))}</span><span class="t">${['ok','bloq','falta'].map(c=>`<i style="width:${v[c]/v.t*100}%;background:${COL[c]}"></i>`).join('')}</span><span class="v"><b>${pc(v.ok,v.t)}</b> · ${nf(v.t)}</span></button>`).join(''):'<p class="sub">Sem dados.</p>';
-    $(el).querySelectorAll('[data-'+key+']').forEach(b=>b.onclick=()=>{const v=b.getAttribute('data-'+key);S[key]=S[key]===v?'':v;$(key==='dep'?'fDep':'fGer').value=S[key];S.lim=150;render()});};
-  const AF=A.filter(r=>(!S.ger||r.ger===S.ger));bars('cov','dep',AF);
-  $('g2t').textContent='Por gerência';$('g2s').textContent='Mesmo público, separado por gerência. Ordenado por pendências.';
-  bars('g2','ger',A.filter(r=>(!S.dep||r.dep===S.dep)));
+    $(el).querySelectorAll('[data-'+key+']').forEach(b=>b.onclick=()=>{const v=b.getAttribute('data-'+key);S[key]=S[key]===v?'':v;$('fDep').value=S[key];S.lim=150;S.v='n';render();$('lt').scrollIntoView({behavior:'smooth',block:'start'})});};
+  bars('cov','dep',A);
+  $('vS').hidden=S.v!=='s';$('vN').hidden=S.v!=='n';$('vtabs').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===S.v));
   /* lista */
   const L=sel().sort((a,b)=>ORD.indexOf(a.k)-ORD.indexOf(b.k)||a.N.localeCompare(b.N));
   if(S.dl)$('ls').dataset.dl=S.dl;
@@ -236,7 +247,7 @@ function render(){
   $('ls').textContent=S.cat&&CATS[S.cat]?'O que fazer: '+CATS[S.cat].acao+'.':'Clique nos números acima para filtrar. Na lista, “Marcar pedido” registra que a solicitação já foi feita.';
   $('cnt').textContent=`${nf(L.length)} ${L.length===1?'pessoa':'pessoas'}`;
   const lim=T==='convenio';
-  $('th').innerHTML=`<tr><th>Matrícula</th><th>Colaborador</th><th>Departamento</th><th>No Quadro</th><th>Cartão</th>${lim?'<th>Limite atual</th><th>Limite da regra</th>':''}<th>Situação</th><th></th></tr>`;
+  $('th').innerHTML=`<tr><th>Matrícula</th><th>Colaborador</th><th>Setor</th><th>No Quadro</th><th>Cartão</th>${lim?'<th>Limite atual</th><th>Limite da regra</th>':''}<th>Situação</th><th></th></tr>`;
   $('tb').innerHTML=L.slice(0,S.lim).map(r=>{const p=PED[r.mat],pede=PEDE.has(r.k);
     return `<tr><td>${esc(r.mat)}</td><td><b>${esc(r.N)}</b><div class="sm">${esc(r.F)||''}${T==='premium'&&r.sit!=='Fora do quadro'?(r.eleg?' · função permitida':' · <span style="color:var(--info)">função não permitida</span>'):''}</div>${r.outraMat?`<div class="sm" style="color:var(--warn)">Mesmo CPF da matrícula ${esc(r.outraMat)} (${esc(tc(r.outraNome))}, ${esc(r.outraSit)})</div>`:''}${r.cpfdif?'<div class="sm" style="color:var(--warn)">CPF do cartão diferente do Quadro: conferir</div>':''}</td>
       <td>${esc(tc(r.dep))}<div class="sm">${esc(tc(r.secao))}</div></td>
@@ -258,12 +269,12 @@ function render(){
 $('q').oninput=e=>{S.q=e.target.value.trim();S.lim=150;render()};
 $('fCat').onchange=e=>{S.cat=e.target.value;S.lim=150;render()};
 $('fDep').onchange=e=>{S.dep=e.target.value;S.lim=150;render()};
-$('fGer').onchange=e=>{S.ger=e.target.value;S.lim=150;render()};
 $('fSit').onchange=e=>{S.sit=e.target.value;S.lim=150;render()};
 $('more').onclick=()=>{S.lim+=300;render()};
+$('vtabs').onclick=e=>{const b=e.target.closest('[data-v]');if(!b)return;S.v=b.dataset.v;render()};
 
 /* ---------- exportar ---------- */
-const linhasExp=()=>sel().sort((a,b)=>ORD.indexOf(a.k)-ORD.indexOf(b.k)||a.N.localeCompare(b.N)).map(r=>{const p=PED[r.mat];const o={'Matrícula':r.mat,'Nome':r.N,'Função':r.F,'Departamento':tc(r.dep),'Seção':tc(r.secao),'Gerência':tc(r.ger),'Situação no Quadro':r.sit,'Admissão':br(r.adm),'Desligamento':br(r.desl),'Cartão':r.card||'Sem cartão','ID do cartão':r.idc};
+const linhasExp=()=>sel().sort((a,b)=>ORD.indexOf(a.k)-ORD.indexOf(b.k)||a.N.localeCompare(b.N)).map(r=>{const p=PED[r.mat];const o={'Matrícula':r.mat,'Nome':r.N,'Função':r.F,'Setor':tc(r.dep),'Seção':tc(r.secao),'Gerência':tc(r.ger),'Situação no Quadro':r.sit,'Admissão':br(r.adm),'Desligamento':br(r.desl),'Cartão':r.card||'Sem cartão','ID do cartão':r.idc};
   if(T==='convenio'){const g=regra(r);o['Limite atual']=limAtual(r)??'';o['Limite da regra']=g.v;o['Regra']=g.t;o['Alojamento']=r.aloj||'';o['Limite x regra']=({acima:'Acima da regra',abaixo:'Abaixo do permitido',certo:'Dentro da regra'})[difLim(r)]||''}if(T==='premium')o['Função permitida']=r.eleg?'Sim':'Não';
   o['Situação']=CATS[r.k].l;o['O que fazer']=CATS[r.k].acao;o['Pedido marcado']=p?br(p.em)+(p.por?' · '+p.por:''):'';return o});
 const nomeArq=()=>`${({alimentacao:'Cartao Alimentacao',convenio:'Cartao Convenio',premium:'Cartao Premium'})[T]}${S.cat&&CATS[S.cat]?' - '+CATS[S.cat].l:''} ${new Date().toLocaleDateString('pt-BR').split('/').join('-')}`;
@@ -274,12 +285,77 @@ $('bX').onclick=async()=>{const X=window.XLSX||(window.parent&&window.parent.XLS
   const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,'Cartões');await salvar(nomeArq()+'.xlsx',new Uint8Array(X.write(wb,{bookType:'xlsx',type:'array'})),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')};
 $('bP').onclick=async()=>{const J=(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF);const L=linhasExp();if(!J||!L.length){toast(L.length?'Gerador de PDF indisponível.':'Nada para exportar.');return}
   const doc=new J({orientation:'landscape',unit:'mm',format:'a4'});if(typeof doc.autoTable!=='function'){toast('Gerador de tabela indisponível.');return}
-  const cols=['Matrícula','Nome','Função','Departamento','Situação no Quadro','Cartão'].concat(T==='convenio'?['Limite atual','Limite da regra']:[]).concat(['Situação','O que fazer','Pedido marcado']);
+  const cols=['Matrícula','Nome','Função','Setor','Situação no Quadro','Cartão'].concat(T==='convenio'?['Limite atual','Limite da regra']:[]).concat(['Situação','O que fazer','Pedido marcado']);
   doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text(nomeArq(),12,14);doc.setFont('helvetica','normal');doc.setFontSize(8.5);
   doc.text(`${L.length} pessoas · planilha Sysprocard de ${br(C.refPlanilha)} × Quadro de ${br(C.refQuadro)}${S.dep?' · '+S.dep:''}${S.ger?' · '+S.ger:''}`,12,19);
   doc.autoTable({startY:23,head:[cols],body:L.map(r=>cols.map(c=>(c==='Limite atual'||c==='Limite da regra')&&r[c]!==''?moeda(r[c]):String(r[c]??''))),styles:{fontSize:7,cellPadding:1.4},headStyles:{fillColor:T==='premium'?[184,144,42]:T==='convenio'?[192,40,45]:[46,138,87]},margin:{left:10,right:10}});
   await salvar(nomeArq()+'.pdf',new Uint8Array(doc.output('arraybuffer')),'application/pdf')};
 
+
+/* ---------- relatório de conferência (pedir / desbloquear / bloquear / limite) ---------- */
+const NOMET={alimentacao:'Cartão Alimentação',convenio:'Cartão Convênio',premium:'Cartão Premium'}[T];
+function secoesRel(){
+  const S2=[];
+  S2.push({k:'pedir',t:'Pedir cartão',d:'Ativos sem cartão na Sysprocard'+(T==='premium'?' (só funções permitidas)':''),acao:'Pedir',L:R.filter(r=>r.k==='falta')});
+  if(T!=='convenio')S2.push({k:'desb',t:'Desbloquear ou pedir 2ª via',d:'Ativos'+(T==='premium'?' elegíveis':'')+' com cartão bloqueado',acao:'Desbloquear',L:R.filter(r=>r.k==='bloq')});
+  S2.push({k:'bloq',t:'Bloquear cartão',d:'Desligados com cartão ativo e matrículas fora do Quadro'+(T==='premium'?', e Premium em função não permitida':''),acao:'Bloquear',L:R.filter(r=>['desl','fora','regra'].includes(r.k))});
+  if(T==='convenio')S2.push({k:'lim',t:'Ajustar limite do convênio',d:'Liberados com limite diferente da regra',acao:'Ajustar limite',L:R.filter(r=>['acima','abaixo'].includes(difLim(r)))});
+  return S2;
+}
+function abrirRel(){
+  const SS=secoesRel();
+  const w=document.createElement('div');w.className='rl-fundo';
+  w.innerHTML=`<div class="rl" role="dialog" aria-modal="true"><div class="rl-cab"><h3>Relatório de conferência · ${NOMET}<small>Lista para conferir antes de pedir, desbloquear ou bloquear na Sysprocard. Sai com espaço para marcar “conferido” e assinar.</small></h3><button class="mini" id="rlX">Fechar</button></div>
+   <div class="rl-corpo">${SS.map(x=>{const n=x.L.length,np=x.L.filter(r=>!PED[r.mat]).length;return `<label class="rl-op"><input type="checkbox" data-s="${x.k}" ${n?'checked':'disabled'}><div><b>${x.t} · ${nf(n)}</b><span>${x.d}${n&&np<n?` · ${nf(n-np)} já marcados como solicitados`:''}</span></div></label>`}).join('')}
+    <div class="rl-lin"><label><input type="checkbox" id="rlSo" checked> Só quem ainda não foi marcado como solicitado</label></div>
+    <div class="rl-lin"><label><input type="radio" name="rlF" value="pdf" checked> PDF</label><label><input type="radio" name="rlF" value="xlsx"> Excel</label></div>
+    <div class="rl-lin"><label><input type="checkbox" id="rlMarca"> Depois de gerar, marcar todos do relatório como solicitados</label></div>
+   </div>
+   <div class="rl-pe"><span id="rlMsg" style="flex:1;color:var(--mut);font-size:12.5px"></span><button class="btn" id="rlC">Cancelar</button><button class="btn" id="rlG" style="background:var(--acc);border-color:var(--acc);color:#fff">Gerar relatório</button></div></div>`;
+  document.body.appendChild(w);
+  const fe=()=>w.remove();w.querySelector('#rlX').onclick=fe;w.querySelector('#rlC').onclick=fe;w.addEventListener('mousedown',e=>{if(e.target===w)fe()});
+  w.querySelector('#rlG').onclick=async()=>{
+    const so=w.querySelector('#rlSo').checked,fmt=w.querySelector('input[name=rlF]:checked').value;
+    const ks=[...w.querySelectorAll('[data-s]:checked')].map(i=>i.dataset.s);
+    const sec=SS.filter(x=>ks.includes(x.k)).map(x=>Object.assign({},x,{L:x.L.filter(r=>!so||!PED[r.mat]).sort((a,b)=>a.dep.localeCompare(b.dep)||a.N.localeCompare(b.N))})).filter(x=>x.L.length);
+    if(!sec.length){w.querySelector('#rlMsg').textContent='Nada para gerar com essas opções.';return}
+    try{await gerarRel(sec,fmt);if(w.querySelector('#rlMarca').checked){await marcar([...new Set(sec.flatMap(x=>x.L.map(r=>r.mat)))])}fe()}
+    catch(e){w.querySelector('#rlMsg').textContent='Não consegui gerar: '+(e.message||e)}
+  };
+}
+const colsRel=k=>k==='pedir'?[['Matrícula',r=>r.mat],['Nome',r=>r.nome],['CPF',r=>r.cpf||''],['Nascimento',r=>br(r.nasc)],['Função',r=>r.func],['Setor',r=>tc(r.dep)],['Admissão',r=>br(r.adm)],['Vínculo',r=>r.vinc]]
+ :k==='desb'?[['Matrícula',r=>r.mat],['Nome',r=>r.nome],['ID do cartão',r=>r.idc],['CPF',r=>r.cpf||r.cpfC||''],['Função',r=>r.func],['Setor',r=>tc(r.dep)],['Situação',r=>r.sit]]
+ :k==='bloq'?[['Matrícula',r=>r.mat],['Nome',r=>r.nome],['ID do cartão',r=>r.idc],['CPF (cartão)',r=>r.cpfC||''],['Motivo',r=>r.k==='desl'?'Desligado em '+br(r.desl):r.k==='regra'?'Função não permitida: '+r.func:'Matrícula fora do Quadro'+(r.outraMat?' (mesmo CPF da mat. '+r.outraMat+')':'')],['Setor',r=>r.dep&&r.dep!=='Fora do Quadro'?tc(r.dep):'']]
+ :[['Matrícula',r=>r.mat],['Nome',r=>r.nome],['ID do cartão',r=>r.idc],['Setor',r=>tc(r.dep)],['Limite atual',r=>moeda(limAtual(r))],['Limite da regra',r=>moeda(regra(r).v)],['Regra',r=>regra(r).t]];
+async function gerarRel(sec,fmt){
+  const hoje=new Date().toLocaleDateString('pt-BR'),nome=`Conferencia ${NOMET.replace('ã','a').replace('ê','e')} ${hoje.split('/').join('-')}`;
+  if(fmt==='xlsx'){
+    const X=window.XLSX||(window.parent&&window.parent.XLSX);if(!X)throw new Error('gerador de Excel indisponível');
+    const wb=X.utils.book_new();
+    sec.forEach(x=>{const cs=colsRel(x.k);const aoa=[[`${NOMET} · ${x.t} · ${x.L.length} pessoas · gerado em ${hoje}`],[],cs.map(c=>c[0]).concat(['Conferido','Solicitado em'])].concat(x.L.map(r=>cs.map(c=>c[1](r)).concat(['',''])));
+      const ws=X.utils.aoa_to_sheet(aoa);ws['!cols']=cs.map(c=>({wch:c[0]==='Nome'?40:c[0]==='Motivo'?42:16})).concat([{wch:11},{wch:14}]);X.utils.book_append_sheet(wb,ws,x.t.slice(0,31))});
+    await salvar(nome+'.xlsx',new Uint8Array(X.write(wb,{bookType:'xlsx',type:'array'})),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');return;
+  }
+  const J=(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF);if(!J)throw new Error('gerador de PDF indisponível');
+  const doc=new J({orientation:'landscape',unit:'mm',format:'a4'});if(typeof doc.autoTable!=='function')throw new Error('gerador de tabela indisponível');
+  const cor=T==='premium'?[184,144,42]:T==='convenio'?[192,40,45]:[46,138,87];
+  doc.setFont('helvetica','bold');doc.setFontSize(14);doc.text(`Relatório de conferência · ${NOMET} · Sysprocard`,12,14);
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.text(`Gerado em ${hoje} · planilha Sysprocard de ${br(C.refPlanilha)} cruzada com o Quadro Geral (empresa 5) de ${br(C.refQuadro)} · ${sec.map(x=>x.t+': '+x.L.length).join(' · ')}`,12,19.5);
+  let y=25;
+  sec.forEach((x,i)=>{
+    if(i&&y>170){doc.addPage();y=15}
+    doc.setFillColor(...cor);doc.rect(12,y,273,7,'F');doc.setTextColor(255);doc.setFont('helvetica','bold');doc.setFontSize(10);doc.text(`${x.t.toUpperCase()} · ${x.L.length} ${x.L.length===1?'pessoa':'pessoas'}`,14,y+4.8);doc.setTextColor(0);
+    const cs=colsRel(x.k);
+    doc.autoTable({startY:y+8,head:[['#'].concat(cs.map(c=>c[0])).concat(['Conferido'])],body:x.L.map((r,j)=>[String(j+1)].concat(cs.map(c=>String(c[1](r)??''))).concat(['[   ]'])),
+      styles:{fontSize:7.5,cellPadding:1.5,valign:'middle'},headStyles:{fillColor:[238,241,245],textColor:20,fontStyle:'bold'},columnStyles:{0:{cellWidth:8}},margin:{left:12,right:12}});
+    y=doc.lastAutoTable.finalY+8;
+  });
+  if(y>180){doc.addPage();y=20}
+  doc.setFontSize(9);doc.line(12,y+12,110,y+12);doc.text('Conferido por (RH)',12,y+16);doc.line(130,y+12,190,y+12);doc.text('Data',130,y+16);
+  await salvar(nome+'.pdf',new Uint8Array(doc.output('arraybuffer')),'application/pdf');
+}
+$('bR').onclick=abrirRel;
+window.CRV_RELATORIO=abrirRel;
 render();lerPedidos();
 })();
 </script>
