@@ -262,10 +262,10 @@ textarea.res{display:block;width:100%;min-height:420px;font:14px/1.5 var(--f-bod
     <p class="hintc" style="margin:14px 0" id="hSub"></p>
     <div class="kpis" id="kpisH"></div>
     <div class="grid">
-      <div class="tile"><h2>Advertências por ano</h2><p class="sub">Clique no ano para ver os registros.</p><div id="bAno"></div></div>
-      <div class="tile"><h2>Total de advertências no histórico</h2><p class="sub">Por colaborador, somando todos os anos. Clique para ver quem são.</p><div id="bFx"></div></div>
+      <div class="tile"><h2>Sanções por ano</h2><p class="sub">Clique no ano para ver os registros.</p><div id="bAno"></div></div>
+      <div class="tile"><h2>Total de sanções no histórico</h2><p class="sub">Por colaborador, somando todos os anos. Clique para ver quem são.</p><div id="bFx"></div></div>
     </div>
-    <h3 class="sech">Colaboradores e o histórico de advertências</h3>
+    <h3 class="sech">Colaboradores e o histórico de sanções</h3>
     <div class="tools">
       <div class="seg2" id="segH"><button data-s="A">Ativos hoje</button><button data-s="T">Todos</button></div>
       <input id="qH" type="search" placeholder="Buscar por nome ou matrícula" aria-label="Buscar por nome ou matrícula">
@@ -335,7 +335,7 @@ function setupFilters(){
   fillSel('fK','ct','Todos os contratos',uniq(p=>p.ct).map(o=>[o[0],cap(o[0])]));
   $('clr').onclick=()=>{Object.keys(S).forEach(k=>S[k]='');setupFilters();render()}}
 function drawMes(){const last=YMS[YMS.length-1];
-  $('fMes').innerHTML='<label class="anosel">Ano <select id="fAno" aria-label="Ano">'+ANOS.map(y=>'<option'+(y===ANO?' selected':'')+'>'+y+'</option>').join('')+'</select></label>'+(ANO<2026?'<span class="anonota">Anos anteriores: só advertências (planilha do sistema). Grupo do motivo definido pelo texto.</span>':'')+'<button class="chip'+(S.mes?'':' on')+'" data-m="">Ano todo</button>'+YMS.map(y=>'<button class="chip'+(S.mes===y?' on':'')+'" data-m="'+y+'">'+MES[+y.slice(5)-1]+(y===last&&ANO===MAXD.getFullYear()&&MAXD.getDate()<25?' (até dia '+MAXD.getDate()+')':'')+'</button>').join('');
+  $('fMes').innerHTML='<label class="anosel">Ano <select id="fAno" aria-label="Ano">'+ANOS.map(y=>'<option'+(y===ANO?' selected':'')+'>'+y+'</option>').join('')+'</select></label>'+(ANO<2026?'<span class="anonota">Anos anteriores: planilhas de advertências e suspensões do sistema. Grupo do motivo definido pelo texto.</span>':'')+'<button class="chip'+(S.mes?'':' on')+'" data-m="">Ano todo</button>'+YMS.map(y=>'<button class="chip'+(S.mes===y?' on':'')+'" data-m="'+y+'">'+MES[+y.slice(5)-1]+(y===last&&ANO===MAXD.getFullYear()&&MAXD.getDate()<25?' (até dia '+MAXD.getDate()+')':'')+'</button>').join('');
   $('fMes').querySelectorAll('button').forEach(b=>b.onclick=()=>{S.mes=b.dataset.m;render()});
   $('fAno').onchange=()=>{ANO=+$('fAno').value;S.mes='';setAno();render()}}
 
@@ -349,49 +349,50 @@ const CASA=[['Até 90 dias',0,90],['91 dias a 1 ano',91,365],['1 a 3 anos',366,1
 const LAG=[['Até 3 dias',0,3],['4 a 7 dias',4,7],['8 a 30 dias',8,30],['Mais de 30 dias',31,300]];
 
 
-// ---------- anos anteriores (planilha de advertências da empresa 5, desde 2015) ----------
+// ---------- anos anteriores (planilhas de advertências e suspensões da empresa 5) ----------
 const HA=DB.HA||null;
 const SITH=v=>({ATIVO:'Ativo',AFASTADO:'Afastado',DEMITIDO:'Desligado',Demitido:'Desligado'}[v]||v||'');
 const hP=mat=>{const p=PP[mat];return p?{n:p.n,fu:p.fu,de:p.de,si:SITH(p.si)}:{n:'',fu:'',de:'',si:''}};
-const HR=RR.filter(r=>!r.t).map(r=>({mat:String(r.p.mat),d:r.d,y:r.y,sq:r.sq,txt:DB.M[r.m]||'',ant:r.y<2026?1:0}));
+const HR=RR.map(r=>({t:r.t,mat:String(r.p.mat),d:r.d,y:r.y,sq:r.sq,di:r.di,txt:DB.M[r.m]||'',ant:r.y<2026?1:0}));
 const HC2=[
- {k:'d',h:'Data',v:r=>r.d,date:1,x:11,w:44},{k:'n',h:'Colaborador',v:r=>hP(r.mat).n,x:36,w:110},{k:'mat',h:'Matrícula',v:r=>+r.mat,num:1,x:10,w:36},
+ {k:'d',h:'Data',v:r=>r.d,date:1,x:11,w:44},{k:'tp',h:'Tipo',v:r=>TN[r.t],html:r=>pillT(r),x:13,w:48},{k:'n',h:'Colaborador',v:r=>hP(r.mat).n,x:36,w:110},{k:'mat',h:'Matrícula',v:r=>+r.mat,num:1,x:10,w:36},
  {k:'fu',h:'Função',v:r=>hP(r.mat).fu,x:26,w:70,off:1},{k:'de',h:'Departamento',v:r=>hP(r.mat).de,x:34,w:95},{k:'si',h:'Situação hoje',v:r=>hP(r.mat).si,x:12,w:42},
- {k:'sq',h:'Sequência',v:r=>r.sq,num:1,x:10,w:36},{k:'mo',h:'Motivo',v:r=>r.txt,html:r=>esc(r.txt.length>220?r.txt.slice(0,220)+'...':r.txt),long:1,x:90,w:230,ml:14}];
+ {k:'sq',h:'Sequência',v:r=>r.sq,num:1,x:10,w:36},{k:'di',h:'Dias de suspensão',v:r=>r.t?r.di:'',num:1,x:10,w:36},{k:'mo',h:'Motivo',v:r=>r.txt,html:r=>esc(r.txt.length>220?r.txt.slice(0,220)+'...':r.txt),long:1,x:90,w:230,ml:14}];
 const HPC=[
  {k:'n',h:'Colaborador',v:o=>o.p.n,x:36,w:120},{k:'mat',h:'Matrícula',v:o=>+o.mat,num:1,x:10,w:38},{k:'fu',h:'Função',v:o=>o.p.fu,x:26,w:80},{k:'de',h:'Departamento',v:o=>o.p.de,x:34,w:105},
- {k:'si',h:'Situação hoje',v:o=>o.p.si,x:12,w:42},{k:'to',h:'Advertências (todos os anos)',v:o=>o.n,num:1,x:12,w:48},{k:'a26',h:'Em 2026',v:o=>o.a26,num:1,x:9,w:34},
- {k:'pr',h:'Primeira',v:o=>o.pr,date:1,x:11,w:44},{k:'ul',h:'Última',v:o=>o.ul,date:1,x:11,w:44},{k:'sq',h:'Maior sequência',v:o=>o.sq,num:1,x:11,w:40,off:1}];
+ {k:'si',h:'Situação hoje',v:o=>o.p.si,x:12,w:42},{k:'to',h:'Sanções (todos os anos)',v:o=>o.n,num:1,x:12,w:44},{k:'a',h:'Advertências',v:o=>o.a,num:1,x:11,w:40},{k:'s',h:'Suspensões',v:o=>o.s,num:1,x:11,w:40},{k:'di',h:'Dias suspenso',v:o=>o.di,num:1,x:11,w:40,off:1},
+ {k:'a26',h:'Em 2026',v:o=>o.a26,num:1,x:9,w:34},{k:'pr',h:'Primeira',v:o=>o.pr,date:1,x:11,w:44},{k:'ul',h:'Última',v:o=>o.ul,date:1,x:11,w:44}];
 let HS='A',HQ='';
-const hPeople=rs=>{const m=new Map();rs.forEach(r=>{let o=m.get(r.mat);if(!o){o={mat:r.mat,p:hP(r.mat),n:0,a26:0,pr:r.d,ul:r.d,sq:0};m.set(r.mat,o)}o.n++;if(r.y===2026)o.a26++;if(r.d<o.pr)o.pr=r.d;if(r.d>o.ul)o.ul=r.d;if(+r.sq>o.sq)o.sq=+r.sq});return [...m.values()]};
+const hPeople=rs=>{const m=new Map();rs.forEach(r=>{let o=m.get(r.mat);if(!o){o={mat:r.mat,p:hP(r.mat),n:0,a:0,s:0,di:0,a26:0,pr:r.d,ul:r.d};m.set(r.mat,o)}o.n++;if(r.t){o.s++;o.di+=r.di||0}else o.a++;if(r.y===2026)o.a26++;if(r.d<o.pr)o.pr=r.d;if(r.d>o.ul)o.ul=r.d});return [...m.values()]};
 const HPPL=hPeople(HR);
 const atv=o=>o.p.si==='Ativo'||o.p.si==='Afastado';
-function openHRecs(t,rs){dwOpen({t,s:pl(rs.length,'advertência','advertências')+' | '+pl(new Set(rs.map(r=>r.mat)).size,'colaborador','colaboradores'),r:()=>{
+const hsub=rs=>pl(rs.filter(r=>!r.t).length,'advertência','advertências')+' e '+pl(rs.filter(r=>r.t).length,'suspensão','suspensões')+' | '+pl(new Set(rs.map(r=>r.mat)).size,'colaborador','colaboradores');
+function openHRecs(t,rs){dwOpen({t,s:hsub(rs),r:()=>{
   $('dwA').innerHTML='<p class="hintc" style="margin:0 0 12px">Clique em uma linha para abrir o histórico do colaborador.</p>';
-  Lista(lsBox(),{cols:HC2,rows:()=>rs,title:t,file:'advertencias_historico',rec:()=>'Planilha de advertências da empresa 5',onRow:r=>openFicha(r.mat),sort:['d',-1]})}})}
+  Lista(lsBox(),{cols:HC2,rows:()=>rs,title:t,file:'sancoes_historico',rec:()=>'Planilhas de advertências e suspensões da empresa 5',onRow:r=>openFicha(r.mat),sort:['d',-1]})}})}
 function openHPeople(t,ps){dwOpen({t,s:pl(ps.length,'colaborador','colaboradores'),r:()=>{
   $('dwA').innerHTML='<p class="hintc" style="margin:0 0 12px">Clique em uma linha para abrir o histórico do colaborador.</p>';
-  Lista(lsBox(),{cols:HPC,rows:()=>ps,title:t,file:'colaboradores_historico',rec:()=>'Planilha de advertências da empresa 5',onRow:o=>openFicha(o.mat),sort:['to',-1]})}})}
+  Lista(lsBox(),{cols:HPC,rows:()=>ps,title:t,file:'colaboradores_historico',rec:()=>'Planilhas de advertências e suspensões da empresa 5',onRow:o=>openFicha(o.mat),sort:['to',-1]})}})}
 function renderH(){
-  if(!HA){$('hSub').textContent='O histórico de anos anteriores ainda não foi carregado. Carregue o arquivo de dados das sanções com a planilha de advertências.';['kpisH','bAno','bFx','lsH'].forEach(i=>$(i).innerHTML='');return}
-  $('hSub').innerHTML='Advertências da empresa 5 de '+fd(DT(HA.ini))+' a '+fd(DT(HA.fim))+', da planilha do sistema. 2026 vem da base do painel. A situação "hoje" segue o Quadro de Colaboradores.';
-  const at=HPPL.filter(atv),a5=at.filter(o=>o.n>=5),ant=HR.filter(r=>r.ant);
-  const K=[['Advertências no histórico',HR.length,'c-adv',pl(new Set(HR.map(r=>r.y)).size,'ano','anos')+' de registros',()=>openHRecs('Todas as advertências do histórico',HR)],
-    ['Colaboradores advertidos',HPPL.length,'c-navy','já receberam ao menos uma',()=>openHPeople('Colaboradores com advertência no histórico',HPPL)],
-    ['Ativos hoje com histórico',at.length,'c-teal',P(at.length,HPPL.length)+' dos advertidos seguem na empresa',()=>openHPeople('Ativos hoje com advertência no histórico',at)],
-    ['Ativos com 5 ou mais',a5.length,'c-sus','advertências somando todos os anos',()=>openHPeople('Ativos com 5 ou mais advertências no histórico',a5)]];
+  if(!HA){$('hSub').textContent='O histórico de anos anteriores ainda não foi carregado.';['kpisH','bAno','bFx','lsH'].forEach(i=>$(i).innerHTML='');return}
+  $('hSub').innerHTML='Advertências da empresa 5 desde '+fd(DT(HA.ini))+(HA.iniS?' e suspensões desde '+fd(DT(HA.iniS)):'')+', das planilhas do sistema, até '+fd(MAXD)+'. A situação "hoje" segue o Quadro de Colaboradores.';
+  const at=HPPL.filter(atv),a5=at.filter(o=>o.n>=5),as=at.filter(o=>o.s>0),su=HR.filter(r=>r.t);
+  const K=[['Sanções no histórico',HR.length,'c-adv',nf(HR.length-su.length)+' advertências e '+nf(su.length)+' suspensões',()=>openHRecs('Todas as sanções do histórico',HR)],
+    ['Colaboradores com sanção',HPPL.length,'c-navy','já receberam ao menos uma',()=>openHPeople('Colaboradores com sanção no histórico',HPPL)],
+    ['Ativos hoje com histórico',at.length,'c-teal',P(at.length,HPPL.length)+' seguem na empresa | '+nf(as.length)+' já suspensos',()=>openHPeople('Ativos hoje com sanção no histórico',at)],
+    ['Ativos com 5 ou mais',a5.length,'c-sus','sanções somando todos os anos',()=>openHPeople('Ativos com 5 ou mais sanções no histórico',a5)]];
   const KB={'c-adv':'adv','c-sus':'sus','c-teal':'teal','c-navy':'navy'};
   $('kpisH').innerHTML=K.map((k,i)=>'<button class="kpi" data-i="'+i+'" style="--kb:var(--'+KB[k[2]]+')"><span class="l">'+k[0]+'</span><span class="v">'+nf(k[1])+'</span><span class="s">'+esc(k[3])+'</span></button>').join('');
   $('kpisH').querySelectorAll('button').forEach(b=>b.onclick=K[+b.dataset.i][4]);
   const ys=[...new Set(HR.map(r=>r.y))].sort();
-  bars('bAno',ys.map(y=>{const rs=HR.filter(r=>r.y===y);return{l:String(y)+(y===MAXD.getFullYear()?' (até '+fd(MAXD)+')':''),a:rs.length,s:0,x:pl(new Set(rs.map(r=>r.mat)).size,'pessoa','pessoas'),go:()=>openHRecs('Advertências de '+y,rs)}}),{nopct:1});
+  bars('bAno',ys.map(y=>{const rs=HR.filter(r=>r.y===y);const s=rs.filter(r=>r.t).length;return{l:String(y)+(y===MAXD.getFullYear()?' (até '+fd(MAXD)+')':''),a:rs.length-s,s,x:nf(rs.length-s)+' adv. · '+nf(s)+' susp.',go:()=>openHRecs('Sanções de '+y,rs)}}),{nopct:1});
   const FX=[['1',1,1],['2',2,2],['3 a 4',3,4],['5 a 9',5,9],['10 ou mais',10,1e9]];
-  bars('bFx',FX.map(f=>{const ps=HPPL.filter(o=>o.n>=f[1]&&o.n<=f[2]);const pa=ps.filter(atv);return{l:f[0]+(f[1]===1&&f[2]===1?' advertência':' advertências'),a:ps.length,s:0,x:nf(pa.length)+' ativos',go:()=>openHPeople(f[0]+' advertências no histórico',ps)}}));
+  bars('bFx',FX.map(f=>{const ps=HPPL.filter(o=>o.n>=f[1]&&o.n<=f[2]);const pa=ps.filter(atv);return{l:f[0]+(f[1]===1&&f[2]===1?' sanção':' sanções'),a:ps.length,s:0,x:nf(pa.length)+' ativos',go:()=>openHPeople(f[0]+' sanções no histórico',ps)}}));
   document.querySelectorAll('#segH button').forEach(b=>{b.classList.toggle('on',b.dataset.s===HS);b.onclick=()=>{HS=b.dataset.s;renderH()}});
   $('qH').value=HQ;$('qH').oninput=()=>{HQ=$('qH').value;clearTimeout(window._hq);window._hq=setTimeout(lsH,250)};
   lsH()}
 function lsH(){const q=HQ.trim().toLowerCase();const ps=HPPL.filter(o=>(HS==='T'||atv(o))&&(!q||o.p.n.toLowerCase().includes(q)||o.mat.includes(q)));
-  Lista('lsH',{cols:HPC,rows:()=>ps,title:'Histórico de advertências',file:'historico_advertencias',rec:()=>(HS==='T'?'Todos':'Ativos hoje')+(q?' | busca: '+q:''),onRow:o=>openFicha(o.mat),sort:['to',-1],cnt:'cntH'})}
+  Lista('lsH',{cols:HPC,rows:()=>ps,title:'Histórico de sanções',file:'historico_sancoes',rec:()=>(HS==='T'?'Todos':'Ativos hoje')+(q?' | busca: '+q:''),onRow:o=>openFicha(o.mat),sort:['to',-1],cnt:'cntH'})}
 
 // ---------- listas com exportação ----------
 const EX={title:'',rec:null};const hoje=()=>new Date().toLocaleDateString('pt-BR');
@@ -623,7 +624,7 @@ function render(){
   if(TAB==='v')renderV(rs,ps);else if(TAB==='m')renderM(rs);else if(TAB==='d')renderD(rs);else if(TAB==='r')renderR(rs,ps);else if(TAB==='n')renderN(rs);else if(TAB==='h')renderH();else renderC()}
 document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{TAB=b.dataset.tab;try{history.replaceState(null,'','#'+TAB)}catch(e){}render();window.scrollTo(0,0)});
 setAno();
-$('foot').textContent='Fonte: 2026, planilha Base Sanções Disciplinares 2026 (abas Advertência, Suspensão e Base); anos anteriores, planilha de advertências da empresa 5 do sistema (só advertências, grupo do motivo definido pelo texto). Departamento, gerência, função, situação e contrato vêm da base de colaboradores, na posição atual. O número de sequência é o informado pelo sistema e inclui sanções de anos anteriores. Uso restrito ao RH e à gestão.';
+$('foot').textContent='Fonte: 2026, planilha Base Sanções Disciplinares 2026 (abas Advertência, Suspensão e Base); anos anteriores e lançamentos até 22/10/2026, planilhas de advertências e de suspensões da empresa 5 do sistema (grupo do motivo definido pelo texto). Departamento, gerência, função, situação e contrato vêm da base de colaboradores, na posição atual. O número de sequência é o informado pelo sistema e inclui sanções de anos anteriores. Uso restrito ao RH e à gestão.';
 {const h=(location.hash||'').slice(1);if(['v','m','d','r','n','c','h'].includes(h))TAB=h}
 setupFilters();render();
 (async()=>{try{DL=window.claude&&window.claude.use?await window.claude.use('downloads'):null}catch(e){DL=null}if(DL){render();if(DW.length)dwShow()}})();
