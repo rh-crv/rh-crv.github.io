@@ -64,6 +64,10 @@ header .btn.rel{background:#fff;color:var(--acc2);border-color:#fff}
 .rl-op input{margin-top:3px}.rl-op b{display:block}.rl-op span{font-size:12.5px;color:var(--mut)}
 .rl-lin{display:flex;gap:16px;flex-wrap:wrap;margin:10px 0 0;font-size:13px}.rl-lin label{display:flex;gap:6px;align-items:center;cursor:pointer}
 .rl-pe{display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--line)}
+.tmc{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--mut)}
+.tmc input{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;font-size:14px;text-transform:none;letter-spacing:0;font-weight:400;color:var(--ink);background:#f8f9fb}
+.tmm{display:flex;flex-direction:column;gap:6px;font-size:13.5px}.tmm label{display:flex;gap:8px;align-items:center;cursor:pointer}
+.tmrow{gap:10px}.tminfo{background:var(--mutbg);border-radius:8px;padding:9px 11px;font-size:13px}.tminfo.ok{background:var(--okbg);color:#1d4d33}.tminfo.av{background:var(--warnbg);color:#7a4a00}
 .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#1d2433;color:#fff;padding:9px 14px;border-radius:8px;font-size:13px;z-index:50}
 .selb{display:flex;gap:8px;align-items:center;background:var(--accbg);border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:13px;flex-wrap:wrap}
 @media (max-width:900px){.read{grid-template-columns:1fr}.read>div+div{border-left:0;border-top-width:3px}.grid2{grid-template-columns:1fr}}
@@ -354,6 +358,106 @@ async function gerarRel(sec,fmt){
   doc.setFontSize(9);doc.line(12,y+12,110,y+12);doc.text('Conferido por (RH)',12,y+16);doc.line(130,y+12,190,y+12);doc.text('Data',130,y+16);
   await salvar(nome+'.pdf',new Uint8Array(doc.output('arraybuffer')),'application/pdf');
 }
+
+/* ---------- Termo de opção do Cartão Convênio (impressão) ---------- */
+const MESX=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const hojeISO=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const numBR=v=>{let t=String(v||'').replace(/[R$\s]/g,'');if(t.includes(','))t=t.replace(/\./g,'').replace(',','.');return parseFloat(t)};
+async function pessoaTermo(m){
+  const r=C.rows.find(x=>x.mat===m&&x.sit!=='Desligado'&&x.sit!=='Fora do quadro');
+  if(r)return r;
+  try{const f=window.parent&&window.parent.CRV_QUADRO;if(typeof f==='function'){const q=await f();const c=q&&q.mapa&&q.mapa[m];if(c&&c.situacao!=='Desligado')return{mat:m,nome:c.nome,func:c.funcao,dep:c.setor,sit:c.situacao,cpf:''}}}catch(_){}
+  return null;
+}
+function abrirTermo(){
+  if(T!=='convenio')return;
+  const w=document.createElement('div');w.className='rl-fundo';
+  w.innerHTML=`<div class="rl" role="dialog" aria-modal="true" style="max-width:720px"><div class="rl-cab"><h3>Termo de opção · Cartão Convênio<small>Para imprimir quando o colaborador pede o cartão e o convênio é liberado. A matrícula puxa os dados e o valor da regra.</small></h3><button class="mini" id="tmX">Fechar</button></div>
+   <div class="rl-corpo" style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px">
+    <label class="tmc" style="grid-column:span 2">Matrícula<input id="tmMat" inputmode="numeric" placeholder="ex.: 41841"></label>
+    <label class="tmc" style="grid-column:span 4">Nome<input id="tmNome"></label>
+    <label class="tmc" style="grid-column:span 2">CPF<input id="tmCpf" placeholder="só números"></label>
+    <label class="tmc" style="grid-column:span 2">Valor do crédito (R$)<input id="tmVal" inputmode="decimal"></label>
+    <label class="tmc" style="grid-column:span 2">Data do termo<input id="tmData" type="date" value="${hojeISO()}"></label>
+    <div style="grid-column:1/-1" class="tmm"><b style="font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.05em">Modelo do termo</b>
+      <label><input type="radio" name="tmMod" value="padrao" checked> Padrão (desconto integral em folha)</label>
+      <label><input type="radio" name="tmMod" value="aloj"> Alojamento – motoristas e operadores (50% empresa, 50% colaborador)</label></div>
+    <div id="tmRef" style="grid-column:1/-1;display:none;gap:10px" class="tmrow"><label class="tmc">Almoço (R$)<input id="tmAlm" value="18,00"></label><label class="tmc">Jantar (R$)<input id="tmJan" value="18,00"></label></div>
+    <div id="tmInfo" style="grid-column:1/-1" class="tminfo">Digite a matrícula.</div>
+    <div style="grid-column:1/-1"><b style="font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.05em">Termos já emitidos</b><div id="tmLista" class="tab" style="max-height:180px;margin-top:6px"></div></div>
+   </div>
+   <div class="rl-pe"><span id="tmMsg" style="flex:1;color:var(--mut);font-size:12.5px"></span><button class="btn" id="tmC">Cancelar</button><button class="btn" id="tmG" style="background:var(--acc);border-color:var(--acc);color:#fff">Gerar PDF para imprimir</button></div></div>`;
+  document.body.appendChild(w);
+  const g=id=>w.querySelector('#'+id),fe=()=>w.remove();
+  g('tmX').onclick=fe;g('tmC').onclick=fe;w.addEventListener('mousedown',e=>{if(e.target===w)fe()});
+  const modo=()=>w.querySelector('input[name=tmMod]:checked').value;
+  const syncMod=()=>{g('tmRef').style.display=modo()==='aloj'?'flex':'none'};
+  w.querySelectorAll('input[name=tmMod]').forEach(i=>i.onchange=syncMod);
+  let tm=null,ult='';
+  const puxar=async()=>{const m=g('tmMat').value.trim().replace(/^0+(?=\d)/,'');if(!m||m===ult)return;ult=m;
+    const p=await pessoaTermo(m);const inf=g('tmInfo');
+    if(!p){inf.className='tminfo av';inf.textContent='Matrícula não encontrada entre os ativos da empresa 5. Preencha à mão.';return}
+    const rg=regra(p);g('tmNome').value=p.nome;g('tmCpf').value=String(p.cpf||'').replace(/\D/g,'');g('tmVal').value=rg.v.toLocaleString('pt-BR',{minimumFractionDigits:2});
+    w.querySelector(`input[name=tmMod][value=${rg.v===1080?'aloj':'padrao'}]`).checked=true;syncMod();
+    const card=p.card?`cartão ${p.card.toLowerCase()} (ID ${p.idc})${limAtual(p)!=null?' · limite atual '+moeda(limAtual(p)):''}`:'ainda sem cartão convênio — pedir na Sysprocard';
+    inf.className='tminfo ok';inf.innerHTML=`<b>${esc(tc(p.nome))}</b> · ${esc(tc(p.func))} · ${esc(tc(p.dep))}${p.aloj?' · alojado em '+esc(p.aloj):''}<br>Valor pela regra: <b>${moeda(rg.v)}</b> (${esc(rg.t)}) · ${esc(card)}`+(p.cpf?'':'<br><span style="color:var(--warn)">CPF não está no Quadro: digite.</span>');
+  };
+  g('tmMat').addEventListener('input',()=>{clearTimeout(tm);tm=setTimeout(puxar,450)});g('tmMat').addEventListener('change',puxar);
+  const listar=async()=>{const h=g('tmLista');if(!DB){h.innerHTML='<p class="sub" style="padding:8px">Registro indisponível nesta visualização.</p>';return}
+    try{const q=await DB.collection('termos').get();const L=q.docs.map(d=>Object.assign({_id:d.id},d.data())).filter(x=>!x.excluido).sort((a,b)=>(b.em||'')<(a.em||'')?-1:1);
+      h.innerHTML=L.length?`<table><thead><tr><th>Emitido</th><th>Colaborador</th><th>Valor</th><th>Modelo</th><th></th></tr></thead><tbody>${L.map(x=>`<tr data-id="${esc(x._id)}"><td>${br(x.data)}<div class="sm">${esc(String(x.por||'').split(' ')[0])}</div></td><td><b>${esc(tc(x.nome))}</b> · ${esc(x.mat)}</td><td>${moeda(x.valor)}</td><td>${x.modelo==='aloj'?'Alojamento':'Padrão'}</td><td style="text-align:right;white-space:nowrap"><button class="mini" data-a="pdf">Reimprimir</button> <button class="mini" data-a="ex" style="color:var(--bad)">Excluir</button></td></tr>`).join('')}</tbody></table>`:'<p class="sub" style="padding:8px;margin:0">Nenhum termo emitido ainda.</p>';
+      h.querySelectorAll('[data-a]').forEach(b=>b.onclick=async()=>{const x=L.find(y=>y._id===b.closest('tr').dataset.id);if(!x)return;
+        if(b.dataset.a==='pdf'){await pdfTermo(x);return}
+        if(b.textContent!=='Confirmar'){b.textContent='Confirmar';setTimeout(()=>{if(b.isConnected)b.textContent='Excluir'},6000);return}
+        try{await DB.collection('termos').doc(x._id).update({excluido:true,excluidoEm:new Date().toISOString(),excluidoPor:(window.parent&&window.parent.CRV_QUEM)||''});listar()}catch(e){toast('Sem permissão para excluir.')}});
+    }catch(_){h.innerHTML='<p class="sub" style="padding:8px">Não consegui ler os termos.</p>'}};
+  listar();
+  g('tmG').onclick=async()=>{
+    const d={mat:g('tmMat').value.trim(),nome:g('tmNome').value.trim().toUpperCase(),cpf:g('tmCpf').value.replace(/\D/g,''),valor:numBR(g('tmVal').value),data:g('tmData').value||hojeISO(),modelo:modo(),almoco:numBR(g('tmAlm').value),jantar:numBR(g('tmJan').value)};
+    const falta=[!d.mat&&'matrícula',!d.nome&&'nome',!d.cpf&&'CPF',isNaN(d.valor)&&'valor'].filter(Boolean);
+    if(falta.length){g('tmMsg').style.color='var(--bad)';g('tmMsg').textContent='Falta preencher: '+falta.join(', ')+'.';return}
+    try{await pdfTermo(d);
+      if(DB){try{await DB.collection('termos').add(Object.assign({},d,{em:new Date().toISOString(),por:(window.parent&&window.parent.CRV_QUEM)||''}));listar()}catch(_){}}
+      g('tmMsg').style.color='var(--ok)';g('tmMsg').textContent='PDF gerado. Imprima e colha a assinatura do colaborador.';
+    }catch(e){g('tmMsg').style.color='var(--bad)';g('tmMsg').textContent='Não consegui gerar: '+(e.message||e)}
+  };
+  setTimeout(()=>g('tmMat').focus(),50);
+}
+async function imgData(u){const r=await fetch(u);const b=await r.blob();return await new Promise(ok=>{const fr=new FileReader();fr.onload=()=>ok(fr.result);fr.readAsDataURL(b)})}
+async function pdfTermo(d){
+  const J=(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF);if(!J)throw new Error('gerador de PDF indisponível');
+  const doc=new J({unit:'mm',format:'a4'});let logo=null;try{logo=await imgData('__CRV_BASE__img/logo-crv.png')}catch(_){}
+  const L=22,W=166,M=105;let y=14;
+  if(logo){try{doc.addImage(logo,'PNG',M-35,y,70,22)}catch(_){}}
+  y=48;doc.setFont('helvetica','bold');doc.setFontSize(12);doc.text('Termo de Opção',M,y,{align:'center'});
+  y+=9;doc.setFont('helvetica','normal');doc.setFontSize(11.5);doc.text('Cartão Convênio-Sysprocard',M,y,{align:'center'});
+  const par=(t,gap=1.5,bold)=>{doc.setFont('helvetica',bold?'bold':'normal');doc.setFontSize(11);const ls=doc.splitTextToSize(t,W);ls.forEach((l,i)=>{doc.text(l,L,y,i<ls.length-1?{align:'justify',maxWidth:W}:{});y+=6.2});y+=gap};
+  const v=n=>Number(n).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  y+=16;
+  par(`Eu ${d.nome}, matrícula: ${d.mat}, CPF ${d.cpf}.`,0);
+  par('Declaro para todos os fins que em virtude dos esclarecimentos apresentados pela Empresa, tenho pleno conhecimento da minha obrigação e responsabilidade em optar pela forma de recebimento do ticket refeição através do Cartão Convênio, de forma física, sendo pessoal e intransferível.',6);
+  par('O ticket refeição através do cartão convênio Syspro somente é aceito em estabelecimentos que atendam aos segmentos de refeição: restaurante, padaria e lanchonetes.',d.modelo==='aloj'?0:6);
+  if(d.modelo==='aloj'){
+    par(`Valor creditado: R$ ${v(d.valor)}.`,0);
+    par('Declaro ainda ser ciente que haverá desconto de 50% em folha de pagamento mensal.',0);
+    par('Fica acordado que este valor será tratado conforme política da empresa para a respectiva função, sendo que, para as classes de motoristas e operadores de máquinas agrícolas, o custo será dividido em 50% pago pela empresa e 50% descontado em folha de pagamento do colaborador.',0);
+    par('A saber do período de apuração que compreende entre dia 21 do mês atual até dia 20 do mês subsequente, sendo cobrado no 5º dia útil do mês dos provimentos o valor utilizado no período de apuração.',6);
+    par('Dessa forma, o benefício será concedido considerando o valor de:',0);
+    [[`Almoço: R$ ${v(d.almoco||18)}`],[`Jantar: R$ ${v(d.jantar||18)}`]].forEach(x=>{doc.circle(L+5,y-1.3,0.8,'F');doc.text(x[0],L+9,y);y+=6.2});
+    y+=8;
+  }else{
+    par('Declaro ainda ser ciente que haverá desconto em folha de pagamento mensal, a saber do período de apuração que compreende entre dia 21 do mês atual até dia 20 do mês subsequente, sendo cobrado no 5º dia útil do mês dos provimentos o valor utilizado no período de apuração.',14);
+    par(`Valor crédito R$ ${v(d.valor)} sendo descontado em folha.`,16);
+  }
+  y+=10;doc.setLineWidth(0.3);doc.line(L+8,y,L+W-8,y);doc.setFontSize(11);doc.setFont('helvetica','normal');doc.text('Colaborador',M,y+5,{align:'center'});
+  const dt=new Date(d.data+'T12:00:00');y+=24;doc.text(`Capinópolis, ${String(dt.getDate()).padStart(2,'0')} de ${MESX[dt.getMonth()]} de ${dt.getFullYear()}`,M,y,{align:'center'});
+  y=262;doc.setLineWidth(0.4);doc.line(14,y,196,y);
+  doc.setFont('helvetica','bold');doc.setFontSize(10.5);doc.text('CRV INDUSTRIAL LTDA – UNIDADE CAPINÓPOLIS',M,y+6,{align:'center'});
+  doc.setFont('helvetica','normal');doc.setFontSize(10);['CNPJ nº 03.937.452/0004-35','Rodovia MG-226, s/nº, km 63, Zona Rural, Capinópolis, Minas Gerais','Telefone: (34) 3263-8100 - CEP. 38.360-000'].forEach((t,i)=>doc.text(t,M,y+11+i*4.6,{align:'center'}));
+  await salvar(`Termo de opcao Cartao Convenio - ${String(d.nome).split(' ')[0]} ${d.mat}.pdf`,new Uint8Array(doc.output('arraybuffer')),'application/pdf');
+}
+if(T==='convenio'){const b=document.createElement('button');b.className='btn rel';b.id='bT';b.textContent='Termo de opção';b.onclick=abrirTermo;document.querySelector('.hacts').insertBefore(b,document.getElementById('bR'));}
+window.CRV_TERMO=abrirTermo;
 $('bR').onclick=abrirRel;
 window.CRV_RELATORIO=abrirRel;
 render();lerPedidos();

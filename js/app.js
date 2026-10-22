@@ -403,7 +403,7 @@ const SUBACOES = {
   fadiga:   [{ acao:'novo', nome:'Cadastrar ocorrência' }],
   treinamentos: [{ acao:'novo', nome:'Cadastrar treinamento' }],
   'cartao-alimentacao': [{ acao:'rel', nome:'Relatório de conferência' }],
-  'cartao-convenio':    [{ acao:'rel', nome:'Relatório de conferência' }],
+  'cartao-convenio':    [{ acao:'termo', nome:'Termo de opção' }, { acao:'rel', nome:'Relatório de conferência' }],
   'cartao-premium':     [{ acao:'rel', nome:'Relatório de conferência' }],
   crachas:  [{ acao:'novo', nome:'Cadastrar crachá de treinamento' }],
   farmacia: [{ acao:'aut', nome:'Autorização de desconto' }, { acao:'hist', nome:'Histórico de autorizações' }]
@@ -415,6 +415,7 @@ function executarAcao(acao){
   if (acao === 'aut' && w && typeof w.CRV_AUTORIZACAO === 'function') { fecharJanelasAut(w); w.CRV_AUTORIZACAO(); return true; }
   if (acao === 'hist' && w && typeof w.CRV_AUT_HIST === 'function') { fecharJanelasAut(w); w.CRV_AUT_HIST(); return true; }
   if (acao === 'ent' && w && typeof w.CRV_ENTREVISTA === 'function') { fecharJanelasAut(w); w.CRV_ENTREVISTA(); return true; }
+  if (acao === 'termo' && w && typeof w.CRV_TERMO === 'function') { fecharJanelasAut(w); w.CRV_TERMO(); return true; }
   if (acao === 'rel' && w && typeof w.CRV_RELATORIO === 'function') { fecharJanelasAut(w); w.CRV_RELATORIO(); return true; }
   if (acao === 'novo' && w && typeof w.CRV_NOVO === 'function') { fecharJanelasAut(w); w.CRV_NOVO(); return true; }
   if (acao === 'nova' && w && typeof w.CRV_OUV_NOVA === 'function') { fecharJanelasAut(w); w.CRV_OUV_NOVA(); return true; }
