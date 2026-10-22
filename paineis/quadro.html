@@ -738,6 +738,8 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 const nf=n=>n.toLocaleString('pt-BR');
 const pct=(a,b)=>b?Math.round(a/b*100):0;
 const days=s=>s?Math.floor((REF-new Date(s+'T00:00:00'))/864e5):null;
+/* quem é do centro de custo OFICINA conta no setor Oficina (ex.: serviços gerais da oficina) */
+D.forEach(r=>{if(r[CC]==='OFICINA'&&r[AREA]!=='Oficina'&&!/^(Afastados|Desistentes)$/i.test(r[AREA]))r[AREA]='Oficina'});
 D.forEach(r=>{r.t=days(r[ADM]);r.k=(r[NOME]+' '+r[MAT]+' '+r[FUN]).toLowerCase()});
 const dbr=s=>s?s.slice(8)+'/'+s.slice(5,7)+'/'+s.slice(0,4):'—';
 const casa=t=>{if(t<0)return 'inicia em '+(-t)+(t==-1?' dia':' dias');const m=Math.floor(t/30.44);return m<1?t+' dias':m<12?m+(m==1?' mês':' meses'):Math.floor(m/12)+(m<24?' ano':' anos')+(m%12?' e\u00a0'+m%12+'\u00a0m':'')};
@@ -841,12 +843,13 @@ function geral(){
   const AREAS_Q=AREAS.filter(a=>!/^(Afastados|Desistentes)$/i.test(a));
   const tot={t:0,e:0,s:0,ef:0,f:0,m:0,ne:0,va:0,ou:0};
   /* necessidade por setor: cada linha da previsão vai para o setor onde estão as pessoas dela */
+  const g0un=a=>PG.some(g=>g.G.dp==a&&g.G.un==='função');
   const NEC={};PG.forEach(g=>g.rows.forEach(r=>{const c={};r.L.forEach(p=>{c[p[AREA]]=(c[p[AREA]]||0)+1});const own=new Set(D.filter(p=>g.G.sc[0].f(p)).map(p=>p[AREA]));const ar=g.G.un==='função'?(Object.keys(c).filter(x=>own.has(x)).sort((x,y)=>c[y]-c[x])[0]||g.G.dp):g.G.dp;
     const o=NEC[ar]||(NEC[ar]={p:0,t:0,va:0,gs:new Map()});o.p+=r.p;o.t+=r.t;if(r.d<0)o.va-=r.d;o.gs.set(g.gi,g.G.g)}));
   $('ab').innerHTML=AREAS_Q.map(a=>{const L=R0.filter(r=>r[AREA]==a),gs=PG.filter(g=>g.G.dp==a);
     const ex=L.filter(r=>r[CON]=='Experiência'),sa=L.filter(r=>r[CON]=='Safra'),ef=L.filter(r=>r[CON]=='Efetivo'),ou=L.filter(r=>r[CON]!='Experiência'&&r[CON]!='Safra'&&r[CON]!='Efetivo'),fe=L.filter(r=>r[SEX]=='F'),ho=L.filter(r=>r[SEX]!='F');
     const NE=NEC[a],va=NE?NE.va:0;if(NE)tot.ne+=NE.p;
-    const nec=NE?[...NE.gs].map(([gi,gn])=>'<button class="depn necv" data-pgo="'+gi+'" title="Abrir na aba Previsão">'+nf(NE.p)+'</button>').slice(0,1).join('')+'<div class="sm">temos '+nf(NE.t)+(NE.t!==L.length?' na previsão da área':'')+'</div>':'<span class="sm">—</span>';
+    const nec=NE?[...NE.gs].map(([gi,gn])=>'<button class="depn necv" data-pgo="'+gi+'" title="Abrir na aba Previsão">'+nf(NE.p)+'</button>').slice(0,1).join('')+'<div class="sm">temos '+nf(L.length)+(L.length-NE.t>0?' · '+nf(L.length-NE.t)+' em funções fora da previsão':'')+'</div>':'<span class="sm">—</span>';
     tot.t+=L.length;tot.e+=ex.length;tot.s+=sa.length;tot.ef+=ef.length;tot.f+=fe.length;tot.m+=ho.length;tot.va+=va;tot.ou+=ou.length;
     const sit=va?'<span class="pv f">'+nf(va)+(va===1?' vaga em aberto':' vagas em aberto')+'</span>':'<span class="pv c">Atendido</span>';
     return '<tr'+(st.area==a?' style="background:var(--amber-soft)"':'')+'><td data-l="Setor"><button class="depn" data-k="area" data-v="'+esc(a)+'" title="Filtrar o painel por este setor">'+esc(a)+'</button><div class="sm">'+new Set(L.map(r=>r.dk)).size+' seções</div></td>'
@@ -855,7 +858,7 @@ function geral(){
       +'<td data-l="Mulheres" class="num cf">'+nb(fe,a+' · mulheres')+'</td><td data-l="Homens" class="num cm">'+nb(ho,a+' · homens')+'</td>'
       +'<td data-l="Necessidade" class="num">'+nec+'</td><td data-l="Situação">'+sit+'</td></tr>'}).join('')
     +(()=>{const afs=R0.filter(r=>/^Afastados$/i.test(r[AREA])).length,des=R0.filter(r=>/^Desistentes$/i.test(r[AREA])).length;return '<tr class="totr"><td><b>Total</b><div class="sm">sem afastados e desistentes</div><div class="sm" style="margin-top:3px">Quadro completo: <b>'+nf(tot.t+afs+des)+'</b> = '+nf(tot.t)+' + '+nf(afs)+' afastados + '+nf(des)+' desistentes</div></td>'})()+'<td class="num"><b>'+nf(tot.t)+'</b></td><td class="num"><b>'+nf(tot.e)+'</b></td><td class="num"><b>'+nf(tot.s)+'</b></td><td class="num"><b>'+nf(tot.ef)+'</b></td><td class="num cf"><b>'+nf(tot.f)+'</b></td><td class="num cm"><b>'+nf(tot.m)+'</b></td><td class="num"><b>'+nf(tot.ne)+'</b></td><td>'+(tot.va?'<span class="pv f">'+nf(tot.va)+' vagas em aberto</span>':'<span class="pv c">Atendido</span>')+'</td></tr>';
-  {const af=R0.filter(r=>/^(Afastados|Desistentes)$/i.test(r[AREA]));$('abFoot').textContent='Sem afastados e desistentes'+(af.length?' ('+nf(af.length)+' pessoas, que seguem no total geral do quadro). O card Ativos do alto inclui os desistentes, porque no sistema eles ainda constam como ativos':'')+'. Necessidade: o que as áreas previram na aba Previsão. Quando a previsão é por função (como no Operacional), cada função conta no setor onde estão as pessoas dela, e \"temos\" mostra quantos estão nessas funções; clique no número para abrir. Setor sem necessidade informada ou com o quadro completo aparece como Atendido.'+(tot.ou?' O total inclui '+nf(tot.ou)+' contrato por prazo determinado, fora de experiência, safra e efetivos.':'');}
+  {const af=R0.filter(r=>/^(Afastados|Desistentes)$/i.test(r[AREA]));$('abFoot').textContent='Sem afastados e desistentes'+(af.length?' ('+nf(af.length)+' pessoas, que seguem no total geral do quadro). O card Ativos do alto inclui os desistentes, porque no sistema eles ainda constam como ativos':'')+'. Necessidade: o que as áreas previram na aba Previsão. \"Temos\" é sempre o total do próprio setor. Quando a previsão é por função (como no Operacional), cada função conta no setor onde estão as pessoas dela; clique no número para abrir. Setor sem necessidade informada ou com o quadro completo aparece como Atendido.'+(tot.ou?' O total inclui '+nf(tot.ou)+' contrato por prazo determinado, fora de experiência, safra e efetivos.':'');}
   /* tabela de seções */
   const PB=prevByDep(),g=new Map();R.filter(r=>!/^(Afastados|Desistentes)$/i.test(r[AREA])).forEach(r=>{(g.get(r.dk)||g.set(r.dk,[]).get(r.dk)).push(r)});
   let T=[...g].map(([k,L])=>({k:k,d:DEPS.get(k),L:L,n:L.length,e:L.filter(r=>r[CON]=='Experiência'),s:L.filter(r=>r[CON]=='Safra'),ef:L.filter(r=>r[CON]=='Efetivo'),f:L.filter(r=>r[SEX]=='F'),m:L.filter(r=>r[SEX]!='F'),p:PB.get(k)}));
