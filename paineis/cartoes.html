@@ -139,7 +139,7 @@ const ORD=T==='premium'?['ok','falta','bloq','regra','desl','fora','afast']:['ok
 const PEDE=new Set(['falta','bloq','desl','fora','regra']);
 
 /* ---------- limite do convênio (regra) ---------- */
-const OPMOT=/MOTORISTA|OPERADOR|OP\. DE MAQ/;
+const OPMOT=/MOTORISTA|OP\.?\s*DE\s*MAQ|OPERADOR DE M[AÁ]Q|OP\._?\s*MAQ/;
 let EXC={};(C.exc540||[]).forEach(m=>EXC[String(m)]={on:true,origem:'lista'});
 function regra(r){
   const esp=(C.excEsp||{})[r.mat];if(esp)return{v:esp[0],t:esp[1]};
@@ -546,9 +546,9 @@ async function montar(tx){const q=window.parent&&window.parent.CRV_QUADRO?await 
   const itens=tx.L.map(t=>{const p=M[t.mat]||{},r=ROW[t.mat]||{},a=AM[t.mat]||{};const conf=[];
     let marc='';
     if(V.excEsp[t.mat]){marc='NÃO';conf.push('Valor pago pela empresa ('+V.excEsp[t.mat][1]+'): sem desconto')}
-    else if(r.mat&&V.regra(r).v===1080)marc='SIM';
-    else if(a.marc==='SIM'){marc='SIM';conf.push('Desconto de metade como no fechamento anterior, mas não está como alojado com limite de R$ 1.080: confirmar')}
-    if(!marc&&r.aloj)conf.push('Está no alojamento ('+r.aloj+'), mas o limite não é de R$ 1.080: desconto integral');
+    else if(r.aloj&&/MOTORISTA|OP\.?\s*DE\s*MAQ|OPERADOR DE M[AÁ]Q|OP\._?\s*MAQ/.test(String(p.funcao||r.func||'').toUpperCase()))marc='SIM';
+    else if(a.marc==='SIM'){marc='SIM';conf.push('Desconto de metade como no fechamento anterior, mas não está no alojamento como motorista ou operador de máquinas: confirmar')}
+    if(!marc&&r.aloj)conf.push('Está no alojamento ('+r.aloj+'), mas não é motorista nem operador de máquinas: desconto integral');
     const cc=p.cc||a.cc||'',ccd=p.ccd||a.ccd||'';
     if(!p.nome)conf.push('Matrícula não encontrada no Quadro');
     if(p.situacao==='Desligado')conf.push('Desligado em '+br(p.deslig)+': descontar na rescisão');
@@ -584,7 +584,7 @@ const STC={ok:['Com saldo','df-ok'],sem:['Fica sem saldo','df-am'],est:['Já est
 /* ---------- tela ---------- */
 function fechar(){if(W){W.remove();W=null}}
 async function abrir(){fechar();W=document.createElement('div');W.className='df-fundo';
-  W.innerHTML='<div class="df-modal" role="dialog" aria-modal="true"><div class="df-cab"><h3>Desconto em folha · Cartão Convênio<small>Carregue o TXT de consumo da Sysprocard do fechamento (21 a 20). Alojados com limite de R$ 1.080 descontam metade; quem é pago pela empresa não desconta.</small></h3>'
+  W.innerHTML='<div class="df-modal" role="dialog" aria-modal="true"><div class="df-cab"><h3>Desconto em folha · Cartão Convênio<small>Carregue o TXT de consumo da Sysprocard do fechamento (21 a 20). Alojados motoristas e operadores de máquinas descontam metade; quem é pago pela empresa não desconta.</small></h3>'
    +'<select class="df-b" id="dfSel"></select><button class="df-b" id="dfTxt">Carregar TXT do fechamento</button><button class="df-b" id="dfAnt">Trazer do mês anterior (Excel do DP)</button><button class="df-b" id="dfSal">Carregar saldos dos centros de custo</button><button class="df-b pri" id="dfXls">Excel para o DP</button><button class="df-b" id="dfPdf">PDF do resumo</button><button class="df-b" id="dfX">Fechar</button></div><div class="df-corpo"><p>Carregando…</p></div></div>';
   document.body.appendChild(W);W.addEventListener('mousedown',e=>{if(e.target===W)fechar()});
   const g=id=>W.querySelector('#'+id);g('dfX').onclick=fechar;
@@ -600,7 +600,7 @@ async function abrir(){fechar();W=document.createElement('div');W.className='df-
       const H=A[hi].map(c=>String(c||'').trim().toUpperCase());const ix=k=>H.findIndex(h=>h.startsWith(k));const iM=ix('MARCA'),iMat=ix('MATRIC'),iCC=ix('C.CUSTO'),iD=ix('DESC. C');
       const P={};A.slice(hi+1).forEach(r=>{if(!r||r[iMat]==null)return;P[String(+r[iMat])]={marc:String(r[iM]||'').trim().toUpperCase().replace('NAO','NÃO'),cc:r[iCC]!=null?String(r[iCC]):'',ccd:r[iD]||''}});
       let nM=0,nC=0,nD=0;F.itens.forEach(x=>{const a=P[x.mat];if(!a)return;
-        if(a.marc==='SIM'&&x.marc!=='SIM'&&!x.manual){x.marc='SIM';nM++;x.conf=x.conf.filter(t=>!/^Está no alojamento/.test(t));x.conf.push('Desconto de metade como no mês anterior, mas não está como alojado com limite de R$ 1.080: confirmar')}
+        if(a.marc==='SIM'&&x.marc!=='SIM'&&!x.manual){x.marc='SIM';nM++;x.conf=x.conf.filter(t=>!/^Está no alojamento/.test(t));x.conf.push('Desconto de metade como no mês anterior, mas não está no alojamento como motorista ou operador de máquinas: confirmar')}
         if(!x.cc&&a.cc){x.cc=a.cc;x.ccd=(F.cc&&F.cc[a.cc]&&F.cc[a.cc].nome)||a.ccd;x.conf=x.conf.filter(t=>!/^Sem centro de custo/.test(t));nC++}
         else if(x.cc&&a.cc&&String(x.cc)!==String(a.cc)&&!x.conf.some(t=>/^Centro de custo mudou/.test(t))){x.conf.push('Centro de custo mudou: antes '+a.cc+', agora '+x.cc);nD++}});
       await gravar();desenhar('Mês anterior: '+nM+' marcações de metade trazidas, '+nC+' centros de custo preenchidos e '+nD+' mudanças de centro de custo apontadas.')}catch(er){desenhar('',er.message)}})};
