@@ -2531,16 +2531,18 @@ let DB=null;const db=async()=>{if(DB)return DB;try{DB=window.claude&&window.clau
 
 /* lista de documentos (modelo "Documentação para contratação") — a regra de cada um pode ser ajustada em "Documentos exigidos" */
 const DOCS_PADRAO=[
- ['end','Comprovante de endereço (atual)','sempre'],['sang','Tipo sanguíneo','sempre'],['rg','Identidade RG (2 cópias)','sempre'],
- ['cpf','CPF titular e dependentes (2 cópias)','sempre'],['res','Reservista','homens'],['ctps','Carteira de trabalho digital','sempre'],
- ['pis','PIS','sempre'],['sus','SUS','sempre'],['tit','Título de eleitor','sempre'],['banco','Conta bancária Bradesco (extrato)','sempre'],
- ['cnh','CNH','motop'],['vac','Cartão de vacina','sempre'],['cert','Certidão de nascimento ou casamento','sempre'],
- ['esc','Declaração de escolaridade','sempre'],['curso','Certificados de conclusão de curso','se_tiver'],['foto','1 foto 3x4','sempre']];
-const REGRAS={sempre:'Obrigatório para todos',homens:'Obrigatório só para homens',motop:'Obrigatório para motorista e operador de máquinas agrícolas',se_tiver:'Se o candidato tiver (não bloqueia)'};
+ ['end','Comprovante de endereço (atual)','sempre'],['rg','Identidade RG (2 cópias)','sempre'],['cpf','CPF titular e dependentes (2 cópias)','sempre'],
+ ['ctps','Carteira de trabalho digital','sempre'],['sus','Cartão SUS','sempre'],['banco','Conta bancária (Banco do Brasil ou Bradesco)','sempre'],
+ ['pis','PIS','sempre'],['tit','Título de eleitor','sempre'],['cnh','CNH','motop'],['res','Reservista','homens45'],
+ ['sang','Tipo sanguíneo','se_tiver'],['vac','Cartão de vacina','se_tiver'],['cert','Certidão de nascimento ou casamento','se_tiver'],
+ ['esc','Declaração de escolaridade','se_tiver'],['curso','Certificados de conclusão de curso','se_tiver'],['foto','1 foto 3x4','se_tiver']];
+const CFG_V=2;
+const REGRAS={sempre:'Obrigatório (trava a contratação)',homens45:'Obrigatório para homens até 45 anos',homens:'Obrigatório só para homens',motop:'Obrigatório para motorista e operador',se_tiver:'Pedir, mas não trava a contratação'};
 const MOTOP=/MOTORISTA|OPERADOR DE M[AÁ]Q|OP\.?\s*DE\s*M[AÁ]Q|OP\._?\s*M[AÁ]Q|M[AÁ]QUINAS? AGR/i;
 let DOCS=DOCS_PADRAO.map(d=>({k:d[0],n:d[1],r:d[2]}));
-async function carregarCfg(){const D=await db();if(!D)return;try{const s=await D.collection('contratacoes_cfg').doc('docs').get();const v=s&&s.exists&&s.data?s.data():null;if(v&&Array.isArray(v.lista)&&v.lista.length)DOCS=v.lista}catch(_){}}
-const aplica=(d,c)=>d.r==='sempre'||d.r==='se_tiver'||(d.r==='homens'&&c.sexo==='M')||(d.r==='motop'&&MOTOP.test(c.func||''));
+async function carregarCfg(){const D=await db();if(!D)return;try{const s=await D.collection('contratacoes_cfg').doc('docs').get();const v=s&&s.exists&&s.data?s.data():null;if(v&&(v.v||0)>=CFG_V&&Array.isArray(v.lista)&&v.lista.length)DOCS=v.lista}catch(_){}}
+const idade=c=>{if(!c.nasc)return null;const n=new Date(c.nasc+'T12:00:00'),h=new Date();let a=h.getFullYear()-n.getFullYear();if(h.getMonth()<n.getMonth()||(h.getMonth()===n.getMonth()&&h.getDate()<n.getDate()))a--;return a};
+const aplica=(d,c)=>d.r==='sempre'||d.r==='se_tiver'||(d.r==='homens'&&c.sexo==='M')||(d.r==='homens45'&&c.sexo==='M'&&!(idade(c)>45))||(d.r==='motop'&&MOTOP.test(c.func||''));
 const obrig=(d,c)=>d.r!=='se_tiver'&&aplica(d,c);
 const toxApl=c=>MOTOP.test(c.func||'');
 /* dependentes para o Unimed */
@@ -2605,8 +2607,9 @@ async function form(c){if(!W)return;c.docs=c.docs||{};c.deps=c.deps||[];c.medico
   C.innerHTML='<div class="ct-grid">'
    +'<div class="ct-sec">Ficha de informe de contratação <span>RE.0150.03</span></div>'
    +'<div class="ct-c w6"><label>Nome do candidato *</label><input data-f="nome" value="'+v('nome')+'"></div>'
-   +'<div class="ct-c w3"><label>Telefone</label><input data-f="tel" value="'+v('tel')+'" inputmode="tel" placeholder="(34) 99999-9999"></div>'
-   +'<div class="ct-c w3"><label>Sexo</label><select data-f="sexo">'+sel('sexo',[['','—'],['M','Masculino'],['F','Feminino']])+'</select></div>'
+   +'<div class="ct-c w2"><label>Telefone</label><input data-f="tel" value="'+v('tel')+'" inputmode="tel" placeholder="(34) 99999-9999"></div>'
+   +'<div class="ct-c w2"><label>Sexo</label><select data-f="sexo">'+sel('sexo',[['','—'],['M','Masculino'],['F','Feminino']])+'</select></div>'
+   +'<div class="ct-c w2"><label>Nascimento</label><input type="date" data-f="nasc" value="'+v('nasc')+'"></div>'
    +'<div class="ct-c w5"><label>Departamento *</label><input data-f="dep" list="ctDL" value="'+v('dep')+'"></div>'
    +'<div class="ct-c w3"><label>Setor de locação (código)</label><input data-f="setorCod" value="'+v('setorCod')+'" inputmode="numeric"></div>'
    +'<div class="ct-c w4"><label>Função *</label><input data-f="func" list="ctFL" value="'+v('func')+'"></div>'
@@ -2645,7 +2648,7 @@ async function form(c){if(!W)return;c.docs=c.docs||{};c.deps=c.deps||[];c.medico
   const ler=()=>{C.querySelectorAll('[data-f]').forEach(e=>{c[e.dataset.f]=e.value.trim()});C.querySelectorAll('[data-x]').forEach(e=>{const[a,b]=e.dataset.x.split('.');c[a][b]=e.value.trim()})};
   const docsH=()=>{ler();const s=situacao(c);
     g('#ctDocs').innerHTML=DOCS.map(d=>{const ap=aplica(d,c),ob=obrig(d,c),st=c.docs[d.k]||{};return '<label class="ct-doc'+(st.ok?' ok':'')+(ap?'':' na')+'"><input type="checkbox" data-d="'+d.k+'"'+(st.ok?' checked':'')+(ap?'':' disabled')+'><span>'+esc(d.n)+(st.ok&&st.em?' <small style="color:#5d6a85">('+br(st.em)+')</small>':'')+'</span><span class="tg'+(st.ok?' ok':ob?'':' op')+'">'+(st.ok?'Entregue':!ap?'Não se aplica':ob?'Obrigatório':'Se tiver')+'</span></label>'}).join('');
-    g('#ctDocInfo').textContent=(s.totObr-s.docsF.length)+' de '+s.totObr+' obrigatórios entregues'+(c.sexo?'':' · informe o sexo para saber se a reservista é exigida');
+    g('#ctDocInfo').textContent=(s.totObr-s.docsF.length)+' de '+s.totObr+' obrigatórios entregues'+(c.sexo==='M'&&!c.nasc?' · informe o nascimento: reservista não é exigida acima de 45 anos':c.sexo?'':' · informe o sexo para saber se a reservista é exigida')+(c.sexo==='M'&&idade(c)>45?' · '+idade(c)+' anos: reservista dispensada':'');
     g('#ctDocs').querySelectorAll('[data-d]').forEach(i=>i.onchange=()=>{c.docs[i.dataset.d]=i.checked?{ok:true,em:hoje()}:{ok:false};docsH()});
     const tx=toxApl(c);g('#ctTox1').hidden=!tx;g('#ctTox2').hidden=!tx;g('#ctToxNa').hidden=tx;
     const stv=g('[data-f=status]').value;g('#ctAdm').hidden=stv!=='contratado';g('#ctMat').hidden=stv!=='contratado';g('#ctMot').hidden=!(stv==='desistiu'||stv==='nao_aprovado');
@@ -2711,13 +2714,13 @@ async function exportar(R,k){const linhas=R.map(c=>{const s=situacao(c);return[c
   return salvarArq('Contratacoes em andamento '+br(hoje()).split('/').join('-')+'.pdf',new Uint8Array(doc.output('arraybuffer')),'application/pdf')}
 async function cfg(){if(!W)return;await carregarCfg();const C=W.querySelector('#ctCorpo');const T=DOCS.map(d=>Object.assign({},d));
   const modal=W.querySelector('.ct-modal');let rod=modal.querySelector('.ct-rod');if(rod)rod.remove();
-  const draw=()=>{C.innerHTML='<div class="ct-aviso in" style="margin-bottom:12px">Lista do modelo "Documentação para contratação". Escolha a regra de cada documento. Os obrigatórios que faltarem bloqueiam a contratação. Exame médico sempre é exigido; o toxicológico, para motorista e operador de máquinas agrícolas.</div><div class="ct-cfg">'+T.map((d,i)=>'<div><input data-i="'+i+'" data-k="n" value="'+esc(d.n)+'"><select data-i="'+i+'" data-k="r">'+Object.entries(REGRAS).map(([a,b])=>'<option value="'+a+'"'+(d.r===a?' selected':'')+'>'+b+'</option>').join('')+'</select><button class="ct-b dan" data-rm="'+i+'" title="Remover">×</button></div>').join('')+'</div><div style="margin-top:10px"><button class="ct-b" id="ctAddD">+ Adicionar documento</button></div>';
+  const draw=()=>{C.innerHTML='<div class="ct-aviso in" style="margin-bottom:12px">Os documentos marcados como obrigatórios travam a contratação; os demais são pedidos, mas não travam. Reservista: só homens, dispensada acima de 45 anos. CNH: motorista e operador. Exame médico sempre é exigido; o toxicológico, para motorista e operador de máquinas agrícolas.</div><div class="ct-cfg">'+T.map((d,i)=>'<div><input data-i="'+i+'" data-k="n" value="'+esc(d.n)+'"><select data-i="'+i+'" data-k="r">'+Object.entries(REGRAS).map(([a,b])=>'<option value="'+a+'"'+(d.r===a?' selected':'')+'>'+b+'</option>').join('')+'</select><button class="ct-b dan" data-rm="'+i+'" title="Remover">×</button></div>').join('')+'</div><div style="margin-top:10px"><button class="ct-b" id="ctAddD">+ Adicionar documento</button></div>';
     C.querySelectorAll('[data-i]').forEach(e=>e.onchange=()=>{T[+e.dataset.i][e.dataset.k]=e.value.trim()});C.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{T.splice(+b.dataset.rm,1);draw()});
     C.querySelector('#ctAddD').onclick=()=>{T.push({k:'d'+Date.now().toString(36),n:'',r:'sempre'});draw();const ins=C.querySelectorAll('.ct-cfg input');ins[ins.length-1].focus()}};
   draw();rod=document.createElement('div');rod.className='ct-rod';rod.innerHTML='<span class="msg" id="ctMsg"></span><button class="ct-b" id="ctPad">Voltar ao padrão</button><button class="ct-b" id="ctVolta">Voltar à lista</button><button class="ct-b pri" id="ctSalva">Salvar regras</button>';modal.appendChild(rod);
   rod.querySelector('#ctVolta').onclick=()=>{rod.remove();lista()};
   rod.querySelector('#ctPad').onclick=()=>{T.length=0;DOCS_PADRAO.forEach(d=>T.push({k:d[0],n:d[1],r:d[2]}));draw()};
-  rod.querySelector('#ctSalva').onclick=async()=>{const L2=T.filter(d=>d.n);const D=await db();if(!D)return;try{await D.collection('contratacoes_cfg').doc('docs').set({lista:L2,em:new Date().toISOString(),por:quem()});DOCS=L2;rod.querySelector('#ctMsg').style.color='#1d5c3a';rod.querySelector('#ctMsg').textContent='Regras salvas.'}catch(e){rod.querySelector('#ctMsg').style.color='#a3301c';rod.querySelector('#ctMsg').textContent='Sem permissão para salvar as regras.'}}}
+  rod.querySelector('#ctSalva').onclick=async()=>{const L2=T.filter(d=>d.n);const D=await db();if(!D)return;try{await D.collection('contratacoes_cfg').doc('docs').set({lista:L2,v:CFG_V,em:new Date().toISOString(),por:quem()});DOCS=L2;rod.querySelector('#ctMsg').style.color='#1d5c3a';rod.querySelector('#ctMsg').textContent='Regras salvas.'}catch(e){rod.querySelector('#ctMsg').style.color='#a3301c';rod.querySelector('#ctMsg').textContent='Sem permissão para salvar as regras.'}}}
 window.CRV_CONTRATACAO=abrir;
 /* botão no topo do painel */
 function botao(){const a=document.querySelector('.top-actions');if(!a||document.getElementById('btnContrat'))return;const b=document.createElement('button');b.className='btn cta';b.id='btnContrat';b.type='button';
