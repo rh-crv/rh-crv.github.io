@@ -532,6 +532,8 @@ table.tb{border-collapse:collapse;width:100%;font-size:.88rem;min-width:640px}
     <section class="kpis" id="rsKpis" aria-label="Resumo do recrutamento"></section>
     <p class="brief" id="rsBrief"></p>
 
+    <section class="panel" id="rsContrat" style="margin-bottom:18px"><div class="panel-h"><h2>Em contratação</h2><span class="hint">Fichas de contratação em andamento, com ou sem currículo no banco. Clique para abrir.</span></div><div id="rsContratB"><p class="hint">Carregando…</p></div></section>
+
     <section class="grid2" aria-label="Andamento">
       <div class="panel">
         <div class="panel-h"><h2>Candidatos por etapa</h2><span class="hint">Clique numa etapa para ver quem está nela</span></div>
@@ -2570,12 +2572,12 @@ async function salvar(c,txt){const D=await db();if(!D)throw new Error('O registr
   if(c._id)await D.collection('contratacoes').doc(c._id).set(o);else{o.criadoEm=new Date().toISOString();o.por=quem();const r=await D.collection('contratacoes').add(o);c._id=r&&r.id}}
 
 let W=null;
-function fechar(){if(W){W.remove();W=null}}
-async function abrir(){fechar();W=document.createElement('div');W.className='ct-fundo';
+function fechar(){if(W){W.remove();W=null;setTimeout(bloco,50)}}
+async function abrir(id){fechar();W=document.createElement('div');W.className='ct-fundo';
   W.innerHTML='<div class="ct-modal" role="dialog" aria-modal="true"><div class="ct-cab"><h3>Contratações em andamento<small>Fichas de informe de contratação recebidas pelo RH: documentos, exame médico, toxicológico e integração de cada candidato.</small></h3><button class="ct-b" id="ctCfg">Documentos exigidos</button><button class="ct-b pri" id="ctNovo">+ Cadastrar ficha</button><button class="ct-b" id="ctX">Fechar</button></div><div class="ct-corpo" id="ctCorpo"><p>Carregando…</p></div></div>';
   document.body.appendChild(W);W.addEventListener('mousedown',e=>{if(e.target===W)fechar()});
   W.querySelector('#ctX').onclick=fechar;W.querySelector('#ctNovo').onclick=()=>form({});W.querySelector('#ctCfg').onclick=cfg;
-  await carregarCfg();await carregar();lista()}
+  await carregarCfg();await carregar();lista();bloco();const c=id&&L.find(x=>x._id===id);if(c)form(JSON.parse(JSON.stringify(c)))}
 function lista(){if(!W)return;const C=W.querySelector('#ctCorpo');
   const proc=L.filter(c=>(c.status||'proc')==='proc'),pr=proc.filter(c=>situacao(c).pronto),at=proc.filter(c=>dias(c.recebida)>ALERTA),
     med=proc.length?Math.round(proc.reduce((a,c)=>a+dias(c.recebida),0)/proc.length):0,
@@ -2721,7 +2723,16 @@ async function cfg(){if(!W)return;await carregarCfg();const C=W.querySelector('#
   rod.querySelector('#ctVolta').onclick=()=>{rod.remove();lista()};
   rod.querySelector('#ctPad').onclick=()=>{T.length=0;DOCS_PADRAO.forEach(d=>T.push({k:d[0],n:d[1],r:d[2]}));draw()};
   rod.querySelector('#ctSalva').onclick=async()=>{const L2=T.filter(d=>d.n);const D=await db();if(!D)return;try{await D.collection('contratacoes_cfg').doc('docs').set({lista:L2,v:CFG_V,em:new Date().toISOString(),por:quem()});DOCS=L2;rod.querySelector('#ctMsg').style.color='#1d5c3a';rod.querySelector('#ctMsg').textContent='Regras salvas.'}catch(e){rod.querySelector('#ctMsg').style.color='#a3301c';rod.querySelector('#ctMsg').textContent='Sem permissão para salvar as regras.'}}}
-window.CRV_CONTRATACAO=abrir;
+window.CRV_CONTRATACAO=()=>abrir();
+/* bloco "Em contratação" dentro de Recrutamento e Seleção */
+async function bloco(){const B=document.getElementById('rsContratB');if(!B)return;if(!W){await carregarCfg();await carregar()}
+  const P=L.filter(c=>(c.status||'proc')==='proc').sort((a,b)=>dias(b.recebida)-dias(a.recebida));
+  const pr=P.filter(c=>situacao(c).pronto).length,at=P.filter(c=>dias(c.recebida)>ALERTA).length;
+  B.innerHTML='<div class="ct-tools" style="margin:4px 0 10px"><span style="font-size:13.5px"><b>'+pl(P.length,'candidato','candidatos')+'</b> em processo'+(P.length?' · '+pr+' pronto'+(pr===1?'':'s')+' para contratar · '+at+' há mais de '+ALERTA+' dias':'')+'</span><span style="flex:1"></span><button class="ct-b" id="rsCtVer">Ver todas</button><button class="ct-b pri" id="rsCtNovo">+ Cadastrar ficha</button></div>'
+   +'<div class="ct-lista">'+(P.length?P.map(c=>{const s=situacao(c),d=dias(c.recebida),ok=s.totObr-s.docsF.length;return '<div class="ct-card" data-id="'+esc(c._id)+'"><div><div class="nm">'+esc(c.nome)+'</div><div class="sm">'+esc(c.func||'—')+' · '+esc(c.dep||'—')+'</div><div class="sm">Ficha recebida em '+br(c.recebida)+'</div></div><div class="ct-dias'+(d>ALERTA?' al':'')+'"><b>'+d+'</b><small>'+(d===1?'dia':'dias')+'</small></div><div><div class="ct-et"><span class="ct-chip '+(s.docsF.length?'pe':'ok')+'">Documentos '+ok+'/'+s.totObr+'</span><span class="ct-chip '+(s.medOk?'ok':s.medIn?'er':'pe')+'">Médico'+(s.medOk?' ✓':'')+'</span>'+(s.toxNa?'':'<span class="ct-chip '+(s.toxOk?'ok':s.toxPos?'er':'pe')+'">Toxicológico'+(s.toxOk?' ✓':'')+'</span>')+'<span class="ct-chip '+(s.integOk?'ok':'pe')+'">Integração'+(s.integOk?' ✓':'')+'</span></div><div class="ct-bar"><i style="width:'+(s.totObr?Math.round(ok/s.totObr*100):100)+'%"></i></div></div><div class="ct-st" style="background:'+(s.pronto?'#dcefe3':'#eef3fb')+';color:'+(s.pronto?'#1d5c3a':'#2756A0')+'">'+(s.pronto?'Pronto para contratar':'Em processo')+'</div></div>'}).join(''):'<div class="ct-vazio">Ninguém em contratação agora. Quando chegar uma ficha da área, mesmo sem currículo, cadastre em "+ Cadastrar ficha".</div>')+'</div>';
+  B.querySelector('#rsCtVer').onclick=()=>abrir();B.querySelector('#rsCtNovo').onclick=async()=>{await abrir();form({})};
+  B.querySelectorAll('.ct-card').forEach(el=>el.onclick=()=>abrir(el.dataset.id))}
+setTimeout(bloco,400);
 /* botão no topo do painel */
 function botao(){const a=document.querySelector('.top-actions');if(!a||document.getElementById('btnContrat'))return;const b=document.createElement('button');b.className='btn cta';b.id='btnContrat';b.type='button';
   b.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg>Em contratação';b.onclick=abrir;a.prepend(b)}
