@@ -462,7 +462,7 @@ function render(){
   m._h=h;$("htxt").innerHTML=h;
   const IC={p:'<circle cx="9" cy="8" r="3.2"/><path d="M3 19c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17" cy="9" r="2.4"/><path d="M16.5 13.6c2.6.2 4.5 2 4.5 4.9"/>',c:'<rect x="4" y="5.5" width="16" height="14" rx="2.5"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4M10 13.5l4 4M14 13.5l-4 4"/>',a:'<path d="M12 4.5 20.5 19h-17L12 4.5z"/><path d="M12 10v4.2M12 16.8v.2"/>',m:'<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8.5v7M8.5 12h7"/>',g:'<path d="M7 3.5h10a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2z"/><path d="M8.5 8.5h7M8.5 12h7M8.5 15.5h4"/>'};
   const KP=[
-    ["p","Aprendizes ativos",c.n,m.ponto?pl(m.dias.length,"dia útil","dias úteis")+" · "+pl(m.curso.length,"sexta de curso","sextas de curso"):pl(m.curso.length,"sexta-feira","sextas-feiras")+" de curso no mês",p&&delta(c.n,p.n),null],
+    ["p","Aprendizes ativos",(m===MESES[MESES.length-1]&&typeof BASE!=="undefined")?BASE.filter(b=>b.st==="Ativo").length:c.n,(m===MESES[MESES.length-1]&&typeof BASE!=="undefined")?"Ativos hoje na base · "+c.n+" na frequência de "+m.nome.split(" ")[0]+(window.CRV_JOV_MUD?window.CRV_JOV_MUD():""):m.ponto?pl(m.dias.length,"dia útil","dias úteis")+" · "+pl(m.curso.length,"sexta de curso","sextas de curso"):pl(m.curso.length,"sexta-feira","sextas-feiras")+" de curso no mês",(m===MESES[MESES.length-1]?null:p&&delta(c.n,p.n)),null],
     ["a","Faltas sem justificativa",c.nf,m.ponto?c.fa+" no curso · "+c.fx+" na empresa":c.fa+" no curso · empresa não informada",p&&delta(c.nf,p.nf),null],
     ["c","Jovens com falta no curso",c.comFalta,(c.n-c.comFalta)+" de "+c.n+" sem nenhuma falta no curso",p&&delta(c.comFalta,p.comFalta),(c.n-c.comFalta)/c.n*100],
     ["m","Atestado e abono",m.ponto?c.at+c.ab:"–",m.ponto?pl(c.at,"dia de atestado","dias de atestado")+" de "+pl(c.comAt,"jovem","jovens")+(c.ab?" · "+pl(c.ab,"dia abonado","dias abonados"):""):"Cartão de ponto não enviado neste mês",null,null],
@@ -1035,6 +1035,7 @@ async function desl(){if(!PRONTO)await atualizar();const M=modal('Registrar desl
   draw();setTimeout(()=>{const n=M.C.querySelector('#jfDq');if(n)n.focus()},60)}
 document.addEventListener('click',ev=>{const f=ev.target.closest('.fjb');if(!f||f.closest('#bastb'))return;ev.preventDefault();ev.stopPropagation();ficha(f.dataset.fj,f.dataset.aba)},true);
 window.CRV_JOV_DESL=desl;
+window.CRV_JOV_MUD=()=>{const n=BASE.filter(b=>b._app&&b.st==='Ativo').length,d=BASE.filter(b=>b._baixa&&b.st==='Desligado').length;return (n?' · '+n+' cadastrado'+(n>1?'s':'')+' no app':'')+(d?' · '+d+' desligado'+(d>1?'s':'')+' no app':'')};
 window.CRV_JOV_BTN=b=>{const k=chave(b),r=REG[k]||{};const sai=b.st==='Desligado'?(r.baixa?'':'<button type="button" class="fjb" data-fj="'+e_(k)+'" data-aba="bx" style="color:#a3301c">Informar motivo da saída</button>'):(r.baixa?'':'<button type="button" class="fjb" data-fj="'+e_(k)+'" data-aba="bx">Desligar</button>');
   return '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px"><button type="button" class="fjb" data-fj="'+e_(k)+'">Abrir ficha</button>'+sai+'</div>'};
 window.CRV_NOVO=()=>{try{go('bas')}catch(_){}novo()};window.CRV_JOV_FICHA=ficha;window.CRV_JOV_CHAVE=chave;window.CRV_JOV_REG=k=>REG[k]||{};window.CRV_JOV_AT=listaAt;

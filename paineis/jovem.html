@@ -777,7 +777,7 @@ function kAtivos(m,c){
   const novos=atv.filter(b=>dnum(b.ini)>fim);
   const mes=m.nome.split(" ")[0];
   const inis=[...new Set(novos.map(b=>b.ini))];
-  return{v:atv.length,hoje:true,s:"Ativos hoje na base · "+c.n+" na frequência de "+mes+(novos.length?" · "+novos.length+" "+(novos.length===1?"começou":"começaram")+" depois"+(inis.length===1?" (em "+inis[0]+")":""):"")};
+  return{v:atv.length,hoje:true,s:"Ativos hoje na base · "+c.n+" na frequência de "+mes+(novos.length?" · "+novos.length+" "+(novos.length===1?"começou":"começaram")+" depois"+(inis.length===1?" (em "+inis[0]+")":""):"")+(window.CRV_JOV_MUD?window.CRV_JOV_MUD():"")};
 }
 function renderBase(){
   if(!$("setlist")){const dl=document.createElement("datalist");dl.id="setlist";document.body.appendChild(dl);}
@@ -1177,6 +1177,7 @@ async function desl(){if(!PRONTO)await atualizar();const M=modal('Registrar desl
   draw();setTimeout(()=>{const n=M.C.querySelector('#jfDq');if(n)n.focus()},60)}
 document.addEventListener('click',ev=>{const f=ev.target.closest('.fjb');if(!f||f.closest('#bastb'))return;ev.preventDefault();ev.stopPropagation();ficha(f.dataset.fj,f.dataset.aba)},true);
 window.CRV_JOV_DESL=desl;
+window.CRV_JOV_MUD=()=>{const n=BASE.filter(b=>b._app&&b.st==='Ativo').length,d=BASE.filter(b=>b._baixa&&b.st==='Desligado').length;return (n?' · '+n+' cadastrado'+(n>1?'s':'')+' no app':'')+(d?' · '+d+' desligado'+(d>1?'s':'')+' no app':'')};
 window.CRV_JOV_BTN=b=>{const k=chave(b),r=REG[k]||{};const sai=b.st==='Desligado'?(r.baixa?'':'<button type="button" class="fjb" data-fj="'+e_(k)+'" data-aba="bx" style="color:#a3301c">Informar motivo da saída</button>'):(r.baixa?'':'<button type="button" class="fjb" data-fj="'+e_(k)+'" data-aba="bx">Desligar</button>');
   return '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px"><button type="button" class="fjb" data-fj="'+e_(k)+'">Abrir ficha</button>'+sai+'</div>'};
 window.CRV_NOVO=()=>{try{go('bas')}catch(_){}novo()};window.CRV_JOV_FICHA=ficha;window.CRV_JOV_CHAVE=chave;window.CRV_JOV_REG=k=>REG[k]||{};window.CRV_JOV_AT=listaAt;
