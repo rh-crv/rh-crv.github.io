@@ -987,10 +987,22 @@ function escolherPacotes(esperado){
 async function lerPacote(f){
   let pac;
   try { pac = JSON.parse(await f.text()); } catch(_) { throw new Error('não é um arquivo de dados do app'); }
+  if (pac.tipo === 'crv-estabilidade' && Array.isArray(pac.itens)) return { estab:true, painel:'quadro', referencia: pac.gerado || '', itens: pac.itens };
   if (pac.tipo !== 'crv-pacote' || !(pac.dados || pac.blocos)) throw new Error('não é um arquivo de dados do app');
   return pac;
 }
 
+// lista de estabilidade (Quadro Geral): entra como registros do painel, sem mexer nos dados do Quadro
+async function salvarEstabilidade(itens){
+  const quem = E.perfil ? E.perfil.nome : '';
+  const linhas = itens.map(it => { const id = (it.tipo + '-' + it.mat + '-' + (it.fim || it.detalhe || '')).replace(/[^\w-]+/g, '_').slice(0, 90);
+    return { painel:'quadro', caminho:'estabilidade/' + id, colecao:'estabilidade', doc_id:id, dados:{ ...it, cadastradoEm:new Date().toISOString(), cadastradoPor:quem + ' (lista)' }, atualizado_por:quem }; });
+  for (let i = 0; i < linhas.length; i += 100) {
+    const { error } = await sb.from('registros').upsert(linhas.slice(i, i + 100), { onConflict:'painel,caminho', ignoreDuplicates:true });
+    if (error) throw error;
+  }
+  return linhas.length;
+}
 async function carregarPacotes(arquivos, esperado){
   const itens = [];
   for (const f of arquivos) {
@@ -1014,7 +1026,7 @@ async function carregarPacotes(arquivos, esperado){
     corpo: `<p style="margin-top:0;color:var(--mut)">Os dados atuais de cada painel serão substituídos pela versão do arquivo. As anotações feitas no app (avaliações, programações, fichas…) <b>são mantidas</b>.</p>
       <div class="tabela-env" style="max-height:340px"><table class="tab"><thead><tr><th>Arquivo</th><th>Painel</th><th>Dados de</th><th>Situação</th></tr></thead><tbody>
       ${itens.map((i, n) => `<tr style="cursor:default"><td>${esc(i.f.name)}</td><td>${esc(i.painel ? nomeP(i.painel) : '—')}</td>
-        <td>${i.pac ? fmtRef(i.pac.referencia) : (i.zip ? 'arquivos' : '—')}</td>
+        <td>${i.pac ? (i.pac.estab ? 'lista de estabilidade (' + i.pac.itens.length + ')' : fmtRef(i.pac.referencia)) : (i.zip ? 'arquivos' : '—')}</td>
         <td id="pk-st-${n}">${i.erro ? `<span style="color:var(--coral)">${esc(i.erro)}</span>` : 'pronto'}</td></tr>`).join('')}
       </tbody></table></div>`,
     pe: `<button class="btn borda" id="pk-c">Cancelar</button><button class="btn prim" id="pk-ok" ${validos.length ? '' : 'disabled'}>Salvar no app</button>`,
@@ -1029,6 +1041,7 @@ async function carregarPacotes(arquivos, esperado){
           st.textContent = 'enviando…';
           try {
             if (i.zip) { const q = await enviarZip(i.f, i.painel, t => st.textContent = t); st.innerHTML = `<span style="color:var(--cane)">✓ ${q} arquivos</span>`; ok++; continue; }
+            if (i.pac.estab) { const n2 = await salvarEstabilidade(i.pac.itens); st.innerHTML = `<span style="color:var(--cane)">✓ ${n2} de estabilidade</span>`; ok++; continue; }
             await salvarPacote(i.pac, i.f, t => st.textContent = t);
             st.innerHTML = '<span style="color:var(--cane)">✓ salvo</span>'; ok++;
           } catch(e){ console.error(e); st.innerHTML = `<span style="color:var(--coral)">${esc(traduzErro(e))}<br><small>${esc((e && (e.message || e.error || e.statusCode)) || String(e))}</small></span>`; }
