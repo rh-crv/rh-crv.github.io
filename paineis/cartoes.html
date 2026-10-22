@@ -5,7 +5,7 @@
 :root{--bg:#f4f5f8;--card:#fff;--ink:#1d2433;--mut:#667085;--line:#e4e7ec;--trk:#eef0f4;
  --acc:#2e8a57;--acc2:#1d5c3a;--accbg:#e8f4ee;
  --ok:#2e8a57;--okbg:#e6f3ec;--warn:#b7791f;--warnbg:#fcf1dc;--bad:#b42318;--badbg:#fdecea;--info:#5b5f97;--infobg:#eeeefa;--mutbg:#f1f3f6}
-body.t-convenio{--acc:#c0282d;--acc2:#7a1418;--accbg:#fdecec}
+body.t-convenio{--acc:#7d1a2c;--acc2:#4a0e1a;--accbg:#f7e9ec}
 body.t-premium{--acc:#b8902a;--acc2:#6e5208;--accbg:#fbf4e1}
 body.t-premium header{background:linear-gradient(120deg,#5c4306,#9c7716 55%,#d4b04a)}
 *{box-sizing:border-box}[hidden]{display:none!important}
@@ -288,7 +288,7 @@ $('bP').onclick=async()=>{const J=(window.jspdf&&window.jspdf.jsPDF)||(window.pa
   const cols=['Matrícula','Nome','Função','Setor','Situação no Quadro','Cartão'].concat(T==='convenio'?['Limite atual','Limite da regra']:[]).concat(['Situação','O que fazer','Pedido marcado']);
   doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text(nomeArq(),12,14);doc.setFont('helvetica','normal');doc.setFontSize(8.5);
   doc.text(`${L.length} pessoas · planilha Sysprocard de ${br(C.refPlanilha)} × Quadro de ${br(C.refQuadro)}${S.dep?' · '+S.dep:''}${S.ger?' · '+S.ger:''}`,12,19);
-  doc.autoTable({startY:23,head:[cols],body:L.map(r=>cols.map(c=>(c==='Limite atual'||c==='Limite da regra')&&r[c]!==''?moeda(r[c]):String(r[c]??''))),styles:{fontSize:7,cellPadding:1.4},headStyles:{fillColor:T==='premium'?[184,144,42]:T==='convenio'?[192,40,45]:[46,138,87]},margin:{left:10,right:10}});
+  doc.autoTable({startY:23,head:[cols],body:L.map(r=>cols.map(c=>(c==='Limite atual'||c==='Limite da regra')&&r[c]!==''?moeda(r[c]):String(r[c]??''))),styles:{fontSize:7,cellPadding:1.4},headStyles:{fillColor:T==='premium'?[184,144,42]:T==='convenio'?[125,26,44]:[46,138,87]},margin:{left:10,right:10}});
   await salvar(nomeArq()+'.pdf',new Uint8Array(doc.output('arraybuffer')),'application/pdf')};
 
 
@@ -338,7 +338,7 @@ async function gerarRel(sec,fmt){
   }
   const J=(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF);if(!J)throw new Error('gerador de PDF indisponível');
   const doc=new J({orientation:'landscape',unit:'mm',format:'a4'});if(typeof doc.autoTable!=='function')throw new Error('gerador de tabela indisponível');
-  const cor=T==='premium'?[184,144,42]:T==='convenio'?[192,40,45]:[46,138,87];
+  const cor=T==='premium'?[184,144,42]:T==='convenio'?[125,26,44]:[46,138,87];
   doc.setFont('helvetica','bold');doc.setFontSize(14);doc.text(`Relatório de conferência · ${NOMET} · Sysprocard`,12,14);
   doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.text(`Gerado em ${hoje} · planilha Sysprocard de ${br(C.refPlanilha)} cruzada com o Quadro Geral (empresa 5) de ${br(C.refQuadro)} · ${sec.map(x=>x.t+': '+x.L.length).join(' · ')}`,12,19.5);
   let y=25;
