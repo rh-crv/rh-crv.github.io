@@ -1,5 +1,5 @@
 // Service worker: guarda só o "esqueleto" do app para abrir rápido. Dados nunca ficam em cache.
-const CACHE = 'crv-gp-v60';
+const CACHE = 'crv-gp-v61';
 const ARQS = ['./', 'index.html', 'css/app.css', 'js/app.js', 'js/ponte.js', 'config.js', 'img/logo-crv.png', 'img/icone-192.png', 'manifest.webmanifest'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARQS))); self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k))))); self.clients.claim(); });

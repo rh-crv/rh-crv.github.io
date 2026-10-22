@@ -741,7 +741,7 @@ const BST={"Ativo":"r0","Stand-by":"sb","Desligado":"dl"};
 function idade(b){if(!b.nasc)return null;const n=new Date(+b.nasc.slice(6),+b.nasc.slice(3,5)-1,+b.nasc.slice(0,2)),t=new Date();let a=t.getFullYear()-n.getFullYear();if(t.getMonth()<n.getMonth()||(t.getMonth()===n.getMonth()&&t.getDate()<n.getDate()))a--;return a;}
 const aniv=(b,k)=>b.nasc?b.nasc.slice(0,6)+(+b.nasc.slice(6)+k):"";
 function idTxt(b){const a=idade(b);if(a===null)return "Data de nascimento não informada";return a+" anos · nasc. "+b.nasc+(a<18&&b.st!=="Desligado"?" · faz 18 em "+aniv(b,18):"");}
-function baseObs(b){const o=[];if(b.st==="Desligado")o.push("Desligado em "+b.desl);if(b.st==="Stand-by")o.push("Início em "+b.ini+(b.cbo?" · CBO "+b.cbo:"")+" · setor a definir");else if(b.st!=="Desligado"&&semSetor(b))o.push("Setor a definir"+(b.cbo?" · CBO "+b.cbo:""));
+function baseObs(b){const o=[];if(b._app)o.push("Cadastrado no app");if(b.st==="Desligado")o.push("Desligado em "+b.desl+(b.motivo?" · "+b.motivo:""));if(b.st!=="Desligado"&&b.motivo)o.push(b.motivo);if(b._ats&&b._ats.length)o.push(b._ats.length+(b._ats.length===1?" atestado":" atestados")+" ("+b._ats.reduce((s,a)=>s+(+a.dias||0),0)+" dias)");if(b.st==="Stand-by")o.push("Início em "+b.ini+(b.cbo?" · CBO "+b.cbo:"")+" · setor a definir");else if(b.st!=="Desligado"&&semSetor(b))o.push("Setor a definir"+(b.cbo?" · CBO "+b.cbo:""));
   if(b.nasc&&b.st!=="Desligado"&&dnum(b.fim)&&dnum(aniv(b,24))<=dnum(b.fim))o.push("Completa 24 anos em "+aniv(b,24)+", antes do término do contrato: conferir");
   if(b.cpfijb)o.push("CPF diferente no Instituto ("+b.cpfijb.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,"$1.$2.$3-$4")+"): conferir");
   if(dnum(b.fim)&&dnum(b.fim)<dnum(b.ini))o.push("Término anterior ao início na base: conferir");return o.join(" · ");}
@@ -783,17 +783,18 @@ function renderBase(){
   if(!$("setlist")){const dl=document.createElement("datalist");dl.id="setlist";document.body.appendChild(dl);}
   $("setlist").innerHTML=SETORES().map(x=>'<option value="'+esc(x)+'">').join("");
   const cnt=s=>BASE.filter(b=>b.st===s).length;
-  $("bask").innerHTML=[["Ativos",cnt("Ativo"),"Com contrato em andamento"],(cnt("Stand-by")?["Stand-by",cnt("Stand-by"),"Aguardando início"]:["Setor a definir",BASE.filter(b=>b.st!=="Desligado"&&semSetor(b)).length,"Ativos ainda sem setor · clique para preencher"]),["Desligados",cnt("Desligado"),"Informados na base da CRV"],["Menores de 18",BASE.filter(b=>b.st!=="Desligado"&&idade(b)!==null&&idade(b)<18).length,(cnt("Stand-by")?"Ativos e stand-by · ":"Ativos · ")+BASE.filter(b=>b.st!=="Desligado"&&idade(b)!==null&&idade(b)>=18).length+" com 18 ou mais · "+BASE.filter(b=>b.st!=="Desligado"&&idade(b)===null).length+" sem data"],["Total na base",BASE.length,"Atualizada em "+BASE_DATA]]
+  $("bask").innerHTML=[["Ativos",cnt("Ativo"),"Com contrato em andamento"],(cnt("Stand-by")?["Stand-by",cnt("Stand-by"),"Aguardando início"]:["Setor a definir",BASE.filter(b=>b.st!=="Desligado"&&semSetor(b)).length,"Ativos ainda sem setor · clique para preencher"]),["Desligados",cnt("Desligado"),"Base da CRV e baixas feitas no app"],["Menores de 18",BASE.filter(b=>b.st!=="Desligado"&&idade(b)!==null&&idade(b)<18).length,(cnt("Stand-by")?"Ativos e stand-by · ":"Ativos · ")+BASE.filter(b=>b.st!=="Desligado"&&idade(b)!==null&&idade(b)>=18).length+" com 18 ou mais · "+BASE.filter(b=>b.st!=="Desligado"&&idade(b)===null).length+" sem data"],["Total na base",BASE.length,"Atualizada em "+BASE_DATA]]
     .map((k,i)=>'<button type="button" class="tile kpi" style="text-align:left;font:inherit;color:inherit;cursor:pointer" data-s="'+(["Ativo",cnt("Stand-by")?"Stand-by":"semsetor","Desligado","menor",""][i])+'"><div class="l">'+k[0]+'</div><div class="v">'+k[1]+'</div><div class="s">'+k[2]+"</div></button>").join("");
   const av=$("basa").value,areas=[...new Set(BASE.map(b=>b.setor.split(" - ")[0]))].sort((a,b)=>a.localeCompare(b));
   $("basa").innerHTML='<option value="">Todos os setores</option>'+areas.map(a=>"<option"+(a===av?" selected":"")+">"+esc(a)+"</option>").join("");
   const L=baseList(),js=calc(MESES[cur]).js,has=b=>js.some(j=>nkey(j.n)===nkey(b.nome));
   $("bascnt").textContent=L.length+" de "+BASE.length+" jovens";
-  $("bastb").innerHTML=L.length?L.map(b=>'<tr'+(has(b)?' class="j" tabindex="0" data-k="'+esc(nkey(b.nome))+'"':"")+'><td data-l="Mat. CRV">'+esc(b.mat)+'</td><td data-l="Mat. Bittar">'+esc(b.matb)+'</td><td><span class="nm">'+esc(tcase(b.nome))+'</span><div class="sm">CPF '+esc(b.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,"$1.$2.$3-$4"))+'</div></td><td data-l="Idade">'+(idade(b)===null?'<span class="sm">Não informada</span>':'<b'+(idade(b)<18&&b.st!=="Desligado"?' style="color:var(--amber-ink)"':"")+'>'+idade(b)+' anos</b><div class="sm">'+esc(b.nasc)+(idade(b)<18&&b.st!=="Desligado"?" · 18 em "+esc(aniv(b,18)):"")+"</div>")+'</td><td><span class="pill '+BST[b.st]+'">'+esc(b.st)+'</span></td><td data-l="Setor">'+celSetor(b)+'</td><td data-l="Jornada">'+esc(b.jor)+'</td><td data-l="Início">'+esc(b.ini)+'</td><td data-l="Término">'+esc(b.fim)+'</td><td data-l="Observação"><span class="sm">'+esc(baseObs(b))+"</span></td></tr>").join(""):'<tr><td colspan="10" class="empty">Nenhum jovem com esse filtro.</td></tr>';
+  $("bastb").innerHTML=L.length?L.map(b=>'<tr'+(has(b)?' class="j" tabindex="0" data-k="'+esc(nkey(b.nome))+'"':"")+'><td data-l="Mat. CRV">'+esc(b.mat)+'</td><td data-l="Mat. Bittar">'+esc(b.matb)+'</td><td><span class="nm">'+esc(tcase(b.nome))+'</span><div class="sm">CPF '+esc(b.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,"$1.$2.$3-$4"))+'</div><button type="button" class="fjb" style="margin-top:5px" data-fj="'+esc(String(b.mat||'').trim()||('cpf'+String(b.cpf||'').replace(/\D/g,'')))+'" title="Dados, atestados e baixa">Abrir ficha</button></td><td data-l="Idade">'+(idade(b)===null?'<span class="sm">Não informada</span>':'<b'+(idade(b)<18&&b.st!=="Desligado"?' style="color:var(--amber-ink)"':"")+'>'+idade(b)+' anos</b><div class="sm">'+esc(b.nasc)+(idade(b)<18&&b.st!=="Desligado"?" · 18 em "+esc(aniv(b,18)):"")+"</div>")+'</td><td><span class="pill '+BST[b.st]+'">'+esc(b.st)+'</span></td><td data-l="Setor">'+celSetor(b)+'</td><td data-l="Jornada">'+esc(b.jor)+'</td><td data-l="Início">'+esc(b.ini)+'</td><td data-l="Término">'+esc(b.fim)+'</td><td data-l="Observação"><span class="sm">'+esc(baseObs(b))+"</span></td></tr>").join(""):'<tr><td colspan="10" class="empty">Nenhum jovem com esse filtro.</td></tr>';
 }
 ["basb","bass","basa","basi"].forEach(id=>$(id).addEventListener("input",renderBase));
 $("bask").addEventListener("click",e=>{const b=e.target.closest("[data-s]");if(b){if(b.dataset.s==="menor"){$("bass").value="";$("basi").value="m";}else{$("bass").value=b.dataset.s;$("basi").value="";}renderBase();}});
 const abrirBase=e=>{
+  const fj=e.target.closest(".fjb");if(fj){if(e.type==="click"&&window.CRV_JOV_FICHA)window.CRV_JOV_FICHA(fj.dataset.fj);return}
   const ok=e.target.closest(".setok");if(ok&&e.type==="click"){const i=ok.parentElement.querySelector("input");salvarSetor(ok.dataset.mat,i.value);return}
   const mud=e.target.closest(".setmud");if(mud&&e.type==="click"){SETOR_MAN[mud.dataset.mat]=Object.assign({},SETOR_MAN[mud.dataset.mat],{editar:true});renderBase();return}
   if(e.target.closest(".setin")){if(e.type==="keydown"&&e.key==="Enter"&&e.target.tagName==="INPUT")salvarSetor(e.target.dataset.mat,e.target.value);return}
@@ -985,6 +986,189 @@ function showTip(el,x,y){tip.textContent=el.dataset.tip;tip.hidden=false;const w
 document.addEventListener("mousemove",e=>{const el=e.target.closest&&e.target.closest("[data-tip]");if(el)showTip(el,e.clientX,e.clientY);else tip.hidden=true;});
 document.addEventListener("focusin",e=>{const el=e.target.closest&&e.target.closest("[data-tip]");if(el){const r=el.getBoundingClientRect();showTip(el,r.left,r.top);}else tip.hidden=true;});
 render();
+</script>
+
+<style>
+.jf-fundo{position:fixed;inset:0;background:rgba(15,22,38,.55);z-index:9000;display:flex;align-items:flex-start;justify-content:center;padding:18px;overflow:auto}
+.jf-modal{background:var(--card,#fff);color:var(--ink,#1c2333);width:min(980px,100%);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.3);display:flex;flex-direction:column;max-height:calc(100vh - 36px)}
+.jf-cab{display:flex;gap:12px;align-items:flex-start;padding:15px 20px;border-bottom:1px solid var(--line,#dde2ea)}
+.jf-cab h3{margin:0;font-size:18px;flex:1}.jf-cab h3 small{display:block;font-size:12.5px;font-weight:400;color:var(--mut,#5d6a85);margin-top:3px}
+.jf-corpo{padding:14px 20px;overflow:auto}
+.jf-rod{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:12px 20px;border-top:1px solid var(--line,#dde2ea)}
+.jf-rod .msg{flex:1;font-size:13px;min-width:180px}
+.jf-b{font:inherit;font-size:13px;font-weight:600;border:1px solid var(--line,#dde2ea);background:var(--card,#fff);color:inherit;border-radius:9px;padding:7px 12px;cursor:pointer;white-space:nowrap}
+.jf-b.pri{background:#5b3f9e;border-color:#5b3f9e;color:#fff}.jf-b.dan{color:#a3301c}.jf-b.ok{background:#1d7349;border-color:#1d7349;color:#fff}
+.jf-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}
+.jf-tabs button{font:inherit;font-size:13px;font-weight:600;border:1px solid var(--line,#dde2ea);background:transparent;color:inherit;border-radius:20px;padding:6px 13px;cursor:pointer}
+.jf-tabs button.on{background:#5b3f9e;border-color:#5b3f9e;color:#fff}
+.jf-g{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:10px 12px}
+.jf-c{display:flex;flex-direction:column;gap:4px;min-width:0}
+.jf-c label{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--mut,#5d6a85)}
+.jf-c input,.jf-c select,.jf-c textarea{font:inherit;font-size:13.5px;padding:8px 10px;border:1px solid var(--line,#dde2ea);border-radius:8px;background:var(--card,#fff);color:inherit;min-width:0}
+.jf-c input[readonly]{background:rgba(127,127,127,.08)}
+.jf-c textarea{min-height:54px;resize:vertical}
+.jf-g .w2{grid-column:span 2}.jf-g .w3{grid-column:span 3}.jf-g .w4{grid-column:span 4}.jf-g .w5{grid-column:span 5}.jf-g .w6{grid-column:span 6}.jf-g .w8{grid-column:span 8}.jf-g .w9{grid-column:span 9}.jf-g .w12{grid-column:span 12}
+.jf-sec{grid-column:1/-1;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#5b3f9e;border-bottom:2px solid rgba(91,63,158,.18);padding:8px 0 4px;margin-top:2px}
+.jf-av{grid-column:1/-1;border-radius:10px;padding:9px 12px;font-size:13px;line-height:1.45}
+.jf-av.in{background:#f1edf9;color:#4b3486;border:1px solid #d9cff0}.jf-av.er{background:#fdecea;color:#8a2a1a;border:1px solid #f2b8ae}.jf-av.ok{background:#e6f4ec;color:#1d5c3a;border:1px solid #a8d5bb}
+.jf-tb{width:100%;border-collapse:collapse;font-size:13px}
+.jf-tb th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut,#5d6a85);padding:7px 8px;border-bottom:1px solid var(--line,#dde2ea)}
+.jf-tb td{padding:7px 8px;border-bottom:1px solid var(--line,#dde2ea);vertical-align:top}
+.jf-k{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:0 0 12px}
+.jf-k div{border:1px solid var(--line,#dde2ea);border-radius:10px;padding:8px 11px}.jf-k span{display:block;font-size:11.5px;text-transform:uppercase;color:var(--mut,#5d6a85);font-weight:700}.jf-k b{font-size:22px}
+.fjb{font:inherit;font-size:12px;font-weight:600;border:1px solid var(--line,#dde2ea);background:transparent;color:inherit;border-radius:8px;padding:4px 9px;cursor:pointer}
+.jf-tag{display:inline-block;font-size:11px;font-weight:700;border-radius:12px;padding:1px 7px;background:#f1edf9;color:#4b3486;margin-left:4px}
+@media(max-width:700px){.jf-g>.jf-c{grid-column:1/-1}}
+</style>
+<script>
+(function(){
+const e_=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const hojeI=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const i2b=s=>s?String(s).slice(0,10).split('-').reverse().join('/'):'';
+const b2i=s=>/^\d{2}\/\d{2}\/\d{4}$/.test(s||'')?s.slice(6)+'-'+s.slice(3,5)+'-'+s.slice(0,2):'';
+const addD=(s,n)=>{const d=new Date(s+'T12:00:00');d.setDate(d.getDate()+n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const quem=()=>(window.parent&&window.parent.CRV_QUEM)||'';
+const pl=(n,a,b)=>n+' '+(n===1?a:b);
+const MOTIVOS=['Término do contrato','Efetivado na CRV','A pedido do aprendiz (art. 433, IV, CLT)','Desempenho insuficiente ou inadaptação (art. 433, I, CLT)','Falta disciplinar grave (art. 433, II, CLT)','Ausência injustificada à escola com perda do ano letivo (art. 433, III, CLT)','Completou 24 anos','Outro'];
+const TIPOS_AT=['Atestado médico','Atestado odontológico','Declaração de comparecimento','Acompanhamento de familiar','Outro'];
+let JDB=null,REG={},ATS=[],PRONTO=false;
+const db=async()=>{if(JDB)return JDB;try{JDB=window.claude&&window.claude.use?await window.claude.use('db'):null}catch(_){JDB=null}return JDB};
+const chave=b=>String(b.mat||'').trim()||('cpf'+String(b.cpf||'').replace(/\D/g,''));
+async function carregar(){const D=await db();if(!D)return;
+  try{const s=await D.collection('jovens').get();REG={};s.docs.forEach(d=>{REG[d.id]=d.data()})}catch(_){}
+  try{const s=await D.collection('atestados').get();ATS=s.docs.map(d=>Object.assign({_id:d.id},d.data())).filter(a=>!a.excluido)}catch(_){ATS=[]}}
+/* aplica no BASE: jovens cadastrados no app, complementos e baixas */
+function aplicar(){
+  for(let i=BASE.length-1;i>=0;i--)if(BASE[i]._app)BASE.splice(i,1);
+  BASE.forEach(b=>{if(b._orig===undefined)b._orig={st:b.st,desl:b.desl};b.st=b._orig.st;b.desl=b._orig.desl;delete b.motivo;delete b._baixa;delete b.comp});
+  Object.entries(REG).forEach(([k,r])=>{if(r.excluido)return;let b=BASE.find(x=>chave(x)===k);
+    if(!b&&r.novo&&r.dados){const d=r.dados;b={mat:d.mat||'',nome:String(d.nome||'').toUpperCase(),ini:i2b(d.ini),fim:i2b(d.fim),jor:d.jor||'',setor:String(d.setor||'A definir').toUpperCase(),cbo:d.cbo||'',cpf:String(d.cpf||'').replace(/\D/g,''),matb:d.matb||'',st:d.ini&&d.ini>hojeI()?'Stand-by':'Ativo',desl:'',nasc:i2b(d.nasc),_app:true};BASE.push(b)}
+    if(!b)return;b.comp=r.dados||{};
+    if(r.baixa&&r.baixa.data){b.motivo=r.baixa.motivo==='Outro'?(r.baixa.obs||'Outro'):r.baixa.motivo;b._baixa=r.baixa;if(r.baixa.data<=hojeI()){b.st='Desligado';b.desl=i2b(r.baixa.data)}else b.motivo='Saída programada para '+i2b(r.baixa.data)+' · '+b.motivo}});
+  BASE.forEach(b=>{b._ats=ATS.filter(a=>a.chave===chave(b))})}
+async function atualizar(){await carregar();aplicar();PRONTO=true;try{MESES.forEach(m=>{delete m._c})}catch(_){}try{renderBase()}catch(_){}try{render()}catch(_){}}
+window.CRV_JOV_ATUALIZAR=atualizar;
+
+let W=null;const fechar=()=>{if(W){W.remove();W=null}};
+function modal(tit,sub){fechar();W=document.createElement('div');W.className='jf-fundo';W.innerHTML='<div class="jf-modal" role="dialog" aria-modal="true"><div class="jf-cab"><h3>'+e_(tit)+'<small>'+e_(sub||'')+'</small></h3><button class="jf-b" data-x>Fechar</button></div><div class="jf-corpo"></div><div class="jf-rod"><span class="msg"></span></div></div>';
+  document.body.appendChild(W);W.querySelector('[data-x]').onclick=fechar;W.addEventListener('mousedown',ev=>{if(ev.target===W)fechar()});return{C:W.querySelector('.jf-corpo'),R:W.querySelector('.jf-rod'),msg:(t,c)=>{const m=W.querySelector('.jf-rod .msg');m.style.color=c||'';m.textContent=t}}}
+async function salvarReg(k,r){const D=await db();if(!D)throw new Error('O registro não está disponível nesta visualização.');r.atualizadoEm=new Date().toISOString();r.atualizadoPor=quem();await D.collection('jovens').doc(k).set(r);REG[k]=r}
+
+const CAMPOS=[['sec','Contrato'],['mat','Matrícula CRV','w3',1],['matb','Matrícula Instituto João Bittar','w3'],['ini','Início do contrato','w3','date'],['fim','Término do contrato','w3','date'],
+ ['setor','Setor','w6','setor'],['jor','Jornada','w3',0,'Ex.: 13:00 às 19:00'],['cbo','CBO','w3'],
+ ['sec','Dados pessoais'],['nome','Nome completo *','w8'],['cpf','CPF','w4'],['nasc','Data de nascimento','w3','date'],['sexo','Sexo','w3','sexo'],['tel','Telefone do jovem','w3'],['email','E-mail','w3'],
+ ['end','Endereço','w8'],['cidade','Cidade','w4'],
+ ['sec','Responsável (obrigatório para menores de 18)'],['resp','Nome do responsável','w6'],['respPar','Parentesco','w3'],['respTel','Telefone do responsável','w3'],
+ ['sec','Escola'],['escola','Escola','w6'],['serie','Série / ano','w3'],['turnoEsc','Turno da escola','w3','turno'],
+ ['sec','Observações'],['obs','Observação','w12','area']];
+function campoH(c,d,ro){const[k,rot,w,t,ph]=c;if(k==='sec')return '<div class="jf-sec">'+e_(rot)+'</div>';const v=e_(d[k]||'');const r=ro&&ro.includes(k)?' readonly':'';
+  if(t==='date')return '<div class="jf-c '+w+'"><label>'+e_(rot)+'</label><input type="date" data-k="'+k+'" value="'+v+'"'+r+'></div>';
+  if(t==='sexo')return '<div class="jf-c '+w+'"><label>'+e_(rot)+'</label><select data-k="'+k+'">'+[['','—'],['F','Feminino'],['M','Masculino']].map(o=>'<option value="'+o[0]+'"'+(d[k]===o[0]?' selected':'')+'>'+o[1]+'</option>').join('')+'</select></div>';
+  if(t==='turno')return '<div class="jf-c '+w+'"><label>'+e_(rot)+'</label><select data-k="'+k+'">'+['','Manhã','Tarde','Noite','EAD / concluído'].map(o=>'<option'+(d[k]===o?' selected':'')+'>'+o+'</option>').join('')+'</select></div>';
+  if(t==='area')return '<div class="jf-c '+w+'"><label>'+e_(rot)+'</label><textarea data-k="'+k+'">'+v+'</textarea></div>';
+  return '<div class="jf-c '+w+'"><label>'+e_(rot)+'</label><input data-k="'+k+'" value="'+v+'"'+(t==='setor'?' list="setlist"':'')+(t===1?' inputmode="numeric"':'')+(ph?' placeholder="'+e_(ph)+'"':'')+r+'></div>'}
+const lerCampos=C=>{const d={};C.querySelectorAll('[data-k]').forEach(i=>d[i.dataset.k]=i.value.trim());return d};
+const idadeI=s=>{if(!s)return null;const n=new Date(s+'T12:00:00'),h=new Date();let a=h.getFullYear()-n.getFullYear();if(h.getMonth()<n.getMonth()||(h.getMonth()===n.getMonth()&&h.getDate()<n.getDate()))a--;return a};
+
+/* cadastro de jovem novo */
+async function novo(){const M=modal('Cadastrar jovem aprendiz','Entra na Base de jovens. A matrícula CRV puxa nome, CPF, setor e admissão do Quadro de Colaboradores, quando já existir.');
+  M.C.innerHTML='<div class="jf-g">'+CAMPOS.map(c=>campoH(c,{})).join('')+'<div class="jf-av in" id="jfInfo">Preencha ao menos o nome e o início do contrato.</div></div>';
+  M.R.insertAdjacentHTML('beforeend','<button class="jf-b" data-c>Cancelar</button><button class="jf-b pri" data-s>Cadastrar</button>');
+  M.R.querySelector('[data-c]').onclick=fechar;
+  const g=k=>M.C.querySelector('[data-k='+k+']');let tm;
+  g('mat').addEventListener('input',()=>{clearTimeout(tm);tm=setTimeout(async()=>{const m=g('mat').value.trim().replace(/^0+(?=\d)/,'');if(!m)return;
+    if(BASE.some(b=>String(b.mat)===m)){M.C.querySelector('#jfInfo').className='jf-av er';M.C.querySelector('#jfInfo').textContent='Essa matrícula já está na Base de jovens.';return}
+    try{const f=window.parent&&window.parent.CRV_QUADRO;const q=typeof f==='function'?await f():null;const c=q&&q.mapa&&q.mapa[m];
+      if(c){if(!g('nome').value)g('nome').value=c.nome;if(!g('cpf').value)g('cpf').value=c.cpf||'';if(!g('setor').value)g('setor').value=c.setor||'';if(!g('ini').value)g('ini').value=(c.admissao||'').slice(0,10);
+        M.C.querySelector('#jfInfo').className='jf-av ok';M.C.querySelector('#jfInfo').textContent='Encontrado no Quadro: '+c.nome+' · '+c.funcao+' · '+c.setor+' · '+c.situacao+'.'}
+      else{M.C.querySelector('#jfInfo').className='jf-av in';M.C.querySelector('#jfInfo').textContent='Matrícula ainda não está no Quadro. Preencha os dados à mão.'}}catch(_){}},450)});
+  M.R.querySelector('[data-s]').onclick=async()=>{const d=lerCampos(M.C);d.mat=d.mat.replace(/^0+(?=\d)/,'');d.cpf=d.cpf.replace(/\D/g,'');
+    const falta=[!d.nome&&'nome',!d.ini&&'início do contrato'].filter(Boolean);if(falta.length)return M.msg('Falta preencher: '+falta.join(', ')+'.','#a3301c');
+    const ia=idadeI(d.nasc);if(ia!==null&&ia<18&&!d.resp)return M.msg('Jovem menor de 18 anos: informe o responsável.','#a3301c');
+    const k=chave(d);if(!k||k==='cpf')return M.msg('Informe a matrícula CRV ou o CPF para identificar o jovem.','#a3301c');
+    if(BASE.some(b=>chave(b)===k))return M.msg('Esse jovem já está na Base.','#a3301c');
+    try{await salvarReg(k,{novo:true,dados:d,criadoEm:new Date().toISOString(),por:quem()});fechar();await atualizar();ficha(k,'dados','Jovem cadastrado.')}catch(er){M.msg(er.message||'Não consegui salvar.','#a3301c')}}}
+
+/* ficha do jovem: dados, atestados e desligamento */
+async function ficha(k,aba,aviso){if(!PRONTO)await atualizar();const b=BASE.find(x=>chave(x)===k);if(!b)return;const r=REG[k]||{};aba=aba||'dados';
+  const M=modal(tcase(b.nome),'Mat. CRV '+(b.mat||'–')+' · mat. Bittar '+(b.matb||'–')+' · '+(b.setor||'setor a definir')+' · '+b.st+(b.desl?' em '+b.desl:''));
+  const T=[['dados','Dados'],['at','Atestados ('+(b._ats||[]).length+')'],['bx',b.st==='Desligado'?'Desligamento':'Dar baixa']];
+  const draw=()=>{M.R.querySelectorAll('button').forEach(x=>x.remove());
+    let h='<div class="jf-tabs">'+T.map(t=>'<button data-t="'+t[0]+'" class="'+(aba===t[0]?'on':'')+'">'+t[1]+'</button>').join('')+'</div>';
+    if(aba==='dados'){const d=Object.assign({mat:b.mat,matb:b.matb,ini:b2i(b.ini),fim:b2i(b.fim),setor:b.setor,jor:b.jor,cbo:b.cbo,nome:tcase(b.nome),cpf:b.cpf,nasc:b2i(b.nasc)},r.dados||{});
+      const ro=b._app?[]:['mat','matb','ini','fim','nome','cpf','nasc','cbo'];
+      h+='<div class="jf-g">'+(b._app?'':'<div class="jf-av in">Os campos de contrato e identificação vêm da base do Instituto. Complete aqui contato, responsável e escola. O setor pode ser ajustado.</div>')+CAMPOS.map(c=>campoH(c,d,ro)).join('')+'</div>';
+      M.R.insertAdjacentHTML('beforeend',(b._app?'<button class="jf-b dan" data-del>Excluir cadastro</button>':'')+'<button class="jf-b pri" data-s>Salvar dados</button>')}
+    else if(aba==='at'){const L=(b._ats||[]).slice().sort((a,c)=>String(c.ini).localeCompare(String(a.ini))),dias=L.reduce((s,a)=>s+(+a.dias||0),0);
+      const m30=L.filter(a=>a.ini>=addD(hojeI(),-30)).length;
+      h+='<div class="jf-k"><div><span>Atestados</span><b>'+L.length+'</b></div><div><span>Dias</span><b>'+dias+'</b></div><div><span>Últimos 30 dias</span><b>'+m30+'</b></div></div>'
+       +(m30>=3?'<div class="jf-av er" style="margin-bottom:10px">3 ou mais atestados nos últimos 30 dias: vale conversar com o jovem, o responsável e o Instituto.</div>':'')
+       +'<div class="jf-g" id="jfAtF"><div class="jf-sec">Registrar atestado entregue</div>'
+       +'<div class="jf-c w3"><label>Entregue em</label><input type="date" data-a="entregue" value="'+hojeI()+'"></div>'
+       +'<div class="jf-c w3"><label>Início do afastamento *</label><input type="date" data-a="ini"></div>'
+       +'<div class="jf-c w2"><label>Dias *</label><input data-a="dias" inputmode="numeric" value="1"></div>'
+       +'<div class="jf-c w4"><label>Até</label><input data-a="fim" readonly></div>'
+       +'<div class="jf-c w4"><label>Tipo</label><select data-a="tipo">'+TIPOS_AT.map(t=>'<option>'+t+'</option>').join('')+'</select></div>'
+       +'<div class="jf-c w2"><label>CID</label><input data-a="cid" placeholder="opcional"></div>'
+       +'<div class="jf-c w6"><label>Profissional / CRM</label><input data-a="prof" placeholder="opcional"></div>'
+       +'<div class="jf-c w12"><label>Observação</label><input data-a="obs"></div>'
+       +'<div style="grid-column:1/-1"><button class="jf-b pri" data-addat>Registrar atestado</button></div></div>'
+       +'<div style="margin-top:14px;overflow:auto"><table class="jf-tb"><thead><tr><th>Período</th><th>Dias</th><th>Tipo</th><th>CID</th><th>Entregue</th><th>Por</th><th></th></tr></thead><tbody>'
+       +(L.length?L.map(a=>'<tr><td>'+i2b(a.ini)+(+a.dias>1?' a '+i2b(a.fim):'')+'</td><td>'+e_(a.dias)+'</td><td>'+e_(a.tipo)+(a.obs?'<div style="font-size:12px;color:var(--mut)">'+e_(a.obs)+'</div>':'')+'</td><td>'+e_(a.cid||'–')+'</td><td>'+i2b(a.entregue)+'</td><td>'+e_(String(a.por||'').split(' ')[0])+'</td><td><button class="jf-b dan" data-rmat="'+e_(a._id)+'">Excluir</button></td></tr>').join(''):'<tr><td colspan="7" style="color:var(--mut)">Nenhum atestado registrado no app.</td></tr>')+'</tbody></table></div>'}
+    else{const bx=r.baixa||{};
+      h+='<div class="jf-g">'+(b.st==='Desligado'&&!r.baixa?'<div class="jf-av in">Desligado em '+e_(b.desl)+' conforme a base do Instituto.</div>':'')
+       +(r.baixa?'<div class="jf-av ok">Baixa registrada no app: '+i2b(bx.data)+' · '+e_(bx.motivo)+(bx.por?' · por '+e_(String(bx.por).split(' ')[0]):'')+'</div>':'')
+       +(b.st!=='Desligado'||r.baixa?'<div class="jf-c w3"><label>Data de saída *</label><input type="date" data-b="data" value="'+e_(bx.data||hojeI())+'"></div>'
+       +'<div class="jf-c w9"><label>Motivo *</label><select data-b="motivo">'+MOTIVOS.map(m=>'<option'+(bx.motivo===m?' selected':'')+'>'+m+'</option>').join('')+'</select></div>'
+       +'<div class="jf-c w12"><label>Observação / detalhe do motivo</label><textarea data-b="obs">'+e_(bx.obs||'')+'</textarea></div>'
+       +'<div class="jf-av in">A baixa tira o jovem dos ativos a partir da data de saída. No mês da saída, o vale-alimentação fica proporcional aos dias, como já acontece com os desligados da base.</div>':'')+'</div>';
+      if(b.st!=='Desligado'||r.baixa)M.R.insertAdjacentHTML('beforeend',(r.baixa?'<button class="jf-b" data-desf>Desfazer baixa</button>':'')+'<button class="jf-b pri" data-bx>'+(r.baixa?'Salvar alteração':'Dar baixa')+'</button>')}
+    M.C.innerHTML=h;
+    M.C.querySelectorAll('[data-t]').forEach(x=>x.onclick=()=>{aba=x.dataset.t;M.msg('');draw()});
+    const S=M.R.querySelector('[data-s]');if(S)S.onclick=async()=>{const d=lerCampos(M.C);d.cpf=(d.cpf||'').replace(/\D/g,'');if(!d.nome)return M.msg('Informe o nome.','#a3301c');
+      const ia=idadeI(d.nasc);if(ia!==null&&ia<18&&!d.resp)return M.msg('Jovem menor de 18 anos: informe o responsável.','#a3301c');
+      try{await salvarReg(k,Object.assign({},r,{dados:d}));if(!b._app&&d.setor&&d.setor.toUpperCase()!==String(b.setor).toUpperCase()){try{await salvarSetor(b.mat,d.setor)}catch(_){}}
+        await atualizar();ficha(k,'dados','Dados salvos.')}catch(er){M.msg(er.message,'#a3301c')}};
+    const DEL=M.R.querySelector('[data-del]');if(DEL)DEL.onclick=async()=>{if(!DEL.dataset.c){DEL.dataset.c=1;DEL.textContent='Confirmar exclusão';return}
+      try{await salvarReg(k,Object.assign({},r,{excluido:true}));fechar();await atualizar()}catch(er){M.msg(er.message,'#a3301c')}};
+    const ga=n=>M.C.querySelector('[data-a='+n+']');
+    if(ga('ini')){const fim=()=>{const i=ga('ini').value,n=parseInt(ga('dias').value,10)||1;ga('fim').value=i?i2b(addD(i,n-1)):''};ga('ini').onchange=fim;ga('dias').oninput=fim;
+      M.C.querySelector('[data-addat]').onclick=async()=>{const a={chave:k,mat:b.mat||'',nome:b.nome,entregue:ga('entregue').value,ini:ga('ini').value,dias:parseInt(ga('dias').value,10)||0,tipo:ga('tipo').value,cid:ga('cid').value.trim().toUpperCase(),prof:ga('prof').value.trim(),obs:ga('obs').value.trim(),por:quem(),em:new Date().toISOString()};
+        if(!a.ini||!a.dias)return M.msg('Informe o início e a quantidade de dias.','#a3301c');a.fim=addD(a.ini,a.dias-1);
+        const D=await db();if(!D)return M.msg('Não dá para salvar nesta visualização.','#a3301c');
+        try{await D.collection('atestados').add(a);await atualizar();ficha(k,'at','Atestado registrado.')}catch(er){M.msg(er.message,'#a3301c')}}}
+    M.C.querySelectorAll('[data-rmat]').forEach(x=>x.onclick=async()=>{if(!x.dataset.c){x.dataset.c=1;x.textContent='Confirmar';return}const D=await db();try{await D.collection('atestados').doc(x.dataset.rmat).update({excluido:true,excluidoEm:new Date().toISOString(),excluidoPor:quem()});await atualizar();ficha(k,'at','Atestado excluído.')}catch(er){M.msg(er.message,'#a3301c')}});
+    const BX=M.R.querySelector('[data-bx]');if(BX)BX.onclick=async()=>{const gb=n=>M.C.querySelector('[data-b='+n+']');const bx={data:gb('data').value,motivo:gb('motivo').value,obs:gb('obs').value.trim(),por:quem(),em:new Date().toISOString()};
+      if(!bx.data)return M.msg('Informe a data de saída.','#a3301c');if(bx.motivo==='Outro'&&!bx.obs)return M.msg('Descreva o motivo na observação.','#a3301c');
+      try{await salvarReg(k,Object.assign({},r,{baixa:bx}));await atualizar();ficha(k,'bx','Baixa registrada.')}catch(er){M.msg(er.message,'#a3301c')}};
+    const DF=M.R.querySelector('[data-desf]');if(DF)DF.onclick=async()=>{if(!DF.dataset.c){DF.dataset.c=1;DF.textContent='Confirmar: desfazer';return}const o=Object.assign({},r);delete o.baixa;try{await salvarReg(k,o);await atualizar();ficha(k,'bx','Baixa desfeita.')}catch(er){M.msg(er.message,'#a3301c')}};
+  };
+  draw();if(aviso)M.msg(aviso,'#1d5c3a')}
+
+/* lista de todos os atestados */
+async function listaAt(){if(!PRONTO)await atualizar();const M=modal('Atestados dos jovens aprendizes','Registrados no app quando o jovem entrega o atestado.');let mes='',q='';
+  const draw=()=>{const L=ATS.filter(a=>(!mes||String(a.ini).slice(0,7)===mes)&&(!q||(a.nome+' '+a.mat).toLowerCase().includes(q))).sort((a,c)=>String(c.ini).localeCompare(String(a.ini)));
+    const ms=[...new Set(ATS.map(a=>String(a.ini).slice(0,7)))].sort().reverse(),pp=new Set(L.map(a=>a.chave)).size,dd=L.reduce((s,a)=>s+(+a.dias||0),0);
+    const rep={};L.forEach(a=>rep[a.chave]=(rep[a.chave]||0)+1);const r3=Object.values(rep).filter(n=>n>=3).length;
+    M.C.innerHTML='<div class="jf-k"><div><span>Atestados</span><b>'+L.length+'</b></div><div><span>Dias</span><b>'+dd+'</b></div><div><span>Jovens</span><b>'+pp+'</b></div><div><span>Com 3 ou mais</span><b>'+r3+'</b></div></div>'
+     +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><select id="jfM" class="jf-b"><option value="">Todos os meses</option>'+ms.map(m=>'<option value="'+m+'"'+(m===mes?' selected':'')+'>'+m.slice(5)+'/'+m.slice(0,4)+'</option>').join('')+'</select><input id="jfQ" class="jf-b" style="flex:1;min-width:180px;font-weight:400" placeholder="Buscar jovem" value="'+e_(q)+'"><button class="jf-b" id="jfX">Excel</button><button class="jf-b" id="jfP">PDF</button></div>'
+     +'<div style="overflow:auto"><table class="jf-tb"><thead><tr><th>Jovem</th><th>Período</th><th>Dias</th><th>Tipo</th><th>CID</th><th>Entregue</th></tr></thead><tbody>'+(L.length?L.map(a=>'<tr data-k="'+e_(a.chave)+'" style="cursor:pointer"><td><b>'+e_(tcase(a.nome))+'</b><div style="font-size:12px;color:var(--mut)">Mat. '+e_(a.mat||'–')+(rep[a.chave]>=3?' <span class="jf-tag">'+rep[a.chave]+' no filtro</span>':'')+'</div></td><td>'+i2b(a.ini)+(+a.dias>1?' a '+i2b(a.fim):'')+'</td><td>'+e_(a.dias)+'</td><td>'+e_(a.tipo)+'</td><td>'+e_(a.cid||'–')+'</td><td>'+i2b(a.entregue)+'</td></tr>').join(''):'<tr><td colspan="6" style="color:var(--mut)">Nenhum atestado registrado.</td></tr>')+'</tbody></table></div>';
+    M.C.querySelector('#jfM').onchange=ev=>{mes=ev.target.value;draw()};const qi=M.C.querySelector('#jfQ');qi.oninput=()=>{q=qi.value.toLowerCase();clearTimeout(qi._t);qi._t=setTimeout(()=>{draw();const n=M.C.querySelector('#jfQ');n.focus();n.setSelectionRange(n.value.length,n.value.length)},300)};
+    M.C.querySelectorAll('tr[data-k]').forEach(t=>t.onclick=()=>ficha(t.dataset.k,'at'));
+    const linhas=L.map(a=>[tcase(a.nome),a.mat||'',i2b(a.ini),i2b(a.fim),a.dias,a.tipo,a.cid||'',i2b(a.entregue),a.obs||'']);const H=['Jovem','Matrícula','Início','Fim','Dias','Tipo','CID','Entregue em','Observação'];
+    const salvar=async(nome,bytes,tipo)=>{const DL=window.claude&&window.claude.use?await window.claude.use('downloads').catch(()=>null):null;if(DL)return DL.save({filename:nome,data:bytes});const u=URL.createObjectURL(new Blob([bytes],{type:tipo}));const x=document.createElement('a');x.href=u;x.download=nome;document.body.appendChild(x);x.click();setTimeout(()=>{x.remove();URL.revokeObjectURL(u)},4000)};
+    M.C.querySelector('#jfX').onclick=async()=>{const X=window.XLSX||(window.parent&&window.parent.XLSX);if(!X)return M.msg('Excel indisponível.','#a3301c');const ws=X.utils.aoa_to_sheet([H,...linhas]);ws['!cols']=[36,10,11,11,6,24,8,12,40].map(w=>({wch:w}));const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,'Atestados');await salvar('atestados-jovens-aprendizes.xlsx',new Uint8Array(X.write(wb,{bookType:'xlsx',type:'array'})),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')};
+    M.C.querySelector('#jfP').onclick=async()=>{const J=(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF);if(!J)return M.msg('PDF indisponível.','#a3301c');const doc=new J({unit:'mm',format:'a4',orientation:'landscape'});doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text('CRV INDUSTRIAL · Atestados dos jovens aprendizes (Instituto João Bittar)',12,14);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text((mes?'Mês '+mes.slice(5)+'/'+mes.slice(0,4):'Todos os meses')+' · '+L.length+' atestados · '+dd+' dias · emitido em '+new Date().toLocaleDateString('pt-BR'),12,20);
+      doc.autoTable({startY:24,head:[H],body:linhas,styles:{fontSize:8,cellPadding:1.4},headStyles:{fillColor:[91,63,158]},margin:{left:12,right:12}});await salvar('atestados-jovens-aprendizes.pdf',new Uint8Array(doc.output('arraybuffer')),'application/pdf')}};
+  draw()}
+
+window.CRV_NOVO=()=>{try{go('bas')}catch(_){}novo()};window.CRV_JOV_FICHA=ficha;window.CRV_JOV_AT=listaAt;
+/* botões na aba Base de jovens */
+(function(){const t=document.querySelector('#bas .tools');if(!t)return;
+  t.insertAdjacentHTML('beforeend','<button type="button" class="btn2" id="jfNovo" style="background:#5b3f9e;color:#fff;border-color:#5b3f9e">+ Cadastrar jovem</button><button type="button" class="btn2" id="jfAts">Atestados</button>');
+  document.getElementById('jfNovo').onclick=novo;document.getElementById('jfAts').onclick=listaAt})();
+atualizar();
+})();
 </script>
 
 </body></html>
