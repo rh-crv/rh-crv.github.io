@@ -434,11 +434,14 @@ const dayOf = s => { const [y, m, d] = s.split("-").map(Number); return (new Dat
 const dnum = s => { const [y, m, d] = s.split("-").map(Number); return Date.UTC(y, m - 1, d) / 864e5; };
 
 /* treinamentos cadastrados no app */
+/* correção de grafia nos títulos (ex.: ADMISSINAL -> ADMISSIONAL) */
+window.CRV_CORR_TIT=t=>String(t||'').replace(/admissinal/gi,'ADMISSIONAL').replace(/\s+-\s*|\s*-\s+/g,' - ').replace(/\s+/g,' ').trim();
+DATA.rows.forEach(r=>{r[1]=CRV_CORR_TIT(r[1])});
 (function(){const N=window.CRV_NOVOS||[];if(!N.length)return;
  N.forEach((n,k)=>{const d=n.dados||{};if(!d.titulo||d.mes===''||d.mes==null)return;
   const st=String(d.setor||'').trim().toUpperCase();let si=DATA.setores.findIndex(x=>x.toUpperCase()===st);if(si<0){DATA.setores.push(st);si=DATA.setores.length-1}
   const real=d.sit==='real'&&d.data;const h=parseFloat(String(d.h||'').replace(',','.'));
-  DATA.rows.push([90000+k,String(d.titulo).trim().toUpperCase(),+d.tipo||0,si,+d.mes,real?d.data:null,real?(parseInt(d.n,10)||null):null,real&&!isNaN(h)?h:null,real&&d.efic?d.efic:null]);
+  DATA.rows.push([90000+k,CRV_CORR_TIT(String(d.titulo).trim().toUpperCase()),+d.tipo||0,si,+d.mes,real?d.data:null,real?(parseInt(d.n,10)||null):null,real&&!isNaN(h)?h:null,real&&d.efic?d.efic:null]);
  });
 })();
 const [ry, rm] = DATA.ref.split("-").map(Number);
@@ -969,7 +972,7 @@ window.CRV_NOVOS_CFG={
     const n=parseInt(d.n,10),h=parseFloat(String(d.h||'').replace(',','.'));
     c.info('tinfo','',real?(n&&h?'Horas/homem deste treinamento: <b>'+(n*h).toLocaleString('pt-BR',{maximumFractionDigits:1})+'</b> ('+n+' treinados × '+String(d.h)+' h).':'Preencha a data, o nº de treinados e a carga horária. A eficácia pode ser lançada depois, em Editar.'):'Fica no cronograma como previsto. Quando acontecer, clique em Editar e mude para Realizado.');
   },
-  validar:d=>{
+  validar:d=>{d.titulo=window.CRV_CORR_TIT?CRV_CORR_TIT(String(d.titulo||'').toUpperCase()):d.titulo;
     if(d.sit==='real'){
       if(!d.data)return 'Informe a data de realização.';
       if(!/^\d+$/.test(d.n||''))return 'Informe o nº de treinados.';
@@ -979,7 +982,7 @@ window.CRV_NOVOS_CFG={
     }
     return '';
   },
-  colunas:[['Treinamento',(d,H)=>'<b>'+H.esc(d.titulo)+'</b>'],['Setor',(d,H)=>H.esc(d.setor)],['Mês',(d,H)=>d.mes!==''&&d.mes!=null?MES_T[+d.mes].slice(0,3)+'/'+DATA.ano:''],['Situação',(d,H)=>d.sit==='real'?'Realizado em '+H.brData(d.data)+' · '+H.esc(d.n)+' pessoas · '+H.esc(d.h)+' h':'Previsto']]
+  colunas:[['Treinamento',(d,H)=>'<b>'+H.esc(window.CRV_CORR_TIT?CRV_CORR_TIT(d.titulo):d.titulo)+'</b>'],['Setor',(d,H)=>H.esc(d.setor)],['Mês',(d,H)=>d.mes!==''&&d.mes!=null?MES_T[+d.mes].slice(0,3)+'/'+DATA.ano:''],['Situação',(d,H)=>d.sit==='real'?'Realizado em '+H.brData(d.data)+' · '+H.esc(d.n)+' pessoas · '+H.esc(d.h)+' h':'Previsto']]
 };
 </script>
 <!-- ===== Cadastro de novos registros no app ===== -->
