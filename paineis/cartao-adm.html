@@ -244,9 +244,10 @@ function abrirForm(x,dev,cartaoPre){
     <div class="c w4"><label>Setor / empresa</label><input id="fS" list="dlS" value="${esc(e.setor||'')}" placeholder="Ex.: CTT / CRV-MG"><datalist id="dlS">${setores.map(s=>`<option value="${esc(s)}">`).join('')}</datalist></div>
     <div class="c w5"><label>Cargo / função</label><input id="fG" value="${esc(e.cargo||'')}"></div>
     <div class="info" id="fI">${x?'Dados já preenchidos.':'Digite o nº do cartão e, se for colaborador CRV, a matrícula.'}</div>
-    <div class="sec">Uso autorizado e refeições</div>
+    <div class="sec">Período de uso do cartão e refeições</div>
+    <div class="c w12" style="flex-direction:row;gap:6px;flex-wrap:wrap;align-items:center"><span style="font-size:12px;color:var(--mut);margin-right:4px">Por quanto tempo fica com o cartão:</span>${[[1,'1 dia'],[2,'2 dias'],[3,'3 dias'],[5,'5 dias'],[7,'1 semana'],[10,'10 dias'],[15,'15 dias'],[30,'30 dias']].map(([n,t])=>`<button type="button" class="chip pz" data-n="${n}">${t}</button>`).join('')}<span style="font-size:12px;color:var(--mut)">ou escolha o início e o fim abaixo</span></div>
     <div class="c w3"><label>Início do uso *</label><input id="fIni" type="date" value="${esc(e.inicio||e.entrega||hojeISO())}"></div>
-    <div class="c w2"><label>Dias</label><input id="fDias" inputmode="numeric" value="${esc(e.inicio&&e.fimUso?diasEntre(e.inicio,e.fimUso):(/^\d+$/.test(String(e.duracao||''))?e.duracao:'30'))}"></div>
+    <div class="c w2"><label>Quantos dias</label><input id="fDias" inputmode="numeric" value="${esc(e.inicio&&e.fimUso?diasEntre(e.inicio,e.fimUso):(/^\d+$/.test(String(e.duracao||''))?e.duracao:'30'))}"></div>
     <div class="c w3"><label>Fim do uso *</label><input id="fFim" type="date" value="${esc(e.fimUso||'')}"></div>
     <div class="c w4"><label>Responsável solicitante</label><input id="fP" list="dlP" value="${esc(e.solicitante||'')}"><datalist id="dlP">${sols.map(s=>`<option value="${esc(s)}">`).join('')}</datalist></div>
     <div class="c w12" style="flex-direction:row;gap:18px;flex-wrap:wrap;align-items:center">
@@ -278,7 +279,10 @@ function abrirForm(x,dev,cartaoPre){
   const syncFim=()=>{const n=parseInt(g('fDias').value,10);if(g('fIni').value&&n>0)g('fFim').value=addD(g('fIni').value,n-1)};
   const syncDias=()=>{if(g('fIni').value&&g('fFim').value&&g('fFim').value>=g('fIni').value)g('fDias').value=diasEntre(g('fIni').value,g('fFim').value)};
   if(!g('fFim').value)syncFim();
-  g('fDias').oninput=()=>{syncFim();recalc()};g('fFim').oninput=()=>{syncDias();recalc()};g('fIni').oninput=()=>{syncFim();recalc()};
+  const marcaPz=()=>w.querySelectorAll('.pz').forEach(b=>b.classList.toggle('on',b.dataset.n===String(parseInt(g('fDias').value,10))));
+  w.querySelectorAll('.pz').forEach(b=>b.onclick=()=>{g('fDias').value=b.dataset.n;syncFim();recalc();marcaPz()});
+  g('fDias').addEventListener('input',marcaPz);g('fFim').addEventListener('input',marcaPz);g('fIni').addEventListener('input',marcaPz);setTimeout(marcaPz,0);
+  g('fDias').oninput=()=>{syncFim();recalc();marcaPz()};g('fFim').oninput=()=>{syncDias();recalc()};g('fIni').oninput=()=>{syncFim();recalc()};
   ['rC','rA','rJ'].forEach(k=>g(k).onchange=recalc);['vC','vA','vJ'].forEach(k=>g(k).oninput=recalc);g('fRec').onclick=recalc;
   g('fE').oninput=()=>{if(!x)g('fIni').value=g('fE').value;syncFim();recalc()};
   if(!CR.length&&!x)recalc();else desenharCR();
