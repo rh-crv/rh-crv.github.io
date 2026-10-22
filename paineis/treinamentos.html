@@ -193,6 +193,7 @@ tbody tr.go:hover{background:var(--surface-2)}
 .ql{display:flex;flex-direction:column}
 .qrow{display:grid;grid-template-columns:64px minmax(0,1fr) 16px;gap:14px;align-items:center;padding:12px 20px;border:0;border-top:1px solid var(--line);background:none;text-align:left;cursor:pointer;width:100%}
 .qrow:hover{background:var(--surface-2)}
+.tr-ed{font:inherit;font-size:12px;font-weight:700;border:1px solid #c9d6ee;background:#eef3fc;color:#163A7D;border-radius:7px;padding:4px 10px;cursor:pointer;white-space:nowrap}.tr-ed:hover{background:#163A7D;color:#fff}
 .qrow b{font-family:var(--f-display);font-size:24px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums}
 .qrow span{display:flex;flex-direction:column;min-width:0}
 .qrow span strong{font-weight:700;font-size:14.5px}
@@ -438,7 +439,7 @@ const dnum = s => { const [y, m, d] = s.split("-").map(Number); return Date.UTC(
 window.CRV_CORR_TIT=t=>String(t||'').replace(/admissinal/gi,'ADMISSIONAL').replace(/\s+-\s*|\s*-\s+/g,' - ').replace(/\s+/g,' ').trim();
 DATA.rows.forEach(r=>{r[1]=CRV_CORR_TIT(r[1])});
 (function(){const N=window.CRV_NOVOS||[];if(!N.length)return;
- N.forEach((n,k)=>{const d=n.dados||{};if(!d.titulo||d.mes===''||d.mes==null)return;
+ window.CRV_TR_ID={};N.forEach((n,k)=>{const d=n.dados||{};if(!d.titulo||d.mes===''||d.mes==null)return;CRV_TR_ID[90000+k]=n._id;
   const st=String(d.setor||'').trim().toUpperCase();let si=DATA.setores.findIndex(x=>x.toUpperCase()===st);if(si<0){DATA.setores.push(st);si=DATA.setores.length-1}
   const real=d.sit==='real'&&d.data;const h=parseFloat(String(d.h||'').replace(',','.'));
   DATA.rows.push([90000+k,CRV_CORR_TIT(String(d.titulo).trim().toUpperCase()),+d.tipo||0,si,+d.mes,real?d.data:null,real?(parseInt(d.n,10)||null):null,real&&!isNaN(h)?h:null,real&&d.efic?d.efic:null]);
@@ -525,10 +526,12 @@ function openDetail(title, sub, rows, action, keep) {
   const b = $("#dAct"); b.hidden = !action; if (action) { b.textContent = action.label; b.onclick = () => { closeDetail(); action.fn(); }; }
   renderDetail(); $("#ovl").hidden = false; $(".dbody").scrollTop = 0; $("#dClose").focus();
 }
+const edBtn = row => { const id = (window.CRV_TR_ID || {})[row]; return id ? `<button type="button" class="tr-ed" data-ed="${esc(id)}" title="Corrigir este lançamento">Editar</button>` : ""; };
+document.addEventListener("click", e => { const b = e.target.closest(".tr-ed"); if (!b) return; e.preventDefault(); e.stopPropagation(); if (typeof window.CRV_NOVOS_EDITAR === "function") { closeDetail(); window.CRV_NOVOS_EDITAR(b.dataset.ed); } }, true);
 function renderDetail() {
   const r = DET.rows;
-  $("#tDet").innerHTML = `<thead><tr><th class="r">Linha</th><th>Data</th><th>Treinamento</th><th>Setor</th><th>Tipo</th><th class="r">Treinados</th><th class="r">Carga</th><th>Eficácia</th><th>Situação</th></tr></thead><tbody>` +
-    (r.slice(0, DET.limit).map(x => `<tr><td class="r muted">${x.row}</td><td class="num">${x.d ? br(x.d) : `<span class="muted">prev. ${MS[x.m]}</span>`}</td><td class="w">${esc(x.t)}</td><td>${esc(sn(x.s))}</td><td>${TIPO[x.tipo]}</td><td class="r">${x.n == null ? "—" : nf(x.n)}</td><td class="r">${hrs(x.h)}</td><td class="num">${br(x.e)}</td><td>${pills(x)}</td></tr>`).join("") || `<tr><td colspan="9" class="empty">Nenhum treinamento neste recorte.</td></tr>`) + `</tbody>`;
+  $("#tDet").innerHTML = `<thead><tr><th class="r">Linha</th><th>Data</th><th>Treinamento</th><th>Setor</th><th>Tipo</th><th class="r">Treinados</th><th class="r">Carga</th><th>Eficácia</th><th>Situação</th><th></th></tr></thead><tbody>` +
+    (r.slice(0, DET.limit).map(x => `<tr><td class="r muted">${x.row}</td><td class="num">${x.d ? br(x.d) : `<span class="muted">prev. ${MS[x.m]}</span>`}</td><td class="w">${esc(x.t)}</td><td>${esc(sn(x.s))}</td><td>${TIPO[x.tipo]}</td><td class="r">${x.n == null ? "—" : nf(x.n)}</td><td class="r">${hrs(x.h)}</td><td class="num">${br(x.e)}</td><td>${pills(x)}</td><td>${edBtn(x.row)}</td></tr>`).join("") || `<tr><td colspan="10" class="empty">Nenhum treinamento neste recorte.</td></tr>`) + `</tbody>`;
   const left = r.length - DET.limit; $("#dMais").hidden = left <= 0; if (left > 0) $("#dMais").textContent = `Mostrar mais ${nf(Math.min(150, left))} (faltam ${nf(left)})`;
 }
 function closeDetail() { $("#ovl").hidden = true; }
@@ -794,8 +797,8 @@ function renderCron(rows) {
   $("#sitChips").innerHTML = Object.keys(SIT).map(k => `<button type="button" class="chip" aria-pressed="${CR.sit === k}" ${act(() => { CR.sit = k; CR.limit = 100; renderCron(base()); })}>${SIT[k][0]}<b>${nf(pre.filter(SIT[k][1]).length)}</b></button>`).join("");
   const out = pre.filter(SIT[CR.sit][1]); CR._out = out;
   $("#cronHint").textContent = `${nf(out.length)} de ${nf(rows.length)} linhas`;
-  $("#tCron").innerHTML = `<thead><tr><th class="r">Linha</th><th>Treinamento</th><th>Setor</th><th>Tipo</th><th>Previsão</th><th>Data</th><th class="r">Treinados</th><th class="r">Carga</th><th>Eficácia</th><th>Situação</th></tr></thead><tbody>` +
-    (out.slice(0, CR.limit).map(r => `<tr><td class="r muted">${r.row}</td><td class="w">${esc(r.t)}</td><td>${esc(sn(r.s))}</td><td>${TIPO[r.tipo]}</td><td>${MES[r.m]}</td><td class="num">${br(r.d)}</td><td class="r">${r.n == null ? "—" : nf(r.n)}</td><td class="r">${hrs(r.h)}</td><td class="num">${br(r.e)}</td><td>${pills(r)}</td></tr>`).join("") || `<tr><td colspan="10" class="empty">Nenhuma linha com esses filtros.</td></tr>`) + `</tbody>`;
+  $("#tCron").innerHTML = `<thead><tr><th class="r">Linha</th><th>Treinamento</th><th>Setor</th><th>Tipo</th><th>Previsão</th><th>Data</th><th class="r">Treinados</th><th class="r">Carga</th><th>Eficácia</th><th>Situação</th><th></th></tr></thead><tbody>` +
+    (out.slice(0, CR.limit).map(r => `<tr><td class="r muted">${r.row}</td><td class="w">${esc(r.t)}</td><td>${esc(sn(r.s))}</td><td>${TIPO[r.tipo]}</td><td>${MES[r.m]}</td><td class="num">${br(r.d)}</td><td class="r">${r.n == null ? "—" : nf(r.n)}</td><td class="r">${hrs(r.h)}</td><td class="num">${br(r.e)}</td><td>${pills(r)}</td><td>${edBtn(r.row)}</td></tr>`).join("") || `<tr><td colspan="11" class="empty">Nenhuma linha com esses filtros.</td></tr>`) + `</tbody>`;
   const left = out.length - CR.limit; $("#btnMais").hidden = left <= 0; if (left > 0) $("#btnMais").textContent = `Mostrar mais ${nf(Math.min(100, left))} (faltam ${nf(left)})`;
 }
 
@@ -1134,6 +1137,7 @@ function abrir(reg){
   const msg2=t=>{el('msg').style.color='#1d5c3a';el('msg').textContent=t+' Atualizando o painel…'};
   setTimeout(()=>{const p=CFG.campos.find(c=>c.foco);if(p&&el(p.k))el(p.k).focus()},60);
 }
+window.CRV_NOVOS_EDITAR=async id=>{let n=(window.CRV_NOVOS||[]).find(x=>x._id===id);if(!n){const D=await db();if(D){try{const s=await D.collection('novos').get();const x=s.docs.find(d=>d.id===id);if(x)n={_id:x.id,dados:x.data()}}catch(_){}}}if(n)abrir(n)};
 function montarBotao(){
   const alvo=(CFG.alvo&&document.querySelector(CFG.alvo))||document.querySelector('header .hin')||document.querySelector('header');
   if(!alvo||document.querySelector('.nv-btn'))return;

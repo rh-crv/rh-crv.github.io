@@ -632,6 +632,7 @@ function abrir(reg){
   const msg2=t=>{el('msg').style.color='#1d5c3a';el('msg').textContent=t+' Atualizando o painel…'};
   setTimeout(()=>{const p=CFG.campos.find(c=>c.foco);if(p&&el(p.k))el(p.k).focus()},60);
 }
+window.CRV_NOVOS_EDITAR=async id=>{let n=(window.CRV_NOVOS||[]).find(x=>x._id===id);if(!n){const D=await db();if(D){try{const s=await D.collection('novos').get();const x=s.docs.find(d=>d.id===id);if(x)n={_id:x.id,dados:x.data()}}catch(_){}}}if(n)abrir(n)};
 function montarBotao(){
   const alvo=(CFG.alvo&&document.querySelector(CFG.alvo))||document.querySelector('header .hin')||document.querySelector('header');
   if(!alvo||document.querySelector('.nv-btn'))return;
