@@ -995,7 +995,7 @@ window.CRV_NOVOS_CFG={
   copias:d=>d.tipo==='1'&&d.sit==='real'?(parseInt(d.qtd,10)||1):1,
   aoMudar:c=>{
     const d=c.ler(),real=d.sit==='real';['data','n','h','efic'].forEach(k=>c.mostrar(k,real));const ind=real&&d.tipo==='1'&&!c.editando;c.mostrar('qtd',ind);if(ind&&!d.n){const e=c.el('n');if(e)e.value='1';d.n='1'}
-    if(real&&d.data&&!c._mesTocado){const m=String(+d.data.slice(5,7)-1);const sel=c.el('mes');if(sel&&!sel.value)sel.value=m;}
+    if(real&&/^\d{4}-\d{2}-\d{2}$/.test(d.data||'')){const m=String(+d.data.slice(5,7)-1);const sel=c.el('mes');if(sel&&sel.value!==m&&c._dataAnt!==d.data){sel.value=m;d.mes=m}c._dataAnt=d.data}
     const n=parseInt(d.n,10),h=CRV_HORAS(d.h);const hf=x=>{const H=Math.floor(x+1e-9),M=Math.round((x-H)*60);return H+':'+String(M).padStart(2,'0')};
     const q=ind?Math.max(1,parseInt(d.qtd,10)||1):1;c.info('tinfo','',real?(n&&h?(q>1?'Vão ser lançadas <b>'+q+' linhas</b> iguais (uma por pessoa), cada uma com '+n+' treinado(s) e '+hf(h)+' · total de horas/homem: <b>'+hf(q*n*h)+'</b>.':'Carga: <b>'+hf(h)+'</b> · horas/homem deste treinamento: <b>'+hf(n*h)+'</b> ('+n+' treinados × '+hf(h)+').'):'Preencha a data, o nº de treinados e a carga horária. A eficácia pode ser lançada depois, em Editar.'):'Fica no cronograma como previsto. Quando acontecer, clique em Editar e mude para Realizado.');
   },
@@ -1008,6 +1008,7 @@ window.CRV_NOVOS_CFG={
       if(!d.h||isNaN(CRV_HORAS(d.h)))return 'Informe a carga horária em horas e minutos (ex.: 0:30 para meia hora, 1:30 para uma hora e meia).';
       if(d.data.slice(0,4)!==String(DATA.ano))return 'O painel é de '+DATA.ano+': use uma data deste ano.';
       if(d.efic&&d.efic<d.data)return 'A eficácia não pode ser antes da realização.';
+      if(d.mes!==''&&d.mes!=null&&+d.mes!==+d.data.slice(5,7)-1)return 'O mês do cronograma ('+MES_T[+d.mes]+') não bate com a data de realização ('+d.data.split('-').reverse().join('/')+'). Ajuste o mês ou a data para ficarem iguais.';
     }
     return '';
   },
