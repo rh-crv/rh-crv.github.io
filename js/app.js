@@ -401,7 +401,7 @@ function blocoFrente(f, lista){
    ===================================================================== */
 // opções que aparecem abaixo do painel no menu (seta)
 const SUBACOES = {
-  quadro:   [{ acao:'hcol', nome:'Histórico do colaborador' }, { acao:'ent', nome:'Entrevista de desligamento' }, { acao:'estab', nome:'Estabilidade' }],
+  quadro:   [{ acao:'hcol', nome:'Histórico do colaborador' }, { acao:'ent', nome:'Entrevista de desligamento' }, { acao:'entr', nome:'Respostas das entrevistas' }, { acao:'estab', nome:'Estabilidade' }],
   curriculos: [{ acao:'ctr', nome:'Em contratação' }],
   jovem:    [{ acao:'novo', nome:'Cadastrar jovem' }, { acao:'dslj', nome:'Registrar desligamento' }, { acao:'atj', nome:'Atestados' }],
   renapsi:  [{ acao:'novo', nome:'Cadastrar jovem' }, { acao:'dslj', nome:'Registrar desligamento' }, { acao:'atj', nome:'Atestados' }],
@@ -418,7 +418,7 @@ const SUBACOES = {
   farmacia: [{ acao:'aut', nome:'Autorização de desconto' }, { acao:'hist', nome:'Histórico de autorizações' }],
   'servicos-gerais': [{ acao:'she', nome:'Lançar horas extras' }, { acao:'sgr', nome:'Gratificação do mês' }]
 };
-function fecharJanelasAut(w){ try { w.document.querySelectorAll('.aut-fundo,.ent-fundo,.of-fundo,.nv-fundo,.rl-fundo,.es-fundo,.ds-fundo,.ct-fundo,.jf-fundo,.ft-fundo,.df-fundo').forEach(x => x.remove()); } catch(_){} }
+function fecharJanelasAut(w){ try { w.document.querySelectorAll('.aut-fundo,.ent-fundo,.er-fundo,.of-fundo,.nv-fundo,.rl-fundo,.es-fundo,.ds-fundo,.ct-fundo,.jf-fundo,.ft-fundo,.df-fundo').forEach(x => x.remove()); } catch(_){} }
 function executarAcao(acao){
   const f = document.getElementById('modelo-frame');
   const w = f && f.contentWindow;
@@ -432,6 +432,7 @@ function executarAcao(acao){
   if (acao === 'ctr' && w && typeof w.CRV_CONTRATACAO === 'function') { fecharJanelasAut(w); w.CRV_CONTRATACAO(); return true; }
   if (acao === 'hcol' && w && typeof w.CRV_HISTCOL === 'function') { fecharJanelasAut(w); w.CRV_HISTCOL(); return true; }
   if (acao === 'estab' && w && typeof w.CRV_ESTAB === 'function') { fecharJanelasAut(w); w.CRV_ESTAB(); return true; }
+  if (acao === 'entr' && w && typeof w.CRV_ENT_RESP === 'function') { fecharJanelasAut(w); w.CRV_ENT_RESP(); return true; }
   if (acao === 'ent' && w && typeof w.CRV_ENTREVISTA === 'function') { fecharJanelasAut(w); w.CRV_ENTREVISTA(); return true; }
   if (acao === 'termo' && w && typeof w.CRV_TERMO === 'function') { fecharJanelasAut(w); w.CRV_TERMO(); return true; }
   if (acao === 'sem' && w && typeof w.CRV_SEMANA === 'function') { fecharJanelasAut(w); w.CRV_SEMANA(); return true; }
@@ -934,9 +935,9 @@ window.CRV_QUADRO = async function(){
     const DM = (dados.DM || []).filter(r => /\(5\)\s*$/.test(String(r[21] || '')) || /^CRV\b/i.test(String(r[21] || '')))
       .sort((a, b) => String(a[20] || '') < String(b[20] || '') ? -1 : 1);
     const CPFM = dados.CPFM || {};
-    DM.forEach(r => { M[txt(r[0])] = { nasc: txt(r[27] || ''), cpf: txt(CPFM[txt(r[0])] || ''), cc: (txt(r[23]) && txt(r[23]) !== '0') ? txt(r[23]) : '', ccd: txt(r[13]), nome:txt(r[1]), funcao:txt(r[2]), setor:txt(r[3]), situacao:'Desligado', vinculo:txt(r[7]), gerencia:txt(r[6]), cnh:txt(r[17]), admissao:txt(r[9]), deslig:txt(r[20]), empresa:txt(r[21]).replace(/\s*\(\d+\)$/, '') }; });
+    DM.forEach(r => { M[txt(r[0])] = { nasc: txt(r[27] || ''), cpf: txt(CPFM[txt(r[0])] || ''), cc: (txt(r[23]) && txt(r[23]) !== '0') ? txt(r[23]) : '', ccd: txt(r[13]), nome:txt(r[1]), funcao:txt(r[2]), setor:txt(r[3]), situacao:'Desligado', vinculo:txt(r[7]), gerencia:txt(r[6]), area:txt(r[5]), cnh:txt(r[17]), admissao:txt(r[9]), deslig:txt(r[20]), empresa:txt(r[21]).replace(/\s*\(\d+\)$/, '') }; });
     const XX = Array.isArray(dados.X) && dados.X.length === dados.D.length ? dados.X : null;
-    dados.D.forEach((r, i) => { M[txt(r[0])] = { nasc: XX ? txt(XX[i][0]) : '', cpf: XX ? txt(XX[i][11]) : '', cc: XX ? txt(XX[i][33]) : '', ccd: txt(r[13]), nome:txt(r[1]), funcao:txt(r[2]), setor:txt(r[3]), situacao:txt(r[8]) || 'Ativo', vinculo:txt(r[7]), gerencia:txt(r[6]), cnh:txt(r[17]), admissao:txt(r[9]), deslig:'', empresa:'CRV' }; });
+    dados.D.forEach((r, i) => { M[txt(r[0])] = { nasc: XX ? txt(XX[i][0]) : '', cpf: XX ? txt(XX[i][11]) : '', cc: XX ? txt(XX[i][33]) : '', ccd: txt(r[13]), nome:txt(r[1]), funcao:txt(r[2]), setor:txt(r[3]), situacao:txt(r[8]) || 'Ativo', vinculo:txt(r[7]), gerencia:txt(r[6]), area:txt(r[5]), cnh:txt(r[17]), admissao:txt(r[9]), deslig:'', empresa:'CRV' }; });
     // departamentos (código Depto/Seção → nome), a partir dos ativos e afastados
     const DP = {};
     if (XX) dados.D.forEach((r, i) => { const cod = txt(XX[i][23]), nome = txt(r[3]); if (!cod || !nome) return;
@@ -1159,10 +1160,22 @@ async function lerPacote(f){
   let pac;
   try { pac = JSON.parse(await f.text()); } catch(_) { throw new Error('não é um arquivo de dados do app'); }
   if (pac.tipo === 'crv-estabilidade' && Array.isArray(pac.itens)) return { estab:true, painel:'quadro', referencia: pac.gerado || '', itens: pac.itens };
+  if (pac.tipo === 'crv-entrevistas' && Array.isArray(pac.itens)) return { entr:true, painel:'quadro', referencia: pac.gerado || '', itens: pac.itens };
   if (pac.tipo !== 'crv-pacote' || !(pac.dados || pac.blocos)) throw new Error('não é um arquivo de dados do app');
   return pac;
 }
 
+// respostas das entrevistas de desligamento (tabuladas): entram como registros do Quadro; não substituem o que já foi lançado ou corrigido no app
+async function salvarEntrevistas(itens){
+  const quem = E.perfil ? E.perfil.nome : '';
+  const linhas = itens.map(it => { const id = String(it.id || ('ent-' + it.mat + '-' + (it.ped || it.dataAss || ''))).replace(/[^\w-]+/g, '_').slice(0, 90);
+    return { painel:'quadro', caminho:'entrevistas_resp/' + id, colecao:'entrevistas_resp', doc_id:id, dados:{ ...it, id:undefined, lancEm:new Date().toISOString(), lancPor:quem + ' (arquivo)' }, atualizado_por:quem }; });
+  for (let i = 0; i < linhas.length; i += 100) {
+    const { error } = await sb.from('registros').upsert(linhas.slice(i, i + 100), { onConflict:'painel,caminho', ignoreDuplicates:true });
+    if (error) throw error;
+  }
+  return linhas.length;
+}
 // lista de estabilidade (Quadro Geral): entra como registros do painel, sem mexer nos dados do Quadro
 async function salvarEstabilidade(itens){
   const quem = E.perfil ? E.perfil.nome : '';
@@ -1197,7 +1210,7 @@ async function carregarPacotes(arquivos, esperado){
     corpo: `<p style="margin-top:0;color:var(--mut)">Os dados atuais de cada painel serão substituídos pela versão do arquivo. As anotações feitas no app (avaliações, programações, fichas…) <b>são mantidas</b>.</p>
       <div class="tabela-env" style="max-height:340px"><table class="tab"><thead><tr><th>Arquivo</th><th>Painel</th><th>Dados de</th><th>Situação</th></tr></thead><tbody>
       ${itens.map((i, n) => `<tr style="cursor:default"><td>${esc(i.f.name)}</td><td>${esc(i.painel ? nomeP(i.painel) : '—')}</td>
-        <td>${i.pac ? (i.pac.estab ? 'lista de estabilidade (' + i.pac.itens.length + ')' : fmtRef(i.pac.referencia)) : (i.zip ? 'arquivos' : '—')}</td>
+        <td>${i.pac ? (i.pac.estab ? 'lista de estabilidade (' + i.pac.itens.length + ')' : i.pac.entr ? 'entrevistas de desligamento (' + i.pac.itens.length + ')' : fmtRef(i.pac.referencia)) : (i.zip ? 'arquivos' : '—')}</td>
         <td id="pk-st-${n}">${i.erro ? `<span style="color:var(--coral)">${esc(i.erro)}</span>` : 'pronto'}</td></tr>`).join('')}
       </tbody></table></div>`,
     pe: `<button class="btn borda" id="pk-c">Cancelar</button><button class="btn prim" id="pk-ok" ${validos.length ? '' : 'disabled'}>Salvar no app</button>`,
@@ -1212,6 +1225,7 @@ async function carregarPacotes(arquivos, esperado){
           st.textContent = 'enviando…';
           try {
             if (i.zip) { const q = await enviarZip(i.f, i.painel, t => st.textContent = t); st.innerHTML = `<span style="color:var(--cane)">✓ ${q} arquivos</span>`; ok++; continue; }
+            if (i.pac.entr) { const n2 = await salvarEntrevistas(i.pac.itens); st.innerHTML = `<span style="color:var(--cane)">✓ ${n2} entrevistas</span>`; ok++; continue; }
             if (i.pac.estab) { const n2 = await salvarEstabilidade(i.pac.itens); st.innerHTML = `<span style="color:var(--cane)">✓ ${n2} de estabilidade</span>`; ok++; continue; }
             await salvarPacote(i.pac, i.f, t => st.textContent = t);
             st.innerHTML = '<span style="color:var(--cane)">✓ salvo</span>'; ok++;

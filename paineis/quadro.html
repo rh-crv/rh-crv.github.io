@@ -2496,6 +2496,273 @@ window.CRV_ENTREVISTA=abrir;
 })();
 </script>
 <!-- ===== fim: entrevista de desligamento ===== -->
+<!-- ===== Respostas das entrevistas de desligamento ===== -->
+<style>
+.er-fundo{position:fixed;inset:0;background:rgba(10,20,40,.55);z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding:18px 10px;overflow:auto}
+.er-modal{background:#fff;color:#14213d;border-radius:12px;width:100%;max-width:1180px;box-shadow:0 20px 60px rgba(0,0,0,.35);font-size:13px}
+.er-cab{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid #e0e5ef;flex-wrap:wrap}
+.er-cab h3{margin:0;font-size:16px;flex:1;min-width:220px}.er-cab small{display:block;color:#5d6a85;font-weight:400;font-size:11.5px}
+.er-x{background:none;border:0;font-size:24px;cursor:pointer;color:#5d6a85;line-height:1}
+.er-b{border:0;border-radius:8px;padding:8px 13px;font-weight:700;cursor:pointer;font-size:12.5px;background:#eef1f5;color:#14213d}
+.er-b.pri{background:#2e8a57;color:#fff}.er-b.lar{background:#e9a23b;color:#2b1d00}
+.er-filt{display:flex;gap:8px;flex-wrap:wrap;align-items:end;padding:10px 18px;background:#f7f9fc;border-bottom:1px solid #e0e5ef}
+.er-filt label{display:flex;flex-direction:column;gap:3px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#5d6a85}
+.er-filt select,.er-filt input{border:1px solid #d5dbe6;border-radius:7px;padding:6px 8px;font:inherit;font-size:12.5px;background:#fff;color:#14213d;min-width:120px}
+.er-tabs{display:flex;gap:4px;padding:10px 18px 0;border-bottom:1px solid #e0e5ef;flex-wrap:wrap}
+.er-tab{border:0;background:none;padding:8px 12px;font-weight:700;font-size:12.5px;color:#5d6a85;cursor:pointer;border-bottom:3px solid transparent}
+.er-tab.on{color:#14213d;border-bottom-color:#2e8a57}
+.er-corpo{padding:14px 18px;min-height:300px}
+.er-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:14px}
+.er-k{border:1px solid #e0e5ef;border-left:4px solid var(--c,#2e8a57);border-radius:9px;padding:10px 12px;background:#fff;text-align:left;cursor:pointer;font:inherit;color:inherit}
+.er-k small{display:block;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#5d6a85}
+.er-k b{display:block;font-size:24px;margin:3px 0 1px;color:var(--c,#2e8a57)}.er-k span{font-size:11.5px;color:#5d6a85}
+.er-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:12px}
+.er-card{border:1px solid #e0e5ef;border-radius:10px;padding:12px 14px}
+.er-card h4{margin:0 0 8px;font-size:13px}.er-card h4 small{color:#5d6a85;font-weight:400}
+.er-bar{display:grid;grid-template-columns:minmax(120px,1.2fr) 2fr 62px;gap:8px;align-items:center;padding:3px 4px;border-radius:6px;cursor:pointer;font-size:12.3px}
+.er-bar:hover{background:#f2f5fa}.er-bar i{display:block;height:10px;border-radius:5px;background:var(--c,#2e8a57);min-width:2px}
+.er-bar em{font-style:normal;text-align:right;font-variant-numeric:tabular-nums;color:#33415c}
+.er-t{width:100%;border-collapse:collapse;font-size:12.2px}
+.er-t th{position:sticky;top:0;background:#f7f9fc;text-align:left;padding:6px 8px;font-size:10.5px;text-transform:uppercase;color:#5d6a85;border-bottom:1px solid #e0e5ef}
+.er-t td{padding:6px 8px;border-top:1px solid #eef1f5;vertical-align:top}.er-t tr.lk{cursor:pointer}.er-t tr.lk:hover td{background:#f2f5fa}
+.er-t td.n{text-align:right;font-variant-numeric:tabular-nums}
+.er-num{background:none;border:0;padding:0;font:inherit;font-weight:700;color:#1f6f45;cursor:pointer;text-decoration:underline dotted}
+.er-chip{display:inline-flex;gap:6px;align-items:center;background:#e9f5ee;color:#1d5c3a;border-radius:20px;padding:4px 10px;font-size:12px;font-weight:600;margin:0 6px 10px 0}
+.er-chip button{border:0;background:none;cursor:pointer;color:#1d5c3a;font-weight:700}
+.er-vazio{padding:30px;text-align:center;color:#5d6a85}
+.er-nota{font-size:11.5px;color:#5d6a85;margin:10px 0 0}
+.er-com{border-left:3px solid #e9a23b;background:#fffaf0;padding:8px 10px;border-radius:0 8px 8px 0;margin-bottom:8px}
+.er-com small{display:block;color:#5d6a85;margin-top:3px}
+.er-ficha{display:grid;grid-template-columns:1fr 1fr;gap:8px 18px}.er-ficha div small{display:block;font-size:10.5px;font-weight:700;text-transform:uppercase;color:#5d6a85}
+.er-form{display:grid;grid-template-columns:repeat(12,1fr);gap:9px 12px}
+.er-form .c{display:flex;flex-direction:column;gap:3px}.er-form label.t{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#5d6a85}
+.er-form input[type=text],.er-form input[type=date],.er-form textarea{border:1px solid #d5dbe6;border-radius:7px;padding:6px 8px;font:inherit;background:#f7f9fc;color:#14213d}
+.er-form .sec{grid-column:1/-1;font-size:11px;font-weight:700;text-transform:uppercase;color:#2e8a57;border-bottom:1px solid #e0e5ef;padding-bottom:3px;margin-top:4px}
+.er-ops{display:flex;flex-wrap:wrap;gap:6px 16px}.er-ops label{display:flex;gap:5px;align-items:center;font-size:12.5px}
+.s3{grid-column:span 3}.s4{grid-column:span 4}.s6{grid-column:span 6}.s9{grid-column:span 9}.s12{grid-column:1/-1}
+.er-pe{display:flex;gap:8px;justify-content:flex-end;align-items:center;padding:12px 18px;border-top:1px solid #e0e5ef;flex-wrap:wrap}.er-pe .esp{flex:1;font-size:12px;color:#5d6a85}
+.er-exp{display:grid;gap:6px;margin:8px 0}.er-exp label{display:flex;gap:7px;align-items:center}
+@media (max-width:700px){.er-form>*{grid-column:1/-1!important}.er-ficha{grid-template-columns:1fr}.er-bar{grid-template-columns:1fr 1fr 50px}}
+</style>
+<script>
+(function(){
+'use strict';
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const br=s=>s?String(s).slice(0,10).split('-').reverse().join('/'):'';
+const pc=(a,b)=>b?Math.round(a/b*1000)/10:0, pcT=v=>String(v).replace('.',',')+'%';
+const NR='Não respondeu';
+/* perguntas do modelo RE.0150.08 (mesma ordem e texto do PDF) */
+const QS=[
+ {k:'mot',t:'Motivo do desligamento',multi:1,o:['Novo emprego / oportunidade melhor','Questões salariais','Ambiente de trabalho','Relacionamento com a liderança','Falta de oportunidade de crescimento','Mudança de cidade','Motivos pessoais / familiares','Saúde','Término de contrato','Desligamento pela empresa','Outro motivo','Prefiro não informar']},
+ {k:'amb',t:'Como avalia o ambiente de trabalho',o:['Ótimo','Bom','Regular','Ruim','Péssimo']},
+ {k:'dif',t:'O que dificultava o trabalho',multi:1,o:['Nada','Equipamentos / recursos','Excesso de trabalho','Falta de treinamento','Convivência com a equipe','Outro']},
+ {k:'lid',t:'Apoio recebido da liderança',o:['Ótimo','Bom','Regular','Ruim','Péssimo','Não se aplica']},
+ {k:'feed',t:'Recebia orientações e feedback',o:['Sempre','Às vezes','Nunca','Não se aplica']},
+ {k:'sal',t:'Salário compatível com as atividades',o:['Sim','Em parte','Não','Prefiro não responder']},
+ {k:'ben',t:'Benefícios atendiam às necessidades',o:['Sim','Em parte','Não','Não utilizava']},
+ {k:'cult',t:'Identificava-se com os valores da empresa',o:['Sim','Em parte','Não','Não sei avaliar']},
+ {k:'volta',t:'Voltaria a trabalhar na empresa',o:['Sim','Não','Talvez']}];
+const QK=Object.fromEntries(QS.map(q=>[q.k,q]));
+const TIPOS={EFETIVO:'Efetivo',EXPERIENCIA:'Experiência',SAFRA:'Safra'};
+const COR=v=>/^(Ótimo|Sim|Sempre|Nada)$/.test(v)?'#2e7d4f':/^(Bom|Em parte|Às vezes|Talvez)$/.test(v)?'#6aa84f':/^Regular$/.test(v)?'#c79a1f':/^(Ruim|Não|Nunca)$/.test(v)?'#c2671a':/^Péssimo$/.test(v)?'#c3352f':v===NR?'#aab2c0':'#6b7fa8';
+const vals=(r,k)=>{const v=r[k];if(QK[k].multi)return Array.isArray(v)&&v.length?v:[NR];return v?[v]:[NR]};
+let DB=null;
+const db=async()=>{if(DB)return DB;try{DB=window.claude&&window.claude.use?await window.claude.use('db'):null}catch(_){DB=null}return DB};
+const quadro=async()=>{try{const f=window.parent&&window.parent.CRV_QUADRO;if(typeof f==='function'){const q=await f();if(q&&q.mapa)return q}}catch(_){}return null};
+const quem=()=>(window.parent&&window.parent.CRV_QUEM)||'';
+async function salvarArq(nome,bytes,tipo){const DL=window.claude&&window.claude.use?await window.claude.use('downloads').catch(()=>null):null;if(DL)return DL.save({filename:nome,data:bytes});
+  const u=URL.createObjectURL(new Blob([bytes],{type:tipo}));const a=document.createElement('a');a.href=u;a.download=nome;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},4000)}
+
+async function abrir(foco){
+  const f=document.createElement('div');f.className='er-fundo';
+  f.innerHTML=`<div class="er-modal" role="dialog" aria-modal="true">
+   <div class="er-cab"><h3>Respostas das entrevistas de desligamento<small>Formulários RE.0150.08 preenchidos e devolvidos ao RH · clique em qualquer número para ver quem está por trás</small></h3>
+     <button class="er-b pri" data-a="novo">+ Lançar respostas</button><button class="er-b" data-a="xls">Excel</button><button class="er-b" data-a="pdf">PDF</button><button class="er-x" aria-label="Fechar">×</button></div>
+   <div class="er-filt">
+     <label>De<input type="date" id="r-de"></label><label>Até<input type="date" id="r-ate"></label>
+     <label>Área<select id="r-area"></select></label><label>Departamento<select id="r-dep"></select></label>
+     <label>Contrato<select id="r-tipo"><option value="">Todos</option>${Object.entries(TIPOS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></label>
+     <label style="flex:1;min-width:160px">Buscar<input id="r-busca" placeholder="nome ou matrícula"></label></div>
+   <div class="er-tabs">${[['geral','Visão geral'],['setor','Por setor'],['perg','Por pergunta'],['com','Comentários'],['nom','Nominal']].map(([k,t])=>`<button class="er-tab" data-t="${k}">${t}</button>`).join('')}</div>
+   <div class="er-corpo" id="r-corpo"><div class="er-vazio">Carregando…</div></div>
+  </div>`;
+  document.body.appendChild(f);
+  const $=s=>f.querySelector(s);
+  const fechar=()=>f.remove();
+  $('.er-x').onclick=fechar;f.addEventListener('mousedown',e=>{if(e.target===f)fechar()});
+  let R=[],Q=null,TAB=foco||'geral',SEL=null; // SEL = {k,v,rot} filtro do clique
+  const carregar=async()=>{
+    const D=await db();Q=await quadro();
+    if(!D){$('#r-corpo').innerHTML='<div class="er-vazio">O registro não está disponível nesta visualização.</div>';return}
+    try{const s=await D.collection('entrevistas_resp').get();R=s.docs.map(d=>Object.assign({_id:d.id},d.data())).filter(r=>!r.excluida)}
+    catch(_){$('#r-corpo').innerHTML='<div class="er-vazio">Não consegui ler as respostas.</div>';return}
+    R.forEach(r=>{const c=Q&&Q.mapa[String(r.mat)];r._area=(c&&c.area)||r.area||'Sem área';r._dep=r.dep||(c&&c.setor)||'';r._sit=c?c.situacao:'';r._data=r.ped||r.dataAss||(r.lancEm||'').slice(0,10)});
+    R.sort((a,b)=>(b._data||'').localeCompare(a._data||'')||String(a.nome).localeCompare(b.nome));
+    const opt=(el,L,tod)=>{const v=el.value;el.innerHTML=`<option value="">${tod}</option>`+L.map(x=>`<option>${esc(x)}</option>`).join('');el.value=L.includes(v)?v:''};
+    opt($('#r-area'),[...new Set(R.map(r=>r._area))].sort(),'Todas');opt($('#r-dep'),[...new Set(R.map(r=>r._dep).filter(Boolean))].sort(),'Todos');
+    desenhar();
+  };
+  const filtrados=()=>{const de=$('#r-de').value,ate=$('#r-ate').value,ar=$('#r-area').value,dp=$('#r-dep').value,tp=$('#r-tipo').value,b=$('#r-busca').value.trim().toUpperCase();
+    return R.filter(r=>(!de||r._data>=de)&&(!ate||r._data<=ate)&&(!ar||r._area===ar)&&(!dp||r._dep===dp)&&(!tp||r.tipo===tp)&&(!b||String(r.nome).toUpperCase().includes(b)||String(r.mat)===b))};
+  const conta=(L,k)=>{const q=QK[k],m=new Map((q.o.concat(NR)).map(o=>[o,0]));L.forEach(r=>vals(r,k).forEach(v=>m.set(v,(m.get(v)||0)+1)));return [...m].filter(([o,n])=>n||o!==NR)};
+  const barras=(L,k,lim)=>{const c=conta(L,k).filter(x=>x[1]||!QK[k].multi);const mx=Math.max(1,...c.map(x=>x[1]));const base=L.length;
+    let c2=QK[k].multi?c.filter(x=>x[1]).sort((a,b)=>b[1]-a[1]):c;if(lim)c2=c2.slice(0,lim);
+    return c2.length?c2.map(([o,n])=>`<div class="er-bar" data-k="${k}" data-v="${esc(o)}" style="--c:${k==='mot'?'#6b4aa8':COR(o)}"><span>${esc(o)}</span><i style="width:${n/mx*100}%"></i><em><b>${n}</b> · ${pcT(pc(n,base))}</em></div>`).join(''):'<div class="er-nota">Sem respostas.</div>'};
+  const kpi=(t,v,s,c,k,val)=>`<button class="er-k" style="--c:${c}" ${k?`data-k="${k}" data-v="${esc(val)}"`:'data-t2="nom"'}><small>${t}</small><b>${v}</b><span>${s}</span></button>`;
+  const desenhar=()=>{
+    f.querySelectorAll('.er-tab').forEach(b=>b.classList.toggle('on',b.dataset.t===TAB));
+    const L=filtrados(),C=$('#r-corpo');
+    if(!R.length){C.innerHTML=`<div class="er-vazio">Nenhuma entrevista lançada ainda.<br>Use <b>+ Lançar respostas</b> ou carregue o arquivo de respostas em Administração → Painéis e frentes.</div>`;return}
+    if(!L.length){C.innerHTML='<div class="er-vazio">Nenhuma entrevista com esses filtros.</div>';return}
+    const n=L.length, top=conta(L,'mot').filter(x=>x[0]!==NR&&x[1]).sort((a,b)=>b[1]-a[1])[0];
+    const nv=k=>v=>L.filter(r=>vals(r,k).includes(v)).length;
+    const amb=L.filter(r=>/^(Ótimo|Bom)$/.test(r.amb||'')).length, lidN=L.filter(r=>/^(Ruim|Péssimo|Regular)$/.test(r.lid||'')).length, salN=nv('sal')('Não'), vs=nv('volta')('Sim'), vr=L.filter(r=>r.volta).length;
+    let h='';
+    if(TAB==='geral'){
+      h+=`<div class="er-kpis">${kpi('Entrevistas',n,'clique para ver todas','#14213d')}
+        ${kpi('Principal motivo',top?top[1]:0,top?esc(top[0]):'—','#6b4aa8',top?'mot':'',top?top[0]:'')}
+        ${kpi('Ambiente ótimo ou bom',pcT(pc(amb,n)),`${amb} de ${n}`,'#2e7d4f')}
+        ${kpi('Liderança regular, ruim ou péssima',lidN,pcT(pc(lidN,n)),'#c2671a')}
+        ${kpi('Salário não compatível',salN,pcT(pc(salN,n)),'#c3352f','sal','Não')}
+        ${kpi('Voltaria a trabalhar',vs,vr?`${pcT(pc(vs,vr))} de quem respondeu (${vr})`:'ninguém respondeu','#1f6f9c','volta','Sim')}</div>
+        <div class="er-grid"><div class="er-card"><h4>Motivos do desligamento <small>· pode marcar mais de um; % sobre ${n} entrevistas</small></h4>${barras(L,'mot')}</div>
+        <div class="er-card"><h4>O que dificultava o trabalho</h4>${barras(L,'dif')}</div>
+        <div class="er-card"><h4>Voltaria a trabalhar na empresa?</h4>${barras(L,'volta')}</div>
+        <div class="er-card"><h4>Liderança</h4>${barras(L,'lid')}</div></div>
+        ${leitura(L)}`;
+      const sb=nv('volta')(NR);if(sb)h+=`<p class="er-nota">${sb} entrevista${sb>1?'s':''} sem resposta em "voltaria a trabalhar". Na hora de recolher o formulário, vale conferir se todas as perguntas foram marcadas.</p>`;
+    }else if(TAB==='setor'){
+      const G=new Map();L.forEach(r=>{const k=r._area+'||'+r._dep;if(!G.has(k))G.set(k,[]);G.get(k).push(r)});
+      const linhas=[...G].sort((a,b)=>b[1].length-a[1].length||a[0].localeCompare(b[0]));
+      const topo=(rr,k)=>{const c=conta(rr,k).filter(x=>x[0]!==NR&&x[1]).sort((a,b)=>b[1]-a[1]);return c.length?c.filter(x=>x[1]===c[0][1]).map(x=>x[0]).join(' / ')+` (${c[0][1]})`:'—'};
+      h+=`<table class="er-t"><thead><tr><th>Área</th><th>Departamento</th><th class="n">Entrevistas</th><th>Principal motivo</th><th>Ambiente</th><th>Liderança</th><th>Salário</th><th>Voltaria</th></tr></thead><tbody>${linhas.map(([k,rr])=>{const [a,d]=k.split('||');return `<tr class="lk" data-g="${esc(k)}"><td>${esc(a)}</td><td>${esc(d)}</td><td class="n"><b>${rr.length}</b></td><td>${esc(topo(rr,'mot'))}</td><td>${esc(topo(rr,'amb'))}</td><td>${esc(topo(rr,'lid'))}</td><td>${esc(topo(rr,'sal'))}</td><td>${esc(topo(rr,'volta'))}</td></tr>`}).join('')}</tbody></table>
+        <p class="er-nota">Clique na linha para ver as pessoas do setor. Área vem do Quadro de Colaboradores pela matrícula; departamento é o que está no formulário.</p>`;
+    }else if(TAB==='perg'){
+      h+=`<div class="er-grid">${QS.map(q=>`<div class="er-card"><h4>${esc(q.t)}${q.multi?' <small>· pode marcar mais de um</small>':''}</h4>${barras(L,q.k)}</div>`).join('')}</div>`;
+    }else if(TAB==='com'){
+      const cm=L.filter(r=>(r.coment||'').trim()||(r.motOutro||'').trim()||(r.difOutro||'').trim());
+      h+=cm.length?cm.map(r=>`<div class="er-com">${r.coment?`“${esc(r.coment)}”`:''}${r.motOutro?`<div><b>Outro motivo:</b> ${esc(r.motOutro)}</div>`:''}${r.difOutro?`<div><b>Outra dificuldade:</b> ${esc(r.difOutro)}</div>`:''}<small><button class="er-num" data-id="${esc(r._id)}">${esc(r.nome)}</button> · ${esc(r._dep)} · ${br(r._data)}</small></div>`).join(''):'<div class="er-vazio">Nenhum comentário nas entrevistas filtradas.</div>';
+    }else{
+      let LL=L;if(SEL)LL=SEL.k==='_g'?L.filter(r=>r._area+'||'+r._dep===SEL.v):L.filter(r=>vals(r,SEL.k).includes(SEL.v));
+      h+=(SEL?`<span class="er-chip">${esc(SEL.rot)} · ${LL.length}<button data-a="limpa" title="Tirar filtro">×</button></span>`:'')+tabela(LL);
+    }
+    C.innerHTML=h;
+    C.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{if(!b.dataset.k)return;SEL={k:b.dataset.k,v:b.dataset.v,rot:QK[b.dataset.k].t+': '+b.dataset.v};TAB='nom';desenhar()});
+    C.querySelectorAll('[data-t2]').forEach(b=>b.onclick=()=>{SEL=null;TAB='nom';desenhar()});
+    C.querySelectorAll('tr[data-g]').forEach(t=>t.onclick=()=>{const [a,d]=t.dataset.g.split('||');SEL={k:'_g',v:t.dataset.g,rot:a+(d?' · '+d:'')};TAB='nom';desenhar()});
+    C.querySelectorAll('tr[data-id],button.er-num[data-id]').forEach(t=>t.onclick=()=>ficha(R.find(r=>r._id===t.dataset.id)));
+    const lp=C.querySelector('[data-a=limpa]');if(lp)lp.onclick=()=>{SEL=null;desenhar()};
+  };
+  const tabela=LL=>`<table class="er-t"><thead><tr><th>Data</th><th>Colaborador</th><th>Departamento / função</th><th>Contrato</th><th>Motivos</th><th>Ambiente</th><th>Liderança</th><th>Salário</th><th>Voltaria</th></tr></thead><tbody>${LL.map(r=>`<tr class="lk" data-id="${esc(r._id)}"><td>${br(r._data)}</td><td><b>${esc(r.nome)}</b><br><span style="color:#5d6a85">${esc(r.mat)}${r._sit?' · '+esc(r._sit):''}</span></td><td>${esc(r._dep)}<br><span style="color:#5d6a85">${esc(r.func||'')}</span></td><td>${esc(TIPOS[r.tipo]||'')}</td><td>${esc(vals(r,'mot').join('; '))}</td><td>${esc(r.amb||NR)}</td><td>${esc(r.lid||NR)}</td><td>${esc(r.sal||NR)}</td><td>${esc(r.volta||NR)}</td></tr>`).join('')}</tbody></table><p class="er-nota">Clique na linha para ver a entrevista completa, corrigir ou excluir.</p>`;
+  const leitura=L=>{const n=L.length;if(n<3)return `<p class="er-nota">Com ${n} entrevista${n>1?'s':''} ainda não dá para tirar tendência. A leitura por motivo e por setor fica confiável conforme as entrevistas forem sendo lançadas.</p>`;
+    const c=conta(L,'mot').filter(x=>x[0]!==NR&&x[1]).sort((a,b)=>b[1]-a[1]).slice(0,3);
+    return `<p class="er-nota"><b>O que os dados mostram:</b> ${c.map(x=>`${esc(x[0])} aparece em ${x[1]} de ${n} (${pcT(pc(x[1],n))})`).join('; ')}.</p>`};
+  /* ficha individual */
+  const ficha=r=>{if(!r)return;
+    const w=document.createElement('div');w.className='er-fundo';w.style.zIndex=10000;
+    w.innerHTML=`<div class="er-modal" style="max-width:760px"><div class="er-cab"><h3>${esc(r.nome)}<small>Matrícula ${esc(r.mat)} · ${esc(r._dep)} · ${esc(r.func||'')}</small></h3><button class="er-x">×</button></div>
+      <div class="er-corpo" style="min-height:0"><div class="er-ficha">
+       <div><small>Admissão</small>${br(r.adm)||'—'}</div><div><small>Data do pedido</small>${br(r.ped)||'—'}</div>
+       <div><small>Contrato</small>${esc(TIPOS[r.tipo]||'—')}</div><div><small>Assinado em</small>${br(r.dataAss)||'—'}</div>
+       ${QS.map(q=>`<div${q.multi?' style="grid-column:1/-1"':''}><small>${esc(q.t)}</small>${esc(vals(r,q.k).join('; '))}${q.k==='mot'&&r.motOutro?' — '+esc(r.motOutro):''}${q.k==='dif'&&r.difOutro?' — '+esc(r.difOutro):''}</div>`).join('')}
+       <div style="grid-column:1/-1"><small>Comentário ou sugestão</small>${r.coment?esc(r.coment):'—'}</div>
+       ${r.obs?`<div style="grid-column:1/-1"><small>Observação do RH</small>${esc(r.obs)}</div>`:''}
+      </div><p class="er-nota">Lançado${r.lancPor?' por '+esc(r.lancPor):''}${r.lancEm?' em '+new Date(r.lancEm).toLocaleDateString('pt-BR'):''}${r.editEm?` · corrigido${r.editPor?' por '+esc(r.editPor):''} em ${new Date(r.editEm).toLocaleDateString('pt-BR')}`:''}.</p></div>
+      <div class="er-pe"><span class="esp" id="f-msg"></span><button class="er-b" data-a="exc" style="color:#a3301c">Excluir</button><button class="er-b pri" data-a="ed">Corrigir</button></div></div>`;
+    document.body.appendChild(w);const x=()=>w.remove();w.querySelector('.er-x').onclick=x;w.addEventListener('mousedown',e=>{if(e.target===w)x()});
+    w.querySelector('[data-a=ed]').onclick=()=>{x();form(r)};
+    const be=w.querySelector('[data-a=exc]');be.onclick=async()=>{if(!be.dataset.c){be.dataset.c=1;be.textContent='Confirmar exclusão';return}
+      try{await (await db()).collection('entrevistas_resp').doc(r._id).update({excluida:true,excluidoEm:new Date().toISOString(),excluidoPor:quem()});x();carregar()}
+      catch(e){w.querySelector('#f-msg').textContent='Não consegui excluir: '+(e.message||'sem permissão')}};
+  };
+  /* lançar / corrigir */
+  const form=r=>{r=r||{};
+    const w=document.createElement('div');w.className='er-fundo';w.style.zIndex=10000;
+    const ops=q=>`<div class="er-ops">${q.o.map(o=>`<label><input type="${q.multi?'checkbox':'radio'}" name="q-${q.k}" value="${esc(o)}" ${(q.multi?(r[q.k]||[]).includes(o):r[q.k]===o)?'checked':''}> ${esc(o)}</label>`).join('')}${q.multi?'':`<label style="color:#5d6a85"><input type="radio" name="q-${q.k}" value="" ${r[q.k]?'':'checked'}> Não respondeu</label>`}</div>`;
+    w.innerHTML=`<div class="er-modal" style="max-width:860px"><div class="er-cab"><h3>${r._id?'Corrigir respostas':'Lançar respostas'}<small>Marque como está no formulário em papel</small></h3><button class="er-x">×</button></div>
+     <div class="er-corpo" style="min-height:0"><div class="er-form">
+      <div class="sec">Colaborador</div>
+      <div class="c s3"><label class="t">Matrícula</label><input type="text" id="g-mat" value="${esc(r.mat||'')}" inputmode="numeric"></div>
+      <div class="c s9"><label class="t">Nome</label><input type="text" id="g-nome" value="${esc(r.nome||'')}"></div>
+      <div class="c s6"><label class="t">Departamento</label><input type="text" id="g-dep" value="${esc(r.dep||'')}"></div>
+      <div class="c s6"><label class="t">Função</label><input type="text" id="g-func" value="${esc(r.func||'')}"></div>
+      <div class="c s3"><label class="t">Admissão</label><input type="date" id="g-adm" value="${esc(r.adm||'')}"></div>
+      <div class="c s3"><label class="t">Data do pedido</label><input type="date" id="g-ped" value="${esc(r.ped||'')}"></div>
+      <div class="c s3"><label class="t">Assinado em</label><input type="date" id="g-ass" value="${esc(r.dataAss||'')}"></div>
+      <div class="c s3"><label class="t">Contrato</label><div class="er-ops">${Object.entries(TIPOS).map(([k,v])=>`<label><input type="radio" name="g-tipo" value="${k}" ${r.tipo===k?'checked':''}> ${v}</label>`).join('')}</div></div>
+      <div class="c s12" id="g-info" style="font-size:12px;color:#5d6a85"></div>
+      ${QS.map(q=>`<div class="sec">${esc(q.t)}${q.multi?' · pode marcar mais de um':''}</div><div class="c s12">${ops(q)}${q.k==='mot'?`<input type="text" id="g-motOutro" placeholder="Outro motivo (se escrito no papel)" value="${esc(r.motOutro||'')}" style="margin-top:6px">`:''}${q.k==='dif'?`<input type="text" id="g-difOutro" placeholder="Outra dificuldade (se escrita no papel)" value="${esc(r.difOutro||'')}" style="margin-top:6px">`:''}</div>`).join('')}
+      <div class="sec">Comentário ou sugestão</div><div class="c s12"><textarea id="g-com" rows="2">${esc(r.coment||'')}</textarea></div>
+      <div class="sec">Observação do RH (opcional)</div><div class="c s12"><textarea id="g-obs" rows="2">${esc(r.obs||'')}</textarea></div>
+     </div></div>
+     <div class="er-pe"><span class="esp" id="g-msg"></span><button class="er-b" data-a="c">Cancelar</button><button class="er-b pri" data-a="s">Salvar</button></div></div>`;
+    document.body.appendChild(w);const g=s=>w.querySelector(s),x=()=>w.remove();
+    g('.er-x').onclick=x;g('[data-a=c]').onclick=x;
+    const puxar=async()=>{const m=g('#g-mat').value.trim().replace(/^0+(?=\d)/,'');if(!m)return;const q=Q||await quadro();const c=q&&q.mapa[m];
+      if(!c){g('#g-info').textContent='Matrícula não encontrada no Quadro (empresa 5 - CRV).';return}
+      if(!g('#g-nome').value)g('#g-nome').value=c.nome;if(!g('#g-dep').value)g('#g-dep').value=c.setor;if(!g('#g-func').value)g('#g-func').value=c.funcao;if(!g('#g-adm').value)g('#g-adm').value=(c.admissao||'').slice(0,10);
+      g('#g-info').textContent=`${c.situacao} no Quadro · ${c.area||''} · ${c.vinculo||''}`};
+    g('#g-mat').addEventListener('change',puxar);if(r.mat)puxar();
+    let trava=false;
+    g('[data-a=s]').onclick=async()=>{if(trava)return;trava=true;const msg=g('#g-msg');
+      try{const d={mat:g('#g-mat').value.trim().replace(/^0+(?=\d)/,''),nome:g('#g-nome').value.trim().toUpperCase(),dep:g('#g-dep').value.trim().toUpperCase(),func:g('#g-func').value.trim().toUpperCase(),
+          adm:g('#g-adm').value,ped:g('#g-ped').value,dataAss:g('#g-ass').value,tipo:(w.querySelector('input[name=g-tipo]:checked')||{}).value||'',
+          motOutro:g('#g-motOutro').value.trim(),difOutro:g('#g-difOutro').value.trim(),coment:g('#g-com').value.trim(),obs:g('#g-obs').value.trim()};
+        QS.forEach(q=>{const I=[...w.querySelectorAll(`input[name=q-${q.k}]:checked`)].map(i=>i.value).filter(Boolean);d[q.k]=q.multi?I:(I[0]||'')});
+        if(!d.mat||!d.nome){msg.style.color='#8a2a1a';msg.textContent='Preencha matrícula e nome.';trava=false;return}
+        const D=await db();if(!D)throw new Error('registro indisponível');
+        if(r._id){await D.collection('entrevistas_resp').doc(r._id).set(Object.assign({},Object.fromEntries(Object.entries(r).filter(([k])=>!k.startsWith('_'))),d,{editEm:new Date().toISOString(),editPor:quem()}))}
+        else{const id=('ent-'+d.mat+'-'+(d.ped||d.dataAss||new Date().toISOString().slice(0,10))).replace(/[^\w-]+/g,'_');
+          if(R.some(z=>z._id===id)&&!g('[data-a=s]').dataset.c){g('[data-a=s]').dataset.c=1;g('[data-a=s]').textContent='Substituir a existente';msg.style.color='#8a5a00';msg.textContent='Já existe entrevista desta matrícula com esta data.';trava=false;return}
+          await D.collection('entrevistas_resp').doc(id).set(Object.assign(d,{fonte:'app',lancEm:new Date().toISOString(),lancPor:quem()}))}
+        x();carregar();
+      }catch(e){msg.style.color='#8a2a1a';msg.textContent='Não consegui salvar: '+(e.message||e);trava=false}};
+  };
+  /* exportar */
+  const exportar=fmt=>{const w=document.createElement('div');w.className='er-fundo';w.style.zIndex=10000;
+    w.innerHTML=`<div class="er-modal" style="max-width:460px"><div class="er-cab"><h3>Exportar ${fmt==='xls'?'Excel':'PDF'}<small>Usa os filtros aplicados (${filtrados().length} entrevistas)</small></h3><button class="er-x">×</button></div>
+      <div class="er-corpo" style="min-height:0"><div class="er-exp">${[['res','Resumo por pergunta'],['set','Por setor'],['nom','Nominal (uma linha por pessoa)'],['com','Comentários']].map(([k,t])=>`<label><input type="checkbox" value="${k}" checked> ${t}</label>`).join('')}</div></div>
+      <div class="er-pe"><span class="esp" id="x-msg"></span><button class="er-b" data-a="c">Cancelar</button><button class="er-b pri" data-a="g">Gerar</button></div></div>`;
+    document.body.appendChild(w);const x=()=>w.remove();w.querySelector('.er-x').onclick=x;w.querySelector('[data-a=c]').onclick=x;
+    w.querySelector('[data-a=g]').onclick=async()=>{const S=[...w.querySelectorAll('input:checked')].map(i=>i.value);const L=filtrados();if(!S.length||!L.length)return;
+      try{const B=blocos(L,S);const nm='Entrevistas de desligamento '+br(new Date().toISOString()).replace(/\//g,'-');
+        if(fmt==='xls'){await salvarArq(nm+'.xlsx',xlsxBook(B.map(b=>({n:b.n,h:b.h,r:b.r}))),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}
+        else await salvarArq(nm+'.pdf',await pdf(L,B),'application/pdf');x()}
+      catch(e){console.error(e);w.querySelector('#x-msg').textContent='Não consegui gerar: '+(e.message||e)}};
+  };
+  const blocos=(L,S)=>{const B=[],n=L.length;
+    if(S.includes('res')){const r=[];QS.forEach(q=>conta(L,q.k).filter(x=>x[1]||!q.multi).forEach(([o,c])=>r.push([q.t,o,c,pcT(pc(c,n))])));B.push({n:'Resumo',t:'Resumo por pergunta',h:['Pergunta','Resposta','Qtde','% das entrevistas'],r})}
+    if(S.includes('set')){const G=new Map();L.forEach(z=>{const k=z._area+'||'+z._dep;if(!G.has(k))G.set(k,[]);G.get(k).push(z)});
+      const top=(rr,k)=>{const c=conta(rr,k).filter(x=>x[0]!==NR&&x[1]).sort((a,b)=>b[1]-a[1]);return c.length?c.filter(x=>x[1]===c[0][1]).map(x=>x[0]).join(' / '):''};
+      B.push({n:'Por setor',t:'Por setor',h:['Área','Departamento','Entrevistas','Principal motivo','Ambiente','Liderança','Salário','Voltaria'],r:[...G].sort((a,b)=>b[1].length-a[1].length).map(([k,rr])=>{const [a,d]=k.split('||');return [a,d,rr.length,top(rr,'mot'),top(rr,'amb'),top(rr,'lid'),top(rr,'sal'),top(rr,'volta')]})})}
+    if(S.includes('nom'))B.push({n:'Nominal',t:'Nominal',h:['Data do pedido','Matrícula','Nome','Área','Departamento','Função','Contrato','Admissão'].concat(QS.map(q=>q.t),['Outro motivo','Outra dificuldade','Comentário']),
+      r:L.map(z=>[br(z._data),z.mat,z.nome,z._area,z._dep,z.func||'',TIPOS[z.tipo]||'',br(z.adm)].concat(QS.map(q=>vals(z,q.k).join('; ')),[z.motOutro||'',z.difOutro||'',z.coment||'']))});
+    if(S.includes('com')){const cm=L.filter(z=>z.coment||z.motOutro||z.difOutro);B.push({n:'Comentários',t:'Comentários',h:['Data','Nome','Departamento','Comentário'],r:cm.map(z=>[br(z._data),z.nome,z._dep,[z.coment,z.motOutro&&'Outro motivo: '+z.motOutro,z.difOutro&&'Outra dificuldade: '+z.difOutro].filter(Boolean).join(' · ')])})}
+    return B};
+  const pdf=async(L,B)=>{const J=(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF);if(!J)throw new Error('PDF indisponível');
+    const doc=new J({unit:'mm',format:'a4',orientation:'landscape'});if(typeof doc.autoTable!=='function')throw new Error('tabela do PDF indisponível');
+    const fil=[$('#r-de').value&&'de '+br($('#r-de').value),$('#r-ate').value&&'até '+br($('#r-ate').value),$('#r-area').value,$('#r-dep').value,TIPOS[$('#r-tipo').value]].filter(Boolean).join(' · ');
+    doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(20,33,61);doc.text('Entrevistas de desligamento',12,14);
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(93,106,133);doc.text(`${L.length} entrevistas${fil?' · '+fil:''} · gerado em ${br(new Date().toISOString())}`,12,20);
+    let y=26;B.forEach((b,i)=>{if(i&&y>150){doc.addPage();y=16}
+      doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(20,33,61);doc.text(b.t,12,y);
+      const nom=b.n==='Nominal';const h=nom?['Data','Matr.','Nome','Departamento','Contrato','Motivos','Ambiente','Liderança','Feedback','Salário','Benefícios','Valores','Voltaria']:b.h;
+      const r=nom?L.map(z=>[br(z._data),z.mat,z.nome,z._dep,TIPOS[z.tipo]||'',vals(z,'mot').join('; '),...['amb','lid','feed','sal','ben','cult','volta'].map(k=>vals(z,k)[0])]):b.r.map(x=>x.map(v=>String(v)));
+      doc.autoTable({startY:y+2,head:[h],body:r.length?r:[['Nada nesta seleção'].concat(h.slice(1).map(()=>''))],styles:{fontSize:nom?7:8,cellPadding:1.4,valign:'top'},headStyles:{fillColor:[31,56,100]},margin:{left:12,right:12,top:16}});
+      y=doc.lastAutoTable.finalY+9});
+    const fn=window.parent.CRV_PDF_LOGOS||window.CRV_PDF_LOGOS;if(fn)await fn(doc);
+    return new Uint8Array(doc.output('arraybuffer'))};
+  f.querySelectorAll('.er-tab').forEach(b=>b.onclick=()=>{TAB=b.dataset.t;if(TAB!=='nom')SEL=null;desenhar()});
+  ['#r-de','#r-ate','#r-area','#r-dep','#r-tipo'].forEach(s=>$(s).onchange=desenhar);$('#r-busca').oninput=desenhar;
+  f.querySelector('[data-a=novo]').onclick=()=>form();f.querySelector('[data-a=xls]').onclick=()=>exportar('xls');f.querySelector('[data-a=pdf]').onclick=()=>exportar('pdf');
+  carregar();
+}
+window.CRV_ENT_RESP=abrir;
+/* atalho dentro da janela de gerar o formulário */
+new MutationObserver(()=>{const cab=document.querySelector('.ent-modal .ent-cab');if(cab&&!cab.querySelector('.er-ab')){const b=document.createElement('button');b.type='button';b.className='ent-b sec er-ab';b.textContent='Respostas preenchidas';b.onclick=()=>{const fu=cab.closest('.ent-fundo');if(fu)fu.remove();abrir()};cab.insertBefore(b,cab.querySelector('.ent-x'))}}).observe(document.body,{childList:true});
+})();
+</script>
+<!-- ===== fim: respostas das entrevistas ===== -->
 <!-- ===== Estabilidade provisória ===== -->
 <style>
 .es-btn{background:#fff;color:#14213d;border:0;border-radius:8px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap;margin-left:8px}
