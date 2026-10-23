@@ -2498,51 +2498,97 @@ window.CRV_ENTREVISTA=abrir;
 <!-- ===== fim: entrevista de desligamento ===== -->
 <!-- ===== Respostas das entrevistas de desligamento ===== -->
 <style>
-.er-fundo{position:fixed;inset:0;background:rgba(10,20,40,.55);z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding:18px 10px;overflow:auto}
-.er-modal{background:#fff;color:#14213d;border-radius:12px;width:100%;max-width:1180px;box-shadow:0 20px 60px rgba(0,0,0,.35);font-size:13px}
-.er-cab{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid #e0e5ef;flex-wrap:wrap}
-.er-cab h3{margin:0;font-size:16px;flex:1;min-width:220px}.er-cab small{display:block;color:#5d6a85;font-weight:400;font-size:11.5px}
-.er-x{background:none;border:0;font-size:24px;cursor:pointer;color:#5d6a85;line-height:1}
-.er-b{border:0;border-radius:8px;padding:8px 13px;font-weight:700;cursor:pointer;font-size:12.5px;background:#eef1f5;color:#14213d}
-.er-b.pri{background:#2e8a57;color:#fff}.er-b.lar{background:#e9a23b;color:#2b1d00}
-.er-filt{display:flex;gap:8px;flex-wrap:wrap;align-items:end;padding:10px 18px;background:#f7f9fc;border-bottom:1px solid #e0e5ef}
-.er-filt label{display:flex;flex-direction:column;gap:3px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#5d6a85}
-.er-filt select,.er-filt input{border:1px solid #d5dbe6;border-radius:7px;padding:6px 8px;font:inherit;font-size:12.5px;background:#fff;color:#14213d;min-width:120px}
-.er-tabs{display:flex;gap:4px;padding:10px 18px 0;border-bottom:1px solid #e0e5ef;flex-wrap:wrap}
-.er-tab{border:0;background:none;padding:8px 12px;font-weight:700;font-size:12.5px;color:#5d6a85;cursor:pointer;border-bottom:3px solid transparent}
-.er-tab.on{color:#14213d;border-bottom-color:#2e8a57}
-.er-corpo{padding:14px 18px;min-height:300px}
-.er-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:14px}
-.er-k{border:1px solid #e0e5ef;border-left:4px solid var(--c,#2e8a57);border-radius:9px;padding:10px 12px;background:#fff;text-align:left;cursor:pointer;font:inherit;color:inherit}
-.er-k small{display:block;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#5d6a85}
-.er-k b{display:block;font-size:24px;margin:3px 0 1px;color:var(--c,#2e8a57)}.er-k span{font-size:11.5px;color:#5d6a85}
-.er-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:12px}
-.er-card{border:1px solid #e0e5ef;border-radius:10px;padding:12px 14px}
-.er-card h4{margin:0 0 8px;font-size:13px}.er-card h4 small{color:#5d6a85;font-weight:400}
-.er-bar{display:grid;grid-template-columns:minmax(120px,1.2fr) 2fr 62px;gap:8px;align-items:center;padding:3px 4px;border-radius:6px;cursor:pointer;font-size:12.3px}
-.er-bar:hover{background:#f2f5fa}.er-bar i{display:block;height:10px;border-radius:5px;background:var(--c,#2e8a57);min-width:2px}
-.er-bar em{font-style:normal;text-align:right;font-variant-numeric:tabular-nums;color:#33415c}
-.er-t{width:100%;border-collapse:collapse;font-size:12.2px}
-.er-t th{position:sticky;top:0;background:#f7f9fc;text-align:left;padding:6px 8px;font-size:10.5px;text-transform:uppercase;color:#5d6a85;border-bottom:1px solid #e0e5ef}
-.er-t td{padding:6px 8px;border-top:1px solid #eef1f5;vertical-align:top}.er-t tr.lk{cursor:pointer}.er-t tr.lk:hover td{background:#f2f5fa}
-.er-t td.n{text-align:right;font-variant-numeric:tabular-nums}
-.er-num{background:none;border:0;padding:0;font:inherit;font-weight:700;color:#1f6f45;cursor:pointer;text-decoration:underline dotted}
-.er-chip{display:inline-flex;gap:6px;align-items:center;background:#e9f5ee;color:#1d5c3a;border-radius:20px;padding:4px 10px;font-size:12px;font-weight:600;margin:0 6px 10px 0}
-.er-chip button{border:0;background:none;cursor:pointer;color:#1d5c3a;font-weight:700}
-.er-vazio{padding:30px;text-align:center;color:#5d6a85}
-.er-nota{font-size:11.5px;color:#5d6a85;margin:10px 0 0}
-.er-com{border-left:3px solid #e9a23b;background:#fffaf0;padding:8px 10px;border-radius:0 8px 8px 0;margin-bottom:8px}
-.er-com small{display:block;color:#5d6a85;margin-top:3px}
-.er-ficha{display:grid;grid-template-columns:1fr 1fr;gap:8px 18px}.er-ficha div small{display:block;font-size:10.5px;font-weight:700;text-transform:uppercase;color:#5d6a85}
-.er-form{display:grid;grid-template-columns:repeat(12,1fr);gap:9px 12px}
-.er-form .c{display:flex;flex-direction:column;gap:3px}.er-form label.t{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#5d6a85}
-.er-form input[type=text],.er-form input[type=date],.er-form textarea{border:1px solid #d5dbe6;border-radius:7px;padding:6px 8px;font:inherit;background:#f7f9fc;color:#14213d}
-.er-form .sec{grid-column:1/-1;font-size:11px;font-weight:700;text-transform:uppercase;color:#2e8a57;border-bottom:1px solid #e0e5ef;padding-bottom:3px;margin-top:4px}
+.er-fundo{position:fixed;inset:0;background:rgba(12,24,22,.58);z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding:18px 10px;overflow:auto;font-family:"Source Sans 3","Segoe UI",system-ui,sans-serif}
+.er-modal{--g1:#0f3d33;--g2:#1f6f54;--am:#e9a23b;--ink:#17242a;--mut:#5f6f76;--ln:#e3e8e4;--soft:#f5f7f4;--card:#fff;
+  background:var(--soft);color:var(--ink);border-radius:16px;width:100%;max-width:1200px;box-shadow:0 24px 70px rgba(0,0,0,.35);font-size:13px;overflow:hidden}
+.er-cab{display:flex;align-items:center;gap:10px;padding:18px 22px 16px;background:linear-gradient(120deg,var(--g1),var(--g2));color:#fff;flex-wrap:wrap;position:relative}
+.er-cab:after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:linear-gradient(90deg,var(--am),#f3c66f 40%,transparent)}
+.er-cab h3{margin:0;font:700 18px/1.2 "Archivo","Segoe UI",sans-serif;flex:1;min-width:220px;letter-spacing:-.01em}
+.er-cab small{display:block;color:rgba(255,255,255,.75);font:400 12px/1.4 "Source Sans 3",sans-serif;margin-top:3px;letter-spacing:0}
+.er-x{background:rgba(255,255,255,.12);border:0;width:32px;height:32px;border-radius:8px;font-size:20px;cursor:pointer;color:#fff;line-height:1}
+.er-b{border:1px solid rgba(255,255,255,.28);border-radius:9px;padding:8px 14px;font-weight:700;cursor:pointer;font-size:12.5px;background:rgba(255,255,255,.1);color:#fff}
+.er-b:hover{background:rgba(255,255,255,.2)}
+.er-b.pri{background:var(--am);border-color:var(--am);color:#2b1d00}.er-b.pri:hover{filter:brightness(1.05)}
+.er-pe .er-b,.er-corpo .er-b{border-color:var(--ln);background:#fff;color:var(--ink)}.er-pe .er-b.pri{background:var(--g2);border-color:var(--g2);color:#fff}
+.er-filt{display:flex;gap:10px;flex-wrap:wrap;align-items:end;padding:12px 22px;background:#fff;border-bottom:1px solid var(--ln)}
+.er-filt label{display:flex;flex-direction:column;gap:3px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--mut)}
+.er-filt select,.er-filt input{border:1px solid #d6ddd8;border-radius:8px;padding:7px 9px;font:inherit;font-size:12.5px;background:var(--soft);color:var(--ink);min-width:120px}
+.er-tabs{display:flex;gap:6px;padding:12px 22px 0;background:#fff;border-bottom:1px solid var(--ln);flex-wrap:wrap}
+.er-tab{border:0;background:none;padding:9px 14px;font-weight:700;font-size:13px;color:var(--mut);cursor:pointer;border-bottom:3px solid transparent;border-radius:8px 8px 0 0}
+.er-tab:hover{background:var(--soft)}.er-tab.on{color:var(--g1);border-bottom-color:var(--am);background:var(--soft)}
+.er-tab .ct{display:inline-block;margin-left:6px;background:#e7efe9;color:var(--g2);border-radius:20px;padding:0 7px;font-size:11px}
+.er-corpo{padding:18px 22px 22px;min-height:300px}
+.er-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;margin-bottom:16px}
+.er-k{position:relative;border:0;border-radius:12px;padding:14px 14px 12px;background:var(--card);text-align:left;cursor:pointer;font:inherit;color:inherit;box-shadow:0 1px 2px rgba(0,0,0,.04),0 4px 14px rgba(15,61,51,.06);overflow:hidden;transition:transform .12s}
+.er-k:hover{transform:translateY(-2px)}
+.er-k:before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--c)}
+.er-k:after{content:"";position:absolute;right:-18px;top:-18px;width:70px;height:70px;border-radius:50%;background:var(--c);opacity:.09}
+.er-k small{display:block;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--mut)}
+.er-k b{display:block;font:800 28px/1.1 "Archivo",sans-serif;margin:6px 0 3px;color:var(--c)}.er-k span{font-size:12px;color:var(--mut);display:block;line-height:1.35}
+.er-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px}
+.er-g2{display:grid;grid-template-columns:1.35fr 1fr;gap:14px;margin-bottom:14px}
+.er-card{background:var(--card);border-radius:12px;padding:15px 17px;box-shadow:0 1px 2px rgba(0,0,0,.04),0 4px 14px rgba(15,61,51,.05)}
+.er-card h4{margin:0 0 12px;font:700 14px/1.3 "Archivo",sans-serif;color:var(--g1)}.er-card h4 small{display:block;color:var(--mut);font:400 11.5px "Source Sans 3",sans-serif;margin-top:2px}
+.er-rk{display:grid;grid-template-columns:26px minmax(150px,1.3fr) 2fr 70px;gap:10px;align-items:center;padding:7px 6px;border-radius:8px;cursor:pointer}
+.er-rk:hover{background:var(--soft)}
+.er-rk .n{width:24px;height:24px;border-radius:50%;background:#efe9f7;color:#5b3c99;font-weight:800;font-size:12px;display:grid;place-items:center}
+.er-rk:first-child .n{background:#5b3c99;color:#fff}
+.er-rk .tr{height:12px;background:#eef1ee;border-radius:99px;overflow:hidden}.er-rk .tr i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#7b5cc4,#b493e8)}
+.er-rk em{font-style:normal;text-align:right;font-variant-numeric:tabular-nums;color:var(--mut);font-size:12px}.er-rk em b{color:var(--ink);font-size:14px}
+.er-dn{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.er-ring{--p:0;width:132px;height:132px;border-radius:50%;display:grid;place-items:center;flex:none}
+.er-ring>div{width:94px;height:94px;border-radius:50%;background:#fff;display:grid;place-items:center;text-align:center}
+.er-ring b{font:800 24px/1 "Archivo",sans-serif;color:var(--g1)}.er-ring span{display:block;font-size:10.5px;color:var(--mut);margin-top:2px}
+.er-leg{display:grid;gap:6px;flex:1;min-width:150px}
+.er-leg button{display:flex;align-items:center;gap:8px;border:0;background:none;font:inherit;color:var(--ink);cursor:pointer;padding:3px 4px;border-radius:6px;text-align:left}
+.er-leg button:hover{background:var(--soft)}.er-leg i{width:11px;height:11px;border-radius:3px;flex:none}.er-leg em{margin-left:auto;font-style:normal;font-weight:700}
+.er-lk{display:grid;grid-template-columns:minmax(150px,220px) 1fr;gap:12px;align-items:center;padding:7px 0;border-top:1px solid #f0f2f0}
+.er-lk:first-of-type{border-top:0}.er-lk>span{font-weight:600;font-size:12.5px}
+.er-stk{display:flex;height:22px;border-radius:7px;overflow:hidden;background:#eef1ee}
+.er-stk button{border:0;padding:0;cursor:pointer;color:#fff;font:700 11px "Source Sans 3",sans-serif;min-width:0;overflow:hidden;white-space:nowrap}
+.er-stk button:hover{filter:brightness(1.1)}
+.er-lgd{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;font-size:11.5px;color:var(--mut)}.er-lgd span{display:flex;align-items:center;gap:5px}.er-lgd i{width:10px;height:10px;border-radius:3px}
+.er-chips{display:flex;flex-wrap:wrap;gap:8px}
+.er-cp{border:1px solid var(--ln);background:#fff;border-radius:20px;padding:6px 12px;font:inherit;font-size:12.5px;cursor:pointer;display:flex;gap:7px;align-items:center}
+.er-cp b{background:var(--c,#1f6f54);color:#fff;border-radius:20px;padding:0 7px;font-size:11.5px}.er-cp:hover{border-color:var(--c)}
+.er-pill{display:inline-block;border-radius:20px;padding:2px 9px;font-size:11.5px;font-weight:700;background:color-mix(in srgb,var(--c) 15%,#fff);color:color-mix(in srgb,var(--c) 80%,#000);white-space:nowrap}
+.er-sets{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.er-set{cursor:pointer;transition:transform .12s}.er-set:hover{transform:translateY(-2px)}
+.er-set .hd{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px}.er-set .hd>div:first-child{flex:1}
+.er-set .hd small{display:block;color:var(--am);font-weight:800;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em}
+.er-set .hd strong{font:700 13.5px/1.3 "Archivo",sans-serif;color:var(--g1)}
+.er-set .er-qt{flex:none;min-width:52px;background:var(--g1);color:#fff;border-radius:10px;padding:4px 10px;text-align:center;font:800 18px/1.1 "Archivo",sans-serif}.er-set .er-qt span{display:block;font:600 9.5px "Source Sans 3",sans-serif;opacity:.8;text-transform:uppercase}
+.er-set .mt{background:#f6f2fc;border-radius:8px;padding:7px 9px;font-size:12px;margin-bottom:9px}.er-set .mt b{color:#5b3c99}
+.er-set .ln{display:grid;grid-template-columns:78px 1fr;gap:8px;align-items:center;font-size:11.5px;color:var(--mut);margin-top:6px}.er-set .er-stk{height:12px;border-radius:4px}
+.er-nm{display:grid;gap:10px}
+.er-row{display:grid;grid-template-columns:44px minmax(180px,1.3fr) minmax(170px,1.2fr) 2fr;gap:12px;align-items:center;background:var(--card);border-radius:12px;padding:11px 14px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.04),0 3px 10px rgba(15,61,51,.05);border-left:4px solid var(--c)}
+.er-row:hover{background:#fbfcfa}
+.er-av{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--g2),#3c9b78);color:#fff;font:800 14px "Archivo",sans-serif;display:grid;place-items:center}
+.er-row b{display:block;font-size:13px}.er-row small{display:block;color:var(--mut);font-size:11.5px;margin-top:1px}
+.er-row .ps{display:flex;flex-wrap:wrap;gap:5px}
+.er-chip{display:inline-flex;gap:6px;align-items:center;background:#fdf1da;color:#7a4f00;border-radius:20px;padding:5px 12px;font-size:12.5px;font-weight:700;margin:0 6px 12px 0}
+.er-chip button{border:0;background:none;cursor:pointer;color:inherit;font-weight:800;font-size:14px}
+.er-vazio{padding:50px 20px;text-align:center;color:var(--mut);background:#fff;border-radius:12px}
+.er-nota{font-size:12px;color:var(--mut);margin:12px 0 0}
+.er-ler{background:#fff;border-radius:12px;padding:12px 16px;margin-top:14px;border-left:4px solid var(--am);font-size:12.8px;line-height:1.5}
+.er-coms{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.er-com{background:#fff;border-radius:12px;padding:16px 16px 12px 44px;position:relative;box-shadow:0 1px 2px rgba(0,0,0,.04),0 4px 14px rgba(15,61,51,.05)}
+.er-com:before{content:"“";position:absolute;left:12px;top:2px;font:800 46px/1 Georgia,serif;color:var(--am)}
+.er-com p{margin:0 0 8px;font-size:13.5px;font-style:italic}.er-com small{display:block;color:var(--mut)}
+.er-com .er-num{background:none;border:0;padding:0;font:inherit;font-weight:700;color:var(--g2);cursor:pointer}
+.er-fs{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:12px}
+.er-fs div{background:#fff;border-radius:10px;padding:9px 12px}.er-fs small,.er-fq small{display:block;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);margin-bottom:3px}
+.er-fq{background:#fff;border-radius:10px;padding:10px 12px;margin-bottom:8px}.er-fq h5{margin:0 0 7px;font:700 11px "Archivo",sans-serif;text-transform:uppercase;letter-spacing:.05em;color:var(--g2)}
+.er-fq .it{display:grid;grid-template-columns:minmax(170px,1fr) 2fr;gap:8px;align-items:center;padding:4px 0;font-size:12.5px}
+.er-form{display:grid;grid-template-columns:repeat(12,1fr);gap:9px 12px;background:#fff;border-radius:12px;padding:14px}
+.er-form .c{display:flex;flex-direction:column;gap:3px}.er-form label.t{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--mut)}
+.er-form input[type=text],.er-form input[type=date],.er-form textarea{border:1px solid #d6ddd8;border-radius:8px;padding:7px 9px;font:inherit;background:var(--soft);color:var(--ink)}
+.er-form .sec{grid-column:1/-1;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--g2);border-bottom:1px solid var(--ln);padding-bottom:4px;margin-top:6px}
 .er-ops{display:flex;flex-wrap:wrap;gap:6px 16px}.er-ops label{display:flex;gap:5px;align-items:center;font-size:12.5px}
 .s3{grid-column:span 3}.s4{grid-column:span 4}.s6{grid-column:span 6}.s9{grid-column:span 9}.s12{grid-column:1/-1}
-.er-pe{display:flex;gap:8px;justify-content:flex-end;align-items:center;padding:12px 18px;border-top:1px solid #e0e5ef;flex-wrap:wrap}.er-pe .esp{flex:1;font-size:12px;color:#5d6a85}
-.er-exp{display:grid;gap:6px;margin:8px 0}.er-exp label{display:flex;gap:7px;align-items:center}
-@media (max-width:700px){.er-form>*{grid-column:1/-1!important}.er-ficha{grid-template-columns:1fr}.er-bar{grid-template-columns:1fr 1fr 50px}}
+.er-pe{display:flex;gap:8px;justify-content:flex-end;align-items:center;padding:12px 22px;border-top:1px solid var(--ln);background:#fff;flex-wrap:wrap}.er-pe .esp{flex:1;font-size:12px;color:var(--mut)}
+.er-exp{display:grid;gap:8px;margin:4px 0;background:#fff;border-radius:10px;padding:12px}.er-exp label{display:flex;gap:8px;align-items:center}
+@media (max-width:760px){.er-form>*{grid-column:1/-1!important}.er-g2{grid-template-columns:1fr}.er-rk{grid-template-columns:24px 1fr 60px}.er-rk .tr{grid-column:2/-1;grid-row:2}.er-lk{grid-template-columns:1fr}.er-row{grid-template-columns:40px 1fr}.er-row>div:nth-child(n+3){grid-column:1/-1}.er-fq .it{grid-template-columns:1fr}}
 </style>
 <script>
 (function(){
@@ -2609,65 +2655,89 @@ async function abrir(foco){
     let c2=QK[k].multi?c.filter(x=>x[1]).sort((a,b)=>b[1]-a[1]):c;if(lim)c2=c2.slice(0,lim);
     return c2.length?c2.map(([o,n])=>`<div class="er-bar" data-k="${k}" data-v="${esc(o)}" style="--c:${k==='mot'?'#6b4aa8':COR(o)}"><span>${esc(o)}</span><i style="width:${n/mx*100}%"></i><em><b>${n}</b> · ${pcT(pc(n,base))}</em></div>`).join(''):'<div class="er-nota">Sem respostas.</div>'};
   const kpi=(t,v,s,c,k,val)=>`<button class="er-k" style="--c:${c}" ${k?`data-k="${k}" data-v="${esc(val)}"`:'data-t2="nom"'}><small>${t}</small><b>${v}</b><span>${s}</span></button>`;
+  /* cores: positivo → negativo */
+  const CR=v=>({'Ótimo':'#1e7b4f','Sim':'#1e7b4f','Sempre':'#1e7b4f','Nada':'#1e7b4f','Bom':'#6bb38a','Regular':'#e3b23c','Em parte':'#e3b23c','Às vezes':'#e3b23c','Talvez':'#e3b23c','Ruim':'#e07b39','Péssimo':'#c3352f','Não':'#c3352f','Nunca':'#c3352f'}[v]||(v===NR?'#cfd6dd':'#8d98a8'));
+  const ini=n=>String(n||'').split(/\s+/).filter(Boolean).filter((w,i,a)=>i===0||i===a.length-1).map(w=>w[0]).join('').slice(0,2);
+  const pill=v=>`<span class="er-pill" style="--c:${CR(v)}">${esc(v)}</span>`;
+  const tom=r=>{const neg=['amb','lid','sal','cult','volta'].filter(k=>/^(Ruim|Péssimo|Não|Regular)$/.test(r[k]||'')).length;return neg>=3?'#c3352f':neg>=1?'#e3b23c':'#1e7b4f'};
+  const stk=(L,k,txt)=>{const c=conta(L,k);const n=L.length||1;
+    return `<div class="er-stk">${c.filter(x=>x[1]).map(([o,q])=>`<button type="button" data-k="${k}" data-v="${esc(o)}" title="${esc(o)}: ${q} (${pcT(pc(q,n))})" style="width:${q/n*100}%;background:${CR(o)}">${txt&&q/n>=.12?pcT(Math.round(q/n*100)):''}</button>`).join('')}</div>`};
+  const LK=['amb','lid','feed','sal','ben','cult'];
+  const legenda=()=>`<div class="er-lgd">${[['Positivo','#1e7b4f'],['Bom','#6bb38a'],['Intermediário','#e3b23c'],['Ruim','#e07b39'],['Negativo','#c3352f'],['Não se aplica / outro','#8d98a8'],['Não respondeu','#cfd6dd']].map(([t,c])=>`<span><i style="background:${c}"></i>${t}</span>`).join('')}</div>`;
+  const ranking=(L,k)=>{const c=conta(L,k).filter(x=>x[1]&&x[0]!==NR).sort((a,b)=>b[1]-a[1]);const mx=Math.max(1,...c.map(x=>x[1]));
+    return c.length?c.map(([o,q],i)=>`<div class="er-rk" data-k="${k}" data-v="${esc(o)}"><span class="n">${i+1}</span><span>${esc(o)}</span><span class="tr"><i style="width:${q/mx*100}%"></i></span><em><b>${q}</b> · ${pcT(pc(q,L.length))}</em></div>`).join(''):'<p class="er-nota">Ninguém marcou.</p>'};
+  const anel=(L,k,rot)=>{const c=conta(L,k).filter(x=>x[1]);const n=L.length||1;let a=0;
+    const grad=c.map(([o,q])=>{const s=a;a+=q/n*360;return `${CR(o)} ${s}deg ${a}deg`}).join(',');
+    const sim=conta(L,k).find(x=>x[0]==='Sim');const resp=L.filter(r=>r[k]).length;
+    return `<div class="er-dn"><div class="er-ring" style="background:conic-gradient(${grad||'#eee 0 360deg'})"><div><div><b>${resp?pcT(pc(sim?sim[1]:0,resp)):'—'}</b><span>${resp?rot:'sem resposta'}</span></div></div></div>
+      <div class="er-leg">${conta(L,k).map(([o,q])=>`<button type="button" data-k="${k}" data-v="${esc(o)}"><i style="background:${CR(o)}"></i>${esc(o)}<em>${q}</em></button>`).join('')}</div></div>`};
   const desenhar=()=>{
-    f.querySelectorAll('.er-tab').forEach(b=>b.classList.toggle('on',b.dataset.t===TAB));
     const L=filtrados(),C=$('#r-corpo');
-    if(!R.length){C.innerHTML=`<div class="er-vazio">Nenhuma entrevista lançada ainda.<br>Use <b>+ Lançar respostas</b> ou carregue o arquivo de respostas em Administração → Painéis e frentes.</div>`;return}
+    f.querySelectorAll('.er-tab').forEach(b=>{b.classList.toggle('on',b.dataset.t===TAB);if(b.dataset.t==='nom')b.innerHTML='Nominal<span class="ct">'+L.length+'</span>'});
+    if(!R.length){C.innerHTML=`<div class="er-vazio"><b style="font-size:15px;color:#0f3d33">Nenhuma entrevista lançada ainda</b><br><br>Use <b>+ Lançar respostas</b> ou carregue o arquivo de respostas em Administração → Painéis e frentes.</div>`;return}
     if(!L.length){C.innerHTML='<div class="er-vazio">Nenhuma entrevista com esses filtros.</div>';return}
     const n=L.length, top=conta(L,'mot').filter(x=>x[0]!==NR&&x[1]).sort((a,b)=>b[1]-a[1])[0];
     const nv=k=>v=>L.filter(r=>vals(r,k).includes(v)).length;
     const amb=L.filter(r=>/^(Ótimo|Bom)$/.test(r.amb||'')).length, lidN=L.filter(r=>/^(Ruim|Péssimo|Regular)$/.test(r.lid||'')).length, salN=nv('sal')('Não'), vs=nv('volta')('Sim'), vr=L.filter(r=>r.volta).length;
     let h='';
     if(TAB==='geral'){
-      h+=`<div class="er-kpis">${kpi('Entrevistas',n,'clique para ver todas','#14213d')}
+      h+=`<div class="er-kpis">${kpi('Entrevistas',n,'respondidas no período · ver todas','#0f3d33')}
         ${kpi('Principal motivo',top?top[1]:0,top?esc(top[0]):'—','#6b4aa8',top?'mot':'',top?top[0]:'')}
-        ${kpi('Ambiente ótimo ou bom',pcT(pc(amb,n)),`${amb} de ${n}`,'#2e7d4f')}
-        ${kpi('Liderança regular, ruim ou péssima',lidN,pcT(pc(lidN,n)),'#c2671a')}
-        ${kpi('Salário não compatível',salN,pcT(pc(salN,n)),'#c3352f','sal','Não')}
-        ${kpi('Voltaria a trabalhar',vs,vr?`${pcT(pc(vs,vr))} de quem respondeu (${vr})`:'ninguém respondeu','#1f6f9c','volta','Sim')}</div>
-        <div class="er-grid"><div class="er-card"><h4>Motivos do desligamento <small>· pode marcar mais de um; % sobre ${n} entrevistas</small></h4>${barras(L,'mot')}</div>
-        <div class="er-card"><h4>O que dificultava o trabalho</h4>${barras(L,'dif')}</div>
-        <div class="er-card"><h4>Voltaria a trabalhar na empresa?</h4>${barras(L,'volta')}</div>
-        <div class="er-card"><h4>Liderança</h4>${barras(L,'lid')}</div></div>
+        ${kpi('Ambiente ótimo ou bom',pcT(pc(amb,n)),`${amb} de ${n} entrevistas`,'#1e7b4f')}
+        ${kpi('Liderança a melhorar',lidN,`${pcT(pc(lidN,n))} avaliaram regular, ruim ou péssima`,'#e07b39')}
+        ${kpi('Salário não compatível',salN,pcT(pc(salN,n))+' das entrevistas','#c3352f','sal','Não')}
+        ${kpi('Voltaria a trabalhar',vs,vr?`${pcT(pc(vs,vr))} de quem respondeu (${vr})`:'ninguém respondeu ainda','#1f6f9c','volta','Sim')}</div>
+        <div class="er-g2"><div class="er-card"><h4>Por que estão saindo<small>Pode marcar mais de um motivo · % sobre ${n} entrevista${n>1?'s':''}</small></h4>${ranking(L,'mot')}</div>
+          <div class="er-card"><h4>Voltaria a trabalhar na empresa?<small>% de "sim" entre quem respondeu</small></h4>${anel(L,'volta','voltaria')}</div></div>
+        <div class="er-g2"><div class="er-card"><h4>Como avaliaram a empresa<small>Clique na cor para ver quem respondeu</small></h4>${LK.map(k=>`<div class="er-lk"><span>${esc(QK[k].t)}</span>${stk(L,k,1)}</div>`).join('')}${legenda()}</div>
+          <div class="er-card"><h4>O que dificultava o trabalho<small>Pode marcar mais de um</small></h4><div class="er-chips">${conta(L,'dif').filter(x=>x[1]).sort((a,b)=>b[1]-a[1]).map(([o,q])=>`<button type="button" class="er-cp" data-k="dif" data-v="${esc(o)}" style="--c:${o===NR?'#8d98a8':o==='Nada'?'#1e7b4f':'#e07b39'}">${esc(o)}<b>${q}</b></button>`).join('')}</div>
+          <h4 style="margin-top:16px">Tipo de contrato</h4><div class="er-chips">${Object.entries(TIPOS).map(([k,t])=>[t,L.filter(r=>r.tipo===k).length]).filter(x=>x[1]).map(([t,q])=>`<span class="er-cp" style="--c:#1f6f9c;cursor:default">${t}<b>${q}</b></span>`).join('')}</div></div></div>
         ${leitura(L)}`;
-      const sb=nv('volta')(NR);if(sb)h+=`<p class="er-nota">${sb} entrevista${sb>1?'s':''} sem resposta em "voltaria a trabalhar". Na hora de recolher o formulário, vale conferir se todas as perguntas foram marcadas.</p>`;
+      const sb=nv('volta')(NR);if(sb)h+=`<p class="er-nota">⚠ ${sb} entrevista${sb>1?'s':''} sem resposta em "voltaria a trabalhar". Ao receber o formulário, vale conferir se todas as perguntas foram marcadas.</p>`;
     }else if(TAB==='setor'){
       const G=new Map();L.forEach(r=>{const k=r._area+'||'+r._dep;if(!G.has(k))G.set(k,[]);G.get(k).push(r)});
-      const linhas=[...G].sort((a,b)=>b[1].length-a[1].length||a[0].localeCompare(b[0]));
-      const topo=(rr,k)=>{const c=conta(rr,k).filter(x=>x[0]!==NR&&x[1]).sort((a,b)=>b[1]-a[1]);return c.length?c.filter(x=>x[1]===c[0][1]).map(x=>x[0]).join(' / ')+` (${c[0][1]})`:'—'};
-      h+=`<table class="er-t"><thead><tr><th>Área</th><th>Departamento</th><th class="n">Entrevistas</th><th>Principal motivo</th><th>Ambiente</th><th>Liderança</th><th>Salário</th><th>Voltaria</th></tr></thead><tbody>${linhas.map(([k,rr])=>{const [a,d]=k.split('||');return `<tr class="lk" data-g="${esc(k)}"><td>${esc(a)}</td><td>${esc(d)}</td><td class="n"><b>${rr.length}</b></td><td>${esc(topo(rr,'mot'))}</td><td>${esc(topo(rr,'amb'))}</td><td>${esc(topo(rr,'lid'))}</td><td>${esc(topo(rr,'sal'))}</td><td>${esc(topo(rr,'volta'))}</td></tr>`}).join('')}</tbody></table>
-        <p class="er-nota">Clique na linha para ver as pessoas do setor. Área vem do Quadro de Colaboradores pela matrícula; departamento é o que está no formulário.</p>`;
+      const topo=(rr,k)=>{const c=conta(rr,k).filter(x=>x[0]!==NR&&x[1]).sort((a,b)=>b[1]-a[1]);return c.length?c.filter(x=>x[1]===c[0][1]).map(x=>x[0]).join(' / '):'—'};
+      h+=`<div class="er-sets">${[...G].sort((a,b)=>b[1].length-a[1].length||a[0].localeCompare(b[0])).map(([k,rr])=>{const [a,d]=k.split('||');return `<div class="er-card er-set" data-g="${esc(k)}">
+        <div class="hd"><div><small>${esc(a)}</small><strong>${esc(d||'Sem departamento')}</strong></div><div class="er-qt">${rr.length}<span>entrev.</span></div></div>
+        <div class="mt">Principal motivo: <b>${esc(topo(rr,'mot'))}</b></div>
+        ${[['amb','Ambiente'],['lid','Liderança'],['sal','Salário'],['volta','Voltaria']].map(([q,t])=>`<div class="ln"><span>${t}</span>${stk(rr,q)}</div>`).join('')}</div>`}).join('')}</div>${legenda()}
+        <p class="er-nota">Clique no cartão para ver as pessoas do setor. A área vem do Quadro de Colaboradores pela matrícula; o departamento é o que está no formulário.</p>`;
     }else if(TAB==='perg'){
-      h+=`<div class="er-grid">${QS.map(q=>`<div class="er-card"><h4>${esc(q.t)}${q.multi?' <small>· pode marcar mais de um</small>':''}</h4>${barras(L,q.k)}</div>`).join('')}</div>`;
+      h+=`<div class="er-grid">${QS.map(q=>`<div class="er-card"><h4>${esc(q.t)}${q.multi?'<small>Pode marcar mais de um</small>':''}</h4>${q.multi?ranking(L,q.k):stk(L,q.k,1)+`<div class="er-leg" style="margin-top:10px">${conta(L,q.k).map(([o,c])=>`<button type="button" data-k="${q.k}" data-v="${esc(o)}"><i style="background:${CR(o)}"></i>${esc(o)}<em>${c} · ${pcT(pc(c,n))}</em></button>`).join('')}</div>`}</div>`).join('')}</div>`;
     }else if(TAB==='com'){
       const cm=L.filter(r=>(r.coment||'').trim()||(r.motOutro||'').trim()||(r.difOutro||'').trim());
-      h+=cm.length?cm.map(r=>`<div class="er-com">${r.coment?`“${esc(r.coment)}”`:''}${r.motOutro?`<div><b>Outro motivo:</b> ${esc(r.motOutro)}</div>`:''}${r.difOutro?`<div><b>Outra dificuldade:</b> ${esc(r.difOutro)}</div>`:''}<small><button class="er-num" data-id="${esc(r._id)}">${esc(r.nome)}</button> · ${esc(r._dep)} · ${br(r._data)}</small></div>`).join(''):'<div class="er-vazio">Nenhum comentário nas entrevistas filtradas.</div>';
+      h+=cm.length?`<div class="er-coms">${cm.map(r=>`<div class="er-com">${r.coment?`<p>${esc(r.coment)}</p>`:''}${r.motOutro?`<p><b>Outro motivo:</b> ${esc(r.motOutro)}</p>`:''}${r.difOutro?`<p><b>Outra dificuldade:</b> ${esc(r.difOutro)}</p>`:''}<small><button class="er-num" data-id="${esc(r._id)}">${esc(r.nome)}</button> · ${esc(r._dep)} · ${br(r._data)}</small></div>`).join('')}</div>`:'<div class="er-vazio">Nenhum comentário nas entrevistas filtradas.</div>';
     }else{
       let LL=L;if(SEL)LL=SEL.k==='_g'?L.filter(r=>r._area+'||'+r._dep===SEL.v):L.filter(r=>vals(r,SEL.k).includes(SEL.v));
-      h+=(SEL?`<span class="er-chip">${esc(SEL.rot)} · ${LL.length}<button data-a="limpa" title="Tirar filtro">×</button></span>`:'')+tabela(LL);
+      h+=(SEL?`<span class="er-chip">${esc(SEL.rot)} · ${LL.length} pessoa${LL.length>1?'s':''}<button data-a="limpa" title="Tirar filtro">×</button></span>`:'')+tabela(LL);
     }
     C.innerHTML=h;
-    C.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{if(!b.dataset.k)return;SEL={k:b.dataset.k,v:b.dataset.v,rot:QK[b.dataset.k].t+': '+b.dataset.v};TAB='nom';desenhar()});
+    C.querySelectorAll('[data-k]').forEach(b=>b.onclick=e=>{e.stopPropagation();if(!b.dataset.k)return;SEL={k:b.dataset.k,v:b.dataset.v,rot:QK[b.dataset.k].t+': '+b.dataset.v};TAB='nom';desenhar()});
     C.querySelectorAll('[data-t2]').forEach(b=>b.onclick=()=>{SEL=null;TAB='nom';desenhar()});
-    C.querySelectorAll('tr[data-g]').forEach(t=>t.onclick=()=>{const [a,d]=t.dataset.g.split('||');SEL={k:'_g',v:t.dataset.g,rot:a+(d?' · '+d:'')};TAB='nom';desenhar()});
-    C.querySelectorAll('tr[data-id],button.er-num[data-id]').forEach(t=>t.onclick=()=>ficha(R.find(r=>r._id===t.dataset.id)));
+    C.querySelectorAll('[data-g]').forEach(t=>t.onclick=()=>{const [a,d]=t.dataset.g.split('||');SEL={k:'_g',v:t.dataset.g,rot:a+(d?' · '+d:'')};TAB='nom';desenhar()});
+    C.querySelectorAll('.er-row[data-id],button.er-num[data-id]').forEach(t=>t.onclick=()=>ficha(R.find(r=>r._id===t.dataset.id)));
     const lp=C.querySelector('[data-a=limpa]');if(lp)lp.onclick=()=>{SEL=null;desenhar()};
   };
-  const tabela=LL=>`<table class="er-t"><thead><tr><th>Data</th><th>Colaborador</th><th>Departamento / função</th><th>Contrato</th><th>Motivos</th><th>Ambiente</th><th>Liderança</th><th>Salário</th><th>Voltaria</th></tr></thead><tbody>${LL.map(r=>`<tr class="lk" data-id="${esc(r._id)}"><td>${br(r._data)}</td><td><b>${esc(r.nome)}</b><br><span style="color:#5d6a85">${esc(r.mat)}${r._sit?' · '+esc(r._sit):''}</span></td><td>${esc(r._dep)}<br><span style="color:#5d6a85">${esc(r.func||'')}</span></td><td>${esc(TIPOS[r.tipo]||'')}</td><td>${esc(vals(r,'mot').join('; '))}</td><td>${esc(r.amb||NR)}</td><td>${esc(r.lid||NR)}</td><td>${esc(r.sal||NR)}</td><td>${esc(r.volta||NR)}</td></tr>`).join('')}</tbody></table><p class="er-nota">Clique na linha para ver a entrevista completa, corrigir ou excluir.</p>`;
-  const leitura=L=>{const n=L.length;if(n<3)return `<p class="er-nota">Com ${n} entrevista${n>1?'s':''} ainda não dá para tirar tendência. A leitura por motivo e por setor fica confiável conforme as entrevistas forem sendo lançadas.</p>`;
+  const tabela=LL=>`<div class="er-nm">${LL.map(r=>`<div class="er-row" data-id="${esc(r._id)}" style="--c:${tom(r)}"><div class="er-av">${esc(ini(r.nome))}</div>
+     <div><b>${esc(r.nome)}</b><small>Matrícula ${esc(r.mat)}${r._sit?' · '+esc(r._sit)+' no Quadro':''}</small><small>Pedido em ${br(r._data)} · ${esc(TIPOS[r.tipo]||'contrato não informado')}</small></div>
+     <div><b style="font-weight:600">${esc(r._dep)}</b><small>${esc(r.func||'')}</small><small>${esc(r._area)}</small></div>
+     <div><div class="ps" style="margin-bottom:6px">${vals(r,'mot').map(v=>`<span class="er-pill" style="--c:#6b4aa8">${esc(v)}</span>`).join('')}</div>
+       <div class="ps">${[['amb','Ambiente'],['lid','Liderança'],['sal','Salário'],['volta','Voltaria']].map(([k,t])=>`<span style="font-size:11px;color:#5f6f76">${t}</span>${pill(r[k]||NR)}`).join('')}</div></div></div>`).join('')}</div>
+     <p class="er-nota">A faixa colorida à esquerda resume a entrevista: verde = avaliação positiva, amarelo = algum ponto negativo, vermelho = três ou mais pontos negativos. Clique para ver a entrevista completa, corrigir ou excluir.</p>`;
+  const leitura=L=>{const n=L.length;if(n<3)return `<div class="er-ler"><b>Leitura:</b> com ${n} entrevista${n>1?'s':''} ainda não dá para falar em tendência. A leitura por motivo e por setor fica confiável conforme as entrevistas forem lançadas.</div>`;
     const c=conta(L,'mot').filter(x=>x[0]!==NR&&x[1]).sort((a,b)=>b[1]-a[1]).slice(0,3);
-    return `<p class="er-nota"><b>O que os dados mostram:</b> ${c.map(x=>`${esc(x[0])} aparece em ${x[1]} de ${n} (${pcT(pc(x[1],n))})`).join('; ')}.</p>`};
+    return `<div class="er-ler"><b>O que os dados mostram:</b> ${c.map(x=>`${esc(x[0])} aparece em ${x[1]} de ${n} (${pcT(pc(x[1],n))})`).join('; ')}.</div>`};
   /* ficha individual */
   const ficha=r=>{if(!r)return;
     const w=document.createElement('div');w.className='er-fundo';w.style.zIndex=10000;
-    w.innerHTML=`<div class="er-modal" style="max-width:760px"><div class="er-cab"><h3>${esc(r.nome)}<small>Matrícula ${esc(r.mat)} · ${esc(r._dep)} · ${esc(r.func||'')}</small></h3><button class="er-x">×</button></div>
-      <div class="er-corpo" style="min-height:0"><div class="er-ficha">
-       <div><small>Admissão</small>${br(r.adm)||'—'}</div><div><small>Data do pedido</small>${br(r.ped)||'—'}</div>
-       <div><small>Contrato</small>${esc(TIPOS[r.tipo]||'—')}</div><div><small>Assinado em</small>${br(r.dataAss)||'—'}</div>
-       ${QS.map(q=>`<div${q.multi?' style="grid-column:1/-1"':''}><small>${esc(q.t)}</small>${esc(vals(r,q.k).join('; '))}${q.k==='mot'&&r.motOutro?' — '+esc(r.motOutro):''}${q.k==='dif'&&r.difOutro?' — '+esc(r.difOutro):''}</div>`).join('')}
-       <div style="grid-column:1/-1"><small>Comentário ou sugestão</small>${r.coment?esc(r.coment):'—'}</div>
-       ${r.obs?`<div style="grid-column:1/-1"><small>Observação do RH</small>${esc(r.obs)}</div>`:''}
-      </div><p class="er-nota">Lançado${r.lancPor?' por '+esc(r.lancPor):''}${r.lancEm?' em '+new Date(r.lancEm).toLocaleDateString('pt-BR'):''}${r.editEm?` · corrigido${r.editPor?' por '+esc(r.editPor):''} em ${new Date(r.editEm).toLocaleDateString('pt-BR')}`:''}.</p></div>
+    const sec=[['Motivo do desligamento',['mot']],['Trabalho e ambiente',['amb','dif']],['Comunicação e liderança',['lid','feed']],['Remuneração e benefícios',['sal','ben']],['Cultura e possibilidade de retorno',['cult','volta']]];
+    w.innerHTML=`<div class="er-modal" style="max-width:780px"><div class="er-cab"><div class="er-av" style="background:rgba(255,255,255,.18)">${esc(ini(r.nome))}</div><h3>${esc(r.nome)}<small>Matrícula ${esc(r.mat)} · ${esc(r._dep)} · ${esc(r.func||'')}</small></h3><button class="er-x">×</button></div>
+      <div class="er-corpo" style="min-height:0"><div class="er-fs">
+       <div><small>Admissão</small>${br(r.adm)||'—'}</div><div><small>Data do pedido</small>${br(r.ped)||'—'}</div><div><small>Contrato</small>${esc(TIPOS[r.tipo]||'—')}</div><div><small>Área</small>${esc(r._area)}</div></div>
+       ${sec.map(([t,ks])=>`<div class="er-fq"><h5>${t}</h5>${ks.map(k=>`<div class="it"><span>${esc(QK[k].t)}</span><span class="ps" style="display:flex;flex-wrap:wrap;gap:5px">${vals(r,k).map(v=>k==='mot'?`<span class="er-pill" style="--c:#6b4aa8">${esc(v)}</span>`:pill(v)).join('')}${k==='mot'&&r.motOutro?' <i>'+esc(r.motOutro)+'</i>':''}${k==='dif'&&r.difOutro?' <i>'+esc(r.difOutro)+'</i>':''}</span></div>`).join('')}</div>`).join('')}
+       <div class="er-fq"><h5>Comentário ou sugestão</h5>${r.coment?`<i>“${esc(r.coment)}”</i>`:'—'}</div>
+       ${r.obs?`<div class="er-fq" style="border-left:4px solid #e9a23b"><h5>Observação do RH</h5>${esc(r.obs)}</div>`:''}
+       <p class="er-nota">Lançado${r.lancPor?' por '+esc(r.lancPor):''}${r.lancEm?' em '+new Date(r.lancEm).toLocaleDateString('pt-BR'):''}${r.dataAss?' · formulário assinado em '+br(r.dataAss):''}${r.editEm?` · corrigido${r.editPor?' por '+esc(r.editPor):''} em ${new Date(r.editEm).toLocaleDateString('pt-BR')}`:''}.</p></div>
       <div class="er-pe"><span class="esp" id="f-msg"></span><button class="er-b" data-a="exc" style="color:#a3301c">Excluir</button><button class="er-b pri" data-a="ed">Corrigir</button></div></div>`;
     document.body.appendChild(w);const x=()=>w.remove();w.querySelector('.er-x').onclick=x;w.addEventListener('mousedown',e=>{if(e.target===w)x()});
     w.querySelector('[data-a=ed]').onclick=()=>{x();form(r)};
