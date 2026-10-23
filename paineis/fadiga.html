@@ -562,7 +562,7 @@ function abrir(reg){
   f.querySelector('.nv-x').onclick=fechar;el('cancel').onclick=fechar;
   f.addEventListener('mousedown',e=>{if(e.target===f)fechar()});
   const ler=()=>{const d={};CFG.campos.forEach(c=>{if(c.tipo==='sec'||c.tipo==='info')return;const i=el(c.k);if(i)d[c.k]=i.value.trim()});return d};
-  const ctx={el,ler,set:(k,v)=>{const i=el(k);if(i)i.value=v==null?'':v},mostrar:(k,on)=>{const w=f.querySelector(`[data-k="${k}"]`);if(w)w.style.display=on?'':'none'},info:(k,cls,html)=>{const i=el(k);if(i){i.className='nv-info'+(cls?' '+cls:'');i.innerHTML=html}},editando:ed};
+  const ctx={editando:!!ed,el,ler,set:(k,v)=>{const i=el(k);if(i)i.value=v==null?'':v},mostrar:(k,on)=>{const w=f.querySelector(`[data-k="${k}"]`);if(w)w.style.display=on?'':'none'},info:(k,cls,html)=>{const i=el(k);if(i){i.className='nv-info'+(cls?' '+cls:'');i.innerHTML=html}},editando:ed};
   /* matrícula → Quadro */
   CFG.campos.filter(c=>c.tipo==='mat').forEach(c=>{
     let tm=null,ult=null;const i=el(c.k);
@@ -623,8 +623,10 @@ function abrir(reg){
       if(ig&&confirmaDup!==sg){confirmaDup=sg;msg.style.color='#8a2a1a';msg.textContent='Já existe um lançamento igual a este'+(ig.dados.cadastradoEm?', cadastrado em '+new Date(ig.dados.cadastradoEm).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):'')+'. Se for mesmo outro, clique em Cadastrar de novo.';return false}}
     msg.style.color='#5d6a85';msg.textContent='Salvando…';
     try{
-      if(ed)await D.collection('novos').doc(ed._id).update(Object.assign({},d,{alteradoPor:quem,alteradoEm:new Date().toISOString()}));
-      else await D.collection('novos').add(Object.assign({},d,{cadastradoPor:quem,cadastradoEm:new Date().toISOString()},conf?{repetidoConfirmado:true}:{}));
+      if(ed){(CFG.soNovo||[]).forEach(k=>delete d[k]);await D.collection('novos').doc(ed._id).update(Object.assign({},d,{alteradoPor:quem,alteradoEm:new Date().toISOString()}))}
+      else{const N=Math.max(1,Math.min(200,CFG.copias?(+CFG.copias(d)||1):1));const lote=N>1?'L'+Date.now().toString(36):'';const dd=Object.assign({},d);(CFG.soNovo||[]).forEach(k=>delete dd[k]);const agora=new Date().toISOString();
+        for(let k=0;k<N;k++){msg.textContent=N>1?'Salvando '+(k+1)+' de '+N+'…':'Salvando…';await D.collection('novos').add(Object.assign({},dd,{cadastradoPor:quem,cadastradoEm:agora},(conf||N>1)?{repetidoConfirmado:true}:{},lote?{lote,loteN:N}:{}))}
+        if(N>1){recarregar(N+' lançamentos cadastrados (um por linha).');return}}
       recarregar(ed?'Alterações salvas.':'Registro cadastrado.');
     }catch(e){msg.style.color='#8a2a1a';msg.textContent='Não consegui salvar: '+((e&&e.message)||'sem permissão para editar este painel.');return false}
   };

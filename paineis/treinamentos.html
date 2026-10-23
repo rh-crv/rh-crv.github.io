@@ -981,17 +981,21 @@ window.CRV_NOVOS_CFG={
     {k:'sit',tipo:'select',rot:'Situação',w:'w3',ops:[['prev','Previsto (só no cronograma)'],['real','Realizado']],padrao:'real'},
     {k:'data',tipo:'date',rot:'Data de realização',w:'w3'},
     {k:'n',tipo:'int',rot:'Nº de treinados',w:'w3',ph:'Ex.: 12'},
+    {k:'qtd',tipo:'int',rot:'Quantos individuais lançar',w:'w3',ph:'Ex.: 8'},
     {k:'h',tipo:'text',rot:'Carga horária (h:min)',w:'w3',ph:'Ex.: 0:30 ou 1:30'},
     {k:'efic',tipo:'date',rot:'Data da avaliação de eficácia',w:'w4'},
     {k:'tinfo',tipo:'info',rot:''}
   ],
+  soNovo:['qtd'],
+  copias:d=>d.tipo==='1'&&d.sit==='real'?(parseInt(d.qtd,10)||1):1,
   aoMudar:c=>{
-    const d=c.ler(),real=d.sit==='real';['data','n','h','efic'].forEach(k=>c.mostrar(k,real));
+    const d=c.ler(),real=d.sit==='real';['data','n','h','efic'].forEach(k=>c.mostrar(k,real));const ind=real&&d.tipo==='1'&&!c.editando;c.mostrar('qtd',ind);if(ind&&!d.n){const e=c.el('n');if(e)e.value='1';d.n='1'}
     if(real&&d.data&&!c._mesTocado){const m=String(+d.data.slice(5,7)-1);const sel=c.el('mes');if(sel&&!sel.value)sel.value=m;}
     const n=parseInt(d.n,10),h=CRV_HORAS(d.h);const hf=x=>{const H=Math.floor(x+1e-9),M=Math.round((x-H)*60);return H+':'+String(M).padStart(2,'0')};
-    c.info('tinfo','',real?(n&&h?'Carga: <b>'+hf(h)+'</b> · horas/homem deste treinamento: <b>'+hf(n*h)+'</b> ('+n+' treinados × '+hf(h)+').':'Preencha a data, o nº de treinados e a carga horária. A eficácia pode ser lançada depois, em Editar.'):'Fica no cronograma como previsto. Quando acontecer, clique em Editar e mude para Realizado.');
+    const q=ind?Math.max(1,parseInt(d.qtd,10)||1):1;c.info('tinfo','',real?(n&&h?(q>1?'Vão ser lançadas <b>'+q+' linhas</b> iguais (uma por pessoa), cada uma com '+n+' treinado(s) e '+hf(h)+' · total de horas/homem: <b>'+hf(q*n*h)+'</b>.':'Carga: <b>'+hf(h)+'</b> · horas/homem deste treinamento: <b>'+hf(n*h)+'</b> ('+n+' treinados × '+hf(h)+').'):'Preencha a data, o nº de treinados e a carga horária. A eficácia pode ser lançada depois, em Editar.'):'Fica no cronograma como previsto. Quando acontecer, clique em Editar e mude para Realizado.');
   },
   validar:d=>{d.titulo=window.CRV_CORR_TIT?CRV_CORR_TIT(String(d.titulo||'').toUpperCase()):d.titulo;
+    if(d.tipo==='1'&&d.sit==='real'){if(!d.n)d.n='1';if(d.qtd&&!/^\d+$/.test(d.qtd))return 'Em "Quantos individuais lançar" use só números.';if(+d.qtd>200)return 'Lance no máximo 200 de uma vez.'}
     if(d.sit==='real'){
       if(!d.data)return 'Informe a data de realização.';
       if(!/^\d+$/.test(d.n||''))return 'Informe o nº de treinados.';
@@ -1083,7 +1087,7 @@ function abrir(reg){
   f.querySelector('.nv-x').onclick=fechar;el('cancel').onclick=fechar;
   f.addEventListener('mousedown',e=>{if(e.target===f)fechar()});
   const ler=()=>{const d={};CFG.campos.forEach(c=>{if(c.tipo==='sec'||c.tipo==='info')return;const i=el(c.k);if(i)d[c.k]=i.value.trim()});return d};
-  const ctx={el,ler,set:(k,v)=>{const i=el(k);if(i)i.value=v==null?'':v},mostrar:(k,on)=>{const w=f.querySelector(`[data-k="${k}"]`);if(w)w.style.display=on?'':'none'},info:(k,cls,html)=>{const i=el(k);if(i){i.className='nv-info'+(cls?' '+cls:'');i.innerHTML=html}},editando:ed};
+  const ctx={editando:!!ed,el,ler,set:(k,v)=>{const i=el(k);if(i)i.value=v==null?'':v},mostrar:(k,on)=>{const w=f.querySelector(`[data-k="${k}"]`);if(w)w.style.display=on?'':'none'},info:(k,cls,html)=>{const i=el(k);if(i){i.className='nv-info'+(cls?' '+cls:'');i.innerHTML=html}},editando:ed};
   /* matrícula → Quadro */
   CFG.campos.filter(c=>c.tipo==='mat').forEach(c=>{
     let tm=null,ult=null;const i=el(c.k);
@@ -1144,8 +1148,10 @@ function abrir(reg){
       if(ig&&confirmaDup!==sg){confirmaDup=sg;msg.style.color='#8a2a1a';msg.textContent='Já existe um lançamento igual a este'+(ig.dados.cadastradoEm?', cadastrado em '+new Date(ig.dados.cadastradoEm).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):'')+'. Se for mesmo outro, clique em Cadastrar de novo.';return false}}
     msg.style.color='#5d6a85';msg.textContent='Salvando…';
     try{
-      if(ed)await D.collection('novos').doc(ed._id).update(Object.assign({},d,{alteradoPor:quem,alteradoEm:new Date().toISOString()}));
-      else await D.collection('novos').add(Object.assign({},d,{cadastradoPor:quem,cadastradoEm:new Date().toISOString()},conf?{repetidoConfirmado:true}:{}));
+      if(ed){(CFG.soNovo||[]).forEach(k=>delete d[k]);await D.collection('novos').doc(ed._id).update(Object.assign({},d,{alteradoPor:quem,alteradoEm:new Date().toISOString()}))}
+      else{const N=Math.max(1,Math.min(200,CFG.copias?(+CFG.copias(d)||1):1));const lote=N>1?'L'+Date.now().toString(36):'';const dd=Object.assign({},d);(CFG.soNovo||[]).forEach(k=>delete dd[k]);const agora=new Date().toISOString();
+        for(let k=0;k<N;k++){msg.textContent=N>1?'Salvando '+(k+1)+' de '+N+'…':'Salvando…';await D.collection('novos').add(Object.assign({},dd,{cadastradoPor:quem,cadastradoEm:agora},(conf||N>1)?{repetidoConfirmado:true}:{},lote?{lote,loteN:N}:{}))}
+        if(N>1){recarregar(N+' lançamentos cadastrados (um por linha).');return}}
       recarregar(ed?'Alterações salvas.':'Registro cadastrado.');
     }catch(e){msg.style.color='#8a2a1a';msg.textContent='Não consegui salvar: '+((e&&e.message)||'sem permissão para editar este painel.');return false}
   };
