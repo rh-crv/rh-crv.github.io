@@ -278,7 +278,9 @@ $('more').onclick=()=>{S.lim+=300;render()};
 $('vtabs').onclick=e=>{const b=e.target.closest('[data-v]');if(!b)return;S.v=b.dataset.v;render()};
 
 /* ---------- exportar ---------- */
-const linhasExp=()=>sel().sort((a,b)=>ORD.indexOf(a.k)-ORD.indexOf(b.k)||a.N.localeCompare(b.N)).map(r=>{const p=PED[r.mat];const o={'Matrícula':r.mat,'Nome':r.N,'Função':r.F,'Setor':tc(r.dep),'Seção':tc(r.secao),'Gerência':tc(r.ger),'Situação no Quadro':r.sit,'Admissão':br(r.adm),'Desligamento':br(r.desl),'Cartão':r.card||'Sem cartão','ID do cartão':r.idc};
+const EMP={premium:'53586',convenio:'53584',alimentacao:'56906'}[T]||'';
+const cpfDe=r=>r.cpf||r.cpfC||'';
+const linhasExp=()=>sel().sort((a,b)=>ORD.indexOf(a.k)-ORD.indexOf(b.k)||a.N.localeCompare(b.N)).map(r=>{const p=PED[r.mat];const o={'Empresa do cartão':EMP,'Matrícula':r.mat,'Nome':r.N,'CPF':cpfDe(r),'Nascimento':br(r.nasc),'Função':r.F,'Setor':tc(r.dep),'Seção':tc(r.secao),'Gerência':tc(r.ger),'Situação no Quadro':r.sit,'Admissão':br(r.adm),'Desligamento':br(r.desl),'Cartão':r.card||'Sem cartão','ID do cartão':r.idc};
   if(T==='convenio'){const g=regra(r);o['Limite atual']=limAtual(r)??'';o['Limite da regra']=g.v;o['Regra']=g.t;o['Alojamento']=r.aloj||'';o['Limite x regra']=({acima:'Acima da regra',abaixo:'Abaixo do permitido',certo:'Dentro da regra'})[difLim(r)]||''}if(T==='premium')o['Função permitida']=r.eleg?'Sim':'Não';
   o['Situação']=CATS[r.k].l;o['O que fazer']=CATS[r.k].acao;o['Pedido marcado']=p?br(p.em)+(p.por?' · '+p.por:''):'';return o});
 const nomeArq=()=>`${({alimentacao:'Cartao Alimentacao',convenio:'Cartao Convenio',premium:'Cartao Premium'})[T]}${S.cat&&CATS[S.cat]?' - '+CATS[S.cat].l:''} ${new Date().toLocaleDateString('pt-BR').split('/').join('-')}`;
@@ -289,9 +291,9 @@ $('bX').onclick=async()=>{const X=window.XLSX||(window.parent&&window.parent.XLS
   const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,'Cartões');await salvar(nomeArq()+'.xlsx',new Uint8Array(X.write(wb,{bookType:'xlsx',type:'array'})),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')};
 $('bP').onclick=async()=>{const J=(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF);const L=linhasExp();if(!J||!L.length){toast(L.length?'Gerador de PDF indisponível.':'Nada para exportar.');return}
   const doc=new J({orientation:'landscape',unit:'mm',format:'a4'});if(typeof doc.autoTable!=='function'){toast('Gerador de tabela indisponível.');return}
-  const cols=['Matrícula','Nome','Função','Setor','Situação no Quadro','Cartão'].concat(T==='convenio'?['Limite atual','Limite da regra']:[]).concat(['Situação','O que fazer','Pedido marcado']);
+  const cols=['Matrícula','Nome','CPF','Nascimento','Admissão','Função','Setor','Situação no Quadro','Cartão'].concat(T==='convenio'?['Limite atual','Limite da regra']:[]).concat(['Situação','O que fazer','Pedido marcado']);
   doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text(nomeArq(),12,14);doc.setFont('helvetica','normal');doc.setFontSize(8.5);
-  doc.text(`${L.length} pessoas · planilha Sysprocard de ${br(C.refPlanilha)} × Quadro de ${br(C.refQuadro)}${S.dep?' · '+S.dep:''}${S.ger?' · '+S.ger:''}`,12,19);
+  doc.text(`Empresa Sysprocard nº ${EMP} · ${L.length} pessoas · planilha Sysprocard de ${br(C.refPlanilha)} × Quadro de ${br(C.refQuadro)}${S.dep?' · '+S.dep:''}${S.ger?' · '+S.ger:''}`,12,19);
   doc.autoTable({startY:23,head:[cols],body:L.map(r=>cols.map(c=>(c==='Limite atual'||c==='Limite da regra')&&r[c]!==''?moeda(r[c]):String(r[c]??''))),styles:{fontSize:7,cellPadding:1.4},headStyles:{fillColor:T==='premium'?[184,144,42]:T==='convenio'?[125,26,44]:[46,138,87]},margin:{left:10,right:10}});
   await salvar(nomeArq()+'.pdf',new Uint8Array((await (window.parent.CRV_PDF_LOGOS||window.CRV_PDF_LOGOS||(d=>d))(doc,{syspro:true})).output('arraybuffer')),'application/pdf')};
 
@@ -327,23 +329,26 @@ function abrirRel(){
     catch(e){w.querySelector('#rlMsg').textContent='Não consegui gerar: '+(e.message||e)}
   };
 }
-const colsRel=k=>k==='pedir'?[['Matrícula',r=>r.mat],['Nome',r=>r.nome],['CPF',r=>r.cpf||''],['Nascimento',r=>br(r.nasc)],['Função',r=>r.func],['Setor',r=>tc(r.dep)],['Admissão',r=>br(r.adm)],['Vínculo',r=>r.vinc]]
+const colsRel0=k=>k==='pedir'?[['Matrícula',r=>r.mat],['Nome',r=>r.nome],['CPF',r=>r.cpf||''],['Nascimento',r=>br(r.nasc)],['Função',r=>r.func],['Setor',r=>tc(r.dep)],['Admissão',r=>br(r.adm)],['Vínculo',r=>r.vinc]]
  :k==='desb'?[['Matrícula',r=>r.mat],['Nome',r=>r.nome],['ID do cartão',r=>r.idc],['CPF',r=>r.cpf||r.cpfC||''],['Função',r=>r.func],['Setor',r=>tc(r.dep)],['Situação',r=>r.sit]]
  :k==='bloq'?[['Matrícula',r=>r.mat],['Nome',r=>r.nome],['ID do cartão',r=>r.idc],['CPF (cartão)',r=>r.cpfC||''],['Motivo',r=>r.k==='desl'?'Desligado em '+br(r.desl):r.k==='regra'?'Função não permitida: '+r.func:'Matrícula fora do Quadro'+(r.outraMat?' (mesmo CPF da mat. '+r.outraMat+')':'')],['Setor',r=>r.dep&&r.dep!=='Fora do Quadro'?tc(r.dep):'']]
  :[['Matrícula',r=>r.mat],['Nome',r=>r.nome],['ID do cartão',r=>r.idc],['Setor',r=>tc(r.dep)],['Limite atual',r=>moeda(limAtual(r))],['Limite da regra',r=>moeda(regra(r).v)],['Regra',r=>regra(r).t]];
+/* todas as seções saem com CPF, nascimento e admissão */
+const colsRel=k=>{const c=colsRel0(k);const tem=n=>c.some(x=>x[0].startsWith(n));const i=c.findIndex(x=>x[0]==='Nome')+1;const add=[];
+  if(!tem('CPF'))add.push(['CPF',r=>cpfDe(r)]);if(!tem('Nascimento'))add.push(['Nascimento',r=>br(r.nasc)]);if(!tem('Admissão'))add.push(['Admissão',r=>br(r.adm)]);c.splice(i,0,...add);return c};
 async function gerarRel(sec,fmt){
   const hoje=new Date().toLocaleDateString('pt-BR'),nome=`Conferencia ${NOMET.replace('ã','a').replace('ê','e')} ${hoje.split('/').join('-')}`;
   if(fmt==='xlsx'){
     const X=window.XLSX||(window.parent&&window.parent.XLSX);if(!X)throw new Error('gerador de Excel indisponível');
     const wb=X.utils.book_new();
-    sec.forEach(x=>{const cs=colsRel(x.k);const aoa=[[`${NOMET} · ${x.t} · ${x.L.length} pessoas · gerado em ${hoje}`],[],cs.map(c=>c[0]).concat(['Conferido','Solicitado em'])].concat(x.L.map(r=>cs.map(c=>c[1](r)).concat(['',''])));
+    sec.forEach(x=>{const cs=colsRel(x.k);const aoa=[[`${NOMET} · Empresa Sysprocard nº ${EMP} · ${x.t} · ${x.L.length} pessoas · gerado em ${hoje}`],[],cs.map(c=>c[0]).concat(['Conferido','Solicitado em'])].concat(x.L.map(r=>cs.map(c=>c[1](r)).concat(['',''])));
       const ws=X.utils.aoa_to_sheet(aoa);ws['!cols']=cs.map(c=>({wch:c[0]==='Nome'?40:c[0]==='Motivo'?42:16})).concat([{wch:11},{wch:14}]);X.utils.book_append_sheet(wb,ws,x.t.slice(0,31))});
     await salvar(nome+'.xlsx',new Uint8Array(X.write(wb,{bookType:'xlsx',type:'array'})),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');return;
   }
   const J=(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF);if(!J)throw new Error('gerador de PDF indisponível');
   const doc=new J({orientation:'landscape',unit:'mm',format:'a4'});if(typeof doc.autoTable!=='function')throw new Error('gerador de tabela indisponível');
   const cor=T==='premium'?[184,144,42]:T==='convenio'?[125,26,44]:[46,138,87];
-  doc.setFont('helvetica','bold');doc.setFontSize(14);doc.text(`Relatório de conferência · ${NOMET} · Sysprocard`,12,14);
+  doc.setFont('helvetica','bold');doc.setFontSize(14);doc.text(`Relatório de conferência · ${NOMET} · Sysprocard · Empresa nº ${EMP}`,12,14);
   doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.text(`Gerado em ${hoje} · planilha Sysprocard de ${br(C.refPlanilha)} cruzada com o Quadro Geral (empresa 5) de ${br(C.refQuadro)} · ${sec.map(x=>x.t+': '+x.L.length).join(' · ')}`,12,19.5);
   let y=25;
   sec.forEach((x,i)=>{
@@ -625,7 +630,7 @@ async function abrir(){const aba=document.querySelector('#vtabs [data-v=d]');if(
   g('dfXls').onclick=()=>F&&excel().catch(er=>desenhar('',er.message));g('dfPdf').onclick=()=>F&&pdfRes().catch(er=>desenhar('',er.message));
   await lerTodos();FS.forEach(f=>(f.itens||[]).forEach(x=>{if(x.manual)return;x.conf=(x.conf||[]).filter(t=>!/alojamento|como no (mês|fechamento) anterior/.test(t)).map(t=>t==='Afastado no Quadro'?'Afastado: desconto em folha normal; bloquear o cartão na Sysprocard durante o afastamento':t);x.marc=V.excEsp[x.mat]?'NÃO':e1080(ROW[x.mat])?'SIM':''}));await ccDesligados();F=FS[0]||null;desenhar()}
 /* desligados: centro de custo = o último em que a pessoa estava (base de demitidos do Quadro); nunca fica em branco */
-async function ccDesligados(lista){let M={};try{const q=window.parent&&window.parent.CRV_QUADRO?await window.parent.CRV_QUADRO():null;M=(q&&q.mapa)||{}}catch(_){}
+async function ccDesligados(lista){let M={};try{const q=window.parent&&window.parent.CRV_QUADRO?await window.parent.CRV_QUADRO():null;M=(q&&q.mapa)||{}}catch(_){}QMAP=M;
   for(const f of (lista||FS)){let mud=false;(f.itens||[]).forEach(x=>{const p=M[x.mat];if(!p)return;
     if(p.situacao==='Desligado'&&!x.desl){x.desl=true;x.conf=(x.conf||[]).filter(t=>!/^Desligado/.test(t));x.conf.push('Desligado em '+br(p.deslig)+': descontar na rescisão');mud=true}
     if(!x.desl||x.ccMan)return;
@@ -675,6 +680,7 @@ async function salvarArq(nome,bytes,tipo){const DL=window.claude&&window.claude.
 const nomeArq=ext=>'Sysprocard Convenio Desc. Folha - '+br(F.ini).slice(0,5).replace('/','-')+' a '+br(F.fim).replace(/\//g,'-')+'.'+ext;
 /* ---------- exportação: Nominal (desconto de cada pessoa) ou Por centro de custo (lançamento) — sem itens "a conferir" ---------- */
 const ccN=c=>/^\d+$/.test(String(c))?+c:c;
+const EMPC='53584';let QMAP={};const inf=x=>{const r=ROW[x.mat]||{},q=QMAP[x.mat]||{};return {cpf:r.cpf||q.cpf||r.cpfC||'',nasc:br(r.nasc||q.nasc),adm:br(r.adm||q.admissao)}};
 function dadosExp(){const{C:CC}=calc();const it=F.itens.slice().sort((a,b)=>a.nome.localeCompare(b.nome));
   const N=it.filter(x=>descDe(x)>0&&!x.desl),DL=it.filter(x=>x.desl);
   const CL=CC.slice().sort((a,b)=>String(a.cc).localeCompare(String(b.cc),'pt',{numeric:true}));
@@ -691,14 +697,15 @@ async function excel(fix){const X=window.XLSX||(window.parent&&window.parent.XLS
   const op=fix||await escolher('xlsx');if(!op)return;if(op==='sal')return excelSal(X);const{N,DL,CL}=dadosExp();const RS='"R$"\\ #,##0.00';const per='Fechamento '+br(F.ini)+' a '+br(F.fim);
   const wb=X.utils.book_new();
   if(op!=='cc'){
-    const a=[['CRV INDUSTRIAL · Cartão Convênio Sysprocard · Desconto em folha (nominal)'],[per],[],['Nome','Matricula','C.CUSTO','DESC. C. CUSTO','Desconto(R$)']];
-    N.forEach(x=>a.push([x.nome,+x.mat,ccN(x.cc),x.ccd,{v:descDe(x),t:'n',z:RS}]));
-    a.push(['TOTAL · '+N.length+' pessoas',null,null,null,{f:'SUM(E5:E'+(N.length+4)+')',t:'n',z:RS}]);
-    const ws=X.utils.aoa_to_sheet(a);ws['!cols']=[44,11,10,40,15].map(w=>({wch:w}));ws['!autofilter']={ref:'A4:E'+(N.length+4)};X.utils.book_append_sheet(wb,ws,'Nominal');
-    if(DL.length){const d=[['Desligados · descontar na rescisão'],[per],[],['Nome','Matricula','C.CUSTO','DESC. C. CUSTO','Desconto(R$)']];
-      DL.forEach(x=>d.push([x.nome,+x.mat,ccN(x.cc),x.ccd,{v:descDe(x),t:'n',z:RS}]));d.push(['TOTAL · '+DL.length+' pessoas',null,null,null,{f:'SUM(E5:E'+(DL.length+4)+')',t:'n',z:RS}]);
-      const w2=X.utils.aoa_to_sheet(d);w2['!cols']=[44,11,10,40,15].map(w=>({wch:w}));X.utils.book_append_sheet(wb,w2,'Desligados - rescisão')}}
-  if(op!=='nom'){const c=[['CRV INDUSTRIAL · Cartão Convênio Sysprocard · Lançamento por centro de custo'],[per],[],['C.CUSTO','DESC. C. CUSTO','Pessoas','Consumo total(R$)','Desconto em folha(R$)','Parte da empresa(R$)']];
+    const H8=['Nome','Matricula','CPF','Nascimento','Admissão','C.CUSTO','DESC. C. CUSTO','Desconto(R$)'],lin=x=>{const i=inf(x);return [x.nome,+x.mat,i.cpf,i.nasc,i.adm,ccN(x.cc),x.ccd,{v:descDe(x),t:'n',z:RS}]};
+    const a=[['CRV INDUSTRIAL · Cartão Convênio Sysprocard (empresa nº '+EMPC+') · Desconto em folha (nominal)'],[per],[],H8];
+    N.forEach(x=>a.push(lin(x)));
+    a.push(['TOTAL · '+N.length+' pessoas',null,null,null,null,null,null,{f:'SUM(H5:H'+(N.length+4)+')',t:'n',z:RS}]);
+    const ws=X.utils.aoa_to_sheet(a);ws['!cols']=[44,11,16,12,12,10,40,15].map(w=>({wch:w}));ws['!autofilter']={ref:'A4:H'+(N.length+4)};X.utils.book_append_sheet(wb,ws,'Nominal');
+    if(DL.length){const d=[['Desligados · descontar na rescisão · empresa nº '+EMPC],[per],[],H8];
+      DL.forEach(x=>d.push(lin(x)));d.push(['TOTAL · '+DL.length+' pessoas',null,null,null,null,null,null,{f:'SUM(H5:H'+(DL.length+4)+')',t:'n',z:RS}]);
+      const w2=X.utils.aoa_to_sheet(d);w2['!cols']=[44,11,16,12,12,10,40,15].map(w=>({wch:w}));X.utils.book_append_sheet(wb,w2,'Desligados - rescisão')}}
+  if(op!=='nom'){const c=[['CRV INDUSTRIAL · Cartão Convênio Sysprocard (empresa nº '+EMPC+') · Lançamento por centro de custo'],[per],[],['C.CUSTO','DESC. C. CUSTO','Pessoas','Consumo total(R$)','Desconto em folha(R$)','Parte da empresa(R$)']];
     CL.forEach(x=>c.push([ccN(x.cc),x.nome,x.n,{v:+x.v.toFixed(2),t:'n',z:RS},{v:+x.d.toFixed(2),t:'n',z:RS},{v:+(x.v-x.d).toFixed(2),t:'n',z:RS}]));
     const e=CL.length+4;c.push(['TOTAL',null,{f:'SUM(C5:C'+e+')'},{f:'SUM(D5:D'+e+')',t:'n',z:RS},{f:'SUM(E5:E'+e+')',t:'n',z:RS},{f:'SUM(F5:F'+e+')',t:'n',z:RS}]);
     const ws=X.utils.aoa_to_sheet(c);ws['!cols']=[10,40,9,17,19,19].map(w=>({wch:w}));X.utils.book_append_sheet(wb,ws,'Por centro de custo')}
@@ -708,16 +715,16 @@ async function pdfRes(fix){const J=(window.jspdf&&window.jspdf.jsPDF)||(window.p
   const op=fix||await escolher('pdf');if(!op)return;if(op==='sal')return pdfSal(J);const{N,DL,CL}=dadosExp();const VI=[125,26,44];
   const doc=new J({unit:'mm',format:'a4'});const W=210;
   const cab=(tit)=>{doc.setFillColor(...VI);doc.rect(0,0,W,2,'F');doc.setFont('helvetica','bold');doc.setFontSize(12.5);doc.setTextColor(92,18,32);doc.text('Cartão Convênio Sysprocard · '+tit,10,10);
-    doc.setFont('helvetica','normal');doc.setFontSize(8.6);doc.setTextColor(60,66,80);doc.text('CRV Industrial · Fechamento de '+br(F.ini)+' a '+br(F.fim)+' · emitido em '+new Date().toLocaleDateString('pt-BR'),10,15.5)};
+    doc.setFont('helvetica','normal');doc.setFontSize(8.6);doc.setTextColor(60,66,80);doc.text('CRV Industrial · Empresa Sysprocard nº '+EMPC,10,15.5);doc.text('Fechamento de '+br(F.ini)+' a '+br(F.fim)+' · emitido em '+new Date().toLocaleDateString('pt-BR'),10,19.6)};
   const opt={styles:{fontSize:8,cellPadding:1.3},headStyles:{fillColor:VI},footStyles:{fillColor:[245,235,237],textColor:[60,20,30],fontStyle:'bold'},margin:{left:10,right:10,top:22},showFoot:'lastPage'};
-  const nomTab=(L,tit,y)=>{doc.autoTable(Object.assign({},opt,{startY:y,head:[['Nome','Matrícula','C. custo','Descrição do centro de custo','Desconto']],body:L.map(x=>[tcx(x.nome),x.mat,x.cc,x.ccd,'R$ '+brl(descDe(x))]),
-    foot:[['Total · '+L.length+' pessoas','','','','R$ '+brl(L.reduce((s,x)=>s+descDe(x),0))]],columnStyles:{1:{halign:'center'},2:{halign:'center'},4:{halign:'right'}}}))};
+  const nomTab=(L,tit,y)=>{doc.autoTable(Object.assign({},opt,{startY:y,head:[['Nome','Matrícula','CPF','Nascimento','Admissão','C. custo','Descrição do centro de custo','Desconto']],body:L.map(x=>{const i=inf(x);return [tcx(x.nome),x.mat,i.cpf,i.nasc,i.adm,x.cc,x.ccd,'R$ '+brl(descDe(x))]}),
+    foot:[['Total · '+L.length+' pessoas','','','','','','','R$ '+brl(L.reduce((s,x)=>s+descDe(x),0))]],styles:{fontSize:6.9,cellPadding:1.1},columnStyles:{0:{cellWidth:46},1:{halign:'center',cellWidth:13},2:{halign:'center',cellWidth:22},3:{halign:'center',cellWidth:16},4:{halign:'center',cellWidth:16},5:{halign:'center',cellWidth:11},7:{halign:'right',cellWidth:19}}}))};
   let primeira=true;
-  if(op!=='cc'){cab('Desconto em folha (nominal)');nomTab(N,'',22);primeira=false;
+  if(op!=='cc'){cab('Desconto em folha (nominal)');nomTab(N,'',24);primeira=false;
     if(DL.length){let y=doc.lastAutoTable.finalY+8;if(y>260){doc.addPage();y=22}doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(92,18,32);doc.text('Desligados · descontar na rescisão',10,y);nomTab(DL,'',y+3)}}
   if(op!=='nom'){if(!primeira)doc.addPage();cab('Lançamento por centro de custo');
     const t=CL.reduce((a,c)=>{a.n+=c.n;a.v+=c.v;a.d+=c.d;return a},{n:0,v:0,d:0});
-    doc.autoTable(Object.assign({},opt,{startY:22,head:[['C. custo','Descrição','Pessoas','Consumo total','Desconto em folha','Parte da empresa']],body:CL.map(c=>[c.cc,c.nome,c.n,'R$ '+brl(c.v),'R$ '+brl(c.d),'R$ '+brl(c.v-c.d)]),
+    doc.autoTable(Object.assign({},opt,{startY:24,head:[['C. custo','Descrição','Pessoas','Consumo total','Desconto em folha','Parte da empresa']],body:CL.map(c=>[c.cc,c.nome,c.n,'R$ '+brl(c.v),'R$ '+brl(c.d),'R$ '+brl(c.v-c.d)]),
       foot:[['Total','',t.n,'R$ '+brl(t.v),'R$ '+brl(t.d),'R$ '+brl(t.v-t.d)]],columnStyles:{0:{halign:'center'},2:{halign:'center'},3:{halign:'right'},4:{halign:'right'},5:{halign:'right'}}}))}
   const n=doc.internal.getNumberOfPages();for(let p=1;p<=n;p++){doc.setPage(p);doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(120,128,140);doc.text('Página '+p+' de '+n,W-10,292,{align:'right'})}
   const suf=op==='nom'?' - Nominal':op==='cc'?' - Por centro de custo':'';
