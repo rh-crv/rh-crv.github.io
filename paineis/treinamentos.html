@@ -444,12 +444,19 @@ const dnum = s => { const [y, m, d] = s.split("-").map(Number); return Date.UTC(
 
 /* treinamentos cadastrados no app */
 /* correção de grafia nos títulos (ex.: ADMISSINAL -> ADMISSIONAL) */
+/* carga horária como a gente digita: 0:30 / 00:30 / 0,30 = 30 minutos; 1:15 ou 1,15 = 1h15; 1,5 = 1h30; também "30 min" e "1h30" */
+window.CRV_HORAS=v=>{const t=String(v==null?'':v).trim().toLowerCase().replace(/\s+/g,'');if(!t)return NaN;let m;
+  if((m=t.match(/^(\d+):(\d{1,2})$/)))return +m[1]+(+m[2])/60;
+  if((m=t.match(/^(\d+)h(\d{1,2})?(min)?$/)))return +m[1]+(+(m[2]||0))/60;
+  if((m=t.match(/^(\d+)(min|m)$/)))return +m[1]/60;
+  if((m=t.match(/^(\d+)[,.](\d{2})$/))&&+m[2]<60)return +m[1]+(+m[2])/60;
+  return parseFloat(t.replace(',','.'))};
 window.CRV_CORR_TIT=t=>String(t||'').replace(/admissinal/gi,'ADMISSIONAL').replace(/\s+-\s*|\s*-\s+/g,' - ').replace(/\s+/g,' ').trim();
 DATA.rows.forEach(r=>{r[1]=CRV_CORR_TIT(r[1])});
 (function(){const N=window.CRV_NOVOS||[];if(!N.length)return;
  window.CRV_TR_ID={};N.forEach((n,k)=>{const d=n.dados||{};if(!d.titulo||d.mes===''||d.mes==null)return;CRV_TR_ID[90000+k]=n._id;
   const st=String(d.setor||'').trim().toUpperCase();let si=DATA.setores.findIndex(x=>x.toUpperCase()===st);if(si<0){DATA.setores.push(st);si=DATA.setores.length-1}
-  const real=d.sit==='real'&&d.data;const h=parseFloat(String(d.h||'').replace(',','.'));
+  const real=d.sit==='real'&&d.data;const h=CRV_HORAS(d.h);
   DATA.rows.push([90000+k,CRV_CORR_TIT(String(d.titulo).trim().toUpperCase()),+d.tipo||0,si,+d.mes,real?d.data:null,real?(parseInt(d.n,10)||null):null,real&&!isNaN(h)?h:null,real&&d.efic?d.efic:null]);
  });
 })();
@@ -974,27 +981,27 @@ window.CRV_NOVOS_CFG={
     {k:'sit',tipo:'select',rot:'Situação',w:'w3',ops:[['prev','Previsto (só no cronograma)'],['real','Realizado']],padrao:'real'},
     {k:'data',tipo:'date',rot:'Data de realização',w:'w3'},
     {k:'n',tipo:'int',rot:'Nº de treinados',w:'w3',ph:'Ex.: 12'},
-    {k:'h',tipo:'money',rot:'Carga horária (horas)',w:'w3',ph:'Ex.: 1,5'},
+    {k:'h',tipo:'text',rot:'Carga horária (h:min)',w:'w3',ph:'Ex.: 0:30 ou 1:30'},
     {k:'efic',tipo:'date',rot:'Data da avaliação de eficácia',w:'w4'},
     {k:'tinfo',tipo:'info',rot:''}
   ],
   aoMudar:c=>{
     const d=c.ler(),real=d.sit==='real';['data','n','h','efic'].forEach(k=>c.mostrar(k,real));
     if(real&&d.data&&!c._mesTocado){const m=String(+d.data.slice(5,7)-1);const sel=c.el('mes');if(sel&&!sel.value)sel.value=m;}
-    const n=parseInt(d.n,10),h=parseFloat(String(d.h||'').replace(',','.'));
-    c.info('tinfo','',real?(n&&h?'Horas/homem deste treinamento: <b>'+(n*h).toLocaleString('pt-BR',{maximumFractionDigits:1})+'</b> ('+n+' treinados × '+String(d.h)+' h).':'Preencha a data, o nº de treinados e a carga horária. A eficácia pode ser lançada depois, em Editar.'):'Fica no cronograma como previsto. Quando acontecer, clique em Editar e mude para Realizado.');
+    const n=parseInt(d.n,10),h=CRV_HORAS(d.h);const hf=x=>{const H=Math.floor(x+1e-9),M=Math.round((x-H)*60);return H+':'+String(M).padStart(2,'0')};
+    c.info('tinfo','',real?(n&&h?'Carga: <b>'+hf(h)+'</b> · horas/homem deste treinamento: <b>'+hf(n*h)+'</b> ('+n+' treinados × '+hf(h)+').':'Preencha a data, o nº de treinados e a carga horária. A eficácia pode ser lançada depois, em Editar.'):'Fica no cronograma como previsto. Quando acontecer, clique em Editar e mude para Realizado.');
   },
   validar:d=>{d.titulo=window.CRV_CORR_TIT?CRV_CORR_TIT(String(d.titulo||'').toUpperCase()):d.titulo;
     if(d.sit==='real'){
       if(!d.data)return 'Informe a data de realização.';
       if(!/^\d+$/.test(d.n||''))return 'Informe o nº de treinados.';
-      if(!d.h||isNaN(parseFloat(String(d.h).replace(',','.'))))return 'Informe a carga horária em horas (ex.: 1,5).';
+      if(!d.h||isNaN(CRV_HORAS(d.h)))return 'Informe a carga horária em horas e minutos (ex.: 0:30 para meia hora, 1:30 para uma hora e meia).';
       if(d.data.slice(0,4)!==String(DATA.ano))return 'O painel é de '+DATA.ano+': use uma data deste ano.';
       if(d.efic&&d.efic<d.data)return 'A eficácia não pode ser antes da realização.';
     }
     return '';
   },
-  colunas:[['Treinamento',(d,H)=>'<b>'+H.esc(window.CRV_CORR_TIT?CRV_CORR_TIT(d.titulo):d.titulo)+'</b>'],['Setor',(d,H)=>H.esc(d.setor)],['Mês',(d,H)=>d.mes!==''&&d.mes!=null?MES_T[+d.mes].slice(0,3)+'/'+DATA.ano:''],['Situação',(d,H)=>d.sit==='real'?'Realizado em '+H.brData(d.data)+' · '+H.esc(d.n)+' pessoas · '+H.esc(d.h)+' h':'Previsto']]
+  colunas:[['Treinamento',(d,H)=>'<b>'+H.esc(window.CRV_CORR_TIT?CRV_CORR_TIT(d.titulo):d.titulo)+'</b>'],['Setor',(d,H)=>H.esc(d.setor)],['Mês',(d,H)=>d.mes!==''&&d.mes!=null?MES_T[+d.mes].slice(0,3)+'/'+DATA.ano:''],['Situação',(d,H)=>d.sit==='real'?'Realizado em '+H.brData(d.data)+' · '+H.esc(d.n)+' pessoas · '+(()=>{const x=CRV_HORAS(d.h);if(isNaN(x))return H.esc(d.h);const a=Math.floor(x+1e-9),m=Math.round((x-a)*60);return a?a+'h'+(m?String(m).padStart(2,'0'):''):m+' min'})():'Previsto']]
 };
 </script>
 <!-- ===== Cadastro de novos registros no app ===== -->
