@@ -447,6 +447,8 @@ const dnum = s => { const [y, m, d] = s.split("-").map(Number); return Date.UTC(
 /* carga horária como a gente digita: 0:30 / 00:30 / 0,30 = 30 minutos; 1:15 ou 1,15 = 1h15; 1,5 = 1h30; também "30 min" e "1h30" */
 /* meta revisada pela gestão: abril/2026 passa de 235 para 220 treinamentos */
 if(DATA.ano===2026&&Array.isArray(DATA.metas)&&DATA.metas[3]===235)DATA.metas[3]=220;
+/* meta revisada pela gestão: maio/2026 passa para 170 treinamentos */
+if(DATA.ano===2026&&Array.isArray(DATA.metas)&&DATA.metas.length>4)DATA.metas[4]=170;
 window.CRV_HORAS=v=>{const t=String(v==null?'':v).trim().toLowerCase().replace(/\s+/g,'');if(!t)return NaN;let m;
   if((m=t.match(/^(\d+):(\d{1,2})$/)))return +m[1]+(+m[2])/60;
   if((m=t.match(/^(\d+)h(\d{1,2})?(min)?$/)))return +m[1]+(+(m[2]||0))/60;
