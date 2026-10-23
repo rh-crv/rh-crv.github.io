@@ -453,9 +453,12 @@ window.CRV_HORAS=v=>{const t=String(v==null?'':v).trim().toLowerCase().replace(/
   return parseFloat(t.replace(',','.'))};
 window.CRV_CORR_TIT=t=>String(t||'').replace(/admissinal/gi,'ADMISSIONAL').replace(/\s+-\s*|\s*-\s+/g,' - ').replace(/\s+/g,' ').trim();
 DATA.rows.forEach(r=>{r[1]=CRV_CORR_TIT(r[1])});
+/* setores: "FABRICA" e "FABRICA DE AÇUCAR" viram um só, "FÁBRICA DE AÇÚCAR" (só neste painel) */
+window.CRV_SETOR=s=>{const t=String(s||'').trim().toUpperCase(),n=t.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ');return /^FABRICA( DE ACUCAR)?$/.test(n)?'FÁBRICA DE AÇÚCAR':t};
+(function(){const nov=[],map={};DATA.setores.forEach((x,i)=>{const t=CRV_SETOR(x);let j=nov.indexOf(t);if(j<0){nov.push(t);j=nov.length-1}map[i]=j});DATA.setores.length=0;nov.forEach(x=>DATA.setores.push(x));DATA.rows.forEach(r=>{if(map[r[3]]!=null)r[3]=map[r[3]]})})();
 (function(){const N=window.CRV_NOVOS||[];if(!N.length)return;
  window.CRV_TR_ID={};N.forEach((n,k)=>{const d=n.dados||{};if(!d.titulo||d.mes===''||d.mes==null)return;CRV_TR_ID[90000+k]=n._id;
-  const st=String(d.setor||'').trim().toUpperCase();let si=DATA.setores.findIndex(x=>x.toUpperCase()===st);if(si<0){DATA.setores.push(st);si=DATA.setores.length-1}
+  const st=CRV_SETOR(d.setor);let si=DATA.setores.findIndex(x=>x.toUpperCase()===st);if(si<0){DATA.setores.push(st);si=DATA.setores.length-1}
   const real=d.sit==='real'&&d.data;const h=CRV_HORAS(d.h);
   DATA.rows.push([90000+k,CRV_CORR_TIT(String(d.titulo).trim().toUpperCase()),+d.tipo||0,si,+d.mes,real?d.data:null,real?(parseInt(d.n,10)||null):null,real&&!isNaN(h)?h:null,real&&d.efic?d.efic:null]);
  });
@@ -995,6 +998,7 @@ window.CRV_NOVOS_CFG={
     const q=ind?Math.max(1,parseInt(d.qtd,10)||1):1;c.info('tinfo','',real?(n&&h?(q>1?'Vão ser lançadas <b>'+q+' linhas</b> iguais (uma por pessoa), cada uma com '+n+' treinado(s) e '+hf(h)+' · total de horas/homem: <b>'+hf(q*n*h)+'</b>.':'Carga: <b>'+hf(h)+'</b> · horas/homem deste treinamento: <b>'+hf(n*h)+'</b> ('+n+' treinados × '+hf(h)+').'):'Preencha a data, o nº de treinados e a carga horária. A eficácia pode ser lançada depois, em Editar.'):'Fica no cronograma como previsto. Quando acontecer, clique em Editar e mude para Realizado.');
   },
   validar:d=>{d.titulo=window.CRV_CORR_TIT?CRV_CORR_TIT(String(d.titulo||'').toUpperCase()):d.titulo;
+    if(window.CRV_SETOR)d.setor=CRV_SETOR(d.setor);
     if(d.tipo==='1'&&d.sit==='real'){if(!d.n)d.n='1';if(d.qtd&&!/^\d+$/.test(d.qtd))return 'Em "Quantos individuais lançar" use só números.';if(+d.qtd>200)return 'Lance no máximo 200 de uma vez.'}
     if(d.sit==='real'){
       if(!d.data)return 'Informe a data de realização.';
