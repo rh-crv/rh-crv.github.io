@@ -140,6 +140,7 @@ async function carregarCatalogo(){
   // painéis novos que ainda não existem no banco: o administrador cria na hora
   const sp = E.paineis.find(x => x.id === 'sysprocard');
   const NOVOS = [
+    { id:'sysprocard-credito', frente:'Benefícios', nome:'Crédito manual Sysprocard', nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.05 },
     { id:'cartao-alimentacao', frente:'Benefícios', nome:'Cartão Alimentação', nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.1 },
     { id:'cartao-convenio',    frente:'Benefícios', nome:'Cartão Convênio',    nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.2 },
     { id:'cartao-premium',     frente:'Benefícios', nome:'Cartão Premium',     nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.3 },
@@ -147,16 +148,17 @@ async function carregarCatalogo(){
     { id:'servicos-gerais',    frente:'Outros controles', nome:'Serviços Gerais · Horas extras e gratificação', nivel:'controlado', ordem:90 }
   ].filter(n => !E.paineis.some(x => x.id === n.id));
   if (NOVOS.length && E.perfil && E.perfil.papel === 'admin') {
-    await sb.from('paineis').insert(NOVOS.map((n, i) => ({ ...n, ordem: n.id.startsWith('cartao-') ? (sp ? sp.ordem : 40) + 1 + i : n.ordem })));
+    await sb.from('paineis').insert(NOVOS.map((n, i) => ({ ...n, ordem: (n.id.startsWith('cartao-') || n.id === 'sysprocard-credito') ? (sp ? sp.ordem : 40) + 1 + i : n.ordem })));
     const r2 = await sb.from('paineis').select('*').order('ordem');
     if (!r2.error) E.paineis = (r2.data || []).filter(x => x.id !== 'rs' && x.id !== 'absenteismo-gestao');
   }
   // os cartões ficam logo abaixo do Sysprocard
-  if (sp) { const ix = E.paineis.indexOf(sp); const OC = ['cartao-alimentacao','cartao-convenio','cartao-adm','cartao-premium']; const cs = E.paineis.filter(x => x.id.startsWith('cartao-')).sort((a,b) => OC.indexOf(a.id) - OC.indexOf(b.id));
-    if (cs.length) { E.paineis = E.paineis.filter(x => !x.id.startsWith('cartao-')); E.paineis.splice(E.paineis.indexOf(E.paineis.find(x => x.id === 'sysprocard')) + 1, 0, ...cs); } }
+  if (sp) { const ix = E.paineis.indexOf(sp); const OC = ['sysprocard-credito','cartao-alimentacao','cartao-convenio','cartao-adm','cartao-premium']; const cs = E.paineis.filter(x => OC.includes(x.id)).sort((a,b) => OC.indexOf(a.id) - OC.indexOf(b.id));
+    if (cs.length) { E.paineis = E.paineis.filter(x => !OC.includes(x.id)); E.paineis.splice(E.paineis.indexOf(E.paineis.find(x => x.id === 'sysprocard')) + 1, 0, ...cs); } }
   E.metas = {};
   (m.data || []).forEach(r => E.metas[r.painel] = r);
   (k.data || []).forEach(r => E.metas[r.painel] = { ...r, linhas:null });
+  if (E.metas.sysprocard && !E.metas['sysprocard-credito']) E.metas['sysprocard-credito'] = E.metas.sysprocard;
 }
 
 function podeVer(p){ if (!E.perfil) return false; if (ehAdmin()) return true; return p.nivel !== 'restrito' && (E.perfil.frentes||[]).includes(p.frente); }
@@ -809,6 +811,9 @@ const MODELOS = Object.fromEntries(MODELOS_LISTA.map(id => [id, `paineis/${id}.h
 // painéis que usam o mesmo arquivo de painel
 ['cartao-alimentacao','cartao-convenio','cartao-premium'].forEach(id => MODELOS[id] = 'paineis/cartoes.html');
 MODELOS['cartao-adm'] = 'paineis/cartao-adm.html';
+// o crédito manual usa o mesmo arquivo, os mesmos dados e os mesmos créditos salvos do Vale-Alimentação Sysprocard
+MODELOS['sysprocard-credito'] = 'paineis/sysprocard.html';
+const PAC_DE = { 'sysprocard-credito':'sysprocard' };
 // recursos que dependem do Claude e não funcionam no app
 const AVISOS = { curriculos: 'Recrutamento e Seleção fica aqui dentro, no quadro "Recrutamento e Seleção". A leitura automática de currículos por IA só funciona dentro do Claude; aqui você consulta, cadastra e acompanha.' };
 
@@ -819,7 +824,7 @@ async function telaModelo(p, cfg, acao){
   moldura(`<div id="modelo-area" class="cartao vazio"><div class="spinner" style="margin:0 auto"></div><p>Abrindo o painel…</p></div>`);
   const meta = { set innerHTML(v){}, set textContent(v){} };   // informações do painel ficam só em Administração
   const [pac, tpl] = await Promise.all([
-    sb.from('pacotes').select('referencia,conteudo,atualizado_em,atualizado_por').eq('painel', p.id).maybeSingle(),
+    sb.from('pacotes').select('referencia,conteudo,atualizado_em,atualizado_por').eq('painel', PAC_DE[p.id] || p.id).maybeSingle(),
     fetch(MODELOS[p.id] + '?v=' + CFG.VERSAO, { cache:'no-cache' }).then(r => r.ok ? r.text() : Promise.reject(new Error('Arquivo do painel não encontrado no GitHub (' + MODELOS[p.id] + ').'))).catch(e => ({ erro:e }))
   ]);
   const area = $('#modelo-area');
@@ -833,13 +838,13 @@ async function telaModelo(p, cfg, acao){
     return;
   }
   if (d.conteudo && d.conteudo.arquivo) {
-    try { d.conteudo = await lerArquivoPacote(p.id, d.conteudo.arquivo); }
+    try { d.conteudo = await lerArquivoPacote(PAC_DE[p.id] || p.id, d.conteudo.arquivo); }
     catch(_) { area.innerHTML = `<div class="erro">Não consegui abrir os dados deste painel. Carregue o arquivo de dados de novo em Administração.</div>`; return; }
   }
   try {
     // ponte: o que o painel pedir ao "Claude" (salvar anotações, baixar arquivos...) vem para o app
     window.CRV_QUEM = E.perfil.nome;
-    window.__CRV_PAINEL = window.CRV_PONTE.criar({ sb, painel: p.id, perfil: () => E.perfil, quem: () => E.perfil.nome,
+    window.__CRV_PAINEL = window.CRV_PONTE.criar({ sb, painel: PAC_DE[p.id] || p.id, perfil: () => E.perfil, quem: () => E.perfil.nome,
       podeEditar: () => podeEditar(p), ehAdmin: () => ehAdmin() });
     let novos = [];
     if (PAINEIS_COM_NOVOS.includes(p.id)) {
@@ -1095,7 +1100,7 @@ function montarModelo(tpl, conteudo, referencia, p, novos){
   const nomeOk = n => /^[A-Za-z_$][\w$]*$/.test(n);
   const base = location.href.split('#')[0].replace(/[^/]*$/, '');
   let html = tpl.split('__CRV_REFBR__').join(fmtRef(referencia)).split('__CRV_BASE__').join(base);
-  const ponte = `<script>${window.CRV_PONTE.scriptPainel()}<\/script>` + (novos ? `<script>window.CRV_NOVOS=${jsValor(novos)};<\/script>` : '');
+  const ponte = `<script>window.CRV_PAINEL_ID=${JSON.stringify(p.id)};<\/script><script>${window.CRV_PONTE.scriptPainel()}<\/script>` + (novos ? `<script>window.CRV_NOVOS=${jsValor(novos)};<\/script>` : '');
   // visual compacto: capa mais baixa e títulos menores em todos os painéis
   const compacto = `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@400;500;600;700&display=swap">
   <style id="crv-padrao">

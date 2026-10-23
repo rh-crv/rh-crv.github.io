@@ -294,6 +294,7 @@ tr.clk{cursor:pointer}
 </section>
 
 <section id="tab-cm" hidden>
+  <div class="tile" id="cmMesBox" style="margin-bottom:12px"></div>
   <div class="hero"><div class="big" id="cmBig">0<small>créditos lançados</small></div><div><p>Lance um crédito: digite a matrícula, o painel traz nome, função e setor da base, e você informa o valor e a empresa. Ao terminar, clique em <b>Salvar crédito</b>: ele vai para “Créditos salvos”, no fim da página, e a lista fica livre para o próximo. O tipo de crédito escolhido no cabeçalho (alimentação, reembolso, retrabalho ou rescisório) vai no título do PDF e numa coluna do Excel. Depois é só filtrar por tipo, competência, empresa ou colaborador e imprimir.</p></div></div>
   <div class="tile">
     <h2>Cabeçalho do crédito</h2><p class="sub">Aparece no topo do PDF e no Excel.</p>
@@ -310,7 +311,7 @@ tr.clk{cursor:pointer}
       <label>Matrícula<input id="cmMat" inputmode="numeric" autocomplete="off" placeholder="Ex.: 21908"></label>
       <div class="cmpv" id="cmPv"><span class="sm">Os dados do colaborador aparecem aqui.</span></div>
       <label>Valor (R$)<input id="cmVal" inputmode="decimal" placeholder="0,00"></label>
-      <label>Empresa<input id="cmEmp" list="cmEmps" placeholder="Ex.: CRV Industrial"></label>
+      <label>Empresa Sysprocard<input id="cmEmp" readonly title="Automático pelo tipo de crédito: Rescisório 53586; Alimentação, Reembolso e Retrabalho 56906" style="background:#f1f3f4"></label>
       <button class="btn2" id="cmAdd">Adicionar</button>
     </div>
     <details class="cmbulk"><summary>Colar vários de uma vez</summary>
@@ -329,12 +330,13 @@ tr.clk{cursor:pointer}
   <h2 class="sech">Créditos salvos <span>filtre, marque e imprima o que precisar</span></h2>
   <p class="note" id="svOff" hidden><b>Créditos salvos indisponíveis aqui:</b> abra o painel pelo link com a sua conta do Claude para salvar e consultar créditos. Enquanto isso, a lista em edição continua funcionando e pode ser baixada em Excel ou PDF.</p>
   <div class="blk" id="svWrap" style="margin-top:0">
+    <p class="note" id="svMesF" hidden style="margin:12px 12px 0"></p>
     <div class="tools" style="padding:12px 12px 0"><input type="search" id="svQ" placeholder="Buscar por matrícula ou nome" aria-label="Buscar"><select id="svTipo" aria-label="Tipo"></select><select id="svComp" aria-label="Competência"></select><select id="svEmp" aria-label="Empresa"></select></div>
     <div class="xbar"><span class="xs" id="svSum"></span><button class="btn2" id="svXls">Excel do filtro</button><button class="btn2" id="svPdf">Imprimir filtro (PDF)</button></div>
     <div class="scroll"><table class="nom"><thead><tr><th class="ck"><input type="checkbox" id="svAll" aria-label="Marcar todos"></th><th>Crédito</th><th>Empresas</th><th class="r">Colaboradores</th><th class="r">Valor</th><th></th></tr></thead><tbody id="svList"></tbody></table></div>
     <p class="sm" style="padding:0 12px 12px;margin:8px 0 0">Sem nenhum marcado, “Imprimir filtro” leva todos os créditos que aparecem na lista; marcando alguns, leva só os marcados. A busca e a empresa também filtram as linhas dentro de cada crédito.</p>
   </div>
-  <p class="foot">Os dados do colaborador vêm da Base Geral Colaborador de 30/09/2026 (e da planilha Syspro para os demitidos de setembro); os dos jovens aprendizes, da base João Bittar (08/10/2026) e da relação RENAPSI (setembro/2026), sempre pela matrícula CRV. Valor e empresa são o que você digitar; nada aqui altera a carga do mês das outras abas.</p>
+  <p class="foot">Os dados do colaborador vêm da Base Geral Colaborador de 30/09/2026 (e da planilha Syspro para os demitidos de setembro); os dos jovens aprendizes, da base João Bittar (08/10/2026) e da relação RENAPSI (setembro/2026), sempre pela matrícula CRV. O valor é o que você digitar e a empresa Sysprocard é automática pelo tipo (rescisório 53586; alimentação, reembolso e retrabalho 56906); nada aqui altera a carga do mês das outras abas.</p>
 </section>
 
 <section id="tab-k" hidden>
@@ -800,9 +802,13 @@ const CMK='va_credito_manual_v1',RM=new Map(R.map(r=>[r[0],r]));
 
 const JAM=new Map(JA.map(j=>[j[0],[j[0],j[1],'JOVEM APRENDIZ',j[4]?'Jornada '+j[4]:'',j[3],'','Aprendiz',j[5],0,'JA',[],[],[],0,'',j[2],j[6],j[7]]]));
 const CMT=['Alimentação','Reembolso','Retrabalho','Rescisório'];
+// empresa Sysprocard de cada tipo de crédito (automático): rescisório 53586; alimentação, reembolso e retrabalho 56906
+const EMP_TIPO={'Rescisório':'53586','Alimentação':'56906','Reembolso':'56906','Retrabalho':'56906'};
+const empDe=(x,tipo)=>{const e=String(x&&x.emp||'').trim();return /^\d{4,6}$/.test(e)?e:(EMP_TIPO[tipo]||e)};
 let CM={tipo:'Alimentação',comp:'',obs:'',emp:'',rows:[]};
 try{const v=JSON.parse(localStorage.getItem(CMK)||'null');if(v&&Array.isArray(v.rows))CM=Object.assign(CM,v)}catch(e){}
 if(!CMT.includes(CM.tipo))CM.tipo='Alimentação';
+CM.emp=EMP_TIPO[CM.tipo];CM.rows.forEach(x=>{x.emp=EMP_TIPO[CM.tipo]});
 const cmSave=()=>{try{localStorage.setItem(CMK,JSON.stringify(CM))}catch(e){}};
 const pv=t=>{t=String(t||'').trim().replace(/R\$\s*/,'').replace(/\s/g,'');if(!t)return NaN;if(t.includes(','))t=t.replace(/\./g,'').replace(',','.');return Math.round(parseFloat(t)*100)/100};
 const vtxt=v=>isNaN(v)?'':v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -852,7 +858,7 @@ function cmBulk(){const lines=$('cmBulk').value.split(/\n/).map(l=>l.trim()).fil
 const cmTot=()=>CM.rows.reduce((s,x)=>s+(x.val||0),0);
 function cmGroups(){const g={};CM.rows.forEach(x=>{const k=x.emp||'Sem empresa informada';g[k]=g[k]||{n:0,v:0};g[k].n++;g[k].v+=x.val||0});return g}
 function renderCM(){
-  $('cmTipo').value=CM.tipo;$('cmComp').value=CM.comp;$('cmObs').value=CM.obs;if(!$('cmEmp').value)$('cmEmp').value=CM.emp||'';
+  $('cmTipo').value=CM.tipo;$('cmComp').value=CM.comp;$('cmObs').value=CM.obs;$('cmEmp').value=EMP_TIPO[CM.tipo]||CM.emp||'';
   $('cmEmps').innerHTML=[...new Set(CM.rows.map(x=>x.emp).filter(Boolean))].map(e=>`<option>${esc(e)}</option>`).join('');
   $('cmEditing').hidden=!CM.loteId;if(CM.loteId)$('cmEditing').innerHTML=`<b>Editando um crédito salvo</b> (${esc(CM.tipo)}${CM.comp?' · '+esc(CM.comp):''}). “Salvar alterações” substitui o crédito salvo. <button class="btn2 gh" id="cmNew" style="margin-left:8px">Começar um novo</button>`;$('cmSaveB').textContent=CM.loteId?'Salvar alterações':'Salvar crédito';
   $('cmBig').innerHTML=`${nf(CM.rows.length)}<small>${CM.rows.length===1?'crédito lançado':'créditos lançados'}</small>`;
@@ -861,13 +867,15 @@ function renderCM(){
   $('cmTb').innerHTML=CM.rows.map((x,i)=>`<tr><td class="r" data-l="Matrícula">${x.m}</td>
     <td data-l="Colaborador">${x.base&&RM.has(cmFind(x.m)[0])?`<button class="nmb" data-f="${cmFind(x.m)[0]}">${esc(x.nome)}</button>`:`<b>${esc(x.nome)}</b>`}<div class="sm">${esc(x.sit)}</div></td>
     <td data-l="Função e setor">${esc(x.func)}<div class="sm">${esc(x.setor)}</div><div class="sm">CC ${esc(ccTxt(x)||'—')}</div></td>
-    <td data-l="Empresa"><input data-cme="${i}" value="${esc(x.emp)}" list="cmEmps" aria-label="Empresa"></td>
+    <td data-l="Empresa"><b>${esc(empDe(x,CM.tipo))}</b></td>
     <td class="r" data-l="Valor"><input data-cmv="${i}" value="${vtxt(x.val)}" inputmode="decimal" aria-label="Valor"></td>
     <td><button class="xdel" data-cmd="${i}" aria-label="Remover">Remover</button></td></tr>`).join('')||'<tr><td colspan="6" class="sm">Digite uma matrícula acima para começar.</td></tr>'}
 const fname=t=>t.replace(/[\\/:*?"<>|“”]/g,' ').replace(/\s+/g,' ').trim();
 const cmName=()=>fname('Crédito '+(CM.tipo||'')+(CM.comp?' - '+CM.comp:''));
 const ccCode=t=>{const m=/^(\d+) – /.exec(t||'');return m?+m[1]:''},ccDesc=t=>(t||'').replace(/^\d+ – /,'');
-const cmXlsxOf=rows0=>{const rows=rows0.slice().sort((a,b)=>(ccCode(ccTxt(a))||1e9)-(ccCode(ccTxt(b))||1e9)||a.nome.localeCompare(b.nome));return xlsx(['Matrícula','Nome','Função','Setor','Seção','Situação na base','Cód. centro de custo','Centro de custo','Empresa','Tipo de crédito','Competência','Lançado em','Valor a creditar'],rows.map(x=>{const c=ccTxt(x);return [x.m,x.nome,x.func,x.setor,x.sec||'',x.sit||'',ccCode(c),ccDesc(c),x.emp,x.tipo,x.comp,x.quando||'',x.val]}),[11,42,30,22,38,18,12,34,26,18,16,12,16],12)};
+/* Excel para a Sysprocard creditar: Empresa, Nome, Matrícula, Valor */
+const cmXlsxOf=rows0=>{const rows=rows0.slice().sort((a,b)=>empDe(a,a.tipo).localeCompare(empDe(b,b.tipo))||a.nome.localeCompare(b.nome));return xlsx(['Empresa','Nome','Matrícula','Valor'],rows.map(x=>[+empDe(x,x.tipo)||empDe(x,x.tipo),x.nome,+x.m,x.val]),[10,44,12,14],3)};
+const cmXlsxDet=rows0=>{const rows=rows0.slice().sort((a,b)=>(ccCode(ccTxt(a))||1e9)-(ccCode(ccTxt(b))||1e9)||a.nome.localeCompare(b.nome));return xlsx(['Matrícula','Nome','Função','Setor','Seção','Situação na base','Cód. centro de custo','Centro de custo','Empresa','Tipo de crédito','Competência','Lançado em','Valor a creditar'],rows.map(x=>{const c=ccTxt(x);return [x.m,x.nome,x.func,x.setor,x.sec||'',x.sit||'',ccCode(c),ccDesc(c),x.emp,x.tipo,x.comp,x.quando||'',x.val]}),[11,42,30,22,38,18,12,34,26,18,16,12,16],12)};
 const curRows=()=>CM.rows.map(x=>Object.assign({},x,{tipo:CM.tipo,comp:CM.comp}));
 const cmXlsx=()=>cmXlsxOf(curRows());
 function grpBy(rows,f){const g={};rows.forEach(x=>{const k=f(x)||'Não informado';g[k]=g[k]||{n:0,v:0};g[k].n++;g[k].v+=x.val||0});return g}
@@ -917,23 +925,42 @@ const CMMAX=2000;
 function expRow(x,emps){if(!Array.isArray(x))return x;const r=cmFind(x[0]);
   return {m:x[0],nome:r?r[1]:x[1],func:r?r[2]:'',setor:r?r[4]:'',sec:r?r[3]:'',sit:r?cmSit(r):'Fora da base',emp:(emps||[])[x[3]]||'',val:x[2],base:!!r}}
 const normLote=L=>Object.assign(L,{rows:(L.rows||[]).map(x=>expRow(x,L.emps))});
-let DB=null,LOTES=[],LOTES_OK=false;const SF={tipo:'',comp:'',emp:'',q:''},SEL=new Set();
-const lRows=L=>(L.rows||[]).map(x=>Object.assign({},x,{tipo:L.tipo,comp:L.comp,quando:L.criadoEm?fdt(L.criadoEm.slice(0,10)):'',lote:L.id}));
+let DB=null,LOTES=[],LOTES_OK=false;const SF={tipo:'',comp:'',emp:'',q:'',mes:''},SEL=new Set();
+const lRows=L=>(L.rows||[]).map(x=>Object.assign({},x,{emp:empDe(x,L.tipo),tipo:L.tipo,comp:L.comp,quando:L.criadoEm?fdt(L.criadoEm.slice(0,10)):'',lote:L.id,mes:(L.criadoEm||'').slice(0,7)}));
 const rowOk=x=>(!SF.emp||x.emp===SF.emp)&&(!SF.q||String(x.m).includes(SF.q)||x.nome.toLowerCase().includes(SF.q.toLowerCase()));
-const loteOk=L=>(!SF.tipo||L.tipo===SF.tipo)&&(!SF.comp||L.comp===SF.comp)&&lRows(L).some(rowOk);
+const loteOk=L=>(!SF.tipo||L.tipo===SF.tipo)&&(!SF.comp||L.comp===SF.comp)&&(!SF.mes||(L.criadoEm||'').slice(0,7)===SF.mes)&&lRows(L).some(rowOk);
 const fLotes=()=>LOTES.filter(loteOk);
 const fRows=only=>fLotes().filter(L=>!only||!only.size||only.has(L.id)).flatMap(L=>lRows(L).filter(rowOk));
-const sDesc=()=>[SF.tipo&&'tipo '+SF.tipo,SF.comp&&'competência '+SF.comp,SF.emp&&'empresa '+SF.emp,SF.q&&'busca “'+SF.q+'”'].filter(Boolean).join(' · ')||'sem filtro';
+const MESN=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'],mesNome=m=>m?MESN[+m.slice(5,7)-1]+'/'+m.slice(0,4):'';
+const sDesc=()=>[SF.mes&&'lançados em '+mesNome(SF.mes),SF.tipo&&'tipo '+SF.tipo,SF.comp&&'competência '+SF.comp,SF.emp&&'empresa '+SF.emp,SF.q&&'busca “'+SF.q+'”'].filter(Boolean).join(' · ')||'sem filtro';
+/* acompanhamento do mês: o que foi creditado, por tipo e por empresa */
+let CMMES=new Date().toISOString().slice(0,7);
+function renderMes(){const el=$('cmMesBox');if(!el)return;
+  if(!DB){el.innerHTML='<p class="sm">O acompanhamento do mês aparece aqui quando os créditos salvos estiverem disponíveis.</p>';return}
+  const ms=[...new Set(LOTES.map(L=>(L.criadoEm||'').slice(0,7)).filter(Boolean).concat([new Date().toISOString().slice(0,7)]))].sort().reverse();if(!ms.includes(CMMES))CMMES=ms[0];
+  const Ls=LOTES.filter(L=>(L.criadoEm||'').slice(0,7)===CMMES),rows=Ls.flatMap(lRows),tot=rows.reduce((a,x)=>a+(x.val||0),0),pes=new Set(rows.map(x=>x.m)).size;
+  const g=(f)=>{const o={};rows.forEach(x=>{const k=f(x);o[k]=o[k]||{n:0,v:0,c:new Set()};o[k].n++;o[k].v+=x.val||0;o[k].c.add(x.lote)});return o};const gt=g(x=>x.tipo),ge=g(x=>x.emp);
+  const tile=(lab,v,sub,attr,cor)=>'<button class="tile kpi" style="--kc:'+cor+';text-align:left;cursor:pointer" '+attr+'><span class="l">'+lab+'</span><div class="v">'+v+'</div><div class="s">'+sub+'</div></button>';
+  const COR={'Alimentação':'#2e8a57','Reembolso':'#5b5f97','Retrabalho':'#c98a17','Rescisório':'#b42318'};
+  el.innerHTML='<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px"><h2 style="margin:0;flex:1">Créditos do mês</h2><label class="sm">Mês <select id="cmMesSel">'+ms.map(m=>'<option value="'+m+'"'+(m===CMMES?' selected':'')+'>'+mesNome(m)+'</option>').join('')+'</select></label><button class="btn2 gh" id="cmMesVer">Ver os créditos deste mês</button></div>'
+   +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">'
+   +tile('Total creditado',brl(tot),nf(Ls.length)+(Ls.length===1?' crédito':' créditos')+' · '+nf(pes)+(pes===1?' pessoa':' pessoas'),'data-mt=""','#0e6b74')
+   +CMT.map(t=>{const x=gt[t];return tile(t,brl(x?x.v:0),x?nf(x.n)+(x.n===1?' lançamento':' lançamentos')+' · empresa '+EMP_TIPO[t]:'nenhum no mês · empresa '+EMP_TIPO[t],'data-mt="'+t+'"',COR[t])}).join('')+'</div>'
+   +'<p class="sm" style="margin:8px 0 0">Por empresa Sysprocard: '+(Object.keys(ge).sort().map(k=>'<b>'+esc(k)+'</b> '+brl(ge[k].v)+' ('+nf(ge[k].n)+')').join(' · ')||'nenhum crédito no mês')+'. Clique em um quadro para ver os créditos dele.</p>';
+  $('cmMesSel').onchange=e=>{CMMES=e.target.value;renderMes()};
+  const ir=t=>{SF.mes=CMMES;SF.tipo=t||'';const st=$('svTipo');if(st)st.value=SF.tipo;renderSaved();const w=$('svWrap');if(w)w.scrollIntoView({behavior:'smooth',block:'start'})};
+  $('cmMesVer').onclick=()=>ir('');el.querySelectorAll('[data-mt]').forEach(b=>b.onclick=()=>ir(b.dataset.mt))}
 function renderSaved(){const box=$('svList');if(!box)return;
   if(!DB){$('svWrap').hidden=true;$('svOff').hidden=false;return}
   $('svWrap').hidden=false;$('svOff').hidden=true;
   const opt=(id,vals,lab)=>{const el=$(id),cur=el.value;el.innerHTML=`<option value="">${lab}</option>`+vals.map(v=>`<option>${esc(v)}</option>`).join('');el.value=vals.includes(cur)?cur:''};
   opt('svTipo',CMT,'Todos os tipos');opt('svComp',[...new Set(LOTES.map(L=>L.comp).filter(Boolean))].sort(),'Todas as competências');
-  opt('svEmp',[...new Set(LOTES.flatMap(L=>(L.rows||[]).map(x=>x.emp)).filter(Boolean))].sort(),'Todas as empresas');
+  opt('svEmp',[...new Set(LOTES.flatMap(L=>lRows(L).map(x=>x.emp)).filter(Boolean))].sort(),'Todas as empresas');renderMes();
   const F=fLotes();[...SEL].forEach(id=>{if(!F.some(L=>L.id===id))SEL.delete(id)});
   const rows=fRows(SEL),tot=rows.reduce((s,x)=>s+x.val,0);
+  const mf=$('svMesF');if(mf){mf.hidden=!SF.mes;mf.innerHTML=SF.mes?'Mostrando os créditos lançados em <b>'+mesNome(SF.mes)+'</b>'+(SF.tipo?' · '+esc(SF.tipo):'')+' <button class="btn2 gh" id="svMesX">Ver todos os meses</button>':'';const x=$('svMesX');if(x)x.onclick=()=>{SF.mes='';renderSaved()}}
   $('svSum').innerHTML=!LOTES_OK?'Carregando créditos salvos…':`<b>${nf(F.length)}</b> ${F.length===1?'crédito salvo':'créditos salvos'}${SEL.size?` · <b>${nf(SEL.size)}</b> marcado${SEL.size===1?'':'s'}`:''} · ${nf(rows.length)} ${rows.length===1?'linha':'linhas'} · <b>${brl(tot)}</b>`;
-  box.innerHTML=F.map(L=>{const r=lRows(L),rf=r.filter(rowOk),t=rf.reduce((s,x)=>s+x.val,0),emps=[...new Set(r.map(x=>x.emp).filter(Boolean))];
+  box.innerHTML=F.map(L=>{const r=lRows(L),rf=r.filter(rowOk),t=rf.reduce((s,x)=>s+x.val,0),emps=[...new Set(r.map(x=>empDe(x,L.tipo)).filter(Boolean))];
     return `<tr><td class="ck"><input type="checkbox" data-svs="${L.id}" ${SEL.has(L.id)?'checked':''} aria-label="Marcar"></td>
     <td data-l="Crédito"><b>${esc(L.tipo)}</b>${L.comp?` · ${esc(L.comp)}`:''}<div class="sm">Lançado em ${L.criadoEm?fdt(L.criadoEm.slice(0,10)):'—'}${L.obs?' · '+esc(L.obs):''}</div></td>
     <td data-l="Empresas" class="sm">${esc(emps.join(', ')||'—')}</td>
@@ -955,7 +982,7 @@ async function saveLote(){if(!DB)return toast('Salvar não está disponível nes
   finally{$('cmSaveB').disabled=false}}
 function openLote(id){const L=LOTES.find(x=>x.id===id);if(!L)return;
   if(CM.rows.length&&CM.loteId!==id&&!confirm('A lista em edição tem '+CM.rows.length+' lançamento(s) não salvos. Substituir pelo crédito salvo?'))return;
-  CM=Object.assign(CM,{tipo:L.tipo,comp:L.comp||'',obs:L.obs||'',rows:(L.rows||[]).map(x=>Object.assign({},x)),loteId:L.id,criadoEm:L.criadoEm||''});cmSave();renderCM();window.scrollTo(0,0);toast('Crédito aberto para edição. Clique em “Salvar alterações” ao terminar.')}
+  CM=Object.assign(CM,{tipo:L.tipo,comp:L.comp||'',obs:L.obs||'',emp:EMP_TIPO[L.tipo]||'',rows:(L.rows||[]).map(x=>Object.assign({},x,{emp:empDe(x,L.tipo)})),loteId:L.id,criadoEm:L.criadoEm||''});cmSave();renderCM();window.scrollTo(0,0);toast('Crédito aberto para edição. Clique em “Salvar alterações” ao terminar.')}
 async function delLote(id){const L=LOTES.find(x=>x.id===id);if(!L||!confirm('Excluir o crédito '+L.tipo+(L.comp?' · '+L.comp:'')+' ('+(L.rows||[]).length+' lançamentos)? Não dá para desfazer.'))return;
   try{await DB.collection('creditos').doc(id).delete();SEL.delete(id);if(CM.loteId===id){CM.loteId='';CM.criadoEm='';cmSave();renderCM()}toast('Crédito excluído.')}catch(e){toast('Não foi possível excluir agora.')}}
 function initSaved(){
@@ -975,7 +1002,7 @@ function initSaved(){
     DB.collection('creditos').onSnapshot(q=>{LOTES=q.docs.map(x=>normLote(Object.assign({id:x.id},x.data()))).sort((a,b)=>(b.criadoEm||'').localeCompare(a.criadoEm||''));LOTES_OK=true;renderSaved()},
       e=>{if(e&&e.code==='revoked'){DB=null}LOTES_OK=true;renderSaved()})})()}
 function initCM(){
-  [['cmTipo','tipo'],['cmComp','comp'],['cmObs','obs']].forEach(([i,k])=>$(i).oninput=$(i).onchange=e=>{CM[k]=e.target.value;cmSave();$('cmSum')&&renderCMsum()});
+  [['cmTipo','tipo'],['cmComp','comp'],['cmObs','obs']].forEach(([i,k])=>$(i).oninput=$(i).onchange=e=>{CM[k]=e.target.value;if(k==='tipo'){CM.emp=EMP_TIPO[CM.tipo];$('cmEmp').value=CM.emp;CM.rows.forEach(x=>{x.emp=CM.emp});cmSave();renderCM();cmPrev();return}cmSave();$('cmSum')&&renderCMsum()});
   $('cmMat').oninput=cmPrev;$('cmEmp').addEventListener('input',cmPrev);
   $('cmMat').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();$('cmVal').focus()}};
   $('cmVal').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();cmAdd()}};
@@ -1003,6 +1030,11 @@ function render(){document.querySelectorAll('#tabs button').forEach(b=>b.classLi
 function refresh(){render();if(DT)renderD();if(FI)renderF()}
 function goTab(f){S.tab=f.tab;if(f.sub)S.sub=f.sub;const s=LS[f.tab];if(s){Object.assign(s,{q:'',dep:f.dep||'',x:f.x||'',lim:50});if($('q-'+f.tab))$('q-'+f.tab).value='';if($('d-'+f.tab))$('d-'+f.tab).value=s.dep;$('x-'+f.tab).value=s.x}render();window.scrollTo(0,0)}
 function init(){
+  const MODO_CR=window.CRV_PAINEL_ID==='sysprocard-credito';
+  if(MODO_CR){document.querySelectorAll('#tabs button').forEach(b=>{if(b.dataset.tab!=='cm')b.remove()});const tb=$('tabs');if(tb)tb.style.display='none';S.tab='cm';
+    const h=document.querySelector('.brand h1');if(h)h.textContent='Crédito manual · Sysprocard';const sm=document.querySelector('.brand small');if(sm)sm.textContent='CRV Industrial · Unidade Capinópolis · créditos de alimentação, reembolso, retrabalho e rescisório';
+    document.title='Crédito manual · Sysprocard'}
+  else{const b=document.querySelector('#tabs [data-tab=cm]');if(b)b.remove();if(S.tab==='cm')S.tab='g'}
   initCM();
   document.querySelectorAll('[data-list]').forEach(e=>e.innerHTML=mkList(e.dataset.list));
   $('dSet').innerHTML='<option value="">Todos os setores</option>'+[...new Set(ACT.map(r=>r[4]))].sort().map(a=>`<option>${esc(a)}</option>`).join('');
