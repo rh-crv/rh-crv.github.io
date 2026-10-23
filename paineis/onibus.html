@@ -207,7 +207,7 @@ tr.row:hover td{background:var(--surface-2)}
       <span class="sep" aria-hidden="true"></span>
       <div><h1>Painel dos Ônibus</h1><div class="sub">Frota, disponibilidade e preventivas do transporte de funcionários</div></div>
     </div>
-    <div class="band-meta">Acompanhamento Diário de Ônibus · posição de <b>07/10/2026</b><br>Semanal de <b>01/10 a 07/10</b> · Inspeções da Segurança do Trabalho de <b>08/09 a 30/09</b></div>
+    <div class="band-meta">Acompanhamento Diário de Ônibus · posição de <b class="tRefY"></b><br>Semanal de <b class="tSem"></b> · Inspeções da Segurança do Trabalho de <b class="tInsp"></b></div>
   </div>
 </div>
 
@@ -256,7 +256,7 @@ tr.row:hover td{background:var(--surface-2)}
     <div class="panel">
       <div class="panel-h"><h2>Disponibilidade por empresa</h2><span class="note">A linha preta marca a meta de 85% que aparece no gráfico semanal</span></div>
       <div class="panel-b">
-        <div class="legend"><span><i style="background:var(--ok)"></i>Hoje (07/10): liberados ÷ frota</span><span><i style="background:var(--week)"></i>Semana 01 a 07/10, como veio no relatório</span></div>
+        <div class="legend"><span><i style="background:var(--ok)"></i>Hoje (<span class="tRef5"></span>): liberados ÷ frota</span><span><i style="background:var(--week)"></i>Semana <span class="tSem"></span>, como veio no relatório</span></div>
         <div class="av" id="av"></div>
         <p class="small" id="avNote" style="margin:12px 0 0"></p>
       </div>
@@ -270,7 +270,7 @@ tr.row:hover td{background:var(--surface-2)}
   <section id="v-prev" hidden>
     <div class="pgrid">
       <div class="panel">
-        <div class="panel-h"><h2>Vistoria (a cada 30 dias)</h2><span class="note">Contagem a partir de 07/10/2026</span></div>
+        <div class="panel-h"><h2>Vistoria (a cada 30 dias)</h2><span class="note">Contagem a partir de <span class="tRefY"></span></span></div>
         <div class="panel-b"><div class="seg" id="segV"></div></div>
         <div class="tbl-wrap"><table id="tVist"><thead><tr><th>Frota</th><th>Empresa</th><th>Última</th><th>Próxima</th><th>Prazo</th><th>Situação</th></tr></thead><tbody></tbody></table></div>
       </div>
@@ -303,7 +303,7 @@ tr.row:hover td{background:var(--surface-2)}
     <div class="issues" id="issues"></div>
   </section>
 
-  <p class="foot"><b>Como ler:</b> tudo vem do "Acompanhamento Diário de Ônibus" de 07/10/2026 (Departamento de Produção Agrícola) e do gráfico de disponibilidade semanal de 01/10 a 07/10. <b>Liberado</b> e <b>Em manutenção</b> são a situação informada no documento. <b>Disponibilidade de hoje</b> = ônibus liberados ÷ frota da empresa. <b>Vistoria vencida</b> = data da próxima vistoria anterior a 07/10/2026. <b>Próxima lavagem</b> é a coluna "Lavagem 2". <b>Checklist</b> = relatórios de inspeção da Segurança do Trabalho enviados em 08/10; o painel usa a capa e a lista de não conformidades de cada relatório (o checklist manuscrito não foi transcrito item a item). O documento não traz placa, motorista, quilometragem, data em que o ônibus entrou em manutenção nem previsão de retorno; por isso o painel não mostra dias parado.</p>
+  <p class="foot"><b>Como ler:</b> tudo vem do "Acompanhamento Diário de Ônibus" de <span class="tRefY"></span> (<span class="tFonte"></span>) e do gráfico de disponibilidade semanal de <span class="tSem"></span>. <b>Liberado</b> e <b>Em manutenção</b> são a situação informada no documento. <b>Disponibilidade de hoje</b> = ônibus liberados ÷ frota da empresa. <b>Vistoria vencida</b> = data da próxima vistoria anterior a <span class="tRefY"></span>. <b>Próxima lavagem</b> é a coluna "Lavagem 2". <b>Checklist</b> = relatórios de inspeção da Segurança do Trabalho de <span class="tInsp"></span>; o painel usa a capa e a lista de não conformidades de cada relatório (o checklist manuscrito não foi transcrito item a item). O documento não traz placa, motorista, quilometragem, data em que o ônibus entrou em manutenção nem previsão de retorno; por isso o painel não mostra dias parado.</p>
 </div>
 
 <div class="ov" id="ovList" hidden><div class="dlg dlg-wide" role="dialog" aria-modal="true" aria-labelledby="listT">
@@ -342,10 +342,14 @@ tr.row:hover td{background:var(--surface-2)}
 
 <script>/*__CRV_DADOS_0__*/
 
-// ---------- dados: Acompanhamento Diário de Ônibus, 07/10/2026 ----------
-const REF='2026-10-07', META=85;
+// ---------- dados: Acompanhamento Diário de Ônibus (o pacote substitui RAW e ONIB) ----------
+const ONB=(typeof ONIB!=='undefined'&&ONIB)||{ref:'2026-10-07',semIni:'2026-10-01',semFim:'2026-10-07',inspIni:'2026-09-08',inspFim:'2026-09-30',fonte:'Departamento de Produção Agrícola',week:{'CRUZEIRO DO SUL':100,'G.M.C TRANSPORTE':10,'J.P TRANSPORTE':70,'M.O TRANSPORTE':93.33,'MARIA GABRIELA':100,'VERONESE':76},notas:[]};
+const REF=ONB.ref, META=85;
+const d5=s=>s?s.slice(8,10)+'/'+s.slice(5,7):'', dY=s=>s?s.split('-').reverse().join('/'):'';
+const addD=(s,n)=>{const d=new Date(s+'T12:00:00');d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)};
+const DREF5=d5(REF),DREFY=dY(REF),DSEM=d5(ONB.semIni)+' a '+d5(ONB.semFim),DSEMY=d5(ONB.semIni)+' a '+dY(ONB.semFim),DINSP=d5(ONB.inspIni)+' a '+d5(ONB.inspFim),DINSPY=d5(ONB.inspIni)+' a '+dY(ONB.inspFim),DPROX5=d5(addD(REF,7)),DPROXY=dY(addD(REF,7));
 const EMP=['CRUZEIRO DO SUL','G.M.C TRANSPORTE','VERONESE','M.O TRANSPORTE','MARIA GABRIELA'];
-const WEEK={'CRUZEIRO DO SUL':100,'G.M.C TRANSPORTE':10,'J.P TRANSPORTE':70,'M.O TRANSPORTE':93.33,'MARIA GABRIELA':100,'VERONESE':76};
+const WEEK=ONB.week||{};
 // [empresa, frota, capacidade, pass/dia, últ. vistoria, próx. vistoria, lavagem 1, lavagem 2, atividade, rota ida, rota volta, situação]
 
 
@@ -371,8 +375,8 @@ const DOW=['dom','seg','ter','qua','qui','sex','sáb'];
 const dow = s => DOW[new Date(s+'T12:00:00').getDay()];
 function toast(t){ const el=$('toast'); el.textContent=t; el.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>el.hidden=true,3600); }
 
-const B = RAW.map(r=>{ const b={e:r[0],en:EMP[r[0]],f:r[1],cap:r[2],pax:r[3],uv:r[4],pv:r[5],l1:r[6],l2:r[7],at:r[8],ida:r[9],volta:r[10],sit:r[11]==='L'?'lib':'man'};
-  b.sitT=b.sit==='lib'?'Liberado':'Em manutenção';
+const B = RAW.map(r=>{ const b={e:r[0],en:EMP[r[0]],f:r[1],cap:r[2],pax:r[3],uv:r[4],pv:r[5],l1:r[6],l2:r[7],at:r[8],ida:r[9],volta:r[10],sit:r[11]==='L'?'lib':'man',interd:r[11]==='I'};
+  b.sitT=b.sit==='lib'?'Liberado':b.interd?'Interditado':'Em manutenção';
   const m=/^MANUTEN[ÇC][AÃ]O\s*-\s*(.+)$/i.exec(b.at); b.motivo=m?m[1]:'';
   b.dv=days(b.pv,REF);
   b.vk=b.dv<0?'venc':b.dv<=7?'prox':'ok';
@@ -385,12 +389,15 @@ const B = RAW.map(r=>{ const b={e:r[0],en:EMP[r[0]],f:r[1],cap:r[2],pax:r[3],uv:
   if(b.sit==='lib'&&b.vk==='venc') b.al.push(['c',`Liberado com vistoria vencida desde ${fmt(b.pv)}.`]);
   if(b.over) b.al.push(['c',`${b.pax} passageiros por dia para ${b.cap} lugares (${b.pax-b.cap} acima da capacidade).`]);
   if(b.sit==='lib'&&b.motivo) b.al.push(['w',`Consta como liberado, mas a atividade é "${b.at}" e não há passageiros.`]);
-  if(b.sit==='man'&&!b.motivo) b.al.push(['w','Consta em manutenção, mas o documento não informa o motivo (a atividade mostra a rota).']);
+  if(b.sit==='man'&&!b.motivo&&!b.interd) b.al.push(['w','Consta em manutenção, mas o documento não informa o motivo (a atividade mostra a rota).']);
+  if(b.interd) b.al.push(['c','Interditado no acompanhamento de '+dY(REF)+'.']);
+  if(b.uv&&b.uv>REF) b.al.push(['w',`Última vistoria com data futura (${fmt(b.uv)}), depois do dia do acompanhamento.`]);
   if(b.vBad) b.al.push(['w',b.pv===b.uv?'Última e próxima vistoria com a mesma data.':'Próxima vistoria com data anterior à última.']);
   if(b.lBad) b.al.push(['w',`Lavagens com ano ${b.l1.slice(0,4)}.`]);
   if(b.sit==='lib'&&b.vk==='prox') b.al.push(['w',`Vistoria ${b.vt.toLowerCase()} (${fmt(b.pv)}).`]);
   return b; });
 const byF = Object.fromEntries(B.map(b=>[b.f,b]));
+[['tRefY',DREFY],['tRef5',DREF5],['tSem',DSEM],['tInsp',DINSP],['tFonte',ONB.fonte]].forEach(([c,v])=>document.querySelectorAll('.'+c).forEach(e=>e.textContent=v));
 const INSP=INSP_RAW.map(r=>({f:r[0],d:r[1],st:r[2],prox:r[3],own:r[4],resp:r[5],ativ:r[6],nc:r[7],concl:r[8],file:r[9]}));
 B.forEach(b=>{ b.ins=INSP.filter(i=>i.f===b.f).sort((x,y)=>x.d.localeCompare(y.d)); b.seg=b.ins[b.ins.length-1]||null; b.ck=b.seg?b.seg.st:'sem';
   b.ckVenc=!!(b.seg&&b.seg.st!=='lib'&&b.seg.prox<REF);
@@ -399,15 +406,15 @@ B.forEach(b=>{ b.ins=INSP.filter(i=>i.f===b.f).sort((x,y)=>x.d.localeCompare(y.d
   if(s&&s.st==='int'&&b.sit==='lib') add('c',`Interditado pela Segurança do Trabalho em ${fmt(s.d)} (${pl(s.nc.length,'não conformidade','não conformidades')}) e não há relatório posterior liberando; no acompanhamento consta liberado${b.pax?` com ${b.pax} passageiros`:''}.`);
   else if(s&&s.st==='int') add('c',`Interditado pela Segurança do Trabalho em ${fmt(s.d)}.`);
   if(s&&s.st==='pend'&&b.ckVenc) b.al.push(['w',`Liberado com pendências pela Segurança em ${fmt(s.d)}; a nova inspeção era ${fmt(s.prox)} e não há relatório dela.`]);
-  if(!s) b.al.push(['w','Sem relatório de inspeção da Segurança do Trabalho no envio de 08/10.']);
+  if(!s) b.al.push(['w','Sem relatório de inspeção da Segurança do Trabalho no último envio ('+dY(ONB.inspEnvio||'2026-10-08')+').']);
   if(b.vFix) b.al.push(['w',`O relatório da Segurança indica a próxima vistoria em ${fmt(s.prox)}; a data do acompanhamento (${fmt(b.pv)}) parece erro de digitação.`]);
 });
 const INT_SEG=B.filter(b=>b.ck==='int'), INT_RODA=INT_SEG.filter(b=>b.sit==='lib'), PEND_V=B.filter(b=>b.ckVenc&&b.ck==='pend'), SEM_INS=B.filter(b=>b.ck==='sem');
 const CK_LIB=B.filter(b=>b.ck==='lib'), CK_PEND=B.filter(b=>b.ck==='pend');
 const LVREAL=()=>LIBVENC.filter(b=>!b.vFix);
 
-const C = EMP.map((n,i)=>{ const bb=B.filter(b=>b.e===i); const lib=bb.filter(b=>b.sit==='lib'); return {i,n,bb,lib,man:bb.filter(b=>b.sit==='man'),venc:bb.filter(b=>b.vk==='venc'),pax:bb.reduce((a,b)=>a+b.pax,0),hoje:pc(lib.length,bb.length),sem:WEEK[n]}; });
-const LIB=B.filter(b=>b.sit==='lib'), MAN=B.filter(b=>b.sit==='man');
+const C = EMP.map((n,i)=>{ const bb=B.filter(b=>b.e===i); const lib=bb.filter(b=>b.sit==='lib'); return {i,n,bb,lib,man:bb.filter(b=>b.sit==='man'&&!b.interd),intd:bb.filter(b=>b.interd),venc:bb.filter(b=>b.vk==='venc'),pax:bb.reduce((a,b)=>a+b.pax,0),hoje:pc(lib.length,bb.length),sem:WEEK[n]}; });
+const LIB=B.filter(b=>b.sit==='lib'), MAN=B.filter(b=>b.sit==='man'&&!b.interd), INTA=B.filter(b=>b.interd), LAVA=B.filter(b=>!b.lBad&&b.l2&&b.l2<REF);
 const VENC=B.filter(b=>b.vk==='venc'), PROX=B.filter(b=>b.vk==='prox'), VOK=B.filter(b=>b.vk==='ok');
 const LIBVENC=LIB.filter(b=>b.vk==='venc'), OVER=B.filter(b=>b.over), RODA=LIB.filter(b=>b.pax>0);
 const PAX=B.reduce((a,b)=>a+b.pax,0);
@@ -416,47 +423,30 @@ const sum=(bb,k)=>bb.reduce((a,b)=>a+b[k],0);
 // ---------- pontos a conferir ----------
 const ISS=[
  {sev:'crit',tag:'Segurança do Trabalho',t:`${pl(INT_RODA.length,'ônibus interditado','ônibus interditados')} pela Segurança e liberados no acompanhamento`,
-  d:INT_RODA.map(b=>`${b.f} (${b.en}): interditado em ${fmt(b.seg.d)}, nova inspeção prevista para ${fmt(b.seg.prox)}, hoje com ${b.pax} passageiros`).join('; ')+'. Não veio relatório de nova inspeção liberando esses ônibus. Se houve, precisa ser anexado; se não houve, eles estão rodando interditados.',bb:INT_RODA},
+  d:INT_RODA.map(b=>`${b.f} (${b.en}): interditado em ${fmt(b.seg.d)}, nova inspeção prevista para ${fmt(b.seg.prox)}, hoje com ${b.pax} passageiros`+(b.uv>b.seg.d?` (o acompanhamento registra vistoria em ${fmt(b.uv)})`:'')).join('; ')+'. Não veio relatório da Segurança liberando esses ônibus. Se a vistoria registrada no acompanhamento foi a nova inspeção, falta anexar o relatório; se não foi, eles estão rodando interditados.',bb:INT_RODA},
  {sev:'warn',tag:'Segurança do Trabalho',t:`${pl(PEND_V.length,'ônibus liberado','ônibus liberados')} com pendências e prazo de correção vencido`,
   d:PEND_V.map(b=>`${b.f} (prazo ${fmt(b.seg.prox)}, ${pl(b.seg.nc.length,'item','itens')})`).join('; ')+'. Não há relatório da nova inspeção, então não dá para saber se os itens foram corrigidos.',bb:PEND_V},
  {sev:'warn',tag:'Segurança do Trabalho',t:`${pl(SEM_INS.length,'ônibus','ônibus')} sem relatório de inspeção`,
-  d:`Não vieram relatórios de ${SEM_INS.map(b=>b.f).join(', ')}. Entre eles estão ${SEM_INS.filter(b=>b.sit==='lib').map(b=>b.f).join(', ')}, que estão liberados e com a vistoria vencida no acompanhamento.`,bb:SEM_INS},
- {sev:'info',tag:'Relatórios',t:'Relatórios com conclusão que não bate com a lista de não conformidades',
-  d:'46104, 46111, 46233 e 46234 listam não conformidades (parafusos da janela, velocímetro, extintor super pressurizado, sinal sonoro e para-brisa), mas a conclusão diz que não foram identificadas pendências. 46226 e 46236 estão marcados como "liberado para operação", mas a conclusão pede correção e nova inspeção.',bb:[46104,46111,46233,46234,46226,46236].map(f=>byF[f])},
- {sev:'info',tag:'Relatórios',t:'Proprietário diferente entre relatório e acompanhamento',
-  d:'46104: relatório diz GMC Transportes; o acompanhamento coloca na M.O Transporte. 46232: relatório e acompanhamento indicam proprietários diferentes.',bb:[byF[46104],byF[46232]]},
- {sev:'info',tag:'Relatórios',t:'Datas estranhas nos relatórios',
-  d:'46105: inspeção em 19/09 com nova inspeção em 18/09 (dia anterior). 46224: liberado em 18/09 com próxima vistoria em 19/09 (no acompanhamento está 18/10). 46118: a capa diz 18/09/2026 e o texto da página 2 diz 17 de agosto.',bb:[byF[46105],byF[46224],byF[46118]]},
+  d:`Não vieram relatórios de ${SEM_INS.map(b=>b.f).join(', ')}.`+(SEM_INS.filter(b=>b.sit==='lib').length?` Desses, ${SEM_INS.filter(b=>b.sit==='lib').map(b=>b.f+(b.vk==='venc'?' (vistoria vencida)':'')).join(', ')} ${SEM_INS.filter(b=>b.sit==='lib').length>1?'estão liberados':'está liberado'} no acompanhamento.`:''),bb:SEM_INS},
  {sev:'crit',tag:'Segurança',t:`${pl(LIBVENC.length,'ônibus liberado','ônibus liberados')} com a vistoria vencida`,
-  d:`Estão rodando com a data da próxima vistoria já passada e levam juntos ${sum(LIBVENC,'pax')} passageiros por dia. Em 46126 e 46226 o relatório da Segurança mostra a próxima vistoria em 30/10, então ficam ${LVREAL().length} de fato: ${LVREAL().map(b=>b.f).join(', ')}. Nenhum desses ${LVREAL().length} tem relatório de inspeção no envio da Segurança.`,bb:LIBVENC},
+  d:`Estão rodando com a data da próxima vistoria já passada (${LIBVENC.map(b=>b.f+' venceu em '+fmt(b.pv)).join('; ')}) e levam juntos ${sum(LIBVENC,'pax')} passageiros por dia.`+(LIBVENC.some(b=>b.vFix)?` Em ${LIBVENC.filter(b=>b.vFix).map(b=>b.f).join(' e ')} o relatório da Segurança mostra uma próxima vistoria posterior, então ficam ${LVREAL().length} de fato.`:''),bb:LIBVENC},
  {sev:'crit',tag:'Lotação',t:`${pl(OVER.length,'ônibus','ônibus')} com mais passageiros do que lugares`,
   d:OVER.map(b=>`${b.f} (${b.en}): ${b.pax} passageiros para ${b.cap} lugares`).join('; ')+'. Confirmar se a capacidade ou a contagem de passageiros está certa.',bb:OVER},
- {sev:'warn',tag:'Situação',t:'46118 está como liberado, mas com atividade de manutenção',
-  d:'A atividade é "MANUTENCAO - CARDAN", sem rota e com 0 passageiros, e a situação veio "Liberado". Se ele estiver parado, são 22 liberados e 8 em manutenção, e não 23 e 7.',bb:[byF[46118]]},
- {sev:'warn',tag:'Situação',t:'46125 está em manutenção sem motivo informado',
-  d:'A situação é "Manutenção", mas a atividade e a rota mostram a linha Capinópolis–Indústria, e não o defeito. Falta o motivo da parada.',bb:[byF[46125]]},
- {sev:'warn',tag:'Datas',t:'Datas de vistoria que não fecham',
-  d:'46126 e 46226: última e próxima vistoria em 30/09/2026 no acompanhamento; os relatórios da Segurança confirmam a próxima em 30/10/2026. 46232: próxima em 24/09, anterior à última em 29/09. 46114: intervalo de 24 dias (04/10 a 28/10) em vez de 30.',bb:[byF[46126],byF[46226],byF[46232],byF[46114]]},
- {sev:'warn',tag:'Datas',t:'46232 com lavagens no ano de 2056',
-  d:'Lavagem 1 em 16/08/2056 e Lavagem 2 em 23/08/2056. O painel deixou esse ônibus fora da agenda de lavagem.',bb:[byF[46232]]},
- {sev:'warn',tag:'Disponibilidade',t:'J.P Transporte aparece no gráfico semanal, mas não tem ônibus no acompanhamento',
-  d:'O gráfico traz 70% para a J.P Transporte e a lista do dia não tem nenhum veículo dessa empresa. Ou a empresa saiu da frota, ou falta o bloco dela no acompanhamento.',bb:[]},
- {sev:'warn',tag:'Disponibilidade',t:'A disponibilidade da semana não conversa com a situação do dia',
-  d:'M.O Transporte: 93,33% na semana e hoje 7 de 10 liberados (70%). Maria Gabriela: 100% na semana com o 46232 em manutenção. Veronese: 76% na semana com os 3 liberados hoje. Falta saber como a semanal é calculada (dias liberados ÷ dias do período?) para comparar as duas.',bb:[]},
- {sev:'info',tag:'G.M.C Transporte',t:'G.M.C com 3 de 4 ônibus parados e vistorias vencidas desde maio',
-  d:'46169 e 46195 têm a próxima vistoria em maio/2026; o 46196 em 19/09. O documento não traz a data em que cada um parou. Vale confirmar há quanto tempo estão fora e se há previsão de retorno.',bb:C[1].man},
- {sev:'info',tag:'Texto cortado',t:'46195: motivo da manutenção veio incompleto',
-  d:'O campo termina em "VAZAMENTO DE VALVULA DE" e o restante não coube na célula do PDF.',bb:[byF[46195]]},
- {sev:'info',tag:'O que falta',t:'Informações que o acompanhamento não traz',
+ {sev:'warn',tag:'Situação',t:`${pl(INTA.length,'ônibus interditado','ônibus interditados')} no acompanhamento`,d:INTA.map(b=>`${b.f} (${b.en})${b.uv?`, última vistoria em ${fmt(b.uv)}`:''}`).join('; ')+'. Fora de operação até nova liberação.',bb:INTA},
+ {sev:'warn',tag:'Manutenção',t:`${pl(MAN.filter(b=>b.vk==='venc').length,'ônibus parado','ônibus parados')} com a vistoria vencida há mais tempo`,d:MAN.filter(b=>b.vk==='venc').sort((a,b)=>a.pv.localeCompare(b.pv)).map(b=>`${b.f} (${b.en}, ${b.motivo||b.at}): vistoria vencida desde ${fmt(b.pv)}`).join('; ')+'. Antes de voltar a rodar, precisam de vistoria nova.',bb:MAN.filter(b=>b.vk==='venc')},
+ {sev:'warn',tag:'Datas',t:`${pl(B.filter(b=>b.uv>REF).length,'ônibus','ônibus')} com última vistoria em data futura`,d:B.filter(b=>b.uv>REF).map(b=>`${b.f}: última vistoria ${fmt(b.uv)} e próxima ${fmt(b.pv)}, depois do dia do acompanhamento (${fmt(REF)})`).join('; ')+'. Provável erro de digitação.',bb:B.filter(b=>b.uv>REF)},
+ {sev:'warn',tag:'Datas',t:`${pl(B.filter(b=>b.lBad).length,'ônibus','ônibus')} com lavagem em ano errado`,d:B.filter(b=>b.lBad).map(b=>`${b.f}: lavagens em ${fmt(b.l1)} e ${fmt(b.l2)}`).join('; ')+'. Ficou fora da agenda de lavagem.',bb:B.filter(b=>b.lBad)},
+ ...(ONB.notas||[]).map(n=>({sev:n.sev||'info',tag:n.tag||'Observação',t:n.t,d:n.d,bb:(n.f||[]).map(f=>byF[f]).filter(Boolean),fixo:1})),
+ {sev:'info',tag:'O que falta',t:'Informações que o acompanhamento não traz',fixo:1,
   d:'Placa, motorista, quilometragem, data de entrada em manutenção e previsão de retorno. Com as duas últimas dá para medir dias parado por ônibus e por empresa.',bb:[]},
-];
+].filter(x=>x.fixo||x.bb.length);
 
 // ---------- listas e ficha ----------
 const LISTS=[]; let LISTBB=null;
 const reg=(t,sub,bb)=>{ LISTS.push({t,sub,bb}); return LISTS.length-1; };
 const pillS=b=>`<span class="pill p-${b.sit}">${b.sitT}</span>`;
 const pillV=b=>`<span class="pill p-${b.vk}">${esc(b.vt)}</span>`;
-const chip=b=>`<button type="button" class="bus s-${b.sit}${b.al.some(a=>a[0]==='c')?' al':''}" data-bus="${b.f}" title="${esc(b.en)} · ${b.sitT}">${b.f}</button>`;
+const chip=b=>`<button type="button" class="bus s-${b.interd?'int':b.sit}${b.al.some(a=>a[0]==='c')?' al':''}" data-bus="${b.f}" title="${esc(b.en)} · ${b.sitT}">${b.f}</button>`;
 function openList(i){ const L=LISTS[i]; LISTBB=L.bb; $('listT').textContent=L.t; $('listSub').textContent=L.sub||'';
   $('listItems').innerHTML=L.bb.length?L.bb.map(b=>`<button type="button" class="li" data-bus="${b.f}"><span><b class="mono">${b.f}</b> · <span class="nm">${esc(b.en)}</span><span class="meta" style="display:block">${esc(b.at)}${b.pax?` · ${b.pax}/${b.cap} passageiros`:''} · vistoria ${fmt(b.pv)}</span></span><span style="display:grid;gap:4px;justify-items:end">${pillS(b)}${pillV(b)}</span></button>`).join(''):'<div class="empty">Nenhum ônibus nesta lista.</div>';
   $('listCt').textContent=pl(L.bb.length,'ônibus','ônibus'); $('listXls').hidden=!L.bb.length; $('ovList').hidden=false; }
@@ -469,7 +459,7 @@ function openBus(f){ const b=byF[f]; if(!b) return; $('bT').textContent=`Frota $
   $('bIns').innerHTML=b.ins.length?b.ins.slice().reverse().map((s,i)=>`<div class="fs" style="gap:6px"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><b style="font-family:var(--f-display);font-size:14px">Inspeção da Segurança · ${fmt(s.d)}${b.ins.length>1&&i>0?' (anterior)':''}</b><span class="pill ${STI[s.st][1]}">${STI[s.st][0]}</span></div>
       <div class="small">${s.st==='lib'?'Próxima vistoria':'Nova inspeção'}: <b class="mono">${fmt(s.prox)}</b> · Responsável: ${esc(s.resp)}${s.ativ?` · ${esc(s.ativ)}`:''} · Proprietário: ${esc(s.own)}</div>
       ${s.nc.length?`<ul style="margin:2px 0 0;padding-left:18px;font-size:13.5px;color:var(--fg-2)">${s.nc.map(n=>`<li>${esc(n)}</li>`).join('')}</ul>`:'<div class="small">Nenhuma não conformidade listada.</div>'}
-      <div class="small">Arquivo: ${esc(s.file)}</div></div>`).join(''):'<div class="note-i">Sem relatório de inspeção da Segurança do Trabalho no envio de 08/10.</div>';
+      <div class="small">Arquivo: ${esc(s.file)}</div></div>`).join(''):`<div class="note-i">Sem relatório de inspeção da Segurança do Trabalho no envio de ${fmt(ONB.inspEnvio||'2026-10-08').slice(0,5)}.</div>`;
   $('ovB').hidden=false; }
 document.addEventListener('click',e=>{ const t=e.target.closest('[data-bus],[data-list],[data-go]'); if(!t) return;
   if(t.dataset.bus) openBus(+t.dataset.bus); else if(t.dataset.list!==undefined) openList(+t.dataset.list); else setTab(t.dataset.go); });
@@ -487,20 +477,20 @@ function renderSummary(){ const k=(label,v,h,color,li)=>`<button type="button" c
     k('Frota total',B.length,`${EMP.length} empresas`,'fg-2',reg('Frota total','Todos os ônibus do acompanhamento',B)),
     k('Liberados',LIB.length,`${pcT(pc(LIB.length,B.length))} da frota`,'ok',reg('Ônibus liberados','Situação informada no documento',LIB)),
     k('Em manutenção',MAN.length,`${pcT(pc(MAN.length,B.length))} da frota`,'man',reg('Ônibus em manutenção','Situação informada no documento',MAN)),
-    k('Interditados',0,`no acompanhamento · ${INT_SEG.length} pela Segurança`,'crit',reg('Interditados pela Segurança do Trabalho','O acompanhamento de 07/10 não tem nenhum interditado',INT_SEG)),
+    k('Interditados',INTA.length,`no acompanhamento · ${INT_SEG.length} pela Segurança`,'crit',reg('Interditados',INTA.length?'No acompanhamento de '+DREF5+': '+INTA.map(b=>b.f).join(', ')+' · e os interditados pela Segurança do Trabalho':'O acompanhamento de '+DREF5+' não tem nenhum interditado · abaixo, os interditados pela Segurança',INTA.concat(INT_SEG.filter(b=>!b.interd)))),
     k('Reserva',0,'nenhum hoje','res',reg('Ônibus na reserva','',[])),
-    k('Vistoria vencida',VENC.length,`${LIBVENC.length} deles liberados`,'crit',reg('Vistoria vencida','Próxima vistoria anterior a 07/10/2026',VENC))].join(''); }
+    k('Vistoria vencida',VENC.length,`${LIBVENC.length} deles liberados`,'crit',reg('Vistoria vencida','Próxima vistoria anterior a '+DREFY,VENC))].join(''); }
 function renderGeral(){
-  const lIR=reg('Interditados pela Segurança e liberados no acompanhamento','',INT_RODA), lPV=reg('Pendências com prazo vencido','',PEND_V); const lRoda=reg('Liberados com passageiros','Ônibus que transportaram gente no dia',RODA), lLV=reg('Liberados com vistoria vencida e sem relatório','',LVREAL()), lPx=reg('Vistorias que vencem até 14/10/2026','',PROX), lOv=reg('Passageiros acima da capacidade','',OVER), lG=reg('G.M.C Transporte','',C[1].bb);
+  const lIR=reg('Interditados pela Segurança e liberados no acompanhamento','',INT_RODA), lPV=reg('Pendências com prazo vencido','',PEND_V); const lRoda=reg('Liberados com passageiros','Ônibus que transportaram gente no dia',RODA), lLV=reg('Liberados com vistoria vencida e sem relatório','',LVREAL()), lPx=reg('Vistorias que vencem até '+DPROXY,'',PROX), lOv=reg('Passageiros acima da capacidade','',OVER), lG=reg('G.M.C Transporte','',C[1].bb);
   $('lead').innerHTML=`
    <div style="--c:var(--ok)"><h3>Onde estamos</h3><p><b>${LIB.length} de ${B.length} ônibus liberados</b> (${pcT(pc(LIB.length,B.length))}), abaixo da meta de ${META}% do relatório semanal. <button class="lk" data-list="${lRoda}">${RODA.length} rodaram com passageiros</button> e levaram <b>${PAX} pessoas</b> no dia.</p></div>
-   <div style="--c:var(--crit)"><h3>Principal ponto de atenção</h3><p><button class="lk" data-list="${lIR}">${pl(INT_RODA.length,'ônibus interditado','ônibus interditados')} pela Segurança do Trabalho</button> ${INT_RODA.length>1?'aparecem':'aparece'} como liberados, com ${sum(INT_RODA,'pax')} passageiros por dia. Além disso, <button class="lk" data-list="${lLV}">${LVREAL().length} liberados estão com a vistoria vencida e sem relatório</button>, e <button class="lk" data-list="${lOv}">${OVER.length}</button> levam mais passageiros do que lugares.</p></div>
-   <div style="--c:var(--warn)"><h3>O que acompanhar</h3><p><button class="lk" data-list="${lPx}">${pl(PROX.length,'vistoria vence','vistorias vencem')} até 14/10</button>. A <button class="lk" data-list="${lG}">G.M.C</button> tem ${C[1].man.length} de ${C[1].bb.length} ônibus parados e ${pcT(C[1].sem)} de disponibilidade na semana. <button class="lk" data-list="${lPV}">${PEND_V.length} ônibus</button> têm pendências da Segurança com prazo vencido. Há <button class="lk" data-go="conf">${ISS.length} pontos a conferir</button>.</p></div>`;
+   <div style="--c:var(--crit)"><h3>Principal ponto de atenção</h3><p>${INT_RODA.length?`<button class="lk" data-list="${lIR}">${pl(INT_RODA.length,'ônibus interditado','ônibus interditados')} pela Segurança do Trabalho</button> ${INT_RODA.length>1?'aparecem':'aparece'} como liberados, com ${sum(INT_RODA,'pax')} passageiros por dia. Além disso, `:''}<button class="lk" data-list="${lLV}">${LVREAL().length} liberados estão com a vistoria vencida e sem relatório</button>, e <button class="lk" data-list="${lOv}">${OVER.length}</button> levam mais passageiros do que lugares.${INTA.length?` ${pl(INTA.length,'ônibus está interditado','ônibus estão interditados')} no acompanhamento (${INTA.map(b=>b.f).join(', ')}).`:''}</p></div>
+   <div style="--c:var(--warn)"><h3>O que acompanhar</h3><p><button class="lk" data-list="${lPx}">${pl(PROX.length,'vistoria vence','vistorias vencem')} até ${DPROX5}</button>. A <button class="lk" data-list="${lG}">G.M.C</button> tem ${C[1].man.length} de ${C[1].bb.length} ônibus parados e ${pcT(C[1].sem)} de disponibilidade na semana. <button class="lk" data-list="${lPV}">${PEND_V.length} ônibus</button> têm pendências da Segurança com prazo vencido. Há <button class="lk" data-go="conf">${ISS.length} pontos a conferir</button>.</p></div>`;
   $('cards').innerHTML=C.map(c=>{ const st=(n,l,color,bb,t)=>`<button type="button" class="st${n?'':' zero'}" style="--c:var(--${color})" ${n?`data-list="${reg(`${c.n}: ${t}`,'',bb)}"`:'disabled'}><div class="n">${n}</div><div class="l">${l}</div></button>`;
     return `<article class="cc"><div class="cc-h"><div><h3>${esc(c.n)}</h3><div class="small">${pl(c.bb.length,'ônibus','ônibus')} · ${c.pax} passageiros/dia</div></div><div class="tot" style="color:var(--${c.hoje>=META?'ok':'man'})">${pcT(c.hoje)}<small>liberados hoje</small></div></div>
      <div class="fleet">${c.bb.map(chip).join('')}</div>
      <div class="stats">${st(c.lib.length,'Liberados','ok',c.lib,'liberados')}${st(c.man.length,'Manutenção','man',c.man,'em manutenção')}${st(c.venc.length,'Vistoria vencida','crit',c.venc,'vistoria vencida')}</div>
-     <div class="cc-f"><span>Semana 01 a 07/10: <b style="color:var(--fg-2)">${pcT(c.sem)}</b></span><span>Meta ${META}%</span></div></article>`; }).join(''); }
+     <div class="cc-f"><span>Semana ${DSEM}: <b style="color:var(--fg-2)">${pcT(c.sem)}</b></span><span>Meta ${META}%</span></div></article>`; }).join(''); }
 
 // ---------- frotas ----------
 let SORT={k:'en',d:1};
@@ -518,9 +508,9 @@ function initFrota(){ $('fE').innerHTML='<option value="">Todas</option>'+EMP.ma
 
 // ---------- disponibilidade ----------
 function renderDisp(){ const names=Object.keys(WEEK);
-  $('av').innerHTML=names.map(n=>{ const c=C.find(x=>x.n===n); const li=reg(n,c?'Ônibus da empresa':'Sem ônibus no acompanhamento de 07/10',c?c.bb:[]);
+  $('av').innerHTML=names.map(n=>{ const c=C.find(x=>x.n===n); const li=reg(n,c?'Ônibus da empresa':'Sem ônibus no acompanhamento de '+DREF5,c?c.bb:[]);
     const bar=(v,color,txt,na)=>`<div class="avb${na?' na':''}"><div class="tr">${na?'':`<i style="width:${Math.max(v,0)}%;--c:var(--${color})"></i>`}</div><div class="vl">${na?'<small>sem ônibus na lista</small>':`${pcT(v)} <small>${txt}</small>`}</div></div>`;
-    return `<button type="button" class="avrow" data-list="${li}"><div class="nm2">${esc(n)}<small>${c?`${c.lib.length} de ${c.bb.length} liberados hoje`:'não aparece no dia 07/10'}</small></div><div class="avbars">${c?bar(c.hoje,'ok','hoje'):bar(0,'ok','',true)}${bar(WEEK[n],'week','semana')}</div></button>`; }).join('');
+    return `<button type="button" class="avrow" data-list="${li}"><div class="nm2">${esc(n)}<small>${c?`${c.lib.length} de ${c.bb.length} liberados hoje`:'não aparece no dia '+DREF5}</small></div><div class="avbars">${c?bar(c.hoje,'ok','hoje'):bar(0,'ok','',true)}${bar(WEEK[n],'week','semana')}</div></button>`; }).join('');
   const abaixo=names.filter(n=>WEEK[n]<META);
   $('avNote').innerHTML=`<b>Leitura:</b> na semana, ${abaixo.length} de ${names.length} empresas ficaram abaixo da meta de ${META}% (${abaixo.map(n=>`${esc(n)} ${pcT(WEEK[n])}`).join(', ')}). O relatório não informa como a disponibilidade semanal é calculada; a de hoje é liberados ÷ frota.`;
   $('manNote').textContent=`${pl(MAN.length,'ônibus','ônibus')} · ${sum(MAN,'cap')} lugares fora de operação`;
@@ -528,12 +518,12 @@ function renderDisp(){ const names=Object.keys(WEEK);
 
 // ---------- preventivas ----------
 function renderPrev(){ $('ctPrev').textContent=VENC.length;
-  const sg=(n,l,color,bb,t)=>`<button type="button" class="sg" style="--c:var(--${color})" data-list="${reg(t,'Contagem a partir de 07/10/2026',bb)}"><div class="n">${n}</div><div class="l">${l}</div></button>`;
+  const sg=(n,l,color,bb,t)=>`<button type="button" class="sg" style="--c:var(--${color})" data-list="${reg(t,'Contagem a partir de '+DREFY,bb)}"><div class="n">${n}</div><div class="l">${l}</div></button>`;
   $('segV').innerHTML=sg(VENC.length,`Vencidas (${LIBVENC.length} liberados, ${VENC.length-LIBVENC.length} em manutenção)`,'crit',VENC,'Vistorias vencidas')+sg(PROX.length,'Vencem em até 7 dias','warn',PROX,'Vistorias que vencem em até 7 dias')+sg(VOK.length,'Em dia','ok',VOK,'Vistorias em dia');
   $('tVist').tBodies[0].innerHTML=[...B].sort((a,b)=>a.pv.localeCompare(b.pv)||a.f-b.f).map(b=>`<tr class="row" data-bus="${b.f}"><td class="mono nm">${b.f}</td><td>${esc(b.en)}</td><td class="mono">${fmt(b.uv)}</td><td class="mono"${b.vBad?' style="color:var(--warn);font-weight:600"':''}>${fmt(b.pv)}</td><td>${pillV(b)}</td><td>${pillS(b)}</td></tr>`).join('');
   const ok=B.filter(b=>!b.lBad), ds=[...new Set(ok.map(b=>b.l2))].sort();
   $('wash').innerHTML=ds.map(d=>{ const bb=ok.filter(b=>b.l2===d); const n=days(d,REF); return `<div class="day"><div class="dt">${fmt(d).slice(0,5)} · ${dow(d)}<small>${n===1?'amanhã':`em ${n} dias`} · ${pl(bb.length,'ônibus','ônibus')}</small></div><div class="fleet">${bb.map(chip).join('')}</div></div>`; }).join('')
-    +`<p class="small" style="margin:10px 0 0">Nenhuma lavagem atrasada: todas as próximas datas são depois de 07/10. ${B.filter(b=>b.l1===REF).length} ônibus foram lavados hoje. ${B.filter(b=>b.lBad).map(b=>`O ${b.f} ficou fora da agenda porque as datas vieram com o ano ${b.l2.slice(0,4)}.`).join(' ')}</p>`; }
+    +`<p class="small" style="margin:10px 0 0">${LAVA.length?`<b>${pl(LAVA.length,'ônibus com lavagem atrasada','ônibus com lavagem atrasada')}</b> (próxima lavagem antes de ${DREF5}): ${LAVA.map(b=>b.f).join(', ')}.`:`Nenhuma lavagem atrasada: todas as próximas datas são a partir de ${DREF5}.`} ${B.filter(b=>b.l1===REF).length} ônibus foram lavados hoje. ${B.filter(b=>b.lBad).map(b=>`O ${b.f} ficou fora da agenda porque as datas vieram com o ano ${b.l2.slice(0,4)}.`).join(' ')}</p>`; }
 
 // ---------- checklist (inspeções da Segurança) ----------
 function renderCheck(){ const nIns=INSP.length, nB=B.filter(b=>b.seg).length;
@@ -684,7 +674,7 @@ function makePdf(s){
   const sc=t=>t==='Liberado'?'#2e7d4f':'#c2671a';
   head();
   if($('xRes').checked){ const rr=resRows(s); const tb=s.cs.flatMap(c=>c.bb), tl=tb.filter(b=>b.sit==='lib').length;
-    title('Resumo por empresa','Disponibilidade hoje = liberados ÷ frota · semana 01 a 07/10 como veio no relatório');
+    title('Resumo por empresa','Disponibilidade hoje = liberados ÷ frota · semana '+DSEM+' como veio no relatório');
     table([{t:'Empresa',w:182,b:1},{t:'Frota',w:60,r:1},{t:'Liberados',w:74,r:1},{t:'Manutenção',w:84,r:1},{t:'Disp. hoje',w:90,r:1},{t:'Disp. semana',w:96,r:1},{t:'Vistoria vencida',w:102,r:1},{t:'Passageiros/dia',w:94,r:1}],
       [...rr.map(r=>[r[0],r[1],r[2],r[3],pcT(r[4]),pcT(r[5]),r[6],r[7]]),['Total',tb.length,tl,tb.length-tl,pcT(pc(tl,tb.length)),'',tb.filter(b=>b.vk==='venc').length,sum(tb,'pax')]]); }
   if($('xFro').checked){ title('Frota',pl(s.bb.length,'ônibus','ônibus'));
@@ -726,19 +716,19 @@ function makeCapa(){
   doc.text('Painel dos Ônibus',M+lw+16,36,{size:17,bold:true,color:K.band});
   doc.text('Transporte de funcionários · frota, disponibilidade e preventivas',M+lw+16,51,{size:9.5,color:K.fg2});
   doc.text(`Posição de ${fmt(REF)}`,842-M,33,{size:10,bold:true,color:K.fg,align:'right'});
-  doc.text('Semanal: 01/10 a 07/10 · Inspeções SST: 08/09 a 30/09',842-M,48,{size:8.5,color:K.fg3,align:'right'});
+  doc.text('Semanal: '+DSEM+' · Inspeções SST: '+DINSP,842-M,48,{size:8.5,color:K.fg3,align:'right'});
   doc.line(M,62,842-M,62,K.band,1.4);
   for(let x=M;x<842-M;x+=22) doc.rect(x,64,13,2,'#f2b632');
   // indicadores
-  const kp=[['FROTA TOTAL',B.length,`${EMP.length} empresas`,K.fg2],['LIBERADOS',LIB.length,`${pcT(pc(LIB.length,B.length))} da frota`,K.ok],['EM MANUTENÇÃO',MAN.length,`${pcT(pc(MAN.length,B.length))} da frota`,K.man],['INTERDITADOS',0,`${INT_SEG.length} pela Segurança do Trabalho`,K.crit],['RESERVA',0,'nenhum hoje',K.res],['VISTORIA VENCIDA',VENC.length,`${LIBVENC.length} deles liberados`,K.crit]];
+  const kp=[['FROTA TOTAL',B.length,`${EMP.length} empresas`,K.fg2],['LIBERADOS',LIB.length,`${pcT(pc(LIB.length,B.length))} da frota`,K.ok],['EM MANUTENÇÃO',MAN.length,`${pcT(pc(MAN.length,B.length))} da frota`,K.man],['INTERDITADOS',INTA.length,`+ ${INT_SEG.length} pela Segurança (SST)`,K.crit],['RESERVA',0,'nenhum hoje',K.res],['VISTORIA VENCIDA',VENC.length,`${LIBVENC.length} deles liberados`,K.crit]];
   const kw=(W-5*8)/6; kp.forEach((k,i)=>{ const x=M+i*(kw+8), y=78; doc.rect(x,y,kw,60,'#ffffff',K.line,0.6); doc.rect(x,y,4,60,k[3]);
     doc.text(k[0],x+12,y+15,{size:7.5,bold:true,color:K.fg3}); doc.text(String(k[1]),x+12,y+40,{size:24,bold:true,color:k[3]}); doc.text(k[2],x+12,y+53,{size:8.5,color:K.fg3}); });
   // três leituras
   const nums=bb=>bb.map(b=>b.f).join(', ');
   const blocks=[
-    ['ONDE ESTAMOS',K.ok,`${LIB.length} de ${B.length} ônibus liberados (${pcT(pc(LIB.length,B.length))}),`,`abaixo da meta de ${META}% do relatório semanal. ${RODA.length} rodaram com passageiros e levaram ${PAX} pessoas no dia. ${MAN.length} em manutenção; nenhum interditado ou na reserva no acompanhamento.`],
-    ['PRINCIPAL PONTO DE ATENÇÃO',K.crit,`${pl(INT_RODA.length,'ônibus interditado','ônibus interditados')} pela Segurança do Trabalho rodando`,`${nums(INT_RODA)} constam como liberados, com ${sum(INT_RODA,'pax')} passageiros por dia, sem relatório de nova inspeção. Além disso, ${LVREAL().length} liberados estão com vistoria vencida e sem relatório (${nums(LVREAL())}).`],
-    ['O QUE ACOMPANHAR',K.warn,`${pl(PROX.length,'vistoria vence','vistorias vencem')} até 14/10`,`(${[...PROX].sort((a,b)=>a.pv.localeCompare(b.pv)).map(b=>`${b.f} em ${fmt(b.pv).slice(0,5)}`).join(', ')}). A G.M.C tem ${C[1].man.length} de ${C[1].bb.length} ônibus parados e ${pcT(C[1].sem)} de disponibilidade na semana. ${PEND_V.length} ônibus têm pendências da Segurança com prazo vencido.`]];
+    ['ONDE ESTAMOS',K.ok,`${LIB.length} de ${B.length} ônibus liberados (${pcT(pc(LIB.length,B.length))}),`,`abaixo da meta de ${META}% do relatório semanal. ${RODA.length} rodaram com passageiros e levaram ${PAX} pessoas no dia. ${MAN.length} em manutenção e ${INTA.length} interditado${INTA.length===1?'':'s'} no acompanhamento.`],
+    ['PRINCIPAL PONTO DE ATENÇÃO',K.crit,INT_RODA.length?`${pl(INT_RODA.length,'ônibus interditado','ônibus interditados')} pela Segurança do Trabalho rodando`:`${pl(LVREAL().length,'liberado','liberados')} com vistoria vencida`,(INT_RODA.length?`${nums(INT_RODA)} constam como liberados, com ${sum(INT_RODA,'pax')} passageiros por dia, sem relatório de nova inspeção. Além disso, `:'')+`${LVREAL().length} liberados estão com vistoria vencida e sem relatório${LVREAL().length?` (${nums(LVREAL())})`:''}.`+(INTA.length?` Interditado no acompanhamento: ${nums(INTA)}.`:'')],
+    ['O QUE ACOMPANHAR',K.warn,`${pl(PROX.length,'vistoria vence','vistorias vencem')} até ${DPROX5}`,`(${[...PROX].sort((a,b)=>a.pv.localeCompare(b.pv)).map(b=>`${b.f} em ${fmt(b.pv).slice(0,5)}`).join(', ')}). A G.M.C tem ${C[1].man.length} de ${C[1].bb.length} ônibus parados e ${pcT(C[1].sem)} de disponibilidade na semana. ${PEND_V.length} ônibus têm pendências da Segurança com prazo vencido.`]];
   const bw=(W-2*12)/3, by=154, bh=112;
   blocks.forEach((b,i)=>{ const x=M+i*(bw+12); doc.rect(x,by,bw,bh,K.soft); doc.rect(x,by,bw,3,b[1]);
     doc.text(b[0],x+12,by+18,{size:8,bold:true,color:b[1]}); let y=by+33;
@@ -746,23 +736,23 @@ function makeCapa(){
     wrapT(b[3],9,false,bw-24).forEach(l=>{ doc.text(l,x+12,y,{size:9,color:K.fg2}); y+=12; }); });
   // empresas
   doc.text('Situação por empresa',M,288,{size:11.5,bold:true,color:K.fg});
-  doc.text('Verde = liberado · laranja = em manutenção · marcador vermelho = ponto de atenção · linha preta = meta de 85%',M+128,288,{size:8,color:K.fg3});
+  doc.text('Verde = liberado · laranja = em manutenção · vermelho = interditado · marcador vermelho = ponto de atenção · linha preta = meta de 85%',M+128,288,{size:8,color:K.fg3});
   const cw=(W-4*10)/5, cy=298, ch=222;
   C.forEach((c,i)=>{ const x=M+i*(cw+10); doc.rect(x,cy,cw,ch,'#ffffff',K.line,0.6);
     doc.text(c.n,x+10,cy+17,{size:9.5,bold:true,color:K.fg});
     const pcol=c.hoje>=META?K.ok:K.man; doc.text(pcT(c.hoje),x+10,cy+44,{size:22,bold:true,color:pcol});
     doc.text(`liberados hoje · ${c.lib.length} de ${c.bb.length}`,x+10,cy+56,{size:8,color:K.fg3});
-    c.bb.forEach((b,j)=>{ const col=b.sit==='lib'?K.ok:K.man, bx=x+10+(j%3)*((cw-20)/3), byy=cy+66+Math.floor(j/3)*16, bwid=(cw-20)/3-4;
-      doc.rect(bx,byy,bwid,12,b.sit==='lib'?'#dff0e4':'#fbe9d6',col,0.5); doc.text(String(b.f),bx+bwid/2,byy+8.8,{size:7.5,bold:true,color:col,align:'center'});
+    c.bb.forEach((b,j)=>{ const col=b.sit==='lib'?K.ok:b.interd?K.crit:K.man, bx=x+10+(j%3)*((cw-20)/3), byy=cy+66+Math.floor(j/3)*16, bwid=(cw-20)/3-4;
+      doc.rect(bx,byy,bwid,12,b.sit==='lib'?'#dff0e4':b.interd?'#fbe6e4':'#fbe9d6',col,0.5); doc.text(String(b.f),bx+bwid/2,byy+8.8,{size:7.5,bold:true,color:col,align:'center'});
       if(b.al.some(a=>a[0]==='c')) doc.rect(bx+bwid-4,byy-2,5,5,K.crit); });
     let y=cy+142;
-    [['Em manutenção',c.man.length,c.man.length?K.man:K.fg3],['Vistoria vencida',c.venc.length,c.venc.length?K.crit:K.fg3],['Passageiros/dia',c.pax,K.fg]].forEach(r=>{ doc.text(r[0],x+10,y,{size:8.5,color:K.fg2}); doc.text(String(r[1]),x+cw-10,y,{size:9,bold:true,color:r[2],align:'right'}); y+=12; });
+    [['Em manutenção',c.man.length+(c.intd.length?` + ${c.intd.length} interd.`:''),c.man.length?K.man:c.intd.length?K.crit:K.fg3],['Vistoria vencida',c.venc.length,c.venc.length?K.crit:K.fg3],['Passageiros/dia',c.pax,K.fg]].forEach(r=>{ doc.text(r[0],x+10,y,{size:8.5,color:K.fg2}); doc.text(String(r[1]),x+cw-10,y,{size:9,bold:true,color:r[2],align:'right'}); y+=12; });
     const bar=(lbl,v,col,yy)=>{ doc.text(lbl,x+10,yy,{size:7.5,color:K.fg3}); doc.text(pcT(v),x+cw-10,yy,{size:7.5,bold:true,color:K.fg,align:'right'});
       const tw2=cw-20; doc.rect(x+10,yy+3,tw2,6,K.track); doc.rect(x+10,yy+3,Math.max(tw2*v/100,1),6,col); doc.line(x+10+tw2*META/100,yy+1,x+10+tw2*META/100,yy+11,K.fg,1); };
-    bar('Hoje',c.hoje,K.ok,cy+186); bar('Semana 01 a 07/10',c.sem,K.week,cy+204); });
+    bar('Hoje',c.hoje,K.ok,cy+186); bar('Semana '+DSEM,c.sem,K.week,cy+204); });
   doc.line(M,538,842-M,538,K.line,0.5);
-  doc.text('Fonte: Acompanhamento Diário de Ônibus de 07/10/2026 e gráfico de disponibilidade semanal (Produção Agrícola). Disponibilidade de hoje = liberados ÷ frota.',M,550,{size:7.5,color:K.fg3});
-  doc.text(`Inspeções: relatórios da Segurança do Trabalho enviados em 08/10 (${INSP.length} relatórios, ${B.filter(b=>b.seg).length} ônibus). Os ${ISS.length} pontos a conferir estão no painel.`,M,561,{size:7.5,color:K.fg3});
+  doc.text('Fonte: Acompanhamento Diário de Ônibus de '+DREFY+' e gráfico de disponibilidade semanal ('+ONB.fonte+'). Disponibilidade de hoje = liberados ÷ frota.',M,550,{size:7.5,color:K.fg3});
+  doc.text(`Inspeções: relatórios da Segurança do Trabalho enviados em ${fmt(ONB.inspEnvio||'2026-10-08').slice(0,5)} (${INSP.length} relatórios, ${B.filter(b=>b.seg).length} ônibus). Os ${ISS.length} pontos a conferir estão no painel.`,M,561,{size:7.5,color:K.fg3});
   doc.text('RH - Gestão de Pessoas · CRV Industrial · Unidade Capinópolis/MG',842-M,578,{size:7.5,color:K.fg3,align:'right'});
   return doc.output(); }
 $('btnCapa').onclick=async()=>{ if(!DL){ toast('O download de arquivos não está disponível nesta visualização do painel.'); return; } const tab=CURTAB; try{ const nm=tab==='geral'?'capa_diretoria':TABNAME[tab].normalize('NFD').replace(/[^A-Za-z0-9]+/g,'_'); await save(`Onibus_${nm}_${REF}.pdf`,makeTabPdf(tab)); }catch(e){ toast('Não foi possível gerar o arquivo agora.'); } };
@@ -784,7 +774,7 @@ function makeTabPdf(tab){
     doc.text(`Painel dos Ônibus · ${TABNAME[tab]}`,M+lw+16,35,{size:16,bold:true,color:K.band});
     doc.text(SUB[tab],M+lw+16,50,{size:9.5,color:K.fg2});
     doc.text(`Posição de ${fmt(REF)}`,842-M,33,{size:10,bold:true,color:K.fg,align:'right'});
-    doc.text(tab==='check'?'Inspeções SST: 08/09 a 30/09/2026':'Semanal: 01/10 a 07/10/2026',842-M,48,{size:8.5,color:K.fg3,align:'right'});
+    doc.text(tab==='check'?'Inspeções SST: '+DINSPY:'Semanal: '+DSEMY,842-M,48,{size:8.5,color:K.fg3,align:'right'});
     doc.line(M,60,842-M,60,K.band,1.4); for(let x=M;x<842-M;x+=22) doc.rect(x,62,13,2,'#f2b632'); y=76; };
   const need=h=>{ if(y+h>BOT) head(); };
   const title=(s,sub)=>{ need(50); doc.text(s,M,y+10,{size:11.5,bold:true,color:K.fg}); if(sub) doc.text(fit(sub,false,8.5,W-tw(s,true,11.5)-20),M+tw(s,true,11.5)+12,y+10,{size:8.5,color:K.fg3}); y+=18; };
@@ -805,7 +795,7 @@ function makeTabPdf(tab){
       rows.map(b=>[b.f,b.en,b.sitT,b.at,b.ida,b.pax,b.cap,fmt(b.pv),b.vt.replace(/ \(.*/,''),b.lBad?'—':fmt(b.l2),STI[b.ck][0].replace('Liberado para operação','Liberado').replace('Liberado com pendências','Pendências')]),
       r=>r[2]==='Liberado'?K.ok:K.man); }
   if(tab==='disp'){ boxes([['LIBERADOS HOJE',`${pcT(pc(LIB.length,B.length))}`,`${LIB.length} de ${B.length} ônibus`,K.ok],['EM MANUTENÇÃO',MAN.length,`${sum(MAN,'cap')} lugares fora`,K.man],['META',`${META}%`,'do relatório semanal',K.fg],['ABAIXO DA META NA SEMANA',Object.keys(WEEK).filter(n=>WEEK[n]<META).length,`de ${Object.keys(WEEK).length} empresas`,K.crit]]);
-    title('Disponibilidade por empresa','Verde = hoje (liberados ÷ frota) · roxo = semana 01 a 07/10 · linha preta = meta de 85%');
+    title('Disponibilidade por empresa','Verde = hoje (liberados ÷ frota) · roxo = semana '+DSEM+' · linha preta = meta de 85%');
     const bx=M+190, bwid=W-190-110;
     Object.keys(WEEK).forEach(n=>{ const c=C.find(x=>x.n===n); need(44); doc.text(n,M,y+12,{size:9.5,bold:true,color:K.fg}); doc.text(c?`${c.lib.length} de ${c.bb.length} liberados hoje`:'sem ônibus na lista do dia',M,y+24,{size:8,color:K.fg3});
       const bar=(v,col,yy,lbl,na)=>{ doc.rect(bx,yy,bwid,9,K.track); if(!na){ doc.rect(bx,yy,Math.max(bwid*v/100,1),9,col); } doc.line(bx+bwid*META/100,yy-2,bx+bwid*META/100,yy+11,K.fg,1); doc.text(na?'sem ônibus na lista':`${pcT(v)} ${lbl}`,bx+bwid+8,yy+8,{size:8,bold:!na,color:na?K.fg3:K.fg}); };
@@ -814,16 +804,16 @@ function makeTabPdf(tab){
     title('Ônibus parados hoje',`${pl(MAN.length,'ônibus','ônibus')} · ${sum(MAN,'cap')} lugares fora de operação`);
     table([{t:'Frota',w:60,b:1},{t:'Empresa',w:150},{t:'Motivo informado',w:250,cf:r=>r[2]==='Não informado'?K.warn:K.fg},{t:'Capacidade',w:70,r:1},{t:'Próx. vistoria',w:90},{t:'Vistoria',w:162,cf:()=>K.crit}],
       MAN.map(b=>[b.f,b.en,b.motivo||'Não informado',b.cap,fmt(b.pv),b.vt]),()=>K.man); }
-  if(tab==='prev'){ boxes([['VISTORIAS VENCIDAS',VENC.length,`${LIBVENC.length} liberados · ${VENC.length-LIBVENC.length} em manutenção`,K.crit],['VENCEM EM ATÉ 7 DIAS',PROX.length,'até 14/10/2026',K.amber],['EM DIA',VOK.length,'vistoria a cada 30 dias',K.ok],['LAVADOS EM 07/10',B.filter(b=>b.l1===REF).length,'nenhuma lavagem atrasada',K.fg]]);
-    title('Vistoria','Ordenado pela próxima data · contagem a partir de 07/10/2026');
+  if(tab==='prev'){ boxes([['VISTORIAS VENCIDAS',VENC.length,`${LIBVENC.length} liberados · ${VENC.length-LIBVENC.length} em manutenção`,K.crit],['VENCEM EM ATÉ 7 DIAS',PROX.length,'até '+DPROXY,K.amber],['EM DIA',VOK.length,'vistoria a cada 30 dias',K.ok],['LAVADOS EM '+DREF5,B.filter(b=>b.l1===REF).length,LAVA.length?pl(LAVA.length,'lavagem atrasada','lavagens atrasadas'):'nenhuma lavagem atrasada',K.fg]]);
+    title('Vistoria','Ordenado pela próxima data · contagem a partir de '+DREFY);
     table([{t:'Frota',w:56,b:1},{t:'Empresa',w:150},{t:'Situação',w:96,cf:r=>r[2]==='Liberado'?K.ok:K.man},{t:'Última vistoria',w:96},{t:'Próxima vistoria',w:100},{t:'Prazo',w:284,cf:r=>/^Vencida/.test(r[5])?K.crit:/^Vence/.test(r[5])?K.warn:K.ok}],
-      [...B].sort((a,b)=>a.pv.localeCompare(b.pv)||a.f-b.f).map(b=>[b.f,b.en,b.sitT,fmt(b.uv),fmt(b.pv),b.vt+(b.vFix?' · relatório SST indica 30/10':'')]),r=>/^Vencida/.test(r[5])?K.crit:/^Vence/.test(r[5])?K.amber:K.ok);
+      [...B].sort((a,b)=>a.pv.localeCompare(b.pv)||a.f-b.f).map(b=>[b.f,b.en,b.sitT,fmt(b.uv),fmt(b.pv),b.vt+(b.vFix?' · relatório SST indica '+fmt(b.seg.prox).slice(0,5):'')]),r=>/^Vencida/.test(r[5])?K.crit:/^Vence/.test(r[5])?K.amber:K.ok);
     const ok=B.filter(b=>!b.lBad), ds=[...new Set(ok.map(b=>b.l2))].sort();
     title('Lavagem','Próxima lavagem de cada ônibus (coluna Lavagem 2)');
     table([{t:'Data',w:80,b:1},{t:'Dia',w:60},{t:'Ônibus',w:60,r:1},{t:'Frotas',w:582}],ds.map(d=>{ const bb=ok.filter(b=>b.l2===d); return [fmt(d),dow(d),bb.length,bb.map(b=>b.f).join(', ')]; }));
     B.filter(b=>b.lBad).forEach(b=>para(`O ${b.f} ficou fora da agenda porque as datas de lavagem vieram com o ano ${b.l2.slice(0,4)}.`,{size:8.5,color:K.fg3})); }
   if(tab==='check'){ boxes([['LIBERADOS P/ OPERAÇÃO',CK_LIB.length,'último relatório',K.ok],['COM PENDÊNCIAS',CK_PEND.length,`${PEND_V.length} com prazo vencido`,K.amber],['INTERDITADOS',INT_SEG.length,`${INT_RODA.length} liberados no acompanhamento`,K.crit],['SEM RELATÓRIO',SEM_INS.length,`${SEM_INS.filter(b=>b.sit==='lib').length} deles liberados`,K.res]]);
-    if(INT_RODA.length) note(`${pl(INT_RODA.length,'ônibus interditado','ônibus interditados')} pela Segurança aparecem como liberados no acompanhamento de 07/10: ${INT_RODA.map(b=>`${b.f} (interditado em ${fmt(b.seg.d)}, ${b.pax} passageiros/dia)`).join('; ')}. Não há relatório de nova inspeção liberando.`,K.crit,'#fbe6e4');
+    if(INT_RODA.length) note(`${pl(INT_RODA.length,'ônibus interditado','ônibus interditados')} pela Segurança aparecem como liberados no acompanhamento de ${DREF5}: ${INT_RODA.map(b=>`${b.f} (interditado em ${fmt(b.seg.d)}, ${b.pax} passageiros/dia)`).join('; ')}. Não há relatório de nova inspeção liberando.`,K.crit,'#fbe6e4');
     if(PEND_V.length) note(`${PEND_V.length} com pendências e prazo de correção vencido, sem relatório da nova inspeção: ${PEND_V.map(b=>`${b.f} (${fmt(b.seg.prox)})`).join(', ')}.`,K.warn,'#fdf2d4');
     const lastNC=B.filter(b=>b.seg).flatMap(b=>b.seg.nc.map(n=>({b,n,c:catOf(n)})));
     const cats=CATS.map(c=>{ const it=lastNC.filter(x=>x.c===c[0]); return {n:c[0],it,bb:[...new Set(it.map(x=>x.b))]}; }).filter(c=>c.it.length).sort((a,b)=>b.bb.length-a.bb.length);
