@@ -62,6 +62,7 @@ async function linhas(){
 async function situacaoDe(id){ const L = await linhas(); return L.filter(x => x.id === id || x.id.startsWith(id + ':')); }
 
 async function pendencias(){
+  if (!ehAdmin()) return [];   // só quem importa as bases recebe o aviso
   const L = (await linhas()).filter(x => x.pode && x.s.k === 'atr');
   if (!L.length) return [];
   return [{ id:'bases', sev:'warn', t:'Bases desatualizadas', painel:'', rota:'#/bases', pnome:'Saúde das bases', d:'Os números destes painéis podem estar defasados. Carregue a planilha nova.',

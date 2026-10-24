@@ -103,7 +103,8 @@ function finalizar(out){
 const fmt = (x, v) => v == null ? '—' : nf(v, x.d || (x.suf === '%' ? 1 : 0)) + (x.suf || '');
 
 async function tela(){
-  if (!E.perfil || E.perfil.papel !== 'admin') { location.hash = '#/'; return; }
+  if (!E.perfil || !['admin', 'rh'].includes(E.perfil.papel)) { location.hash = '#/'; return; }
+  const princ = E.perfil.papel === 'admin';   // fechar e reabrir mês: só a administradora principal
   const h = new Date().toISOString().slice(0, 10), atual = h.slice(0, 7);
   const opc = []; for (let k = atual; k >= '2026-01'; k = mesAnt(k)) opc.push(k);
   let mes = mesAnt(atual), R = null, T = {}, FECH = {};
@@ -129,14 +130,14 @@ async function tela(){
       return `<button class="rl-k ${x.lista ? '' : 'sem'}" data-i="${i}" ${x.lista ? '' : 'disabled'}><span>${esc(x.t)}</span><b>${esc(fmt(x, x.a))}</b>
         <small>${x.foto ? 'posição de hoje' : x.b == null ? 'sem comparação' : `<i class="rl-v ${cor}">${v == null ? '' : (v > 0 ? '▲ ' : v < 0 ? '▼ ' : '') + nf(Math.abs(100 * v)) + '%'}</i> ${esc(mesTxt(mesAnt(mes)).split('/')[0])}: ${esc(fmt(x, x.b))}`}</small>${x.extra ? `<small>${esc(x.extra)}</small>` : ''}</button>`; };
     const f = R.fechado, passado = mes < atual;
-    const est = f ? `<section class="cartao rl-est ok"><div><b>Mês fechado</b><span>em ${esc(new Date(f.fechadoEm).toLocaleDateString('pt-BR'))} por ${esc(f.fechadoPor || '')}${f.ressalvas && f.ressalvas.length ? ' · com ressalvas: ' + esc(f.ressalvas.join('; ')) : ''}. Os números deste mês não mudam mais, mesmo com bases novas.</span></div><button class="btn borda" id="rl-reab">Reabrir</button></section>`
-      : `<section class="cartao rl-est"><div><b>Mês em aberto</b><span>${passado ? 'Os números ainda mudam quando as bases forem atualizadas. Feche o mês para guardar os números e formar a série histórica.' : 'Mês corrente: feche depois que ele terminar e as bases estiverem atualizadas.'}</span></div>${passado ? '<button class="btn prim" id="rl-fech">Fechar o mês</button>' : ''}</section>`;
+    const est = f ? `<section class="cartao rl-est ok"><div><b>Mês fechado</b><span>em ${esc(new Date(f.fechadoEm).toLocaleDateString('pt-BR'))} por ${esc(f.fechadoPor || '')}${f.ressalvas && f.ressalvas.length ? ' · com ressalvas: ' + esc(f.ressalvas.join('; ')) : ''}. Os números deste mês não mudam mais, mesmo com bases novas.</span></div>${princ ? '<button class="btn borda" id="rl-reab">Reabrir</button>' : ''}</section>`
+      : `<section class="cartao rl-est"><div><b>Mês em aberto</b><span>${passado ? 'Os números ainda mudam quando as bases forem atualizadas. Feche o mês para guardar os números e formar a série histórica.' : 'Mês corrente: feche depois que ele terminar e as bases estiverem atualizadas.'}</span></div>${passado && princ ? '<button class="btn prim" id="rl-fech">Fechar o mês</button>' : ''}</section>`;
     const TL = Object.keys(FECH).sort().filter(k => k <= mes).slice(-12);
     const tend = TL.length >= 2 ? `<section class="fc-sec cartao rl-tend"><header><h3>Tendência dos meses fechados</h3><small>${TL.length} meses</small></header><div class="fc-tw"><table class="fc-t"><thead><tr><th>Indicador</th>${TL.map(k => `<th>${esc(mesTxt(k).slice(0, 3))}/${k.slice(2, 4)}</th>`).join('')}<th></th></tr></thead><tbody>
         ${TEND.map(t => { const v = TL.map(k => { const x = FECH[k].ind.find(z => z.t === t); return x ? x : null; }); if (!v.some(Boolean)) return ''; const nums = v.map(x => x ? x.a : null), ok = nums.filter(n => n != null), mx = Math.max(...ok), mn = Math.min(...ok);
           const pts = nums.map((n, i) => n == null ? null : [6 + i * (108 / Math.max(1, nums.length - 1)), 24 - (mx === mn ? 9 : 18 * (n - mn) / (mx - mn))]).filter(Boolean);
           return `<tr><td>${esc(t)}</td>${v.map(x => `<td>${x ? esc(fmt(x, x.a)) : '—'}</td>`).join('')}<td><svg class="rl-sp" viewBox="0 0 120 30" width="120" height="30"><polyline fill="none" stroke="currentColor" stroke-width="2" points="${pts.map(p => p.join(',')).join(' ')}"/>${pts.length ? `<circle cx="${pts[pts.length - 1][0]}" cy="${pts[pts.length - 1][1]}" r="2.6" fill="currentColor"/>` : ''}</svg></td></tr>`; }).join('')}</tbody></table></div></section>`
-      : `<section class="cartao rl-est"><div><b>Tendência</b><span>A série aparece a partir de 2 meses fechados${TL.length ? ' (já tem ' + TL.length + ')' : ''}. ${mes > '2026-01' ? 'Você pode fechar de uma vez os meses anteriores de 2026 com os dados de hoje; eles ficam marcados como fechados depois.' : ''}</span></div>${mes > '2026-01' ? '<button class="btn borda" id="rl-lote">Fechar meses anteriores</button>' : ''}</section>`;
+      : `<section class="cartao rl-est"><div><b>Tendência</b><span>A série aparece a partir de 2 meses fechados${TL.length ? ' (já tem ' + TL.length + ')' : ''}. ${mes > '2026-01' ? 'Você pode fechar de uma vez os meses anteriores de 2026 com os dados de hoje; eles ficam marcados como fechados depois.' : ''}</span></div>${mes > '2026-01' && princ ? '<button class="btn borda" id="rl-lote">Fechar meses anteriores</button>' : ''}</section>`;
     c.innerHTML = `${est}${SEC.map(([k, t]) => { const L = R.ind.map((x, i) => [x, i]).filter(([x]) => x.sec === k); return L.length ? `<section class="rl-sec"><h3>${t}</h3><div class="rl-g">${L.map(([x, i]) => card(x, i)).join('')}</div></section>` : ''; }).join('')}
       ${R.notas.length ? `<p class="nr-fonte">${R.notas.map(esc).join(' ')}</p>` : ''}
       ${tend}

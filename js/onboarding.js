@@ -60,12 +60,12 @@ async function dados(dias){
   let [C, CK, CV] = await Promise.all([cfg(), regs('check'), regs('conversas')]); const itens = C.itens; let ini = C.inicio;
   // 24/10/2026: o RH informou que todos os admitidos estão com o checklist completo, menos o Cartão Alimentação de quem entrou em outubro
   { const pp = E.paineis.find(x => x.id === 'onboarding');
-    if (!C.lote2410 && pp && podeEditar(pp)) { try { const nota = 'Informado pelo RH em 24/10/2026';
+    if (!C.lote2410 && pp && E.perfil.papel === 'admin') { try { const nota = 'Informado pelo RH em 24/10/2026';
       await marcarLote(M, CK, '2000-01-01', '2026-09-30', itens.map(i => i.id), nota);
       await marcarLote(M, CK, '2026-10-01', '2026-10-24', itens.filter(i => i.id !== 'va').map(i => i.id), nota);
       await salvar('config', 'lote-20261024', { em:new Date().toISOString(), por:E.perfil.nome }); CK = await regs('check'); } catch(e){ console.warn('lote onboarding', e); } } }
   // a primeira vez que alguém com permissão abre, o acompanhamento começa hoje
-  if (!ini) { ini = h; const pp = E.paineis.find(x => x.id === 'onboarding'); if (pp && podeEditar(pp)) salvar('config', 'inicio', { data:h }).catch(() => {}); }
+  if (!ini) { ini = h; if (E.perfil.papel === 'admin') salvar('config', 'inicio', { data:h }).catch(() => {}); }
   const ck = {}; CK.forEach(x => ck[fMat(x.mat || x._id)] = x);
   const cv = {}; CV.forEach(x => (cv[fMat(x.mat)] = cv[fMat(x.mat)] || []).push(x));
   const L = Object.entries(M).filter(([, c]) => c.situacao !== 'Desligado' && c.admissao && c.admissao >= desde && c.admissao <= h).map(([m, c]) => {
@@ -102,7 +102,7 @@ async function tela(p){
   moldura(`<div class="trilha"><button data-ir="#/">Início</button> › <span>${esc(p.frente)}</span> › <b>${esc(p.nome)}</b></div>
     <section class="ini-topo"><div><div class="ini-eyebrow">${esc(p.frente)}</div><h1>Onboarding</h1><div class="ini-data">Quem acabou de entrar: checklist de admissão, conversas do RH aos 30, 60 e 90 dias e retenção</div></div>
       <div class="dk-acoes"><button class="btn borda" id="ob-xls">Excel</button><button class="btn borda" id="ob-pdf">PDF</button></div></section>
-    <nav class="vista-seg" id="ob-abas"><button data-a="lista" class="on">Acompanhamento</button><button data-a="ret">Retenção aos 90 dias</button>${pode ? '<button data-a="itens">Itens do checklist</button>' : ''}</nav>
+    <nav class="vista-seg" id="ob-abas"><button data-a="lista" class="on">Acompanhamento</button><button data-a="ret">Retenção aos 90 dias</button>${E.perfil.papel === 'admin' ? '<button data-a="itens">Itens do checklist</button>' : ''}</nav>
     <div id="ob-corpo"><div class="cartao vazio"><div class="spinner" style="margin:0 auto"></div></div></div>`);
   document.querySelector('.trilha [data-ir]').onclick = () => location.hash = '#/';
   const carregar = async () => { try { D = await dados(F.dias); } catch(e){ console.warn('onboarding', e); D = null; } desenhar(); };

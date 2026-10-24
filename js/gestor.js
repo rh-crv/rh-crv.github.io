@@ -386,8 +386,8 @@ async function semGestor(){
     (d.dados.RAW || []).forEach(r => { const m = fMat(r[0]), c = Q.mapa[m]; if (!c || c.situacao === 'Desligado') return; const v = [r[7], r[8]].filter(x => x && x >= h && x <= lim).sort()[0]; if (!v || r[17]) return;
       if (K.has('a:' + c.area) || K.has('g:' + c.gerencia)) return; out.push({ nome:c.nome, mat:m, det:`${c.area || ''} · ${c.gerencia || ''} · vence em ${brD(v)}` }); }); } catch(_){}
   return out; }
-async function pendenciasEnvios(){ if (!E.perfil || E.perfil.papel !== 'admin') return []; const out = [];
-  const S = await semGestor(); if (S.length) out.push({ id:'sem-gestor', sev:'warn', t:'Experiências vencendo em áreas sem gestor no app', painel:'', rota:'#/admin', pnome:'Administração', d:'Todas as áreas respondem pelo app: cadastre o gestor dessas áreas (Administração → Usuários → Gestor de área) para ele conseguir avaliar.', itens:S });
+async function pendenciasEnvios(){ if (!E.perfil || !['admin', 'rh'].includes(E.perfil.papel)) return []; const out = [];
+  const S = E.perfil.papel === 'admin' ? await semGestor() : []; if (S.length) out.push({ id:'sem-gestor', sev:'warn', t:'Experiências vencendo em áreas sem gestor no app', painel:'', rota:'#/admin', pnome:'Administração', d:'Todas as áreas respondem pelo app: cadastre o gestor dessas áreas (Administração → Usuários → Gestor de área) para ele conseguir avaliar.', itens:S });
   const L = (await lerEnviosRH() || []).filter(e => e.status === 'enviado'); if (!L.length) return out;
   return out.concat([{ id:'envios', sev:'warn', t:'Envios dos gestores aguardando o RH', painel:'', rota:'#/envios', pnome:'Envios dos gestores', d:'Programações de férias e avaliações de experiência assinadas pelos gestores. Aceite para lançar no painel ou devolva com o motivo.',
     itens:L.map(e => ({ nome:e.colaborador || e.mat, mat:e.mat, det:(e.tipo === 'ferias' ? 'Férias: ' : 'Experiência: ') + resumoEnvio(e) + ' · por ' + (e.autor_nome || '') + ' em ' + brD(String(e.criado_em).slice(0, 10)) })) }]); }

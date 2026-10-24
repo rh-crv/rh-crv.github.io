@@ -56,8 +56,9 @@ const fmtData = iso => { if(!iso) return '—'; const d=new Date(iso); return d.
 const fmtNum = n => Number(n||0).toLocaleString('pt-BR');
 const iniciais = n => String(n||'?').split(/\s+/).filter(Boolean).slice(0,2).map(p=>p[0]).join('').toUpperCase();
 const usuarioParaEmail = u => normal(u).replace(/\s+/g,'.').replace(/[^a-z0-9._-]/g,'') + '@' + CFG.DOMINIO_LOGIN;
-const ehAdmin = () => E.perfil?.papel === 'admin';
-const nomePapel = p => ({admin:'Administrador', editor:'Editor', leitor:'Leitor', gestor:'Gestor de área'}[p] || p);
+const ehAdmin = () => E.perfil?.papel === 'admin';   // administradora principal: importa bases, mexe na estrutura, usuários e configurações
+const ehRH = () => ['admin', 'rh'].includes(E.perfil?.papel);   // equipe RH: vê tudo e lança tudo, sem importar bases nem mudar estrutura
+const nomePapel = p => ({admin:'Administrador principal', rh:'Equipe RH', editor:'Editor', leitor:'Leitor', gestor:'Gestor de área'}[p] || p);
 
 function toast(msg, erro=false){
   const t = document.createElement('div');
@@ -78,6 +79,7 @@ function traduzErro(e){
   if (m.includes('failed to fetch') || m.includes('network')) return 'Sem conexão com o servidor. Verifique a internet.';
   if (m.includes('row-level security') || m.includes('permission denied')) return 'Você não tem permissão para essa ação.';
   if ((m.includes('areas') && m.includes('column')) || m.includes('area_dados') || m.includes('gestor_envios') || m.includes('perfis_papel_check')) return 'Falta preparar o banco para o perfil de gestor: rode o arquivo 04_gestor.sql no Supabase (SQL Editor).';
+  if (m.includes('perfis_papel_check') && m.includes('rh')) return 'Falta preparar o banco para a Equipe RH: rode o arquivo 05_equipe_rh.sql no Supabase.';
   if (m.includes('relation') && m.includes('does not exist')) return 'O banco ainda não foi preparado. Rode o arquivo SQL no Supabase (passo a passo).';
   return e?.message || 'Algo deu errado. Tente novamente.';
 }
@@ -186,8 +188,8 @@ async function carregarCatalogo(){
   if (E.metas.sysprocard && !E.metas['sysprocard-credito']) E.metas['sysprocard-credito'] = E.metas.sysprocard;
 }
 
-function podeVer(p){ if (!E.perfil) return false; if (ehAdmin()) return true; return p.nivel !== 'restrito' && (E.perfil.frentes||[]).includes(p.frente); }
-function podeEditar(p){ if (!E.perfil) return false; if (ehAdmin()) return true; return E.perfil.papel === 'editor' && p.nivel !== 'restrito' && (E.perfil.frentes||[]).includes(p.frente); }
+function podeVer(p){ if (!E.perfil) return false; if (ehRH()) return true; return p.nivel !== 'restrito' && (E.perfil.frentes||[]).includes(p.frente); }
+function podeEditar(p){ if (!E.perfil) return false; if (ehRH()) return true; return E.perfil.papel === 'editor' && p.nivel !== 'restrito' && (E.perfil.frentes||[]).includes(p.frente); }
 
 function telaLogin(modo='entrar', msg=''){
   const primeiro = modo === 'primeiro';
@@ -313,11 +315,11 @@ function moldura(conteudo){
         ${p.papel === 'gestor' ? `<button class="lat-item ${h!=='#/conta'?'ativo':''}" data-ir="#/">${svg('usuario')}<span>Minha equipe</span></button>` : `
         <div class="lat-pgrupo lat-cgrupo ${h==='#/central'||h==='#/desligamento'||h==='#/bases'||h==='#/envios'||subAbertos.__central?'aberto':''}" data-pid="__central">
           <div class="lat-plinha"><button class="lat-item ${h==='#/central'?'ativo':''}" data-ir="#/central"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg><span>Central do dia</span></button><button class="lat-pseta" aria-label="Mostrar opções da Central do dia" aria-expanded="${h==='#/desligamento'||h==='#/bases'||h==='#/envios'?'true':'false'}">${CHEV}</button></div>
-          <div class="lat-psub"><button class="lat-acao ${h==='#/desligamento'?'ativo':''}" data-ir="#/desligamento" style="--cor:var(--coral)"><i>${IA('<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>')}</i><span>Checklist de desligamento</span></button><button class="lat-acao ${h==='#/bases'?'ativo':''}" data-ir="#/bases" style="--cor:var(--cane)"><i>${IA('<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>')}</i><span>Saúde das bases</span></button>${ehAdmin() ? `<button class="lat-acao ${h==='#/envios'?'ativo':''}" data-ir="#/envios" style="--cor:#24427c"><i>${IA('<path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/>')}</i><span>Envios dos gestores</span></button>` : ''}</div>
+          <div class="lat-psub"><button class="lat-acao ${h==='#/desligamento'?'ativo':''}" data-ir="#/desligamento" style="--cor:var(--coral)"><i>${IA('<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>')}</i><span>Checklist de desligamento</span></button><button class="lat-acao ${h==='#/bases'?'ativo':''}" data-ir="#/bases" style="--cor:var(--cane)"><i>${IA('<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>')}</i><span>Saúde das bases</span></button>${ehRH() ? `<button class="lat-acao ${h==='#/envios'?'ativo':''}" data-ir="#/envios" style="--cor:#24427c"><i>${IA('<path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/>')}</i><span>Envios dos gestores</span></button>` : ''}</div>
         </div>
         <button class="lat-item ${h.startsWith('#/ficha')?'ativo':''}" data-ir="#/ficha"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2.5"/><path d="M5.5 17c.6-1.8 2-2.7 3.5-2.7s2.9.9 3.5 2.7M14 9h4M14 13h4"/></svg><span>Ficha do colaborador</span></button>
         <button class="lat-item ${h==='#/consulta'?'ativo':''}" data-ir="#/consulta"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="6"/><path d="M20 20l-5.6-5.6M8 10h4M10 8v4"/></svg><span>Consulta de candidato</span></button>
-        ${ehAdmin() ? `<button class="lat-item ${h==='#/relatorio'?'ativo':''}" data-ir="#/relatorio"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 17v-3M12 17v-6M15 17v-2"/></svg><span>Relatório da diretoria</span></button>` : ''}
+        ${ehRH() ? `<button class="lat-item ${h==='#/relatorio'?'ativo':''}" data-ir="#/relatorio"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 17v-3M12 17v-6M15 17v-2"/></svg><span>Relatório da diretoria</span></button>` : ''}
         <div class="lat-busca"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="lat-q" type="search" placeholder="Buscar painel ou ação" autocomplete="off" aria-label="Buscar painel"></div>
         <div class="lat-sec">Frentes</div>
         <div class="lat-vazio" id="lat-vazio" hidden>Nenhum painel com esse nome.</div>
@@ -405,7 +407,7 @@ function rota(){
   if (h === '#/consulta') return telaConsulta();
   if (h === '#/relatorio') return REL().tela();
   if (h === '#/bases') return BASES().tela();
-  if (h === '#/envios' && ehAdmin()) return GESTOR().telaEnvios();
+  if (h === '#/envios' && ehRH()) return GESTOR().telaEnvios();
   if (h === '#/desligamento') return telaDesligamento();
   if (h === '#/conta') return telaConta();
   telaInicio();
@@ -472,7 +474,7 @@ async function htmlDoPainel(p){
     const r = await sb.from('registros').select('doc_id,dados,colecao').eq('painel', p.id).in('colecao', cols).range(0, 4999);
     if (!r.error) novos = (r.data || []).filter(x => x.dados && !x.dados.excluida).map(x => cols.length > 1 ? { _id: x.doc_id, colecao: x.colecao, dados: x.dados } : { _id: x.doc_id, dados: x.dados });
   }
-  const ponte = window.CRV_PONTE.criar({ sb, painel: pid, perfil: () => E.perfil, quem: () => E.perfil.nome, podeEditar: () => podeEditar(p), ehAdmin: () => ehAdmin() });
+  const ponte = window.CRV_PONTE.criar({ sb, painel: pid, perfil: () => E.perfil, quem: () => E.perfil.nome, podeEditar: () => podeEditar(p), ehAdmin: () => ehRH() });
   return { html: montarModelo(tpl, d.conteudo, d.referencia, p, novos), ponte, ref: d.referencia || '' };
 }
 const espera = ms => new Promise(ok => setTimeout(ok, ms));
@@ -545,7 +547,7 @@ async function marcarDesligamento(x, k, feito){
 }
 /* Riscos Psicossociais (NR-1): js/nr1.js recebe as funções do app quando é usado */
 let _nr1 = null;
-const ctxMod = () => ({ sb, E, $, esc, normal, brD, fMat, fDias, podeVer, podeEditar, moldura, abrirModal, fecharModal, toast, traduzErro, baixar, cabecalhoPDF, rodapePDF, centralChave });
+const ctxMod = () => ({ sb, E, $, esc, normal, brD, fMat, fDias, podeVer, podeEditar, ehAdmin, ehRH, moldura, abrirModal, fecharModal, toast, traduzErro, baixar, cabecalhoPDF, rodapePDF, centralChave });
 const NR1 = () => _nr1 || (_nr1 = window.CRV_NR1_INIT ? window.CRV_NR1_INIT(ctxMod()) : null);
 let _risco = null; const RISCO = () => _risco || (_risco = window.CRV_RISCO_INIT(ctxMod()));
 let _rel = null; const REL = () => _rel || (_rel = window.CRV_REL_INIT(Object.assign(ctxMod(), { NR1, RISCO, BASES })));
@@ -982,7 +984,7 @@ async function telaPainel(id, acao){
 
 function desenharPainel(){
   const v = E.view, p = v.p, b = v.base;
-  const editar = podeEditar(p);
+  const editar = podeEditar(p) && ehAdmin();   // importar planilha: só a administradora principal
   const cab = `<div class="trilha"><button data-ir="#/">Início</button> › <span>${esc(p.frente)}</span> › <b>${esc(p.nome)}</b></div>
   <div class="painel-cab">
     <div class="barra-cor" style="background:${v.cfg.cor}"></div>
@@ -1384,7 +1386,7 @@ async function telaModelo(p, cfg, acao){
     // ponte: o que o painel pedir ao "Claude" (salvar anotações, baixar arquivos...) vem para o app
     window.CRV_QUEM = E.perfil.nome;
     window.__CRV_PAINEL = window.CRV_PONTE.criar({ sb, painel: PAC_DE[p.id] || p.id, perfil: () => E.perfil, quem: () => E.perfil.nome,
-      podeEditar: () => podeEditar(p), ehAdmin: () => ehAdmin() });
+      podeEditar: () => podeEditar(p), ehAdmin: () => ehRH() });
     let novos = [];
     if (PAINEIS_COM_NOVOS.includes(p.id)) {
       const cols = [].concat(COLECAO_NOVOS[p.id] || 'novos');
@@ -1425,7 +1427,7 @@ async function telaVistaQuadro(p, vq, acao){
   }
   try {
     window.CRV_QUEM = E.perfil.nome;
-    window.__CRV_PAINEL = window.CRV_PONTE.criar({ sb, painel:'quadro', perfil: () => E.perfil, quem: () => E.perfil.nome, podeEditar: () => podeEditar(q), ehAdmin: () => ehAdmin() });
+    window.__CRV_PAINEL = window.CRV_PONTE.criar({ sb, painel:'quadro', perfil: () => E.perfil, quem: () => E.perfil.nome, podeEditar: () => podeEditar(q), ehAdmin: () => ehRH() });
     window.CRV_RECARREGAR = () => { if (location.hash.startsWith('#/p/' + encodeURIComponent(p.id))) telaPainel(p.id); };
     const tplM = tpl.replace(/<head[^>]*>/i, m => m + `<script>window.CRV_MODO_QUADRO=${JSON.stringify(vq)};<\/script>`);
     const html = montarModelo(tplM, d.conteudo, d.referencia, Object.assign({}, q, { frente: p.frente }), []);
@@ -1588,7 +1590,7 @@ window.CRV_REGS = async function(painel, colecao){
 };
 /* banco de registros de outro painel (ex.: a fadiga grava a advertência também nas Sanções) */
 window.CRV_DB_DE = function(id){ const p = (E.paineis || []).find(x => x.id === id); if (!p || !window.CRV_PONTE) return null;
-  return window.CRV_PONTE.criar({ sb, painel:id, perfil:() => E.perfil, quem:() => E.perfil.nome, podeEditar:() => podeEditar(p), ehAdmin:() => ehAdmin() }).capacidade('db'); };
+  return window.CRV_PONTE.criar({ sb, painel:id, perfil:() => E.perfil, quem:() => E.perfil.nome, podeEditar:() => podeEditar(p), ehAdmin:() => ehRH() }).capacidade('db'); };
 /* sanções (planilha + emitidas no app) e RD de uma matrícula */
 window.CRV_HIST_COLAB = async function(mat){
   mat = String(mat || '').trim().replace(/^0+(?=\d)/, '');
@@ -1984,10 +1986,10 @@ async function adminUsuarios(){
   const temG = data.some(u => u.papel === 'gestor'); const ug = temG ? await GESTOR().ultimaGeracao() : null;
   c.innerHTML = `<div class="cartao-cab"><h3>${data.length} usuário(s)</h3><button class="btn prim" id="u-novo">+ Novo usuário</button></div>
     ${temG ? `<div class="gs-adm cartao"><div><b>Visão dos gestores</b><small>${ug && ug.em ? 'Atualizada em ' + esc(new Date(ug.em).toLocaleString('pt-BR')) + ' · ' + (ug.chaves || []).length + ' área(s)' : 'Ainda não gerada'}. Atualiza sozinha quando você entra no app ou carrega as bases.</small></div><button class="btn borda" id="u-gerar">Atualizar agora</button></div>` : ''}
-    <p style="color:var(--mut);margin-top:0;font-size:13px"><b>Administrador</b> vê e mexe em tudo · <b>Editor</b> vê e atualiza as frentes liberadas · <b>Leitor</b> só consulta as frentes liberadas · <b>Gestor de área</b> vê só a própria equipe (experiência, férias, frequência, novos e crachás), sem acesso aos painéis. Painéis <span class="selo restrito">restrito</span> são só de administradores.</p>
+    <p style="color:var(--mut);margin-top:0;font-size:13px"><b>Administrador principal</b> faz tudo: importa bases, cria e tira painéis, cadastra usuários e muda configurações · <b>Equipe RH</b> vê todos os painéis (inclusive restritos) e faz todos os lançamentos, mas não importa bases nem mexe na estrutura · <b>Editor</b> vê e atualiza as frentes liberadas · <b>Leitor</b> só consulta as frentes liberadas · <b>Gestor de área</b> vê só a própria equipe (experiência, férias, frequência, novos e crachás), sem acesso aos painéis. Painéis <span class="selo restrito">restrito</span> são só de administradores.</p>
     ${data.map((u,i)=>`<div class="linha-u ${u.ativo?'':'inativo'}">
       <div class="av" style="background:${PALETA[i%PALETA.length]}">${esc(iniciais(u.nome))}</div>
-      <div class="info"><b>${esc(u.nome)}</b> ${u.ativo?'':'<small>(desativado)</small>'}<br><small>@${esc(u.usuario)} · ${esc(nomePapel(u.papel))}${u.papel==='admin'?' · todas as frentes':u.papel==='gestor'?` · ${(u.areas||[]).length ? esc((u.areas||[]).map(k=>k.slice(2)).join(', ')) : 'nenhuma área vinculada'}`:` · ${u.frentes?.length ? esc(u.frentes.join(', ')) : 'nenhuma frente liberada'}`}</small></div>
+      <div class="info"><b>${esc(u.nome)}</b> ${u.ativo?'':'<small>(desativado)</small>'}<br><small>@${esc(u.usuario)} · ${esc(nomePapel(u.papel))}${u.papel==='admin'?' · todas as frentes':u.papel==='rh'?' · todos os painéis, só lançamentos':u.papel==='gestor'?` · ${(u.areas||[]).length ? esc((u.areas||[]).map(k=>k.slice(2)).join(', ')) : 'nenhuma área vinculada'}`:` · ${u.frentes?.length ? esc(u.frentes.join(', ')) : 'nenhuma frente liberada'}`}</small></div>
       <button class="btn peq borda" data-edit="${esc(u.user_id)}">Editar</button>
       <button class="btn peq borda" data-senha="${esc(u.user_id)}">Nova senha</button>
     </div>`).join('')}`;
@@ -2008,7 +2010,7 @@ function formUsuario(u, todos){
       ${novo ? `<div class="campo"><label>Usuário (para entrar no app)</label><input id="u-user" autocapitalize="none" spellcheck="false" placeholder="ex.: maria.silva"><small style="color:var(--mut)">Sem espaços e sem acentos. A pessoa não precisa ter e-mail.</small></div>
       <div class="campo"><label>Senha inicial</label><input id="u-senha" type="text" minlength="6" placeholder="mínimo 6 caracteres"><small style="color:var(--mut)">Passe a senha para a pessoa. Ela pode trocar depois em "Minha conta".</small></div>` : `<p style="color:var(--mut);margin-top:0">Usuário: <b>@${esc(u.usuario)}</b></p>`}
       <div class="campo"><label>Perfil</label><select id="u-papel">
-        ${['leitor','editor','gestor','admin'].map(p=>`<option value="${p}" ${(u?.papel||'leitor')===p?'selected':''}>${nomePapel(p)}</option>`).join('')}</select></div>
+        ${['leitor','editor','gestor','rh','admin'].map(p=>`<option value="${p}" ${(u?.papel||'leitor')===p?'selected':''}>${nomePapel(p)}</option>`).join('')}</select></div>
       <div class="campo" id="u-frentes-box"><label>Frentes liberadas</label>
         <div class="checks">${frentes.map(f=>`<label><input type="checkbox" value="${esc(f)}" ${(u?.frentes||[]).includes(f)?'checked':''}> ${esc(f)}</label>`).join('')}</div></div>
       <div class="campo oculto" id="u-areas-box"><label>Equipe que o gestor vê</label><input id="u-areas-q" type="search" placeholder="Filtrar áreas e gerências" style="margin-bottom:6px">
@@ -2017,7 +2019,7 @@ function formUsuario(u, todos){
       ${!novo ? `<div class="campo"><label><input type="checkbox" id="u-ativo" ${u.ativo?'checked':''}> Usuário ativo (desmarque para bloquear o acesso)</label></div>` : ''}`,
     pe: `<button class="btn borda" id="u-c">Cancelar</button><button class="btn prim" id="u-ok">${novo?'Criar usuário':'Salvar'}</button>`,
     aoAbrir: m => {
-      const atualizaFrentes = () => { const pp = $('#u-papel').value; $('#u-frentes-box').classList.toggle('oculto', pp === 'admin' || pp === 'gestor'); $('#u-areas-box').classList.toggle('oculto', pp !== 'gestor'); };
+      const atualizaFrentes = () => { const pp = $('#u-papel').value; $('#u-frentes-box').classList.toggle('oculto', pp === 'admin' || pp === 'gestor' || pp === 'rh'); $('#u-areas-box').classList.toggle('oculto', pp !== 'gestor'); };
       $('#u-papel').onchange = atualizaFrentes; atualizaFrentes();
       GESTOR().opcoes().then(L => { const box = $('#u-areas'); if (!box) return; const sel = new Set(u?.areas || []);
         box.innerHTML = L.length ? L.map(o => `<label data-q="${esc(normal(o.k))}"><input type="checkbox" value="${esc(o.k)}" ${sel.has(o.k)?'checked':''}> <span>${esc(o.k.slice(2))}</span> <small>${o.k[0]==='g'?'gerência':'área'} · ${o.n}</small></label>`).join('') : '<small>Carregue o Quadro Geral para listar as áreas.</small>';
@@ -2027,7 +2029,7 @@ function formUsuario(u, todos){
         const bt = $('#u-ok'); const erro = t => { $('#u-msg').innerHTML = `<div class="erro">${esc(t)}</div>`; bt.disabled=false; bt.textContent = novo?'Criar usuário':'Salvar'; };
         const nome = $('#u-nome').value.trim();
         const papel = $('#u-papel').value;
-        const fr = papel === 'admin' || papel === 'gestor' ? [] : [...m.querySelectorAll('#u-frentes-box .checks input:checked')].map(x=>x.value);
+        const fr = papel === 'admin' || papel === 'gestor' || papel === 'rh' ? [] : [...m.querySelectorAll('#u-frentes-box .checks input:checked')].map(x=>x.value);
         const ar = papel === 'gestor' ? [...m.querySelectorAll('#u-areas input:checked')].map(x=>x.value) : [];
         if (papel === 'gestor' && !ar.length) return erro('Marque pelo menos uma área para o gestor.');
         const comAreas = o => (papel === 'gestor' || (u && u.areas !== undefined)) ? Object.assign(o, { areas:ar }) : o;
