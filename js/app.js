@@ -414,7 +414,7 @@ const centralChave = () => 'crv-central-' + (E.perfil ? E.perfil.id || E.perfil.
 let centralRodando = false;
 function centralCache(){ try { return JSON.parse(localStorage.getItem(centralChave()) || 'null'); } catch(_) { return null; } }
 // assinatura dos dados das fontes: se algum painel recebeu dados novos, a central é refeita
-const centralAss = () => ['quadro'].concat(CENTRAL_FONTES).map(id => id + ':' + ((E.metas[id] && (E.metas[id].atualizado_em || E.metas[id].referencia)) || '')).join('|');
+const centralAss = () => ['quadro','cartao-convenio','unimed','uniodonto','alojamentos'].concat(CENTRAL_FONTES).map(id => id + ':' + ((E.metas[id] && (E.metas[id].atualizado_em || E.metas[id].referencia)) || '')).join('|');
 async function htmlDoPainel(p){
   const pid = PAC_DE[p.id] || p.id;
   const [pac, tpl] = await Promise.all([
@@ -463,12 +463,32 @@ async function pendenciasQuadro(){
     itens: es.sort((a, b) => a.dados.fim.localeCompare(b.dados.fim)).map(x => ({ nome:x.dados.nome, mat:x.dados.mat, det:`${x.dados.tipo || ''} · até ${br(x.dados.fim)}` })) });
   return R;
 }
+/* Checklist de desligamento: desligados (Quadro) que ainda aparecem com Cartão Convênio ativo, Unimed, Uniodonto ou alojamento.
+   Cartão Alimentação e Premium não entram: o colaborador pode usar o saldo depois da saída. */
+async function pendenciasDesligamento(){
+  const Q = await window.CRV_QUADRO(); if (!Q || !Q.mapa) return [];
+  const br = s => s ? String(s).slice(0, 10).split('-').reverse().join('/') : '';
+  const deslig = m => { const c = Q.mapa[String(m).replace(/^0+(?=\d)/, '')]; return c && c.situacao === 'Desligado' ? c : null; };
+  const P = new Map(); const add = (m, nome, txt, ref) => { const c = deslig(m); if (!c) return; const k = String(m); if (!P.has(k)) P.set(k, { mat:k, nome:nome || c.nome, deslig:c.deslig || '', itens:[] }); P.get(k).itens.push(txt + (ref ? ` (base de ${br(ref)})` : '')); };
+  const pode = id => { const p = E.paineis.find(x => x.id === id); return p && podeVer(p) && E.metas[id]; };
+  const fontes = [];
+  if (pode('cartao-convenio')) { const d = await window.CRV_DADOS('cartao-convenio'); const C = d && d.dados.CARTAO; if (C && C.rows) { fontes.push('Cartão Convênio'); C.rows.filter(r => String(r.card || '').toLowerCase() === 'ativo').forEach(r => add(r.mat, r.nome, 'Cartão Convênio ativo: bloquear', C.refPlanilha || d.referencia)); } }
+  if (pode('unimed')) { const d = await window.CRV_DADOS('unimed'); const U = d && d.dados.DATA; if (U && U.P) { fontes.push('Unimed'); U.P.filter(r => r[8] >= 0).forEach(r => add(r[0], r[1], 'Unimed: excluir do plano' + (r[11] && r[11].length ? ` (titular + ${r[11].length} dependente${r[11].length > 1 ? 's' : ''})` : ''), d.referencia)); } }
+  if (pode('uniodonto')) { const d = await window.CRV_DADOS('uniodonto'); const U = d && d.dados.DATA; if (U && U.T) { fontes.push('Uniodonto'); U.T.forEach(t => add(t[5] || t[1], t[2], 'Uniodonto: excluir do plano' + (t[7] && t[7].length ? ` (titular + ${t[7].length} dependente${t[7].length > 1 ? 's' : ''})` : ''), d.referencia)); } }
+  if (pode('alojamentos')) { const d = await window.CRV_DADOS('alojamentos'); const A = d && d.dados.DATA; if (A && A.people) { fontes.push('Alojamentos'); A.people.filter(x => x.t === 'c' && x.m).forEach(x => { const h = A.houses && A.houses[x.h]; add(x.m, x.n, 'Alojamento: liberar o leito' + (h ? ` em ${h.n}${x.q ? ', quarto ' + x.q : ''}` : ''), d.referencia); }); } }
+  const L = [...P.values()].sort((a, b) => String(b.deslig).localeCompare(String(a.deslig)));
+  if (!L.length) return [];
+  return [{ id:'desl-check', sev:'crit', t:'Desligados com benefício ou alojamento ainda ativo', painel:'quadro', pnome:'Checklist de desligamento',
+    d:`Cruzamento do Quadro com ${fontes.join(', ')}. Cartão Alimentação e Premium não entram: o saldo pode ser usado depois da saída.`,
+    itens: L.map(x => ({ nome:x.nome, mat:x.mat, det:`${x.deslig ? 'desligado em ' + br(x.deslig) + ' · ' : ''}${x.itens.join(' · ')}` })) }];
+}
 async function coletarCentral(){
   if (centralRodando) return; centralRodando = true;
   desenharCentral(centralCache(), true);
   const out = [];
   try {
     try { out.push(...await pendenciasQuadro()); } catch(e){ console.warn('central quadro', e); }
+    try { out.push(...await pendenciasDesligamento()); } catch(e){ console.warn('central desligamento', e); }
     for (const id of CENTRAL_FONTES) {
       if (!['', '#/'].includes(location.hash)) break;
       const p = E.paineis.find(x => x.id === id);
@@ -499,7 +519,7 @@ function desenharCentral(c, carregando){
         <button class="cd-l" data-tog="${esc(x.id)}" aria-expanded="${ab}"><b class="cd-n">${n}</b><span class="cd-tx"><strong>${esc(x.t)}</strong><small>${esc(x.pnome)}${x.d ? ' · ' + esc(x.d) : ''}</small></span><span class="cd-seta">›</span></button>
         <div class="cd-nomes">${x.itens.slice(0, 40).map(i => `<div class="cd-p"><b>${esc(i.nome)}</b>${i.mat ? `<span class="cd-m">${esc(i.mat)}</span>` : ''}<small>${esc(i.det || '')}</small></div>`).join('')}${x.itens.length > 40 ? `<div class="cd-mais">+ ${x.itens.length - 40} no painel</div>` : ''}
           <button class="btn prim cd-ir" data-ir="#/p/${encodeURIComponent(x.painel)}${x.acao ? '/' + x.acao : ''}">Abrir ${esc(x.pnome)}</button></div></article>`; }).join('')}</div>`
-      : carregando && !c ? '<div class="cd-vazio">Lendo Experiência, Férias, Crachás, Ônibus e Quadro…</div>' : c ? '<div class="cd-vazio ok">Tudo em dia nos painéis acompanhados.</div>' : ''}`;
+      : carregando && !c ? '<div class="cd-vazio">Lendo Experiência, Férias, Crachás, Ônibus, Quadro e benefícios…</div>' : c ? '<div class="cd-vazio ok">Tudo em dia nos painéis acompanhados.</div>' : ''}`;
   el.querySelector('#cd-at').onclick = () => coletarCentral();
   el.querySelectorAll('[data-tog]').forEach(b => b.onclick = () => { const id = b.dataset.tog; centralAbertos.has(id) ? centralAbertos.delete(id) : centralAbertos.add(id); b.closest('.cd-it').classList.toggle('aberto'); b.setAttribute('aria-expanded', centralAbertos.has(id)); });
   el.querySelectorAll('.cd-ir').forEach(b => b.onclick = () => location.hash = b.dataset.ir);
