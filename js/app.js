@@ -141,6 +141,9 @@ async function carregarCatalogo(){
   // Riscos Psicossociais (NR-1): painel do app (sem planilha), restrito; o administrador cria no banco
   if (!E.paineis.some(x => x.id === 'nr1') && E.perfil && E.perfil.papel === 'admin') { const n = { id:'nr1', frente:'Ocorrências, risco e jurídico', nome:'Riscos Psicossociais (NR-1)', nivel:'restrito', ordem:69 };
     sb.from('paineis').insert(n).then(() => {}, () => {}); E.paineis.push(n); }
+  // Risco de saída: painel do app, calculado a partir do Quadro; restrito
+  if (!E.paineis.some(x => x.id === 'risco') && E.perfil && E.perfil.papel === 'admin') { const n = { id:'risco', frente:'Quadro e movimentação', nome:'Risco de saída', nivel:'restrito', ordem:16 };
+    sb.from('paineis').insert(n).then(() => {}, () => {}); E.paineis.push(n); }
   // organização do menu (out/2026): frentes renomeadas e painéis que mudaram de lugar; o administrador grava no banco
   { const REN = { 'Outros controles':'Remuneração e gratificações', 'RH externo':'Alojamento e transporte', 'Atendimento':'Atendimento e escuta' };
     const MOV = { sancoes:'Ocorrências, risco e jurídico', ouvidorias:'Atendimento e escuta' };
@@ -533,7 +536,9 @@ async function marcarDesligamento(x, k, feito){
 }
 /* Riscos Psicossociais (NR-1): js/nr1.js recebe as funções do app quando é usado */
 let _nr1 = null;
-const NR1 = () => _nr1 || (_nr1 = window.CRV_NR1_INIT({ sb, E, $, esc, normal, brD, fMat, fDias, podeVer, podeEditar, moldura, abrirModal, fecharModal, toast, traduzErro, baixar, cabecalhoPDF, rodapePDF, centralChave }));
+const ctxMod = () => ({ sb, E, $, esc, normal, brD, fMat, fDias, podeVer, podeEditar, moldura, abrirModal, fecharModal, toast, traduzErro, baixar, cabecalhoPDF, rodapePDF, centralChave });
+const NR1 = () => _nr1 || (_nr1 = window.CRV_NR1_INIT(ctxMod()));
+let _risco = null; const RISCO = () => _risco || (_risco = window.CRV_RISCO_INIT(ctxMod()));
 async function pendenciasDesligamento(){
   const D = await dadosDesligamento(); if (!D) return [];
   const L = D.L.filter(x => x.pend.length);
@@ -606,6 +611,10 @@ async function fichaDados(mat){
     const p = (DB.P || []).find(x => fMat(x.mat) === mat || (cpf8 && String(x.c || '').replace(/\D/g, '').slice(-8) === cpf8)); if (!p) return;
     F.sec.push({ k:'proc', t:'Processos trabalhistas', painel:'processos', cab:['Processo', 'Empresa', 'Tipo'], linhas:(p.p || []).map(x => [x[0], x[1], x[2]]), alerta:(p.p || []).length ? (p.p.length === 1 ? '1 processo' : p.p.length + ' processos') : '' });
     if (p.bq) F.bloqueio = p.bq; })());
+  // Risco de saída (só para quem pode ver o painel)
+  { const pr = E.paineis.find(x => x.id === 'risco'); if (pr && podeVer(pr)) tarefas.push((async () => { const s = await RISCO().daPessoa(mat); if (!s) return;
+    F.sec.push({ k:'risco', t:'Risco de saída', painel:'risco', ref:s.ref, resumo:[['Nível', s.niv === 'a' ? 'Alto' : s.niv === 't' ? 'Atenção' : 'Sem sinal'], ['Faltas em 90 dias', s.fa.length], ['Dias de atestado em 90 dias', s.at.length], ['Última conversa', s.conv ? brD(s.conv.data) + ' · ' + (RISCO().RES[s.conv.res] || '') : '—']],
+      alerta: s.niv === 'a' ? 'risco alto (' + s.S.join(', ') + ')' : s.niv === 't' ? 'atenção (' + s.S.join(', ') + ')' : '' }); })()); }
   // Quadro: estabilidade, entrevista de desligamento, checklist
   tarefas.push((async () => { const { data } = await sb.from('registros').select('colecao,dados').eq('painel', 'quadro').in('colecao', ['estabilidade', 'entrevistas_resp', 'deslig_check']).range(0, 4999);
     (data || []).forEach(x => { const v = x.dados || {}; if (fMat(v.mat) !== mat || v.excluida) return;
@@ -831,6 +840,7 @@ async function coletarCentral(){
     try { out.push(...await pendenciasQuadro()); } catch(e){ console.warn('central quadro', e); }
     try { out.push(...await pendenciasDesligamento()); } catch(e){ console.warn('central desligamento', e); }
     try { out.push(...await NR1().pendencias()); } catch(e){ console.warn('central nr1', e); }
+    try { out.push(...await RISCO().pendencias()); } catch(e){ console.warn('central risco', e); }
     if (ehAdmin()) try { const u = await ultimoBackup(); const d = u && u.em ? Math.floor((Date.now() - new Date(u.em)) / 864e5) : null;
       if (d == null || d > 7) out.push({ id:'bk', sev:'info', t:'Cópia de segurança do app', d: d == null ? 'Nenhuma cópia feita ainda.' : `A última foi há ${d} dias. Recomendado: uma vez por semana.`, painel:'', rota:'#/admin', pnome:'Administração', n: d == null ? '!' : d + 'd', itens:[{ nome:'Baixar a cópia em Administração → Cópia de segurança', mat:'', det:'Guarda tudo o que foi lançado no app e não existe nas planilhas.' }] }); } catch(_){}
     for (const id of CENTRAL_FONTES) {
@@ -940,6 +950,7 @@ async function telaPainel(id, acao){
   const cfg = FRENTES[p.frente] || FRENTES['Remuneração e gratificações'];
   if (VISTA_QUADRO[id] && (acao === 'vq' || acao === 'vp')) { try { localStorage.setItem('crv-vista-' + id, acao.slice(1)); } catch(_){} try { history.replaceState(null, '', '#/p/' + encodeURIComponent(id)); } catch(_){} acao = ''; }
   if (id === 'nr1') return NR1().telaNR1(p, cfg, acao);
+  if (id === 'risco') return RISCO().tela(p, cfg);
   if (MODELOS[id]) return telaModelo(p, cfg, acao);
   moldura(`<div class="trilha"><button data-ir="#/">Início</button> › <span>${esc(p.frente)}</span> › <b>${esc(p.nome)}</b></div>
     <div class="cartao vazio"><div class="spinner" style="margin:0 auto"></div><p>Carregando dados...</p></div>`);

@@ -492,3 +492,9 @@ body{font-variant-numeric:tabular-nums}
 .nr-msg{grid-column:1/-1;margin:0;color:var(--coral);font-size:13px;min-height:1em}
 .nr-esc{display:grid;gap:8px}.nr-esc label{display:flex;gap:8px;align-items:center;font-size:14px}
 @media (max-width:640px){.nr-met{flex-direction:column;align-items:flex-start}.nr-form{grid-template-columns:1fr}.nr-ad{grid-template-columns:1fr 1fr}.nr-fat{grid-template-columns:1fr}}
+/* Risco de saída */
+.rs-t td{vertical-align:top}.rs-sub{display:block;font-size:11.5px;color:var(--mut)}
+.rs-niv{display:inline-block;font-size:11.5px;font-weight:800;border-radius:20px;padding:3px 10px}.rs-niv.a{background:rgba(212,87,63,.13);color:#a3301c}.rs-niv.t{background:rgba(233,162,59,.18);color:#7a4f00}
+.rs-si{min-width:200px}.rs-si span{display:block;font-size:12px;line-height:1.35}
+.rs-cv{padding:5px 11px;font-size:12.5px;white-space:nowrap}
+.rs-t td:first-child{min-width:220px}.rs-t td:nth-child(7){min-width:160px}
