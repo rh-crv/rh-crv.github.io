@@ -332,7 +332,8 @@ async function tela(abaIni){
   }
   function formSan(p0){ const ops = P.filter(p => p.sit !== 'Desligado');
     abrirModal({ titulo:'Pedido de sanção disciplinar', largo:true, corpo:`<p class="nr-nota" style="padding:0">O RH analisa os fatos e o histórico, define a medida e emite o documento para o colaborador assinar. O pedido sozinho não vale como sanção.</p>
-      <label class="gs-obs">Colaborador<select id="ps-p">${p0 ? '' : '<option value="">Escolha…</option>'}${ops.map(p => `<option value="${esc(p.m)}" ${p0 && p0.m === p.m ? 'selected' : ''}>${esc(p.n)} · ${esc(p.m)} · ${esc(p.f)}</option>`).join('')}</select></label>
+      <label class="gs-obs">Buscar colaborador por nome ou matrícula<input id="ps-q" type="search" autocomplete="off" placeholder="Digite o nome ou a matrícula" value="${p0 ? esc(p0.m) : ''}"></label>
+      <div class="gs-psl" id="ps-l"></div><input type="hidden" id="ps-p" value="${p0 ? esc(p0.m) : ''}">
       <div id="ps-hist" class="gs-ph" hidden></div>
       <h4 class="gs-h4">Medida sugerida</h4><div class="gs-dec">${Object.entries(SANC).map(([k, [t, d]]) => `<label><input type="radio" name="ps-t" value="${k}"><b>${t}</b><small>${d}</small></label>`).join('')}</div>
       <div class="gs-sang"><label class="gs-obs" id="ps-dw" hidden>Dias de suspensão<input type="number" id="ps-dias" min="1" max="30" inputmode="numeric"></label><label class="gs-obs">Data do ocorrido<input type="date" id="ps-data" max="${h}"></label><label class="gs-obs">Horário aproximado<input type="time" id="ps-hora"></label><label class="gs-obs">Local, frota ou frente<input id="ps-local" maxlength="120"></label></div>
@@ -352,7 +353,12 @@ async function tela(abaIni){
           if (dt && dt <= h) { const n = fDias(dt, h); if (n > 7) w.push(`O fato foi há ${n} dias. Quanto mais tempo entre o fato e a medida, maior o risco de a sanção ser questionada (imediatidade). Envie o quanto antes.`); }
           const av = g('ps-av'); av.hidden = !w.length; av.textContent = w.join(' '); };
         m.querySelectorAll('input[name=ps-t]').forEach(i => i.onchange = () => { g('ps-dw').hidden = tipo() !== 'sus'; });
-        g('ps-p').onchange = hist; g('ps-data').onchange = avisos; hist();
+        const lista = () => { const nq = normal(g('ps-q').value.trim()), mq = g('ps-q').value.replace(/\D/g, '').replace(/^0+(?=\d)/, ''), sel = g('ps-p').value;
+          const L = nq ? ops.filter(p => normal(p.n).includes(nq) || (mq && String(p.m).includes(mq))) : ops;
+          if (L.length === 1 && L[0].m !== sel) { g('ps-p').value = L[0].m; hist(); }
+          g('ps-l').innerHTML = L.length ? L.slice(0, 40).map(p => `<button type="button" class="gs-pso ${p.m === g('ps-p').value ? 'on' : ''}" data-m="${esc(p.m)}"><b>${esc(p.n)}</b><span>${esc(p.m)} · ${esc(p.f)}${p.s ? ' · ' + esc(p.s) : ''}</span></button>`).join('') + (L.length > 40 ? `<small class="gs-cnt">Mostrando 40 de ${L.length}. Digite mais para filtrar.</small>` : '') : '<small class="gs-cnt">Ninguém da sua equipe com esse nome ou matrícula.</small>';
+          g('ps-l').querySelectorAll('[data-m]').forEach(b => b.onclick = () => { g('ps-p').value = b.dataset.m; const p = pes(); g('ps-q').value = p ? p.n : ''; hist(); lista(); }); };
+        g('ps-q').oninput = lista; g('ps-data').onchange = avisos; lista(); hist(); if (!p0) setTimeout(() => g('ps-q').focus(), 60);
         g('ps-desc').oninput = () => { const n = g('ps-desc').value.trim().length; g('ps-cnt').textContent = n < 80 ? `${n} caracteres · descreva com mais detalhes (mínimo 80)` : `${n} caracteres`; }; g('ps-desc').oninput();
         g('ps-ok').onclick = async () => { const msg = t => g('ps-msg').textContent = t; const p = pes(), t = tipo(), dt = g('ps-data').value, dias = +g('ps-dias').value, ass = g('ps-ass').value.trim(), desc = g('ps-desc').value.trim();
           if (!p) return msg('Escolha o colaborador.'); if (!t) return msg('Escolha a medida sugerida.');
