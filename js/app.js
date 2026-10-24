@@ -19,9 +19,9 @@ const FRENTES = {
   'Jovem Aprendiz':                { cor:'#7a4fb5', ic:'capelo',    desc:'Programa Conexão Aprendiz' },
   'Treinamento e liderança':       { cor:'#d4573f', ic:'trofeu',    desc:'T&D, pesquisas e lideranças' },
   'Ocorrências, risco e jurídico': { cor:'#a1341f', ic:'alerta',    desc:'RD, fadiga, processos e ouvidorias' },
-  'Atendimento':                   { cor:'#4a6a8a', ic:'balcao',    desc:'Recepção do RH' },
-  'RH externo':                    { cor:'#8a7a2e', ic:'onibus',    desc:'Alojamentos e ônibus' },
-  'Outros controles':              { cor:'#5d6a85', ic:'pasta',     desc:'Controles complementares' }
+  'Atendimento e escuta':          { cor:'#4a6a8a', ic:'balcao',    desc:'Recepção do RH e ouvidorias' },
+  'Alojamento e transporte':       { cor:'#8a7a2e', ic:'onibus',    desc:'Alojamentos e ônibus' },
+  'Remuneração e gratificações':   { cor:'#5d6a85', ic:'pasta',     desc:'Gratificação BPP, horas extras e gratificação' }
 };
 const ORDEM_FRENTES = Object.keys(FRENTES);
 const PALETA = ['#24427c','#2e8a57','#e9a23b','#d4573f','#1f8a8a','#7a4fb5','#8a7a2e','#4a6a8a','#c46a9a','#3f7fbf'];
@@ -131,6 +131,12 @@ async function carregarCatalogo(){
   ]);
   if (p.error) throw p.error;
   E.paineis = (p.data || []).filter(x => x.id !== 'rs' && x.id !== 'absenteismo-gestao'); // R&S fica dentro do Banco de Currículos; Absenteísmo Gestão foi retirado (fica só o do RH)
+  // organização do menu (out/2026): frentes renomeadas e painéis que mudaram de lugar; o administrador grava no banco
+  { const REN = { 'Outros controles':'Remuneração e gratificações', 'RH externo':'Alojamento e transporte', 'Atendimento':'Atendimento e escuta' };
+    const MOV = { sancoes:'Ocorrências, risco e jurídico', ouvidorias:'Atendimento e escuta' };
+    const mud = [];
+    E.paineis.forEach(x => { const nf = MOV[x.id] || REN[x.frente]; if (nf && nf !== x.frente) { x.frente = nf; mud.push(x); } });
+    if (mud.length && E.perfil && E.perfil.papel === 'admin') mud.forEach(x => sb.from('paineis').update({ frente: x.frente }).eq('id', x.id).then(() => {}, () => {})); }
   // nome padrão do Jovem Aprendiz (Instituto João Bittar), separado do RENAPSI
   const jv = E.paineis.find(x => x.id === 'jovem');
   if (jv && jv.nome === 'Jovem Aprendiz') {
@@ -145,7 +151,7 @@ async function carregarCatalogo(){
     { id:'cartao-convenio',    frente:'Benefícios', nome:'Cartão Convênio',    nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.2 },
     { id:'cartao-premium',     frente:'Benefícios', nome:'Cartão Premium',     nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.3 },
     { id:'cartao-adm',         frente:'Benefícios', nome:'Cartão Convênio ADM', nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.4 },
-    { id:'servicos-gerais',    frente:'Outros controles', nome:'Serviços Gerais · Horas extras e gratificação', nivel:'controlado', ordem:90 }
+    { id:'servicos-gerais',    frente:'Remuneração e gratificações', nome:'Serviços Gerais · Horas extras e gratificação', nivel:'controlado', ordem:90 }
   ].filter(n => !E.paineis.some(x => x.id === n.id));
   if (NOVOS.length && E.perfil && E.perfil.papel === 'admin') {
     await sb.from('paineis').insert(NOVOS.map((n, i) => ({ ...n, ordem: (n.id.startsWith('cartao-') || n.id === 'sysprocard-credito') ? (sp ? sp.ordem : 40) + 1 + i : n.ordem })));
@@ -242,7 +248,9 @@ function moldura(conteudo){
     : /^(autorização|termo|desconto|entrevista)/i.test(n) ? IA('<path d="M14 3H6v18h12V7z"/><path d="M14 3v4h4M9 13h6M9 17h4"/>')
     : /^(todas|acompanhamento)/i.test(n) ? IA('<path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/>')
     : IA('<circle cx="12" cy="12" r="3.5"/>');
+  const SYSG = ['sysprocard-credito','cartao-alimentacao','cartao-convenio','cartao-adm','cartao-premium'];
   const itemPainel = (x, cfg) => {
+    if (x.id === 'sysprocard') return itemSys(x, cfg);
     const subs = SUBACOES[x.id];
     const rest = x.nivel==='restrito' ? `<span class="lat-rest" title="Acesso restrito">${CAD}</span>` : '';
     const bt = `<button class="lat-painel ${x.id===atual&&!acaoAtual?'ativo':''} ${x.id===atual?'atual':''}" data-ir="#/p/${encodeURIComponent(x.id)}" data-busca="${esc((x.nome+' '+(subs||[]).map(s=>s.nome).join(' ')).toLowerCase())}" style="--cor:${cfg.cor}"><span class="lat-pn">${esc(x.nome)}</span>${rest}</button>`;
@@ -253,7 +261,18 @@ function moldura(conteudo){
       <div class="lat-psub">${subs.map(s => `<button class="lat-acao ${x.id===atual&&acaoAtual===s.acao?'ativo':''}" data-pid="${esc(x.id)}" data-acao="${esc(s.acao)}" style="--cor:${cfg.cor}"><i>${icAcao(s.nome)}</i><span>${esc(s.nome)}</span></button>`).join('')}</div>
     </div>`;
   };
-  const visiveis = E.paineis.filter(podeVer);
+  const itemSys = (x, cfg) => {
+    const fil = E.paineis.filter(p => SYSG.includes(p.id) && podeVer(p)).sort((a, b) => SYSG.indexOf(a.id) - SYSG.indexOf(b.id));
+    const dentro = SYSG.includes(atual) || x.id === atual;
+    const bt = `<button class="lat-painel ${x.id===atual&&!acaoAtual?'ativo':''} ${dentro?'atual':''}" data-ir="#/p/${encodeURIComponent(x.id)}" data-busca="${esc((x.nome+' '+fil.map(p=>p.nome).join(' ')).toLowerCase())}" style="--cor:${cfg.cor}"><span class="lat-pn">${esc(x.nome)}</span></button>`;
+    if (!fil.length) return bt;
+    const aberto = dentro || subAbertos[x.id];
+    return `<div class="lat-pgrupo ${aberto?'aberto':''}" data-pid="${esc(x.id)}" data-busca="${esc((x.nome+' '+fil.map(p=>p.nome).join(' ')).toLowerCase())}">
+      <div class="lat-plinha">${bt}<button class="lat-pseta" title="Cartões e crédito manual" aria-label="Mostrar cartões e crédito manual" aria-expanded="${aberto?'true':'false'}">${CHEV}</button></div>
+      <div class="lat-psub">${fil.map(p => `<button class="lat-acao ${p.id===atual?'ativo':''}" data-ir="#/p/${encodeURIComponent(p.id)}" style="--cor:${cfg.cor}"><i>${IA(p.id === 'sysprocard-credito' ? '<path d="M12 5v14M5 12h14"/>' : '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/>')}</i><span>${esc(p.nome)}</span>${p.nivel==='restrito'?`<span class="lat-rest">${CAD}</span>`:''}</button>`).join('')}</div>
+    </div>`;
+  };
+  const visiveis = E.paineis.filter(p => podeVer(p) && !(SYSG.includes(p.id) && E.paineis.some(q => q.id === 'sysprocard' && podeVer(q))));
   const grupos = {};
   visiveis.forEach(x => (grupos[x.frente] = grupos[x.frente] || []).push(x));
   const frentes = Object.keys(grupos).sort((a,b) => (ORDEM_FRENTES.indexOf(a)+1||99) - (ORDEM_FRENTES.indexOf(b)+1||99));
@@ -280,7 +299,7 @@ function moldura(conteudo){
         <div class="lat-busca"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="lat-q" type="search" placeholder="Buscar painel ou ação" autocomplete="off" aria-label="Buscar painel"></div>
         <div class="lat-sec">Frentes</div>
         <div class="lat-vazio" id="lat-vazio" hidden>Nenhum painel com esse nome.</div>
-        ${frentes.map(f => { const cfg = FRENTES[f] || FRENTES['Outros controles']; return `
+        ${frentes.map(f => { const cfg = FRENTES[f] || FRENTES['Remuneração e gratificações']; return `
           <div class="lat-grupo ${abertas[f]?'aberto':''}" data-frente="${esc(f)}">
             <button class="lat-frente ${f===frenteAtual?'atual':''}" aria-expanded="${abertas[f]?'true':'false'}"><span class="lat-ic" style="background:${cfg.cor}">${svg(cfg.ic,'#fff')}</span><span class="lat-nome">${esc(f)}</span><span class="lat-seta">${CHEV}</span></button>
             <div class="lat-sub">${grupos[f].map(x => itemPainel(x, cfg)).join('')}</div>
@@ -728,7 +747,7 @@ function desenharCentral(c, carregando){
 }
 
 function blocoFrente(f, lista){
-  const cfg = FRENTES[f] || FRENTES['Outros controles'];
+  const cfg = FRENTES[f] || FRENTES['Remuneração e gratificações'];
   return `<section class="ini-frente" style="--cor:${cfg.cor}">
     <header class="if-cab"><span class="if-ic">${svg(cfg.ic,'#fff')}</span><h2>${esc(f)}</h2><span class="if-n">${lista.length}</span><span class="if-desc">${esc(cfg.desc)}</span></header>
     <div class="tiles">${lista.map(p => {
@@ -794,7 +813,7 @@ async function telaPainel(id, acao){
   E.painelAberto = null;
   const p = E.paineis.find(x => x.id === id);
   if (!p || !podeVer(p)) { toast('Painel não encontrado ou sem acesso.', true); location.hash = '#/'; return; }
-  const cfg = FRENTES[p.frente] || FRENTES['Outros controles'];
+  const cfg = FRENTES[p.frente] || FRENTES['Remuneração e gratificações'];
   if (VISTA_QUADRO[id] && (acao === 'vq' || acao === 'vp')) { try { localStorage.setItem('crv-vista-' + id, acao.slice(1)); } catch(_){} try { history.replaceState(null, '', '#/p/' + encodeURIComponent(id)); } catch(_){} acao = ''; }
   if (MODELOS[id]) return telaModelo(p, cfg, acao);
   moldura(`<div class="trilha"><button data-ir="#/">Início</button> › <span>${esc(p.frente)}</span> › <b>${esc(p.nome)}</b></div>
@@ -1457,14 +1476,14 @@ const CAPA = {
   'Jovem Aprendiz':                ['#2f1f5a','#53398f'],
   'Treinamento e liderança':       ['#5a2317','#94432b'],
   'Ocorrências, risco e jurídico': ['#4a1420','#7c2536'],
-  'Atendimento':                   ['#283a4b','#40607b'],
-  'RH externo':                    ['#363c18','#5d6427']
+  'Atendimento e escuta':          ['#283a4b','#40607b'],
+  'Alojamento e transporte':       ['#363c18','#5d6427']
 };
 // como cada painel azul pinta a capa (os demais já têm cor própria: Unimed, Uniodonto, Sanções, Sysprocard…)
 const CAPA_MODO = {
   vars:  ['absenteismo','absenteismo-gestao','admissoes','jovem','processos','quadro','rd','rescisoes'],
   band:  ['alojamentos','ferias','recepcao'],
-  hd:    ['experiencia','ouvidorias'],
+  hd:    ['experiencia'],
   hero:  ['curriculos'],
   top:   ['crachas','treinamentos','conexao'],
   header:['perfil','lideres']
