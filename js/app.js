@@ -18,7 +18,7 @@ const FRENTES = {
   'Benefícios':                    { cor:'#2e8a57', ic:'presente',  desc:'VA, plano de saúde, odonto e farmácia' },
   'Jovem Aprendiz':                { cor:'#7a4fb5', ic:'capelo',    desc:'Programa Conexão Aprendiz' },
   'Treinamento e liderança':       { cor:'#d4573f', ic:'trofeu',    desc:'T&D, pesquisas e lideranças' },
-  'Ocorrências, risco e jurídico': { cor:'#a1341f', ic:'alerta',    desc:'RD, fadiga, processos e NR-1' },
+  'Ocorrências, risco e jurídico': { cor:'#a1341f', ic:'alerta',    desc:'RD, fadiga, processos e sanções' },
   'Atendimento e escuta':          { cor:'#4a6a8a', ic:'balcao',    desc:'Recepção do RH e ouvidorias' },
   'Alojamento e transporte':       { cor:'#8a7a2e', ic:'onibus',    desc:'Alojamentos e ônibus' },
   'Remuneração e gratificações':   { cor:'#5d6a85', ic:'pasta',     desc:'Gratificação BPP, horas extras e gratificação' }
@@ -130,7 +130,7 @@ async function carregarCatalogo(){
     sb.from('pacotes').select('painel,referencia,atualizado_em,atualizado_por')
   ]);
   if (p.error) throw p.error;
-  E.paineis = (p.data || []).filter(x => x.id !== 'absenteismo-gestao'); // R&S fica dentro do Banco de Currículos; Absenteísmo Gestão foi retirado (fica só o do RH)
+  E.paineis = (p.data || []).filter(x => x.id !== 'absenteismo-gestao' && x.id !== 'nr1'); // NR-1 retirado por enquanto (out/2026); os registros continuam guardados // R&S fica dentro do Banco de Currículos; Absenteísmo Gestão foi retirado (fica só o do RH)
   // Recrutamento e Seleção vira painel próprio (com "Em contratação"); o Banco de Currículos sai do menu
   { const cv = E.paineis.find(x => x.id === 'curriculos'), rs = E.paineis.find(x => x.id === 'rs');
     if (rs) { const alvo = { nome:'Recrutamento e Seleção', frente: cv ? cv.frente : 'Atração e perfil', nivel: cv ? cv.nivel : rs.nivel, ordem: cv ? cv.ordem : rs.ordem };
@@ -138,9 +138,6 @@ async function carregarCatalogo(){
       if (dif && E.perfil && E.perfil.papel === 'admin') sb.from('paineis').update(alvo).eq('id', 'rs').then(() => {}, () => {}); }
     else if (cv && E.perfil && E.perfil.papel === 'admin') { const n = { id:'rs', frente:cv.frente, nome:'Recrutamento e Seleção', nivel:cv.nivel, ordem:cv.ordem };
       sb.from('paineis').insert(n).then(() => {}, () => {}); E.paineis.push(n); } }
-  // Riscos Psicossociais (NR-1): painel do app (sem planilha), restrito; o administrador cria no banco
-  if (!E.paineis.some(x => x.id === 'nr1') && E.perfil && E.perfil.papel === 'admin') { const n = { id:'nr1', frente:'Ocorrências, risco e jurídico', nome:'Riscos Psicossociais (NR-1)', nivel:'restrito', ordem:69 };
-    sb.from('paineis').insert(n).then(() => {}, () => {}); E.paineis.push(n); }
   // Onboarding (integração de novos): painel do app, a partir das admissões do Quadro
   if (!E.paineis.some(x => x.id === 'onboarding') && E.perfil && E.perfil.papel === 'admin') { const n = { id:'onboarding', frente:'Quadro e movimentação', nome:'Onboarding', nivel:'controlado', ordem:12 };
     sb.from('paineis').insert(n).then(() => {}, () => {}); E.paineis.push(n); }
@@ -542,7 +539,7 @@ async function marcarDesligamento(x, k, feito){
 /* Riscos Psicossociais (NR-1): js/nr1.js recebe as funções do app quando é usado */
 let _nr1 = null;
 const ctxMod = () => ({ sb, E, $, esc, normal, brD, fMat, fDias, podeVer, podeEditar, moldura, abrirModal, fecharModal, toast, traduzErro, baixar, cabecalhoPDF, rodapePDF, centralChave });
-const NR1 = () => _nr1 || (_nr1 = window.CRV_NR1_INIT(ctxMod()));
+const NR1 = () => _nr1 || (_nr1 = window.CRV_NR1_INIT ? window.CRV_NR1_INIT(ctxMod()) : null);
 let _risco = null; const RISCO = () => _risco || (_risco = window.CRV_RISCO_INIT(ctxMod()));
 let _rel = null; const REL = () => _rel || (_rel = window.CRV_REL_INIT(Object.assign(ctxMod(), { NR1, RISCO })));
 let _onb = null; const ONB = () => _onb || (_onb = window.CRV_ONB_INIT(Object.assign(ctxMod(), { RISCO })));
@@ -846,7 +843,6 @@ async function coletarCentral(){
   try {
     try { out.push(...await pendenciasQuadro()); } catch(e){ console.warn('central quadro', e); }
     try { out.push(...await pendenciasDesligamento()); } catch(e){ console.warn('central desligamento', e); }
-    try { out.push(...await NR1().pendencias()); } catch(e){ console.warn('central nr1', e); }
     try { out.push(...await RISCO().pendencias()); } catch(e){ console.warn('central risco', e); }
     try { out.push(...await ONB().pendencias()); } catch(e){ console.warn('central onboarding', e); }
     if (ehAdmin()) try { const u = await ultimoBackup(); const d = u && u.em ? Math.floor((Date.now() - new Date(u.em)) / 864e5) : null;
@@ -917,7 +913,6 @@ const SUBACOES = {
   ouvidorias: [{ acao:'nova', nome:'Cadastrar ouvidoria' }],
   rd:       [{ acao:'novo', nome:'Cadastrar RD' }, { acao:'aut', nome:'Autorização de desconto' }, { acao:'hist', nome:'Histórico de autorizações' }],
   fadiga:   [{ acao:'novo', nome:'Cadastrar ocorrência' }, { acao:'trat', nome:'Aplicar tratativa' }],
-  nr1:      [{ acao:'plano', nome:'Plano de ação' }, { acao:'fatores', nome:'Os 13 fatores' }],
   treinamentos: [{ acao:'novo', nome:'Cadastrar treinamento' }],
   'cartao-alimentacao': [{ acao:'rel', nome:'Relatório de conferência' }],
   'cartao-convenio':    [{ acao:'desc', nome:'Desconto em folha' }, { acao:'termo', nome:'Termo de opção' }, { acao:'rel', nome:'Relatório de conferência' }],
@@ -957,7 +952,6 @@ async function telaPainel(id, acao){
   if (!p || !podeVer(p)) { toast('Painel não encontrado ou sem acesso.', true); location.hash = '#/'; return; }
   const cfg = FRENTES[p.frente] || FRENTES['Remuneração e gratificações'];
   if (VISTA_QUADRO[id] && (acao === 'vq' || acao === 'vp')) { try { localStorage.setItem('crv-vista-' + id, acao.slice(1)); } catch(_){} try { history.replaceState(null, '', '#/p/' + encodeURIComponent(id)); } catch(_){} acao = ''; }
-  if (id === 'nr1') return NR1().telaNR1(p, cfg, acao);
   if (id === 'risco') return RISCO().tela(p, cfg);
   if (id === 'onboarding') return ONB().tela(p, cfg);
   if (MODELOS[id]) return telaModelo(p, cfg, acao);
