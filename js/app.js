@@ -384,18 +384,10 @@ function telaInicio(){
         <h1>${saud}, ${esc(nomeBonito(E.perfil.nome).split(' ')[0])}</h1>
         <div class="ini-data">${esc(hoje.charAt(0).toUpperCase() + hoje.slice(1))}</div>
       </div>
-      <input class="ini-busca" id="busca" type="search" placeholder="Buscar painel…" aria-label="Buscar painel">
     </section>
     <section class="central" id="central"></section>
-    <section class="ini-stats">
-      <div class="ist"><span>Painéis disponíveis</span><b>${visiveis.length}</b><small>em ${frentes.length} frentes</small></div>
-      <div class="ist"><span>Atualizados na semana</span><b>${semana.length}</b><small>últimos 7 dias</small></div>
-      <div class="ist ${antigos.length ? 'alerta' : ''}"><span>Dados com mais de 30 dias</span><b>${antigos.length}</b><small>${antigos.length ? esc(antigos.slice(0,2).map(p=>p.nome).join(', ')) + (antigos.length > 2 ? '…' : '') : 'tudo em dia'}</small></div>
-      <div class="ist ${semDados.length ? 'neutro' : ''}"><span>Sem dados carregados</span><b>${semDados.length}</b><small>${semDados.length ? esc(semDados.slice(0,2).map(p=>p.nome).join(', ')) + (semDados.length > 2 ? '…' : '') : 'todos carregados'}</small></div>
-    </section>
     ${!standalone ? `<div class="ini-instalar" id="faixa-instalar"><span>Use como aplicativo no celular ou no computador.</span><button class="link" id="b-inst">Instalar</button><button class="link" id="b-inst-x" aria-label="Fechar">×</button></div>` : ''}
-    ${frentes.length ? frentes.map(f => blocoFrente(f, grupos[f])).join('')
-      : `<div class="cartao vazio"><h3>Nenhum painel liberado</h3><p>Peça ao administrador para liberar as frentes que você usa.</p></div>`}
+    ${frentes.length ? '' : `<div class="cartao vazio"><h3>Nenhum painel liberado</h3><p>Peça ao administrador para liberar as frentes que você usa.</p></div>`}
   `);
   if ($('#faixa-instalar')) {
     try { if (localStorage.getItem('crv-inst-x')) $('#faixa-instalar').remove(); } catch(_){}
