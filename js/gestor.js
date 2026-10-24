@@ -187,7 +187,7 @@ async function tela(){
         <div class="gs-mv"><div><small>Admissões</small><b>${Ad.length}</b></div><div><small>Saídas</small><b>${Sa.length}</b></div><div><small>Saídas com até 90 dias</small><b>${Sa.filter(x => x.casa != null && x.casa <= 90).length}</b></div><div><small>Turnover no período</small><b>${(100 * Sa.length / at).toLocaleString('pt-BR', { maximumFractionDigits:1 })}%</b></div></div>
         ${Sa.length ? `<div class="gs-mt"><div><h4>Tipo de saída</h4>${tp.map(([k, n]) => `<div class="gs-b"><span>${esc(k)}</span><i style="width:${Math.round(100 * n / Sa.length)}%"></i><b>${n}</b></div>`).join('')}</div><div><h4>Motivos das saídas</h4>${mt.map(([k, n]) => `<div class="gs-b"><span>${esc(k)}</span><i style="width:${Math.round(100 * n / mx)}%"></i><b>${n}</b></div>`).join('')}</div></div>` : ''}</section>`; }
     if (aba === 'fer') { const mi = minInicioFerias(h); return `<section class="cartao gs-resw gs-pz"><div><b>Prazo:</b> férias que começam em ${esc(MESN[+mi.slice(5, 7) - 1])} podem ser enviadas até ${esc(brD(prazoFerias(mi)))}. Hoje, a data mais cedo que dá para programar é ${esc(brD(mi))}.</div><button class="btn borda" id="gs-impf">Imprimir formulário da equipe</button></section>`; }
-    if (aba === 'exp') return `<section class="cartao gs-resw gs-pz"><div><b>Prazo:</b> o encerramento do contrato precisa chegar ao RH no máximo 5 dias antes do vencimento. Efetivar ou prorrogar também deve ser enviado antes do vencimento.</div><button class="btn borda" id="gs-impe">Imprimir avaliações em branco</button></section>`;
+    if (aba === 'exp') return `<section class="cartao gs-resw gs-pz"><div><b>Prazo:</b> o encerramento do contrato precisa chegar ao RH no máximo 5 dias antes do vencimento. Efetivar ou prorrogar também deve ser enviado antes do vencimento.</div></section>`;
     if (aba === 'env') return ENV.length ? '' : '<section class="cartao gs-resw"><p class="nr-nota" style="padding:0">Você ainda não enviou nada ao RH. Programe férias na aba Férias e avalie a experiência na aba Experiência.</p></section>';
     if (aba === 'pv') { const f = PVI.reduce((t, x) => t + Math.max(0, x.p - x.t), 0), pr = PVI.reduce((t, x) => t + x.p, 0), at = PVI.reduce((t, x) => t + x.t, 0);
       return PVI.length ? `<section class="cartao gs-resw"><div class="gs-mv"><div><small>Previsto</small><b>${pr}</b></div><div><small>Atual</small><b>${at}</b></div><div><small>Falta contratar</small><b style="color:#a3301c">${f}</b></div><div><small>Em experiência</small><b>${PVI.reduce((t, x) => t + x.x, 0)}</b></div></div><p class="nr-nota" style="padding:6px 0 0">A falta mostra onde o quadro está abaixo do previsto; não é vaga aprovada. Para abrir vaga, fale com a Gestão de Pessoas.</p></section>`
@@ -379,9 +379,18 @@ async function aceitar(e, obs){ const d = e.dados || {}, a = e.assinatura || {},
   gerar(true).catch(() => {});
 }
 async function lerEnviosRH(){ try { const r = await sb.from('gestor_envios').select('*').order('criado_em', { ascending:false }); return r.error ? null : (r.data || []); } catch(_){ return null; } }
-async function pendenciasEnvios(){ if (!E.perfil || E.perfil.papel !== 'admin') return []; const L = (await lerEnviosRH() || []).filter(e => e.status === 'enviado'); if (!L.length) return [];
-  return [{ id:'envios', sev:'warn', t:'Envios dos gestores aguardando o RH', painel:'', rota:'#/envios', pnome:'Envios dos gestores', d:'Programações de férias e avaliações de experiência assinadas pelos gestores. Aceite para lançar no painel ou devolva com o motivo.',
-    itens:L.map(e => ({ nome:e.colaborador || e.mat, mat:e.mat, det:(e.tipo === 'ferias' ? 'Férias: ' : 'Experiência: ') + resumoEnvio(e) + ' · por ' + (e.autor_nome || '') + ' em ' + brD(String(e.criado_em).slice(0, 10)) })) }]; }
+async function semGestor(){
+  const out = [];
+  try { const { data: G } = await sb.from('perfis').select('areas,papel,ativo').eq('papel', 'gestor'); const K = new Set((G || []).filter(g => g.ativo).flatMap(g => g.areas || []));
+    const Q = await window.CRV_QUADRO(); const d = await window.CRV_DADOS('experiencia'); if (!Q || !d) return out; const h = hoje(), lim = addD(h, 20);
+    (d.dados.RAW || []).forEach(r => { const m = fMat(r[0]), c = Q.mapa[m]; if (!c || c.situacao === 'Desligado') return; const v = [r[7], r[8]].filter(x => x && x >= h && x <= lim).sort()[0]; if (!v || r[17]) return;
+      if (K.has('a:' + c.area) || K.has('g:' + c.gerencia)) return; out.push({ nome:c.nome, mat:m, det:`${c.area || ''} · ${c.gerencia || ''} · vence em ${brD(v)}` }); }); } catch(_){}
+  return out; }
+async function pendenciasEnvios(){ if (!E.perfil || E.perfil.papel !== 'admin') return []; const out = [];
+  const S = await semGestor(); if (S.length) out.push({ id:'sem-gestor', sev:'warn', t:'Experiências vencendo em áreas sem gestor no app', painel:'', rota:'#/admin', pnome:'Administração', d:'Todas as áreas respondem pelo app: cadastre o gestor dessas áreas (Administração → Usuários → Gestor de área) para ele conseguir avaliar.', itens:S });
+  const L = (await lerEnviosRH() || []).filter(e => e.status === 'enviado'); if (!L.length) return out;
+  return out.concat([{ id:'envios', sev:'warn', t:'Envios dos gestores aguardando o RH', painel:'', rota:'#/envios', pnome:'Envios dos gestores', d:'Programações de férias e avaliações de experiência assinadas pelos gestores. Aceite para lançar no painel ou devolva com o motivo.',
+    itens:L.map(e => ({ nome:e.colaborador || e.mat, mat:e.mat, det:(e.tipo === 'ferias' ? 'Férias: ' : 'Experiência: ') + resumoEnvio(e) + ' · por ' + (e.autor_nome || '') + ' em ' + brD(String(e.criado_em).slice(0, 10)) })) }]); }
 async function telaEnvios(){
   moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Central do dia</div><h1>Envios dos gestores</h1><div class="ini-data">Férias programadas e avaliações de experiência assinadas pelos gestores de área</div></div></section><div id="ev-corpo"><div class="cartao vazio"><div class="spinner" style="margin:0 auto"></div></div></div>`);
   let L = await lerEnviosRH(), F = 'enviado'; const c = $('#ev-corpo'); if (!c) return;

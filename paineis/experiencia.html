@@ -1517,6 +1517,15 @@ window.CRV_PENDENCIAS=function(forcar){
   const marca=()=>document.querySelectorAll(".fmb").forEach(b=>{const p=P.find(x=>x.mat===+b.dataset.m); b.classList.toggle("semform",!(p&&fmSaved(p)));});
   new MutationObserver(()=>{ clearTimeout(marca._t); marca._t=setTimeout(marca,60); }).observe(document.body,{childList:true,subtree:true});
   marca();
+  /* Todas as áreas respondem pelo app: sem formulário em lote para enviar e sem registrar no RH a decisão em papel.
+     O RH só dá andamento (encerramento do contrato). */
+  const lg=document.getElementById("lgPdf"); if(lg){ const t=lg.closest(".tile"); if(t) t.style.display="none"; }
+  const st2=document.createElement("style");
+  st2.textContent="#reg .fld:has(#regO),#reg label[for=regD],#reg label[for=regOb],#reg .arbox,#regDel{display:none!important}";
+  document.head.appendChild(st2);
+  const ren=()=>document.querySelectorAll(".rg:not(.fmb)").forEach(b=>{ if(b.textContent!=="Andamento do RH") b.textContent="Andamento do RH"; });
+  new MutationObserver(()=>{ clearTimeout(ren._t); ren._t=setTimeout(ren,60); }).observe(document.body,{childList:true,subtree:true}); ren();
+  const enc=document.getElementById("regEnc"); if(enc){ const bx=enc.closest(".encbox"); if(bx && !document.getElementById("regInfo")){ const i=document.createElement("p"); i.id="regInfo"; i.className="sub"; i.style.margin="12px 0 0"; i.textContent="A avaliação é enviada pelo gestor da área pelo app e chega em Envios dos gestores. Aqui o RH registra só o andamento do encerramento."; bx.parentNode.insertBefore(i,bx); } }
 })();
 </script>
 </body></html>
