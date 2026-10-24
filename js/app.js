@@ -317,6 +317,7 @@ function moldura(conteudo){
         </div>
         <button class="lat-item ${h.startsWith('#/ficha')?'ativo':''}" data-ir="#/ficha"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2.5"/><path d="M5.5 17c.6-1.8 2-2.7 3.5-2.7s2.9.9 3.5 2.7M14 9h4M14 13h4"/></svg><span>Ficha do colaborador</span></button>
         <button class="lat-item ${h==='#/consulta'?'ativo':''}" data-ir="#/consulta"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="6"/><path d="M20 20l-5.6-5.6M8 10h4M10 8v4"/></svg><span>Consulta de candidato</span></button>
+        ${ehAdmin() ? `<button class="lat-item ${h==='#/relatorio'?'ativo':''}" data-ir="#/relatorio"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 17v-3M12 17v-6M15 17v-2"/></svg><span>Relatório da diretoria</span></button>` : ''}
         <div class="lat-busca"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="lat-q" type="search" placeholder="Buscar painel ou ação" autocomplete="off" aria-label="Buscar painel"></div>
         <div class="lat-sec">Frentes</div>
         <div class="lat-vazio" id="lat-vazio" hidden>Nenhum painel com esse nome.</div>
@@ -400,6 +401,7 @@ function rota(){
   if (h === '#/central') return telaCentral();
   if (h === '#/ficha' || h.startsWith('#/ficha/')) return telaFicha(h.split('/')[2] || '');
   if (h === '#/consulta') return telaConsulta();
+  if (h === '#/relatorio') return REL().tela();
   if (h === '#/desligamento') return telaDesligamento();
   if (h === '#/conta') return telaConta();
   telaInicio();
@@ -542,6 +544,7 @@ let _nr1 = null;
 const ctxMod = () => ({ sb, E, $, esc, normal, brD, fMat, fDias, podeVer, podeEditar, moldura, abrirModal, fecharModal, toast, traduzErro, baixar, cabecalhoPDF, rodapePDF, centralChave });
 const NR1 = () => _nr1 || (_nr1 = window.CRV_NR1_INIT(ctxMod()));
 let _risco = null; const RISCO = () => _risco || (_risco = window.CRV_RISCO_INIT(ctxMod()));
+let _rel = null; const REL = () => _rel || (_rel = window.CRV_REL_INIT(Object.assign(ctxMod(), { NR1, RISCO })));
 let _onb = null; const ONB = () => _onb || (_onb = window.CRV_ONB_INIT(Object.assign(ctxMod(), { RISCO })));
 async function pendenciasDesligamento(){
   const D = await dadosDesligamento(); if (!D) return [];
@@ -1190,7 +1193,7 @@ function abrirExportar(){
 let _logUlt = '';
 window.CRV_LOG_EXPORT = nome => { const k = String(nome || '') + '|' + Math.floor(Date.now() / 3000); if (k === _logUlt) return; _logUlt = k;
   const h = location.hash || ''; const pid = h.startsWith('#/p/') ? decodeURIComponent(h.slice(4).split('/')[0]) : null;
-  const onde = pid ? null : h.startsWith('#/ficha') ? 'Ficha do colaborador' : h.startsWith('#/desligamento') ? 'Checklist de desligamento' : h.startsWith('#/admin') ? 'Administração' : '';
+  const onde = pid ? null : h.startsWith('#/ficha') ? 'Ficha do colaborador' : h.startsWith('#/desligamento') ? 'Checklist de desligamento' : h.startsWith('#/relatorio') ? 'Relatório da diretoria' : h.startsWith('#/admin') ? 'Administração' : '';
   const painel = pid ? (PAC_DE[pid] || pid) : null;
   registrar(painel && E.paineis.some(p => p.id === painel) ? painel : null, 'exportou arquivo', String(nome || '') + (onde ? ' · ' + onde : '')); };
 function baixar(blob, nome){
