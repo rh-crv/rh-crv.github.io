@@ -1989,11 +1989,11 @@ async function adminUsuarios(){
   if (error) { c.innerHTML = `<div class="erro">${esc(traduzErro(error))}</div>`; return; }
   const temG = data.some(u => u.papel === 'gestor'); const ug = temG ? await GESTOR().ultimaGeracao() : null;
   c.innerHTML = `<div class="cartao-cab"><h3>${data.length} usuário(s)</h3><button class="btn prim" id="u-novo">+ Novo usuário</button></div>
-    ${temG ? `<div class="gs-adm cartao"><div><b>Visão dos gestores</b><small>${ug && ug.em ? 'Atualizada em ' + esc(new Date(ug.em).toLocaleString('pt-BR')) + ' · ' + (ug.chaves || []).length + ' área(s)' : 'Ainda não gerada'}. Atualiza sozinha quando você entra no app ou carrega as bases.</small></div><button class="btn borda" id="u-gerar">Atualizar agora</button></div>` : ''}
+    ${temG ? `<div class="gs-adm cartao"><div><b>Visão dos gestores</b><small>${ug && ug.em ? 'Atualizada em ' + esc(new Date(ug.em).toLocaleString('pt-BR')) + ' · ' + (ug.chaves || []).length + ' setor(es) ou departamento(s)' : 'Ainda não gerada'}. Atualiza sozinha quando você entra no app ou carrega as bases.</small></div><button class="btn borda" id="u-gerar">Atualizar agora</button></div>` : ''}
     <p style="color:var(--mut);margin-top:0;font-size:13px"><b>Administrador principal</b> faz tudo: importa bases, cria e tira painéis, cadastra usuários e muda configurações · <b>Equipe RH</b> vê todos os painéis (inclusive restritos) e faz todos os lançamentos, mas não importa bases nem mexe na estrutura · <b>Editor</b> vê e atualiza as frentes liberadas · <b>Leitor</b> só consulta as frentes liberadas · <b>Gestor de área</b> vê só a própria equipe (experiência, férias, frequência, novos e crachás), sem acesso aos painéis. Painéis <span class="selo restrito">restrito</span> são só de administradores.</p>
     ${data.map((u,i)=>`<div class="linha-u ${u.ativo?'':'inativo'}">
       <div class="av" style="background:${PALETA[i%PALETA.length]}">${esc(iniciais(u.nome))}</div>
-      <div class="info"><b>${esc(u.nome)}</b> ${u.ativo?'':'<small>(desativado)</small>'}<br><small>@${esc(u.usuario)} · ${esc(nomePapel(u.papel))}${u.papel==='admin'?' · todas as frentes':u.papel==='rh'?' · todos os painéis, só lançamentos':(u.paineis_ver||[]).length||(u.paineis_editar||[]).length?` · ${u.frentes?.length ? esc(u.frentes.join(', ')) + ' + ' : ''}painéis: ${esc([...(u.paineis_ver||[]), ...(u.paineis_editar||[])].map(id => (E.paineis.find(x => x.id === id) || {}).nome || id).join(', '))}`:u.papel==='gestor'?` · ${(u.areas||[]).filter(k=>k.startsWith('a:')).length ? 'setor: ' + esc((u.areas||[]).filter(k=>k.startsWith('a:')).map(k=>k.slice(2)).join(', ')) : 'nenhum setor vinculado'}`:` · ${u.frentes?.length ? esc(u.frentes.join(', ')) : 'nenhuma frente liberada'}`}</small></div>
+      <div class="info"><b>${esc(u.nome)}</b> ${u.ativo?'':'<small>(desativado)</small>'}<br><small>@${esc(u.usuario)} · ${esc(nomePapel(u.papel))}${u.papel==='admin'?' · todas as frentes':u.papel==='rh'?' · todos os painéis, só lançamentos':(u.paineis_ver||[]).length||(u.paineis_editar||[]).length?` · ${u.frentes?.length ? esc(u.frentes.join(', ')) + ' + ' : ''}painéis: ${esc([...(u.paineis_ver||[]), ...(u.paineis_editar||[])].map(id => (E.paineis.find(x => x.id === id) || {}).nome || id).join(', '))}`:u.papel==='gestor'?` · ${(u.areas||[]).filter(k=>GESTOR().chaveOk(k)).length ? esc((u.areas||[]).filter(k=>GESTOR().chaveOk(k)).map(k=>(k[0]==='a'?'setor ':'depto. ')+GESTOR().nomeChave(k)).join(', ')) : 'nenhum setor vinculado'}`:` · ${u.frentes?.length ? esc(u.frentes.join(', ')) : 'nenhuma frente liberada'}`}</small></div>
       <button class="btn peq borda" data-edit="${esc(u.user_id)}">Editar</button>
       <button class="btn peq borda" data-senha="${esc(u.user_id)}">Nova senha</button>
     </div>`).join('')}`;
@@ -2023,7 +2023,7 @@ function formUsuario(u, todos){
         <small style="color:var(--mut)">Além das frentes marcadas acima. Use para liberar só alguns painéis, por exemplo para Treinamento e Desenvolvimento. "Ver e exportar" permite consultar e baixar PDF e Excel, sem alterar nada. "Pode lançar" só quando você permitir.</small></div>
       <div class="campo oculto" id="u-areas-box"><label>Setor(es) que o gestor vê</label><input id="u-areas-q" type="search" placeholder="Filtrar setores" style="margin-bottom:6px">
         <div class="checks gs-areas" id="u-areas"><small style="color:var(--mut)">Carregando as áreas do Quadro…</small></div>
-        <small style="color:var(--mut)">Marque o setor (coluna Setor da planilha do Quadro). Dá para marcar mais de um. O gestor vê só as pessoas desses setores, sem CPF, salário, saúde ou ocorrências sensíveis.</small></div>
+        <small style="color:var(--mut)">Marque o setor inteiro (coluna Setor da planilha do Quadro) ou, em "escolher departamentos", só os departamentos que ele cuida. Dá para marcar mais de um. O gestor vê só as pessoas desses setores, sem CPF, salário, saúde ou ocorrências sensíveis.</small></div>
       ${!novo ? `<div class="campo"><label><input type="checkbox" id="u-ativo" ${u.ativo?'checked':''}> Usuário ativo (desmarque para bloquear o acesso)</label></div>` : ''}`,
     pe: `<button class="btn borda" id="u-c">Cancelar</button><button class="btn prim" id="u-ok">${novo?'Criar usuário':'Salvar'}</button>`,
     aoAbrir: m => {
@@ -2033,16 +2033,25 @@ function formUsuario(u, todos){
       m.querySelectorAll('[data-pv]').forEach(i => i.onchange = () => { if (!i.checked) m.querySelector(`[data-pe="${i.dataset.pv}"]`).checked = false; });
       $('#u-pain-q').oninput = e => { const q = normal(e.target.value); m.querySelectorAll('.u-pl').forEach(l => l.style.display = !q || l.dataset.q.includes(q) ? '' : 'none'); };
       GESTOR().opcoes().then(L => { const box = $('#u-areas'); if (!box) return; const sel = new Set(u?.areas || []);
-        box.innerHTML = L.length ? L.map(o => `<label data-q="${esc(normal(o.k))}"><input type="checkbox" value="${esc(o.k)}" ${sel.has(o.k)?'checked':''}> <span>${esc(o.k.slice(2))}</span> <small>${o.n} pessoas</small></label>`).join('') : '<small>Carregue o Quadro Geral para listar as áreas.</small>';
-        $('#u-areas-q').oninput = e => { const q = normal(e.target.value); box.querySelectorAll('label').forEach(l => l.style.display = !q || l.dataset.q.includes(q) ? '' : 'none'); }; });
+        box.innerHTML = L.length ? L.map(o => { const algum = o.deps.some(d => sel.has(d.k)); return `<div class="u-st" data-q="${esc(normal(o.nome + ' ' + o.deps.map(d => d.nome).join(' ')))}">
+            <div class="u-sth"><label><input type="checkbox" value="${esc(o.k)}" data-set="1" ${sel.has(o.k)?'checked':''}> <b>${esc(o.nome)}</b> <small>setor inteiro · ${o.n} pessoas</small></label><button type="button" class="link u-dep-t">${algum ? 'esconder' : 'escolher'} departamentos (${o.deps.length})</button></div>
+            <div class="u-deps" ${algum ? '' : 'hidden'}>${o.deps.map(d => `<label><input type="checkbox" value="${esc(d.k)}" ${sel.has(d.k)?'checked':''} ${sel.has(o.k)?'disabled':''}> ${esc(d.nome)} <small>${d.n}</small></label>`).join('')}</div></div>`; }).join('') : '<small>Carregue o Quadro Geral para listar os setores.</small>';
+        box.querySelectorAll('.u-dep-t').forEach(b => b.onclick = () => { const d = b.closest('.u-st').querySelector('.u-deps'); d.hidden = !d.hidden; b.textContent = (d.hidden ? 'escolher' : 'esconder') + b.textContent.replace(/^(escolher|esconder)/, ''); });
+        box.querySelectorAll('[data-set]').forEach(i => i.onchange = () => i.closest('.u-st').querySelectorAll('.u-deps input').forEach(x => { x.disabled = i.checked; if (i.checked) x.checked = false; }));
+        box.querySelectorAll('.u-deps label').forEach(l => l.dataset.q = normal(l.textContent));
+        $('#u-areas-q').oninput = e => { const q = normal(e.target.value);
+          box.querySelectorAll('.u-st').forEach(st => { const nome = normal(st.querySelector('.u-sth b').textContent), noSetor = !q || nome.includes(q), deps = [...st.querySelectorAll('.u-deps label')];
+            deps.forEach(l => l.style.display = noSetor || l.dataset.q.includes(q) ? '' : 'none');
+            const achouDep = !noSetor && deps.some(l => l.style.display !== 'none');
+            st.style.display = noSetor || achouDep ? '' : 'none'; if (achouDep) st.querySelector('.u-deps').hidden = false; }); }; });
       $('#u-c').onclick = fecharModal;
       $('#u-ok').onclick = async () => {
         const bt = $('#u-ok'); const erro = t => { $('#u-msg').innerHTML = `<div class="erro">${esc(t)}</div>`; bt.disabled=false; bt.textContent = novo?'Criar usuário':'Salvar'; };
         const nome = $('#u-nome').value.trim();
         const papel = $('#u-papel').value;
         const fr = papel === 'admin' || papel === 'gestor' || papel === 'rh' ? [] : [...m.querySelectorAll('#u-frentes-box .checks input:checked')].map(x=>x.value);
-        const ar = papel === 'gestor' ? [...m.querySelectorAll('#u-areas input:checked')].map(x=>x.value).filter(k => k.startsWith('a:')) : [];
-        if (papel === 'gestor' && !ar.length) return erro('Marque pelo menos um setor para o gestor.');
+        const ar = papel === 'gestor' ? [...m.querySelectorAll('#u-areas input:checked:not(:disabled)')].map(x=>x.value).filter(k => GESTOR().chaveOk(k)) : [];
+        if (papel === 'gestor' && !ar.length) return erro('Marque pelo menos um setor ou departamento para o gestor.');
         const semPain = papel === 'admin' || papel === 'gestor' || papel === 'rh';
         const pe = semPain ? [] : [...m.querySelectorAll('[data-pe]:checked')].map(x => x.dataset.pe), pv = semPain ? [] : [...m.querySelectorAll('[data-pv]:checked')].map(x => x.dataset.pv).filter(id => !pe.includes(id));
         const comPain = o => (pv.length || pe.length || (u && u.paineis_ver !== undefined)) ? Object.assign(o, { paineis_ver:pv, paineis_editar:pe }) : o;

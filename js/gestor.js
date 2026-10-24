@@ -12,8 +12,11 @@ window.CRV_GESTOR_INIT = function(X){
 const { sb, E, $, esc, normal, brD, fMat, fDias, moldura, abrirModal, fecharModal, toast, traduzErro, baixar, cabecalhoPDF, rodapePDF } = X;
 const hoje = () => new Date().toISOString().slice(0, 10);
 const addD = (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
-const nomeChave = k => k.slice(2);
-const tipoChave = k => k[0] === 'g' ? 'Gerência' : 'Setor';
+// chaves: 'a:<setor>' = setor inteiro; 'd:<setor>|<departamento>' = só um departamento do setor
+const nomeChave = k => k[0] === 'd' ? k.slice(2).split('|')[1] + ' (' + k.slice(2).split('|')[0] + ')' : k.slice(2);
+const chaveOk = k => /^[ad]:/.test(k || '');
+const daChave = (k, p) => k[0] === 'a' ? p.area === k.slice(2) : k[0] === 'd' ? (p.area + '|' + p.setor) === k.slice(2) : false;
+const tipoChave = k => k[0] === 'd' ? 'Departamento' : 'Setor';
 const DEC = { efetivar:'Efetivar', encerrar:'Encerrar contrato', prorrogar:'Prorrogar' };
 const DECG = [['efetivar', 'Efetivar', 'Fica no quadro como efetivo'], ['prorrogar', 'Prorrogar', 'Avaliar mais um pouco, até o fim do contrato'], ['encerrar', 'Encerrar o contrato', 'Não continua após o vencimento']];
 // formulário oficial RE.0150.07 (SGI, versão 05): nota de 0 a 5 por fator; pontos = nota × 2; total = média dos pontos; meta 70%
@@ -40,8 +43,9 @@ const blocoAssinatura = (pref, nome) => `<div class="gs-ass"><label><input type=
 async function opcoes(){
   const Q = await window.CRV_QUADRO(); if (!Q) return [];
   // só o Setor da planilha (área do Quadro); gerência não é usada porque o cadastro dela não é confiável
-  const c = {}; Object.values(Q.mapa).forEach(p => { if (p.situacao === 'Desligado') return; if (p.area && !/^(afastados|desistentes)$/i.test(p.area)) c['a:' + p.area] = (c['a:' + p.area] || 0) + 1; });
-  return Object.entries(c).map(([k, n]) => ({ k, n })).sort((a, b) => a.k[0].localeCompare(b.k[0]) || a.k.localeCompare(b.k, 'pt-BR'));
+  const S = {}; Object.values(Q.mapa).forEach(p => { if (p.situacao === 'Desligado' || !p.area || /^(afastados|desistentes)$/i.test(p.area)) return;
+    const o = S[p.area] || (S[p.area] = { k:'a:' + p.area, nome:p.area, n:0, deps:{} }); o.n++; const d = p.setor || '(sem departamento)'; o.deps[d] = (o.deps[d] || 0) + 1; });
+  return Object.values(S).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')).map(o => ({ k:o.k, nome:o.nome, n:o.n, deps:Object.entries(o.deps).sort((a, b) => a[0].localeCompare(b[0], 'pt-BR')).map(([d, n]) => ({ k:'d:' + o.nome + '|' + d, nome:d, n })) }));
 }
 const assinatura = () => ['quadro', 'experiencia', 'ferias', 'crachas', 'sancoes', 'rd', 'alojamentos', 'curriculos'].map(id => id + ':' + ((E.metas[id] && (E.metas[id].atualizado_em || E.metas[id].referencia)) || '')).join('|');
 
@@ -49,7 +53,7 @@ const assinatura = () => ['quadro', 'experiencia', 'ferias', 'crachas', 'sancoes
 async function recortes(chaves){
   const Q = await window.CRV_QUADRO(); if (!Q) throw new Error('Sem a base do Quadro Geral.');
   const M = Q.mapa, h = hoje();
-  const dentro = (p, k) => p.situacao !== 'Desligado' && (k[0] === 'a' ? p.area === k.slice(2) : p.gerencia === k.slice(2));
+  const dentro = (p, k) => p.situacao !== 'Desligado' && daChave(k, p);
   // bases auxiliares (lidas uma vez)
   const EXP = {}; let refExp = '';
   try { const d = await window.CRV_DADOS('experiencia'); refExp = d && d.referencia || ''; const R = d && d.dados.RAW || []; const reg = {}; (await window.CRV_REGS('experiencia', 'registros')).forEach(x => reg[x._id] = x);
@@ -73,7 +77,7 @@ async function recortes(chaves){
     const A = q && q.dados.AXD; if (A) { TIP = A.TIP || []; MOTN = A.MOT || []; (A.EXR || []).forEach(r => { const m = fMat(r[0]); if (!EXR[m] || String(r[1]) > String(EXR[m][1])) EXR[m] = r; }); } } catch(_){}
   const ALO = {}; try { const d = await window.CRV_DADOS('alojamentos'); const A = d && d.dados.DATA; if (A) (A.people || []).forEach(y => { if (y.t === 'c') ALO[fMat(y.m)] = { casa:((A.houses || [])[y.h] || {}).n || '', q:y.q || '', orig:[y.oc, y.ou].filter(Boolean).join('/') }; }); } catch(_){}
   let PREV = null; try { const L = await window.CRV_REGS('curriculos', 'config'); PREV = L.find(x => x._id === 'previsao') || null; } catch(_){}
-  const casa = (k, p) => k[0] === 'a' ? p.area === k.slice(2) : p.gerencia === k.slice(2);
+  const casa = (k, p) => daChave(k, p);
   const d400 = addD(h, -400);
   const out = [];
   for (const k of chaves) {
@@ -100,7 +104,7 @@ async function recortes(chaves){
     let PV = null;
     if (PREV && Array.isArray(PREV.grupos)) { const sec = new Set(P.map(p => normal(p.s)));
       // o grupo da previsão é da área quando o nome bate com a área (ou está contido na gerência); os itens são seções ou tipos de função
-      const kn = normal(k.slice(2)), grupoDaArea = g => [g.g, g.dp].some(x => { const n = normal(x || ''); return n && (n === kn || (k[0] === 'g' && kn.includes(n))); });
+      const kn = normal(k.slice(2)), grupoDaArea = g => k[0] === 'a' && [g.g, g.dp].some(x => { const n = normal(x || ''); return n && n === kn; });
       const itens = []; PREV.grupos.forEach(g => (g.itens || []).forEach(it => { const n = normal(it.n), porSecao = sec.has(n);
         if (!porSecao && !grupoDaArea(g)) return;
         const L = P.filter(p => p.sit === 'Ativo' && (porSecao ? normal(p.s) === n : normal(p.f + ' ' + p.s).includes(n)));
@@ -116,7 +120,7 @@ async function gerar(forcar){
   if (!E.perfil || E.perfil.papel !== 'admin') return { ok:false };
   const { data: G, error } = await sb.from('perfis').select('areas,papel,ativo').eq('papel', 'gestor');
   if (error) return { ok:false, erro:error };
-  const chaves = [...new Set((G || []).filter(g => g.ativo).flatMap(g => g.areas || []))].filter(k => k.startsWith('a:'));
+  const chaves = [...new Set((G || []).filter(g => g.ativo).flatMap(g => g.areas || []))].filter(chaveOk);
   const sig = assinatura();
   if (!forcar) { try { const { data } = await sb.from('area_dados').select('dados').eq('chave', '__meta').maybeSingle(); if (data && data.dados && data.dados.sig === sig && JSON.stringify(data.dados.chaves) === JSON.stringify(chaves.slice().sort())) return { ok:true, igual:true }; } catch(_){} }
   if (!chaves.length) return { ok:true, n:0 };
@@ -385,7 +389,7 @@ async function semGestor(){
   try { const { data: G } = await sb.from('perfis').select('areas,papel,ativo').eq('papel', 'gestor'); const K = new Set((G || []).filter(g => g.ativo).flatMap(g => g.areas || []));
     const Q = await window.CRV_QUADRO(); const d = await window.CRV_DADOS('experiencia'); if (!Q || !d) return out; const h = hoje(), lim = addD(h, 20);
     (d.dados.RAW || []).forEach(r => { const m = fMat(r[0]), c = Q.mapa[m]; if (!c || c.situacao === 'Desligado') return; const v = [r[7], r[8]].filter(x => x && x >= h && x <= lim).sort()[0]; if (!v || r[17]) return;
-      if (K.has('a:' + c.area)) return; out.push({ nome:c.nome, mat:m, det:`${c.area || 'sem setor'} · ${c.setor || ''} · vence em ${brD(v)}` }); }); } catch(_){}
+      if (K.has('a:' + c.area) || K.has('d:' + c.area + '|' + c.setor)) return; out.push({ nome:c.nome, mat:m, det:`${c.area || 'sem setor'} · ${c.setor || ''} · vence em ${brD(v)}` }); }); } catch(_){}
   return out; }
 async function pendenciasEnvios(){ if (!E.perfil || !['admin', 'rh'].includes(E.perfil.papel)) return []; const out = [];
   const S = E.perfil.papel === 'admin' ? await semGestor() : []; if (S.length) out.push({ id:'sem-gestor', sev:'warn', t:'Experiências vencendo em áreas sem gestor no app', painel:'', rota:'#/admin', pnome:'Administração', d:'Todas as áreas respondem pelo app: cadastre o gestor dessas áreas (Administração → Usuários → Gestor de área) para ele conseguir avaliar.', itens:S });
@@ -405,5 +409,5 @@ async function telaEnvios(){
     c.querySelectorAll('[data-id]').forEach(b => b.onclick = () => verEnvio(L.find(e => e.id === b.dataset.id), true, async () => { L = await lerEnviosRH() || []; des(); })); };
   des();
 }
-return { tela, gerar, opcoes, ultimaGeracao, nomeChave, tipoChave, telaEnvios, pendenciasEnvios };
+return { tela, gerar, opcoes, ultimaGeracao, nomeChave, tipoChave, chaveOk, telaEnvios, pendenciasEnvios };
 };
