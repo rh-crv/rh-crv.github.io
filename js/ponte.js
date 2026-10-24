@@ -270,6 +270,7 @@ async function carimbarPdf(dados){
 function criarDownloads(){
   return Object.freeze({
     async save({ filename, data }){
+      try { window.CRV_LOG_EXPORT && window.CRV_LOG_EXPORT(filename); } catch(_){}
       if (ehPdf(filename)) data = await carimbarPdf(data);
       const b = data instanceof Blob ? data : new Blob([data], ehPdf(filename) ? { type:'application/pdf' } : {});
       const u = URL.createObjectURL(b);
@@ -299,7 +300,8 @@ window.CRV_PONTE = {
         return (cache[nome] = v);
       },
       blob: id => baixarArquivo(ctx.sb, ctx.painel, id),
-      carimbar: dados => carimbarPdf(dados)
+      carimbar: dados => carimbarPdf(dados),
+      log: nome => { try { window.CRV_LOG_EXPORT && window.CRV_LOG_EXPORT(nome); } catch(_){} }
     };
   },
   // código que roda dentro do painel, antes de tudo
@@ -310,7 +312,7 @@ var f0=window.fetch.bind(window);
 window.fetch=function(u,o){var s=typeof u==='string'?u:(u&&u.url)||'';if(s.indexOf('/_blob/')===0&&P)return P.blob(s.slice(7).split(/[?#]/)[0]);return f0(u,o)};
 var oc=HTMLAnchorElement.prototype.click,od=HTMLAnchorElement.prototype.dispatchEvent;
 function crvPdf(a){if(!P||!P.carimbar||a.__crv||!a.hasAttribute('download'))return false;var h=a.href||'',n=a.download||'';if(!/\\.pdf$/i.test(n)&&!/^data:application\\/pdf/i.test(h))return false;if(!/^(blob:|data:)/i.test(h))return false;
- fetch(h).then(function(r){return r.arrayBuffer()}).then(function(b){return P.carimbar(b)}).then(function(u8){var u=URL.createObjectURL(new Blob([u8],{type:'application/pdf'}));var x=document.createElement('a');x.href=u;x.download=n||'documento.pdf';x.__crv=1;document.body.appendChild(x);oc.call(x);setTimeout(function(){x.remove();URL.revokeObjectURL(u)},4000)}).catch(function(){a.__crv=1;oc.call(a)});return true}
+ fetch(h).then(function(r){return r.arrayBuffer()}).then(function(b){try{P.log&&P.log(n)}catch(_){}return P.carimbar(b)}).then(function(u8){var u=URL.createObjectURL(new Blob([u8],{type:'application/pdf'}));var x=document.createElement('a');x.href=u;x.download=n||'documento.pdf';x.__crv=1;document.body.appendChild(x);oc.call(x);setTimeout(function(){x.remove();URL.revokeObjectURL(u)},4000)}).catch(function(){a.__crv=1;oc.call(a)});return true}
 HTMLAnchorElement.prototype.click=function(){if(crvPdf(this))return;return oc.call(this)};
 HTMLAnchorElement.prototype.dispatchEvent=function(e){if(e&&e.type==='click'&&crvPdf(this))return true;return od.call(this,e)};
 document.addEventListener('click',function(ev){var a0=ev.target&&ev.target.closest&&ev.target.closest('a[download]');if(a0&&crvPdf(a0)){ev.preventDefault();return}},true);

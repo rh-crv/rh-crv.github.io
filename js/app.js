@@ -136,7 +136,11 @@ async function carregarCatalogo(){
     const MOV = { sancoes:'Ocorrências, risco e jurídico', ouvidorias:'Atendimento e escuta' };
     const mud = [];
     E.paineis.forEach(x => { const nf = MOV[x.id] || REN[x.frente]; if (nf && nf !== x.frente) { x.frente = nf; mud.push(x); } });
-    if (mud.length && E.perfil && E.perfil.papel === 'admin') mud.forEach(x => sb.from('paineis').update({ frente: x.frente }).eq('id', x.id).then(() => {}, () => {})); }
+    if (mud.length && E.perfil && E.perfil.papel === 'admin') mud.forEach(x => sb.from('paineis').update({ frente: x.frente }).eq('id', x.id).then(() => {}, () => {}));
+    // quem tinha acesso a uma frente renomeada continua com acesso (Sanções e Ouvidorias são restritas: só administradores)
+    const ajF = L => { if (!Array.isArray(L)) return L; const o = new Set(L.map(f => REN[f] || f)); return [...o]; };
+    if (E.perfil && Array.isArray(E.perfil.frentes)) E.perfil.frentes = ajF(E.perfil.frentes);
+    if (E.perfil && E.perfil.papel === 'admin') { try { if (!localStorage.getItem('crv-mig-frentes-2610')) sb.from('perfis').select('user_id,frentes').then(({ data }) => { (data || []).forEach(u => { const n = ajF(u.frentes || []); if (JSON.stringify(n) !== JSON.stringify(u.frentes || [])) sb.from('perfis').update({ frentes:n }).eq('user_id', u.user_id).then(() => {}, () => {}); }); try { localStorage.setItem('crv-mig-frentes-2610', '1'); } catch(_){} }, () => {}); } catch(_){} } }
   // nome padrão do Jovem Aprendiz (Instituto João Bittar), separado do RENAPSI
   const jv = E.paineis.find(x => x.id === 'jovem');
   if (jv && jv.nome === 'Jovem Aprendiz') {
@@ -1046,7 +1050,15 @@ function abrirExportar(){
   });
 }
 
+/* registro de quem exportou o quê (PDF, Excel): vai para Administração → Histórico */
+let _logUlt = '';
+window.CRV_LOG_EXPORT = nome => { const k = String(nome || '') + '|' + Math.floor(Date.now() / 3000); if (k === _logUlt) return; _logUlt = k;
+  const h = location.hash || ''; const pid = h.startsWith('#/p/') ? decodeURIComponent(h.slice(4).split('/')[0]) : null;
+  const onde = pid ? null : h.startsWith('#/ficha') ? 'Ficha do colaborador' : h.startsWith('#/desligamento') ? 'Checklist de desligamento' : h.startsWith('#/admin') ? 'Administração' : '';
+  const painel = pid ? (PAC_DE[pid] || pid) : null;
+  registrar(painel && E.paineis.some(p => p.id === painel) ? painel : null, 'exportou arquivo', String(nome || '') + (onde ? ' · ' + onde : '')); };
 function baixar(blob, nome){
+  try { window.CRV_LOG_EXPORT(nome); } catch(_){}
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url; a.download = nome.replace(/[\\/:*?"<>|]/g, '-');
@@ -1505,7 +1517,10 @@ function cssCapa(p){
 
 const PAINEIS_COM_NOVOS = ['rd', 'fadiga', 'treinamentos', 'sancoes'];
 const COLECAO_NOVOS = { sancoes:'documentos', fadiga:['novos','tratativas'] };
+const mascaraCPF = c => { if (!c || !E.perfil || E.perfil.papel !== 'leitor') return c;
+  return JSON.parse(JSON.stringify(c).replace(/(\d{3})\.(\d{3})\.(\d{3})-(\d{2})/g, '***.$2.$3-**')); };
 function montarModelo(tpl, conteudo, referencia, p, novos){
+  conteudo = mascaraCPF(conteudo);
   const nomeOk = n => /^[A-Za-z_$][\w$]*$/.test(n);
   const base = location.href.split('#')[0].replace(/[^/]*$/, '');
   let html = tpl.split('__CRV_REFBR__').join(fmtRef(referencia)).split('__CRV_BASE__').join(base);
@@ -1966,10 +1981,12 @@ async function adminHistorico(){
   const { data, error } = await sb.from('historico').select('*').order('feito_em', { ascending:false }).limit(200);
   if (error) { c.innerHTML = `<div class="erro">${esc(traduzErro(error))}</div>`; return; }
   const nomeP = id => E.paineis.find(p=>p.id===id)?.nome || '—';
-  c.innerHTML = `<div class="cartao-cab"><h3>Últimas ações</h3></div>
-    ${data.length ? `<div class="tabela-env"><table class="tab"><thead><tr><th>Quando</th><th>Quem</th><th>Ação</th><th>Painel</th><th>Detalhe</th></tr></thead><tbody>
-    ${data.map(h=>`<tr style="cursor:default"><td>${fmtData(h.feito_em)}</td><td>${esc(h.usuario)}</td><td>${esc(h.acao)}</td><td>${esc(h.painel?nomeP(h.painel):'—')}</td><td>${esc(h.detalhe)}</td></tr>`).join('')}
+  const so = window.__histExp; const L = so ? data.filter(h => h.acao === 'exportou arquivo' || /^exportou/.test(h.acao || '')) : data;
+  c.innerHTML = `<div class="cartao-cab"><h3>Últimas ações</h3><div class="vista-seg" style="margin:0;box-shadow:none"><button data-hx="0" class="${so ? '' : 'on'}">Todas</button><button data-hx="1" class="${so ? 'on' : ''}">Só exportações (PDF e Excel)</button></div></div>
+    ${L.length ? `<div class="tabela-env"><table class="tab"><thead><tr><th>Quando</th><th>Quem</th><th>Ação</th><th>Painel</th><th>Detalhe</th></tr></thead><tbody>
+    ${L.map(h=>`<tr style="cursor:default"><td>${fmtData(h.feito_em)}</td><td>${esc(h.usuario)}</td><td>${esc(h.acao)}</td><td>${esc(h.painel?nomeP(h.painel):'—')}</td><td>${esc(h.detalhe)}</td></tr>`).join('')}
     </tbody></table></div>` : '<p class="vazio">Nenhuma ação registrada ainda.</p>'}`;
+  c.querySelectorAll('[data-hx]').forEach(b => b.onclick = () => { window.__histExp = b.dataset.hx === '1'; adminHistorico(); });
 }
 
 /* =====================================================================
