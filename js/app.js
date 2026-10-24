@@ -272,6 +272,10 @@ function moldura(conteudo){
       </div>
       <nav class="lat-nav">
         <button class="lat-item ${h==='#/'||h===''?'ativo':''}" data-ir="#/">${svg('casa')}<span>Início</span></button>
+        <div class="lat-pgrupo lat-cgrupo ${h==='#/central'||h==='#/desligamento'||subAbertos.__central?'aberto':''}" data-pid="__central">
+          <div class="lat-plinha"><button class="lat-item ${h==='#/central'?'ativo':''}" data-ir="#/central"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg><span>Central do dia</span></button><button class="lat-pseta" aria-label="Mostrar opções da Central do dia" aria-expanded="${h==='#/desligamento'?'true':'false'}">${CHEV}</button></div>
+          <div class="lat-psub"><button class="lat-acao ${h==='#/desligamento'?'ativo':''}" data-ir="#/desligamento" style="--cor:var(--coral)"><i>${IA('<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>')}</i><span>Checklist de desligamento</span></button></div>
+        </div>
         <div class="lat-busca"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="lat-q" type="search" placeholder="Buscar painel ou ação" autocomplete="off" aria-label="Buscar painel"></div>
         <div class="lat-sec">Frentes</div>
         <div class="lat-vazio" id="lat-vazio" hidden>Nenhum painel com esse nome.</div>
@@ -335,7 +339,7 @@ function moldura(conteudo){
     });
     $('#lat-vazio').hidden = !t || n > 0;
   };
-  lat.querySelectorAll('.lat-acao').forEach(b => b.onclick = () => {
+  lat.querySelectorAll('.lat-acao[data-acao]').forEach(b => b.onclick = () => {
     fechar();
     const id = b.dataset.pid, acao = b.dataset.acao;
     // se o painel já está aberto, só chama a ação dentro dele
@@ -352,6 +356,8 @@ function rota(){
   const h = location.hash || '#/';
   if (h.startsWith('#/p/')) { const [id, acao] = h.slice(4).split('/'); return telaPainel(decodeURIComponent(id), acao || ''); }
   if (h === '#/admin' && ehAdmin()) return telaAdmin();
+  if (h === '#/central') return telaCentral();
+  if (h === '#/desligamento') return telaDesligamento();
   if (h === '#/conta') return telaConta();
   telaInicio();
 }
@@ -464,23 +470,107 @@ async function pendenciasQuadro(){
   return R;
 }
 /* Checklist de desligamento: desligados (Quadro) que ainda aparecem com Cartão Convênio ativo, Unimed, Uniodonto ou alojamento.
-   Cartão Alimentação e Premium não entram: o colaborador pode usar o saldo depois da saída. */
-async function pendenciasDesligamento(){
-  const Q = await window.CRV_QUADRO(); if (!Q || !Q.mapa) return [];
-  const br = s => s ? String(s).slice(0, 10).split('-').reverse().join('/') : '';
+   Cartão Alimentação e Premium não entram: o colaborador pode usar o saldo depois da saída.
+   O que o RH marca como feito fica salvo (registros do Quadro, coleção deslig_check). */
+const DCK = [
+  { k:'conv',   n:'Cartão Convênio', acao:'Bloquear o cartão',  painel:'cartao-convenio' },
+  { k:'unimed', n:'Unimed',          acao:'Excluir do plano',   painel:'unimed' },
+  { k:'odonto', n:'Uniodonto',       acao:'Excluir do plano',   painel:'uniodonto' },
+  { k:'aloj',   n:'Alojamento',      acao:'Liberar o leito',    painel:'alojamentos' }
+];
+const brD = s => s ? String(s).slice(0, 10).split('-').reverse().join('/') : '';
+async function dadosDesligamento(){
+  const Q = await window.CRV_QUADRO(); if (!Q || !Q.mapa) return null;
   const deslig = m => { const c = Q.mapa[String(m).replace(/^0+(?=\d)/, '')]; return c && c.situacao === 'Desligado' ? c : null; };
-  const P = new Map(); const add = (m, nome, txt, ref) => { const c = deslig(m); if (!c) return; const k = String(m); if (!P.has(k)) P.set(k, { mat:k, nome:nome || c.nome, deslig:c.deslig || '', itens:[] }); P.get(k).itens.push(txt + (ref ? ` (base de ${br(ref)})` : '')); };
+  const P = new Map(), refs = {};
+  const add = (m, nome, k, det, ref) => { const c = deslig(m); if (!c) return; const key = String(m).replace(/^0+(?=\d)/, '');
+    if (!P.has(key)) P.set(key, { mat:key, nome:nome || c.nome, deslig:c.deslig || '', funcao:c.funcao || '', setor:c.setor || '', area:c.area || '', b:{} });
+    P.get(key).b[k] = { det, ref, depois: !!(ref && c.deslig && c.deslig > ref) }; };
   const pode = id => { const p = E.paineis.find(x => x.id === id); return p && podeVer(p) && E.metas[id]; };
-  const fontes = [];
-  if (pode('cartao-convenio')) { const d = await window.CRV_DADOS('cartao-convenio'); const C = d && d.dados.CARTAO; if (C && C.rows) { fontes.push('Cartão Convênio'); C.rows.filter(r => String(r.card || '').toLowerCase() === 'ativo').forEach(r => add(r.mat, r.nome, 'Cartão Convênio ativo: bloquear', C.refPlanilha || d.referencia)); } }
-  if (pode('unimed')) { const d = await window.CRV_DADOS('unimed'); const U = d && d.dados.DATA; if (U && U.P) { fontes.push('Unimed'); U.P.filter(r => r[8] >= 0).forEach(r => add(r[0], r[1], 'Unimed: excluir do plano' + (r[11] && r[11].length ? ` (titular + ${r[11].length} dependente${r[11].length > 1 ? 's' : ''})` : ''), d.referencia)); } }
-  if (pode('uniodonto')) { const d = await window.CRV_DADOS('uniodonto'); const U = d && d.dados.DATA; if (U && U.T) { fontes.push('Uniodonto'); U.T.forEach(t => add(t[5] || t[1], t[2], 'Uniodonto: excluir do plano' + (t[7] && t[7].length ? ` (titular + ${t[7].length} dependente${t[7].length > 1 ? 's' : ''})` : ''), d.referencia)); } }
-  if (pode('alojamentos')) { const d = await window.CRV_DADOS('alojamentos'); const A = d && d.dados.DATA; if (A && A.people) { fontes.push('Alojamentos'); A.people.filter(x => x.t === 'c' && x.m).forEach(x => { const h = A.houses && A.houses[x.h]; add(x.m, x.n, 'Alojamento: liberar o leito' + (h ? ` em ${h.n}${x.q ? ', quarto ' + x.q : ''}` : ''), d.referencia); }); } }
-  const L = [...P.values()].sort((a, b) => String(b.deslig).localeCompare(String(a.deslig)));
+  if (pode('cartao-convenio')) { const d = await window.CRV_DADOS('cartao-convenio'); const C = d && d.dados.CARTAO; if (C && C.rows) { refs.conv = C.refPlanilha || d.referencia; C.rows.filter(r => String(r.card || '').toLowerCase() === 'ativo').forEach(r => add(r.mat, r.nome, 'conv', 'Cartão ativo na planilha', refs.conv)); } }
+  if (pode('unimed')) { const d = await window.CRV_DADOS('unimed'); const U = d && d.dados.DATA; if (U && U.P) { refs.unimed = d.referencia; U.P.filter(r => r[8] >= 0).forEach(r => add(r[0], r[1], 'unimed', r[11] && r[11].length ? `Titular + ${r[11].length} dependente${r[11].length > 1 ? 's' : ''}` : 'Titular', refs.unimed)); } }
+  if (pode('uniodonto')) { const d = await window.CRV_DADOS('uniodonto'); const U = d && d.dados.DATA; if (U && U.T) { refs.odonto = d.referencia; U.T.forEach(t => add(t[5] || t[1], t[2], 'odonto', t[7] && t[7].length ? `Titular + ${t[7].length} dependente${t[7].length > 1 ? 's' : ''}` : 'Titular', refs.odonto)); } }
+  if (pode('alojamentos')) { const d = await window.CRV_DADOS('alojamentos'); const A = d && d.dados.DATA; if (A && A.people) { refs.aloj = d.referencia; A.people.filter(x => x.t === 'c' && x.m).forEach(x => { const h = A.houses && A.houses[x.h]; add(x.m, x.n, 'aloj', h ? `${h.n}${x.q ? ', quarto ' + x.q : ''}` : 'Alojado', refs.aloj); }); } }
+  const { data } = await sb.from('registros').select('doc_id,dados').eq('painel', 'quadro').eq('colecao', 'deslig_check').range(0, 4999);
+  const OK = {}; (data || []).forEach(r => { OK[r.doc_id] = (r.dados && r.dados.ok) || {}; });
+  const L = [...P.values()].map(x => { x.ok = OK[x.mat] || {}; x.pend = Object.keys(x.b).filter(k => !x.ok[k]); return x; })
+    .sort((a, b) => String(b.deslig).localeCompare(String(a.deslig)) || a.nome.localeCompare(b.nome));
+  return { L, refs, refQ: Q.referencia || '' };
+}
+async function marcarDesligamento(x, k, feito){
+  const ok = Object.assign({}, x.ok);
+  if (feito) ok[k] = { em: new Date().toISOString(), por: E.perfil.nome }; else delete ok[k];
+  const { error } = await sb.from('registros').upsert({ painel:'quadro', caminho:'deslig_check/' + x.mat, colecao:'deslig_check', doc_id:x.mat,
+    dados:{ mat:x.mat, nome:x.nome, deslig:x.deslig, ok }, atualizado_por:E.perfil.nome }, { onConflict:'painel,caminho' });
+  if (error) throw error;
+  x.ok = ok; x.pend = Object.keys(x.b).filter(q => !x.ok[q]);
+  try { localStorage.removeItem(centralChave()); } catch(_){}
+}
+async function pendenciasDesligamento(){
+  const D = await dadosDesligamento(); if (!D) return [];
+  const L = D.L.filter(x => x.pend.length);
   if (!L.length) return [];
-  return [{ id:'desl-check', sev:'crit', t:'Desligados com benefício ou alojamento ainda ativo', painel:'quadro', pnome:'Checklist de desligamento',
-    d:`Cruzamento do Quadro com ${fontes.join(', ')}. Cartão Alimentação e Premium não entram: o saldo pode ser usado depois da saída.`,
-    itens: L.map(x => ({ nome:x.nome, mat:x.mat, det:`${x.deslig ? 'desligado em ' + br(x.deslig) + ' · ' : ''}${x.itens.join(' · ')}` })) }];
+  const nomes = Object.keys(D.refs).map(k => DCK.find(d => d.k === k).n);
+  return [{ id:'desl-check', sev:'crit', t:'Desligados com benefício ou alojamento ainda ativo', painel:'', rota:'#/desligamento', pnome:'Checklist de desligamento',
+    d:`Cruzamento do Quadro com ${nomes.join(', ')}. Cartão Alimentação e Premium não entram: o saldo pode ser usado depois da saída.`,
+    itens: L.map(x => ({ nome:x.nome, mat:x.mat, det:`${x.deslig ? 'desligado em ' + brD(x.deslig) + ' · ' : ''}${x.pend.map(k => { const d = DCK.find(q => q.k === k); return `${d.n}: ${d.acao.toLowerCase()}`; }).join(' · ')}` })) }];
+}
+/* ---------- telas: Central do dia e Checklist de desligamento ---------- */
+function telaCentral(){
+  moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Gestão de Pessoas · CRV Industrial</div><h1>Central do dia</h1><div class="ini-data">Pendências de todos os painéis, das mais urgentes para as menos urgentes</div></div></section><section class="central" id="central"></section>`);
+  iniciarCentral();
+}
+async function telaDesligamento(){
+  moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Central do dia</div><h1>Checklist de desligamento</h1><div class="ini-data" id="dk-sub">Cruzando os desligados do Quadro com as bases de benefícios…</div></div>
+    <div class="dk-acoes"><button class="btn borda" id="dk-xls">Excel</button><button class="btn borda" id="dk-pdf">PDF</button></div></section>
+    <div id="dk-corpo"><div class="cartao vazio"><div class="spinner" style="margin:0 auto"></div></div></div>`);
+  let D;
+  try { D = await dadosDesligamento(); } catch(e) { D = null; }
+  const corpo = $('#dk-corpo'); if (!corpo) return;
+  if (!D) { corpo.innerHTML = `<div class="cartao vazio"><h3>Sem a base do Quadro Geral</h3><p>O checklist usa os desligados do Quadro Geral.</p></div>`; return; }
+  const fontes = DCK.filter(d => D.refs[d.k] !== undefined);
+  $('#dk-sub').innerHTML = `Desligados do Quadro de ${esc(brD(D.refQ))} × ${fontes.map(d => `${esc(d.n)} (base de ${esc(brD(D.refs[d.k]))})`).join(' · ')}. Cartão Alimentação e Premium não entram: o saldo pode ser usado depois da saída.`;
+  const F = { q:'', b:'', res:false, desde:'' };
+  const pode = podeEditar(E.paineis.find(x => x.id === 'quadro') || {});
+  const desenhar = () => {
+    const q = normal(F.q);
+    const base = D.L.filter(x => (!q || normal(x.nome + ' ' + x.mat + ' ' + x.setor).includes(q)) && (!F.desde || x.deslig >= F.desde));
+    const L = base.filter(x => (F.res ? true : x.pend.length) && (!F.b || (F.res ? x.b[F.b] : x.pend.includes(F.b))));
+    const n = k => base.filter(x => x.pend.includes(k)).length;
+    const nP = base.filter(x => x.pend.length).length, nR = base.reduce((a, x) => a + Object.keys(x.ok).filter(k => x.b[k]).length, 0);
+    corpo.innerHTML = `<section class="dk-kpis">
+        <button class="dk-k ${!F.b ? 'on' : ''}" data-b="" style="--c:var(--coral)"><span>Pessoas com pendência</span><b>${nP}</b></button>
+        ${fontes.map(d => `<button class="dk-k ${F.b === d.k ? 'on' : ''}" data-b="${d.k}" style="--c:${d.k === 'unimed' ? '#1a7f5a' : d.k === 'odonto' ? '#8e3b6a' : d.k === 'conv' ? '#2f6fa8' : '#b5731a'}"><span>${esc(d.n)}</span><b>${n(d.k)}</b><small>${esc(d.acao.toLowerCase())}</small></button>`).join('')}
+        <div class="dk-k ok" style="--c:var(--cane)"><span>Já resolvidos</span><b>${nR}</b><small>marcados como feitos</small></div></section>
+      <section class="dk-filtros cartao"><input id="dk-q" type="search" placeholder="Buscar nome, matrícula ou setor" value="${esc(F.q)}">
+        <label>Desligados desde <input type="date" id="dk-desde" value="${esc(F.desde)}"></label>
+        <label class="dk-chk"><input type="checkbox" id="dk-res" ${F.res ? 'checked' : ''}> Mostrar também os resolvidos</label></section>
+      <section class="dk-lista">${L.length ? L.map(x => `<article class="dk-p ${x.pend.length ? '' : 'feito'}">
+          <div class="dk-quem"><b>${esc(x.nome)}</b><span>${esc(x.mat)} · ${esc(x.funcao)}${x.setor ? ' · ' + esc(x.setor) : ''}</span><span class="dk-dt">Desligado em <b>${esc(brD(x.deslig)) || '—'}</b></span></div>
+          <div class="dk-bens">${DCK.filter(d => x.b[d.k]).map(d => { const b = x.b[d.k], ok = x.ok[d.k];
+            return `<div class="dk-b ${ok ? 'ok' : ''}"><div><strong>${esc(d.n)}</strong><small>${esc(b.det)}${b.depois && !ok ? ` · <i title="O desligamento é posterior à base deste benefício; a exclusão pode já ter sido feita">saiu depois da base de ${esc(brD(b.ref))}</i>` : ''}</small>
+              ${ok ? `<small class="dk-okt">Feito em ${esc(new Date(ok.em).toLocaleDateString('pt-BR'))}${ok.por ? ' por ' + esc(String(ok.por).split(' ')[0]) : ''}</small>` : `<small class="dk-ac">${esc(d.acao)}</small>`}</div>
+              ${pode ? `<button class="btn ${ok ? 'borda' : 'prim'} dk-mk" data-m="${esc(x.mat)}" data-k="${d.k}" data-f="${ok ? '0' : '1'}">${ok ? 'Desfazer' : 'Feito'}</button>` : ''}</div>`; }).join('')}</div></article>`).join('')
+        : `<div class="cartao vazio"><h3>${D.L.length ? 'Nada pendente com esses filtros' : 'Nenhum desligado com benefício ativo'}</h3></div>`}</section>`;
+    corpo.querySelectorAll('[data-b]').forEach(b => b.onclick = () => { F.b = b.dataset.b; desenhar(); });
+    const qi = $('#dk-q'); qi.oninput = () => { F.q = qi.value; const p = qi.selectionStart; desenhar(); const n2 = $('#dk-q'); n2.focus(); n2.setSelectionRange(p, p); };
+    $('#dk-desde').onchange = e => { F.desde = e.target.value; desenhar(); };
+    $('#dk-res').onchange = e => { F.res = e.target.checked; desenhar(); };
+    corpo.querySelectorAll('.dk-mk').forEach(b => b.onclick = async () => {
+      const x = D.L.find(y => y.mat === b.dataset.m); if (!x) return; b.disabled = true;
+      try { await marcarDesligamento(x, b.dataset.k, b.dataset.f === '1'); toast(b.dataset.f === '1' ? 'Marcado como feito.' : 'Marcação desfeita.'); desenhar(); }
+      catch(e) { b.disabled = false; toast('Não consegui salvar: ' + traduzErro(e), true); } });
+    D._vis = L;
+  };
+  desenhar();
+  const linhas = () => (D._vis || []).map(x => [x.nome, x.mat, x.funcao, x.setor, brD(x.deslig)].concat(fontes.map(d => !x.b[d.k] ? '' : x.ok[d.k] ? 'Feito ' + new Date(x.ok[d.k].em).toLocaleDateString('pt-BR') : 'Pendente: ' + d.acao.toLowerCase() + ' (' + x.b[d.k].det + ')')));
+  const cab = ['Colaborador', 'Matrícula', 'Função', 'Setor', 'Desligado em'].concat(fontes.map(d => d.n));
+  const nome = 'Checklist de desligamento ' + new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
+  $('#dk-xls').onclick = () => { const ws = XLSX.utils.aoa_to_sheet([cab, ...linhas()]); ws['!cols'] = cab.map((c, i) => ({ wch: i === 0 ? 34 : i > 4 ? 30 : 16 })); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Checklist'); baixar(new Blob([XLSX.write(wb, { bookType:'xlsx', type:'array' })], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), nome + '.xlsx'); };
+  $('#dk-pdf').onclick = () => { const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit:'pt', format:'a4', orientation:'landscape' });
+    cabecalhoPDF(doc, 'Checklist de desligamento', `${(D._vis || []).length} colaboradores · Alimentação e Premium não entram`);
+    doc.autoTable({ startY:110, head:[cab], body:linhas(), styles:{ fontSize:7.5, cellPadding:3, overflow:'linebreak' }, headStyles:{ fillColor:[36,66,124] }, alternateRowStyles:{ fillColor:[242,244,249] } });
+    rodapePDF(doc); baixar(doc.output('blob'), nome + '.pdf'); };
 }
 async function coletarCentral(){
   if (centralRodando) return; centralRodando = true;
@@ -490,12 +580,12 @@ async function coletarCentral(){
     try { out.push(...await pendenciasQuadro()); } catch(e){ console.warn('central quadro', e); }
     try { out.push(...await pendenciasDesligamento()); } catch(e){ console.warn('central desligamento', e); }
     for (const id of CENTRAL_FONTES) {
-      if (!['', '#/'].includes(location.hash)) break;
+      if (!['', '#/', '#/central'].includes(location.hash)) break;
       const p = E.paineis.find(x => x.id === id);
       if (!p || !podeVer(p) || !E.metas[id]) continue;
       try { out.push(...await pendenciasDoPainel(p)); } catch(e){ console.warn('central', id, e); }
     }
-    if (['', '#/'].includes(location.hash)) {
+    if (['', '#/', '#/central'].includes(location.hash)) {
       const c = { em: new Date().toISOString(), ass: centralAss(), itens: out };
       try { localStorage.setItem(centralChave(), JSON.stringify(c)); } catch(_){}
       desenharCentral(c, false);
@@ -518,7 +608,7 @@ function desenharCentral(c, carregando){
     ${L.length ? `<div class="cd-lista">${L.map(x => { const n = x.n || x.itens.length, ab = centralAbertos.has(x.id); return `<article class="cd-it ${ab ? 'aberto' : ''}" style="--c:${COR[x.sev]}" data-cid="${esc(x.id)}">
         <button class="cd-l" data-tog="${esc(x.id)}" aria-expanded="${ab}"><b class="cd-n">${n}</b><span class="cd-tx"><strong>${esc(x.t)}</strong><small>${esc(x.pnome)}${x.d ? ' · ' + esc(x.d) : ''}</small></span><span class="cd-seta">›</span></button>
         <div class="cd-nomes">${x.itens.slice(0, 40).map(i => `<div class="cd-p"><b>${esc(i.nome)}</b>${i.mat ? `<span class="cd-m">${esc(i.mat)}</span>` : ''}<small>${esc(i.det || '')}</small></div>`).join('')}${x.itens.length > 40 ? `<div class="cd-mais">+ ${x.itens.length - 40} no painel</div>` : ''}
-          <button class="btn prim cd-ir" data-ir="#/p/${encodeURIComponent(x.painel)}${x.acao ? '/' + x.acao : ''}">Abrir ${esc(x.pnome)}</button></div></article>`; }).join('')}</div>`
+          <button class="btn prim cd-ir" data-ir="${x.rota ? x.rota : '#/p/' + encodeURIComponent(x.painel) + (x.acao ? '/' + x.acao : '')}">Abrir ${esc(x.pnome)}</button></div></article>`; }).join('')}</div>`
       : carregando && !c ? '<div class="cd-vazio">Lendo Experiência, Férias, Crachás, Ônibus, Quadro e benefícios…</div>' : c ? '<div class="cd-vazio ok">Tudo em dia nos painéis acompanhados.</div>' : ''}`;
   el.querySelector('#cd-at').onclick = () => coletarCentral();
   el.querySelectorAll('[data-tog]').forEach(b => b.onclick = () => { const id = b.dataset.tog; centralAbertos.has(id) ? centralAbertos.delete(id) : centralAbertos.add(id); b.closest('.cd-it').classList.toggle('aberto'); b.setAttribute('aria-expanded', centralAbertos.has(id)); });
