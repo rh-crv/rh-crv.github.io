@@ -108,10 +108,15 @@ async function recortes(chaves){
     if (PREV && Array.isArray(PREV.grupos)) { const sec = new Set(P.map(p => normal(p.s)));
       // o grupo da previsão é da área quando o nome bate com a área (ou está contido na gerência); os itens são seções ou tipos de função
       const kn = normal(k.slice(2)), grupoDaArea = g => k[0] === 'a' && [g.g, g.dp].some(x => { const n = normal(x || ''); return n && n === kn; });
-      const itens = []; PREV.grupos.forEach(g => (g.itens || []).forEach(it => { const n = normal(it.n), porSecao = sec.has(n);
-        if (!porSecao && !grupoDaArea(g)) return;
-        const L = P.filter(p => p.sit === 'Ativo' && (porSecao ? normal(p.s) === n : normal(p.f + ' ' + p.s).includes(n)));
-        itens.push({ n:it.n, g:g.g || g.dp || '', p:+it.p || 0, t:L.length, x:L.filter(p => p.v === 'Experiência').length }); }));
+      // função: palavra inteira (Motorista I não pode contar Motorista II/III) e cada pessoa entra só no item mais específico
+      const palavras = x => normal(x).replace(/[^a-z0-9]+/g, ' ').trim(), temTermo = (txt, n) => (' ' + palavras(txt) + ' ').includes(' ' + palavras(n) + ' ');
+      const cand = []; PREV.grupos.forEach(g => (g.itens || []).forEach(it => { const n = normal(it.n); if (sec.has(n) || grupoDaArea(g)) cand.push([g, it, n, sec.has(n)]); }));
+      const dono = {}; P.forEach(p => { if (p.sit !== 'Ativo') return; let best = null;
+        cand.forEach(([g, it, n, porSecao]) => { if (porSecao || !(temTermo(p.f, n) || temTermo(p.s, n))) return; if (!best || palavras(it.n).length > palavras(best.n).length) best = it; });
+        if (best) dono[p.m] = best; });
+      const itens = []; cand.forEach(([g, it, n, porSecao]) => {
+        const L = P.filter(p => p.sit === 'Ativo' && (porSecao ? normal(p.s) === n : dono[p.m] === it));
+        itens.push({ n:it.n, g:g.g || g.dp || '', p:+it.p || 0, t:L.length, x:L.filter(p => p.v === 'Experiência').length }); });
       PV = { itens, posicao: PREV.posicao || PREV.atualizadoEm || '' }; }
     out.push({ chave:k, dados:{ chave:k, nome:nomeChave(k), tipo:tipoChave(k), P, MOV, PV, ref:{ quadro:Q.referencia, abs:ate, exp:refExp, fer:refFer, sai:(Object.values(EXR).length ? '' : '') }, gerado:new Date().toISOString(), por:E.perfil.nome } });
   }
