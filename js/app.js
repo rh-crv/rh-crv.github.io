@@ -79,6 +79,7 @@ function traduzErro(e){
   if (m.includes('failed to fetch') || m.includes('network')) return 'Sem conexão com o servidor. Verifique a internet.';
   if (m.includes('row-level security') || m.includes('permission denied')) return 'Você não tem permissão para essa ação.';
   if ((m.includes('areas') && m.includes('column')) || m.includes('area_dados') || m.includes('gestor_envios') || m.includes('perfis_papel_check')) return 'Falta preparar o banco para o perfil de gestor: rode o arquivo 04_gestor.sql no Supabase (SQL Editor).';
+  if (m.includes('paineis_ver') || m.includes('paineis_editar')) return 'Falta preparar o banco para liberar painéis um a um: rode o arquivo 05_equipe_rh.sql atualizado no Supabase.';
   if (m.includes('perfis_papel_check') && m.includes('rh')) return 'Falta preparar o banco para a Equipe RH: rode o arquivo 05_equipe_rh.sql no Supabase.';
   if (m.includes('relation') && m.includes('does not exist')) return 'O banco ainda não foi preparado. Rode o arquivo SQL no Supabase (passo a passo).';
   return e?.message || 'Algo deu errado. Tente novamente.';
@@ -188,8 +189,9 @@ async function carregarCatalogo(){
   if (E.metas.sysprocard && !E.metas['sysprocard-credito']) E.metas['sysprocard-credito'] = E.metas.sysprocard;
 }
 
-function podeVer(p){ if (!E.perfil) return false; if (ehRH()) return true; return p.nivel !== 'restrito' && (E.perfil.frentes||[]).includes(p.frente); }
-function podeEditar(p){ if (!E.perfil) return false; if (ehRH()) return true; return E.perfil.papel === 'editor' && p.nivel !== 'restrito' && (E.perfil.frentes||[]).includes(p.frente); }
+const porPainel = (k, p) => (E.perfil && Array.isArray(E.perfil[k]) ? E.perfil[k] : []).includes(p.id);
+function podeVer(p){ if (!E.perfil) return false; if (ehRH()) return true; if (E.perfil.papel !== 'gestor' && (porPainel('paineis_ver', p) || porPainel('paineis_editar', p))) return true; return p.nivel !== 'restrito' && (E.perfil.frentes||[]).includes(p.frente); }
+function podeEditar(p){ if (!E.perfil) return false; if (ehRH()) return true; if (E.perfil.papel !== 'gestor' && porPainel('paineis_editar', p)) return true; return E.perfil.papel === 'editor' && p.nivel !== 'restrito' && (E.perfil.frentes||[]).includes(p.frente); }
 
 function telaLogin(modo='entrar', msg=''){
   const primeiro = modo === 'primeiro';
@@ -293,6 +295,7 @@ function moldura(conteudo){
       <div class="lat-psub">${fil.map(p => `<button class="lat-acao ${p.id===atual?'ativo':''}" data-ir="#/p/${encodeURIComponent(p.id)}" style="--cor:${cfg.cor}"><i>${IA(p.id === 'sysprocard-credito' ? '<path d="M12 5v14M5 12h14"/>' : '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/>')}</i><span>${esc(p.nome)}</span>${p.nivel==='restrito'?`<span class="lat-rest">${CAD}</span>`:''}</button>`).join('')}</div>
     </div>`;
   };
+  const temQuadro = (() => { const q = E.paineis.find(x => x.id === 'quadro'); return !!(q && podeVer(q)); })();   // ficha e consulta usam o Quadro Geral
   const visiveis = E.paineis.filter(p => podeVer(p) && p.id !== 'curriculos' && !(SYSG.includes(p.id) && E.paineis.some(q => q.id === 'sysprocard' && podeVer(q))));
   const grupos = {};
   visiveis.forEach(x => (grupos[x.frente] = grupos[x.frente] || []).push(x));
@@ -317,8 +320,8 @@ function moldura(conteudo){
           <div class="lat-plinha"><button class="lat-item ${h==='#/central'?'ativo':''}" data-ir="#/central"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg><span>Central do dia</span></button><button class="lat-pseta" aria-label="Mostrar opções da Central do dia" aria-expanded="${h==='#/desligamento'||h==='#/bases'||h==='#/envios'?'true':'false'}">${CHEV}</button></div>
           <div class="lat-psub"><button class="lat-acao ${h==='#/desligamento'?'ativo':''}" data-ir="#/desligamento" style="--cor:var(--coral)"><i>${IA('<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>')}</i><span>Checklist de desligamento</span></button><button class="lat-acao ${h==='#/bases'?'ativo':''}" data-ir="#/bases" style="--cor:var(--cane)"><i>${IA('<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>')}</i><span>Saúde das bases</span></button>${ehRH() ? `<button class="lat-acao ${h==='#/envios'?'ativo':''}" data-ir="#/envios" style="--cor:#24427c"><i>${IA('<path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/>')}</i><span>Envios dos gestores</span></button>` : ''}</div>
         </div>
-        <button class="lat-item ${h.startsWith('#/ficha')?'ativo':''}" data-ir="#/ficha"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2.5"/><path d="M5.5 17c.6-1.8 2-2.7 3.5-2.7s2.9.9 3.5 2.7M14 9h4M14 13h4"/></svg><span>Ficha do colaborador</span></button>
-        <button class="lat-item ${h==='#/consulta'?'ativo':''}" data-ir="#/consulta"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="6"/><path d="M20 20l-5.6-5.6M8 10h4M10 8v4"/></svg><span>Consulta de candidato</span></button>
+        ${temQuadro ? `<button class="lat-item ${h.startsWith('#/ficha')?'ativo':''}" data-ir="#/ficha"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2.5"/><path d="M5.5 17c.6-1.8 2-2.7 3.5-2.7s2.9.9 3.5 2.7M14 9h4M14 13h4"/></svg><span>Ficha do colaborador</span></button>` : ''}
+        ${temQuadro ? `<button class="lat-item ${h==='#/consulta'?'ativo':''}" data-ir="#/consulta"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="6"/><path d="M20 20l-5.6-5.6M8 10h4M10 8v4"/></svg><span>Consulta de candidato</span></button>` : ''}
         ${ehRH() ? `<button class="lat-item ${h==='#/relatorio'?'ativo':''}" data-ir="#/relatorio"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 17v-3M12 17v-6M15 17v-2"/></svg><span>Relatório da diretoria</span></button>` : ''}
         <div class="lat-busca"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="lat-q" type="search" placeholder="Buscar painel ou ação" autocomplete="off" aria-label="Buscar painel"></div>
         <div class="lat-sec">Frentes</div>
@@ -1989,7 +1992,7 @@ async function adminUsuarios(){
     <p style="color:var(--mut);margin-top:0;font-size:13px"><b>Administrador principal</b> faz tudo: importa bases, cria e tira painéis, cadastra usuários e muda configurações · <b>Equipe RH</b> vê todos os painéis (inclusive restritos) e faz todos os lançamentos, mas não importa bases nem mexe na estrutura · <b>Editor</b> vê e atualiza as frentes liberadas · <b>Leitor</b> só consulta as frentes liberadas · <b>Gestor de área</b> vê só a própria equipe (experiência, férias, frequência, novos e crachás), sem acesso aos painéis. Painéis <span class="selo restrito">restrito</span> são só de administradores.</p>
     ${data.map((u,i)=>`<div class="linha-u ${u.ativo?'':'inativo'}">
       <div class="av" style="background:${PALETA[i%PALETA.length]}">${esc(iniciais(u.nome))}</div>
-      <div class="info"><b>${esc(u.nome)}</b> ${u.ativo?'':'<small>(desativado)</small>'}<br><small>@${esc(u.usuario)} · ${esc(nomePapel(u.papel))}${u.papel==='admin'?' · todas as frentes':u.papel==='rh'?' · todos os painéis, só lançamentos':u.papel==='gestor'?` · ${(u.areas||[]).length ? esc((u.areas||[]).map(k=>k.slice(2)).join(', ')) : 'nenhuma área vinculada'}`:` · ${u.frentes?.length ? esc(u.frentes.join(', ')) : 'nenhuma frente liberada'}`}</small></div>
+      <div class="info"><b>${esc(u.nome)}</b> ${u.ativo?'':'<small>(desativado)</small>'}<br><small>@${esc(u.usuario)} · ${esc(nomePapel(u.papel))}${u.papel==='admin'?' · todas as frentes':u.papel==='rh'?' · todos os painéis, só lançamentos':(u.paineis_ver||[]).length||(u.paineis_editar||[]).length?` · ${u.frentes?.length ? esc(u.frentes.join(', ')) + ' + ' : ''}painéis: ${esc([...(u.paineis_ver||[]), ...(u.paineis_editar||[])].map(id => (E.paineis.find(x => x.id === id) || {}).nome || id).join(', '))}`:u.papel==='gestor'?` · ${(u.areas||[]).length ? esc((u.areas||[]).map(k=>k.slice(2)).join(', ')) : 'nenhuma área vinculada'}`:` · ${u.frentes?.length ? esc(u.frentes.join(', ')) : 'nenhuma frente liberada'}`}</small></div>
       <button class="btn peq borda" data-edit="${esc(u.user_id)}">Editar</button>
       <button class="btn peq borda" data-senha="${esc(u.user_id)}">Nova senha</button>
     </div>`).join('')}`;
@@ -2013,14 +2016,21 @@ function formUsuario(u, todos){
         ${['leitor','editor','gestor','rh','admin'].map(p=>`<option value="${p}" ${(u?.papel||'leitor')===p?'selected':''}>${nomePapel(p)}</option>`).join('')}</select></div>
       <div class="campo" id="u-frentes-box"><label>Frentes liberadas</label>
         <div class="checks">${frentes.map(f=>`<label><input type="checkbox" value="${esc(f)}" ${(u?.frentes||[]).includes(f)?'checked':''}> ${esc(f)}</label>`).join('')}</div></div>
+      <div class="campo" id="u-pain-box"><label>Painéis liberados um a um</label><input id="u-pain-q" type="search" placeholder="Filtrar painéis" style="margin-bottom:6px">
+        <div class="checks gs-areas u-pain">${E.paineis.filter(x => x.id !== 'curriculos' && x.id !== 'sysprocard-credito').slice().sort((a, b) => a.frente.localeCompare(b.frente, 'pt-BR') || a.nome.localeCompare(b.nome, 'pt-BR')).map(x => { const v = (u?.paineis_ver || []).includes(x.id), ed = (u?.paineis_editar || []).includes(x.id);
+          return `<div class="u-pl" data-q="${esc(normal(x.nome + ' ' + x.frente))}"><span><b>${esc(x.nome)}</b><small>${esc(x.frente)}${x.nivel === 'restrito' ? ' · restrito' : ''}</small></span><label><input type="checkbox" data-pv="${esc(x.id)}" ${v || ed ? 'checked' : ''}> Ver e exportar</label><label><input type="checkbox" data-pe="${esc(x.id)}" ${ed ? 'checked' : ''}> Pode lançar</label></div>`; }).join('')}</div>
+        <small style="color:var(--mut)">Além das frentes marcadas acima. Use para liberar só alguns painéis, por exemplo para Treinamento e Desenvolvimento. "Ver e exportar" permite consultar e baixar PDF e Excel, sem alterar nada. "Pode lançar" só quando você permitir.</small></div>
       <div class="campo oculto" id="u-areas-box"><label>Equipe que o gestor vê</label><input id="u-areas-q" type="search" placeholder="Filtrar áreas e gerências" style="margin-bottom:6px">
         <div class="checks gs-areas" id="u-areas"><small style="color:var(--mut)">Carregando as áreas do Quadro…</small></div>
         <small style="color:var(--mut)">Marque a área (como no Quadro) ou a gerência. O gestor vê só essas pessoas, sem CPF, salário, saúde ou ocorrências sensíveis.</small></div>
       ${!novo ? `<div class="campo"><label><input type="checkbox" id="u-ativo" ${u.ativo?'checked':''}> Usuário ativo (desmarque para bloquear o acesso)</label></div>` : ''}`,
     pe: `<button class="btn borda" id="u-c">Cancelar</button><button class="btn prim" id="u-ok">${novo?'Criar usuário':'Salvar'}</button>`,
     aoAbrir: m => {
-      const atualizaFrentes = () => { const pp = $('#u-papel').value; $('#u-frentes-box').classList.toggle('oculto', pp === 'admin' || pp === 'gestor' || pp === 'rh'); $('#u-areas-box').classList.toggle('oculto', pp !== 'gestor'); };
+      const atualizaFrentes = () => { const pp = $('#u-papel').value; $('#u-frentes-box').classList.toggle('oculto', pp === 'admin' || pp === 'gestor' || pp === 'rh'); $('#u-pain-box').classList.toggle('oculto', pp === 'admin' || pp === 'gestor' || pp === 'rh'); $('#u-areas-box').classList.toggle('oculto', pp !== 'gestor'); };
       $('#u-papel').onchange = atualizaFrentes; atualizaFrentes();
+      m.querySelectorAll('[data-pe]').forEach(i => i.onchange = () => { if (i.checked) m.querySelector(`[data-pv="${i.dataset.pe}"]`).checked = true; });
+      m.querySelectorAll('[data-pv]').forEach(i => i.onchange = () => { if (!i.checked) m.querySelector(`[data-pe="${i.dataset.pv}"]`).checked = false; });
+      $('#u-pain-q').oninput = e => { const q = normal(e.target.value); m.querySelectorAll('.u-pl').forEach(l => l.style.display = !q || l.dataset.q.includes(q) ? '' : 'none'); };
       GESTOR().opcoes().then(L => { const box = $('#u-areas'); if (!box) return; const sel = new Set(u?.areas || []);
         box.innerHTML = L.length ? L.map(o => `<label data-q="${esc(normal(o.k))}"><input type="checkbox" value="${esc(o.k)}" ${sel.has(o.k)?'checked':''}> <span>${esc(o.k.slice(2))}</span> <small>${o.k[0]==='g'?'gerência':'área'} · ${o.n}</small></label>`).join('') : '<small>Carregue o Quadro Geral para listar as áreas.</small>';
         $('#u-areas-q').oninput = e => { const q = normal(e.target.value); box.querySelectorAll('label').forEach(l => l.style.display = !q || l.dataset.q.includes(q) ? '' : 'none'); }; });
@@ -2032,7 +2042,10 @@ function formUsuario(u, todos){
         const fr = papel === 'admin' || papel === 'gestor' || papel === 'rh' ? [] : [...m.querySelectorAll('#u-frentes-box .checks input:checked')].map(x=>x.value);
         const ar = papel === 'gestor' ? [...m.querySelectorAll('#u-areas input:checked')].map(x=>x.value) : [];
         if (papel === 'gestor' && !ar.length) return erro('Marque pelo menos uma área para o gestor.');
-        const comAreas = o => (papel === 'gestor' || (u && u.areas !== undefined)) ? Object.assign(o, { areas:ar }) : o;
+        const semPain = papel === 'admin' || papel === 'gestor' || papel === 'rh';
+        const pe = semPain ? [] : [...m.querySelectorAll('[data-pe]:checked')].map(x => x.dataset.pe), pv = semPain ? [] : [...m.querySelectorAll('[data-pv]:checked')].map(x => x.dataset.pv).filter(id => !pe.includes(id));
+        const comPain = o => (pv.length || pe.length || (u && u.paineis_ver !== undefined)) ? Object.assign(o, { paineis_ver:pv, paineis_editar:pe }) : o;
+        const comAreas = o => comPain((papel === 'gestor' || (u && u.areas !== undefined)) ? Object.assign(o, { areas:ar }) : o);
         if (!nome) return erro('Informe o nome.');
         bt.disabled = true; bt.textContent = 'Salvando...';
         try {
