@@ -386,6 +386,7 @@ function telaInicio(){
       </div>
       <input class="ini-busca" id="busca" type="search" placeholder="Buscar painel…" aria-label="Buscar painel">
     </section>
+    <section class="central" id="central"></section>
     <section class="ini-stats">
       <div class="ist"><span>Painéis disponíveis</span><b>${visiveis.length}</b><small>em ${frentes.length} frentes</small></div>
       <div class="ist"><span>Atualizados na semana</span><b>${semana.length}</b><small>últimos 7 dias</small></div>
@@ -402,11 +403,114 @@ function telaInicio(){
     $('#b-inst-x') && ($('#b-inst-x').onclick = () => { $('#faixa-instalar').remove(); try{localStorage.setItem('crv-inst-x','1')}catch(_){} });
   }
   document.querySelectorAll('[data-painel]').forEach(b => b.onclick = () => location.hash = '#/p/' + encodeURIComponent(b.dataset.painel));
+  iniciarCentral();
   $('#busca')?.addEventListener('input', ev => {
     const q = normal(ev.target.value);
     document.querySelectorAll('.tile').forEach(b => b.classList.toggle('oculto', q && !normal(b.dataset.nome).includes(q)));
     document.querySelectorAll('.ini-frente').forEach(f => f.classList.toggle('oculto', !f.querySelector('.tile:not(.oculto)')));
   });
+}
+
+/* =====================================================================
+   CENTRAL DO DIA: pendências de todos os painéis num lugar só.
+   Cada painel calcula as próprias pendências (window.CRV_PENDENCIAS) com as mesmas regras que mostra na tela;
+   o app abre os painéis escondidos, recolhe e guarda o resultado por algumas horas.
+   ===================================================================== */
+const CENTRAL_FONTES = ['experiencia', 'ferias', 'crachas', 'onibus'];
+const CENTRAL_VALIDADE = 3 * 3600e3;
+const centralChave = () => 'crv-central-' + (E.perfil ? E.perfil.id || E.perfil.nome : '');
+let centralRodando = false;
+function centralCache(){ try { return JSON.parse(localStorage.getItem(centralChave()) || 'null'); } catch(_) { return null; } }
+// assinatura dos dados das fontes: se algum painel recebeu dados novos, a central é refeita
+const centralAss = () => ['quadro'].concat(CENTRAL_FONTES).map(id => id + ':' + ((E.metas[id] && (E.metas[id].atualizado_em || E.metas[id].referencia)) || '')).join('|');
+async function htmlDoPainel(p){
+  const pid = PAC_DE[p.id] || p.id;
+  const [pac, tpl] = await Promise.all([
+    sb.from('pacotes').select('referencia,conteudo').eq('painel', pid).maybeSingle(),
+    fetch(MODELOS[p.id] + '?v=' + CFG.VERSAO, { cache:'no-cache' }).then(r => r.ok ? r.text() : null).catch(() => null)
+  ]);
+  const d = pac && pac.data; if (!d || !tpl) return null;
+  if (d.conteudo && d.conteudo.arquivo) d.conteudo = await lerArquivoPacote(pid, d.conteudo.arquivo);
+  let novos = [];
+  if (PAINEIS_COM_NOVOS.includes(p.id)) {
+    const cols = [].concat(COLECAO_NOVOS[p.id] || 'novos');
+    const r = await sb.from('registros').select('doc_id,dados,colecao').eq('painel', p.id).in('colecao', cols).range(0, 4999);
+    if (!r.error) novos = (r.data || []).filter(x => x.dados && !x.dados.excluida).map(x => cols.length > 1 ? { _id: x.doc_id, colecao: x.colecao, dados: x.dados } : { _id: x.doc_id, dados: x.dados });
+  }
+  const ponte = window.CRV_PONTE.criar({ sb, painel: pid, perfil: () => E.perfil, quem: () => E.perfil.nome, podeEditar: () => podeEditar(p), ehAdmin: () => ehAdmin() });
+  return { html: montarModelo(tpl, d.conteudo, d.referencia, p, novos), ponte, ref: d.referencia || '' };
+}
+const espera = ms => new Promise(ok => setTimeout(ok, ms));
+async function pendenciasDoPainel(p){
+  const r = await htmlDoPainel(p); if (!r) return [];
+  const nm = 'crvc-' + p.id + '-' + Date.now();
+  window.__CRV_PONTES = window.__CRV_PONTES || {}; window.__CRV_PONTES[nm] = r.ponte;
+  const fr = document.createElement('iframe'); fr.name = nm; fr.setAttribute('aria-hidden', 'true'); fr.tabIndex = -1;
+  fr.style.cssText = 'position:fixed;left:-20000px;top:0;width:1280px;height:900px;visibility:hidden;border:0;pointer-events:none';
+  const url = URL.createObjectURL(new Blob([r.html], { type:'text/html' }));
+  try {
+    await new Promise(ok => { fr.onload = ok; setTimeout(ok, 25000); fr.src = url; document.body.appendChild(fr); });
+    let L = null;
+    for (let i = 0; i < 14 && !L; i++) { await espera(600); try { const f = fr.contentWindow.CRV_PENDENCIAS; if (typeof f === 'function') L = await f(i >= 12); } catch(_){} }
+    return (L || []).map(x => Object.assign(x, { painel: p.id, pnome: p.nome, ref: r.ref }));
+  } finally { fr.remove(); URL.revokeObjectURL(url); delete window.__CRV_PONTES[nm]; }
+}
+async function pendenciasQuadro(){
+  const q = E.paineis.find(x => x.id === 'quadro'); if (!q || !podeVer(q)) return [];
+  const { data, error } = await sb.from('registros').select('colecao,dados').eq('painel', 'quadro').in('colecao', ['entrevistas', 'entrevistas_resp', 'estabilidade']).range(0, 4999);
+  if (error || !data) return [];
+  const R = [], hoje = new Date(); const iso = d => d.toISOString().slice(0, 10); const br = s => s ? String(s).slice(0, 10).split('-').reverse().join('/') : '';
+  const resp = new Set(data.filter(x => x.colecao === 'entrevistas_resp' && x.dados && !x.dados.excluida).map(x => String(x.dados.mat)));
+  const lim = iso(new Date(hoje - 3 * 864e5));
+  const sem = data.filter(x => x.colecao === 'entrevistas' && x.dados && !x.dados.excluida && !resp.has(String(x.dados.mat)) && String(x.dados.emitidoEm || '').slice(0, 10) <= lim);
+  if (sem.length) R.push({ id:'q-ent', sev:'info', t:'Entrevistas de desligamento sem resposta lançada', d:'Formulário gerado há mais de 3 dias. Recolher a via preenchida e lançar as respostas.', painel:'quadro', pnome:'Quadro Geral', acao:'entr',
+    itens: sem.map(x => ({ nome:x.dados.nome, mat:x.dados.mat, det:`${x.dados.func || ''} · gerado em ${br(x.dados.emitidoEm)}` })) });
+  const ate = iso(new Date(hoje.getTime() + 30 * 864e5)), hj = iso(hoje);
+  const es = data.filter(x => x.colecao === 'estabilidade' && x.dados && !x.dados.excluida && !x.dados.encerrada && x.dados.fim && x.dados.fim >= hj && x.dados.fim <= ate);
+  if (es.length) R.push({ id:'q-est', sev:'info', t:'Estabilidades terminam em até 30 dias', d:'Conferir antes de qualquer desligamento.', painel:'quadro', pnome:'Quadro Geral', acao:'estab',
+    itens: es.sort((a, b) => a.dados.fim.localeCompare(b.dados.fim)).map(x => ({ nome:x.dados.nome, mat:x.dados.mat, det:`${x.dados.tipo || ''} · até ${br(x.dados.fim)}` })) });
+  return R;
+}
+async function coletarCentral(){
+  if (centralRodando) return; centralRodando = true;
+  desenharCentral(centralCache(), true);
+  const out = [];
+  try {
+    try { out.push(...await pendenciasQuadro()); } catch(e){ console.warn('central quadro', e); }
+    for (const id of CENTRAL_FONTES) {
+      if (!['', '#/'].includes(location.hash)) break;
+      const p = E.paineis.find(x => x.id === id);
+      if (!p || !podeVer(p) || !E.metas[id]) continue;
+      try { out.push(...await pendenciasDoPainel(p)); } catch(e){ console.warn('central', id, e); }
+    }
+    if (['', '#/'].includes(location.hash)) {
+      const c = { em: new Date().toISOString(), ass: centralAss(), itens: out };
+      try { localStorage.setItem(centralChave(), JSON.stringify(c)); } catch(_){}
+      desenharCentral(c, false);
+    }
+  } finally { centralRodando = false; }
+}
+function iniciarCentral(){
+  const c = centralCache();
+  if (c && c.ass === centralAss() && Date.now() - new Date(c.em) < CENTRAL_VALIDADE) desenharCentral(c, false); else coletarCentral();
+}
+const centralAbertos = new Set();
+function desenharCentral(c, carregando){
+  const el = $('#central'); if (!el) return;
+  const SEV = { crit:0, warn:1, info:2 }, COR = { crit:'var(--coral)', warn:'var(--amber)', info:'#2f7ea8' };
+  const L = ((c && c.itens) || []).filter(x => x.itens && x.itens.length).sort((a, b) => SEV[a.sev] - SEV[b.sev]);
+  const hora = c ? new Date(c.em).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '';
+  const nCrit = L.filter(x => x.sev === 'crit').length;
+  el.innerHTML = `<header class="cd-cab"><div><h2>Central do dia</h2><span>${carregando ? 'Atualizando as pendências dos painéis…' : c ? `${L.length ? `${L.length} ${L.length === 1 ? 'pendência' : 'pendências'}${nCrit ? ` · <b>${nCrit} urgente${nCrit > 1 ? 's' : ''}</b>` : ''}` : 'Nenhuma pendência'} · atualizado em ${esc(hora)}` : ''}</span></div>
+      <button class="btn borda cd-at" id="cd-at" ${carregando ? 'disabled' : ''}>${carregando ? '<span class="spinner pq"></span>' : 'Atualizar'}</button></header>
+    ${L.length ? `<div class="cd-lista">${L.map(x => { const n = x.n || x.itens.length, ab = centralAbertos.has(x.id); return `<article class="cd-it ${ab ? 'aberto' : ''}" style="--c:${COR[x.sev]}" data-cid="${esc(x.id)}">
+        <button class="cd-l" data-tog="${esc(x.id)}" aria-expanded="${ab}"><b class="cd-n">${n}</b><span class="cd-tx"><strong>${esc(x.t)}</strong><small>${esc(x.pnome)}${x.d ? ' · ' + esc(x.d) : ''}</small></span><span class="cd-seta">›</span></button>
+        <div class="cd-nomes">${x.itens.slice(0, 40).map(i => `<div class="cd-p"><b>${esc(i.nome)}</b>${i.mat ? `<span class="cd-m">${esc(i.mat)}</span>` : ''}<small>${esc(i.det || '')}</small></div>`).join('')}${x.itens.length > 40 ? `<div class="cd-mais">+ ${x.itens.length - 40} no painel</div>` : ''}
+          <button class="btn prim cd-ir" data-ir="#/p/${encodeURIComponent(x.painel)}${x.acao ? '/' + x.acao : ''}">Abrir ${esc(x.pnome)}</button></div></article>`; }).join('')}</div>`
+      : carregando && !c ? '<div class="cd-vazio">Lendo Experiência, Férias, Crachás, Ônibus e Quadro…</div>' : c ? '<div class="cd-vazio ok">Tudo em dia nos painéis acompanhados.</div>' : ''}`;
+  el.querySelector('#cd-at').onclick = () => coletarCentral();
+  el.querySelectorAll('[data-tog]').forEach(b => b.onclick = () => { const id = b.dataset.tog; centralAbertos.has(id) ? centralAbertos.delete(id) : centralAbertos.add(id); b.closest('.cd-it').classList.toggle('aberto'); b.setAttribute('aria-expanded', centralAbertos.has(id)); });
+  el.querySelectorAll('.cd-ir').forEach(b => b.onclick = () => location.hash = b.dataset.ir);
 }
 
 function blocoFrente(f, lista){

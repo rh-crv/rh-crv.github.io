@@ -1418,10 +1418,22 @@ render();
   db = d; downloads = dl; if (downloads) $("#btnExport").hidden = false;
   if (u) { try { const c = await u.can("data.write"); if (c === false) { canWrite = false; $("#btnNovo").hidden = true; } } catch {} }
   if (!db) { $("#banner").hidden = false; $("#banner").textContent = "Entre na sua conta Claude para ver e editar os treinamentos deste painel."; return; }
-  db.collection("treinamentos").onSnapshot(snap => { recs = snap.docs.map(x => ({ id: x.id, ...x.data() })); render(); },
+  db.collection("treinamentos").onSnapshot(snap => { recs = snap.docs.map(x => ({ id: x.id, ...x.data() })); render(); window.__crvPend=1; },
     () => { $("#banner").hidden = false; $("#banner").textContent = "A conexão com os dados foi interrompida. Recarregue a página."; });
 })();
 })();
+
+/* Central do dia (Início do app) */
+window.CRV_PENDENCIAS=function(forcar){
+  if(!window.__crvPend&&!forcar) return null;
+  const all=recs.map(derive), venc=all.filter(r=>r.st==="vencendo").sort((a,b)=>a.rest-b.rest), pend=all.filter(r=>r.pendente);
+  const it=L=>L.map(r=>({nome:r.nome,mat:r.mat,det:`${r.funcaoTrein||''}${r.fim?' · crachá vence em '+br(r.fim):''}`}));
+  const R=[];
+  if(pend.length) R.push({id:'cr-pend',sev:'warn',t:'Crachás vencidos sem avaliação',d:'Registrar o resultado do treinamento.',itens:it(pend)});
+  if(venc.length) R.push({id:'cr-venc',sev:'info',t:`Crachás vencem em até ${ALERT_DAYS} dias`,d:'Programar a avaliação antes do vencimento.',itens:it(venc)});
+  return R;
+};
+
 </script>
 
 </body></html>

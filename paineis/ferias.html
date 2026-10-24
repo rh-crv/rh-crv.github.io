@@ -1522,11 +1522,24 @@ recompute(); render();
     setChip(CAN_EDIT, CAN_EDIT ? 'Você pode programar férias' : 'Somente leitura');
     db.collection('prog').onSnapshot(snap=>{
       const m={}; snap.docs.forEach(d=>{ if(!d.exists) return; const v=d.data(); if(v&&PBYKEY[d.id]) m[d.id]={...v,src:'painel'}; });
-      PROG=m; recompute(); render();
-    }, err=>{ setChip(false,'Programações indisponíveis no momento'); });
+      PROG=m; recompute(); render(); window.__crvPend=1;
+    }, err=>{ window.__crvPend=1; setChip(false,'Programações indisponíveis no momento'); });
     recompute(); render();
   }catch(e){ setChip(false,'Somente leitura'); }
 })();
+
+/* Central do dia (Início do app) */
+window.CRV_PENDENCIAS=function(forcar){
+  if(!window.__crvPend&&!forcar) return null;
+  const grp=st=>{ const m=new Map(); PERIODS.filter(x=>x.st===st).forEach(x=>{ const k=x.person.c; if(!m.has(k)) m.set(k,[]); m.get(k).push(x); });
+    return [...m.values()].map(L=>{ L.sort((a,b)=>a.limD-b.limD); const p=L[0].person; return {nome:p.n,mat:p.c,det:`${L.length>1?L.length+' períodos · ':''}limite ${fmtS(L[0].lim)} · ${p.dp} › ${p.d}`,_d:L[0].limD}; }).sort((a,b)=>a._d-b._d); };
+  const v=grp('venc'), d30=grp('d30'), R=[];
+  const nv=PERIODS.filter(x=>x.st==='venc').length, n30=PERIODS.filter(x=>x.st==='d30').length;
+  if(nv) R.push({id:'fer-venc',sev:'crit',t:'Períodos de férias vencidos',d:'Sem programação. Férias concedidas depois do prazo são pagas em dobro (CLT, art. 137).',n:nv,itens:v});
+  if(n30) R.push({id:'fer-30',sev:'warn',t:'Períodos de férias vencem em até 30 dias',d:'Sem data programada.',n:n30,itens:d30});
+  return R;
+};
+
 </script>
 
 

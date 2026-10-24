@@ -1170,7 +1170,7 @@ function refresh(){ALLA.forEach(apply);PX.forEach(apply);splitEnc();buildWeeks()
   let db=null,user=null;try{[db,user]=await Promise.all([window.claude.use("db"),window.claude.use("user")])}catch(e){}
   if(!db)return;DBH=db;
   try{CANW=user?!!(await user.canEdit()):false}catch(e){CANW=false}
-  db.collection("registros").onSnapshot(s=>{const R={};s.docs.forEach(d=>{const m=+d.id.replace(/^m/,"");const v=d.data();if(m&&v)R[m]=v});REG=R;refresh()},()=>{});
+  db.collection("registros").onSnapshot(s=>{const R={};s.docs.forEach(d=>{const m=+d.id.replace(/^m/,"");const v=d.data();if(m&&v)R[m]=v});REG=R;refresh();window.__crvPend=1},()=>{window.__crvPend=1});
   refresh();
 })();
 
@@ -1477,6 +1477,20 @@ function formXlsx(items,fname){
 const gd=document.getElementById("guide");try{if(localStorage.getItem("exp_guide")==="1")gd.open=true}catch(e){}gd.addEventListener("toggle",()=>{try{localStorage.setItem("exp_guide",gd.open?"1":"0")}catch(e){}});
 let t0tab="P";try{t0tab=localStorage.getItem("exp_tab")||"P"}catch(e){}
 tab(["N","A","F"].includes(t0tab)?t0tab:"P");
+
+/* Central do dia (Início do app): pendências calculadas com as mesmas regras deste painel */
+window.CRV_PENDENCIAS=function(forcar){
+  if(!window.__crvPend&&!forcar) return null;
+  const it=L=>L.slice().sort((a,b)=>a.dias-b.dias).map(p=>({nome:p.nome,mat:p.mat,det:`${p.tipo} ${p.dias<0?'venceu em':'vence em'} ${fdy(p.data)} · ${p.set}${p.cur?' · área: '+DEC[p.cur.decisao][0].toLowerCase():p.av?' · avaliação recebida':' · sem avaliação'}`}));
+  const ven=P.filter(p=>p.dias<0&&!(p.cur&&p.cur.decisao==='efetivar')&&!p.arEf), a7=P.filter(p=>p.dias>=0&&p.dias<=7), a15=P.filter(p=>p.dias>=8&&p.dias<=15);
+  const sem7=a7.filter(p=>!p.cur&&!p.av);
+  const R=[];
+  if(ven.length) R.push({id:'exp-ven',sev:'crit',t:'Experiências com prazo encerrado',d:'Passaram da data sem decisão de efetivar e sem encerramento registrado.',itens:it(ven)});
+  if(a7.length) R.push({id:'exp-7',sev:sem7.length?'crit':'warn',t:'Experiências vencem em até 7 dias',d:sem7.length?`${sem7.length} ainda sem avaliação da área.`:'Todas já têm avaliação.',itens:it(a7)});
+  if(a15.length) R.push({id:'exp-15',sev:'info',t:'Experiências vencem de 8 a 15 dias',d:'Entram no próximo envio às áreas.',itens:it(a15)});
+  return R;
+};
+
 </script>
 
 

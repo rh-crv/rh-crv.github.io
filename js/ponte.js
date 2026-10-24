@@ -304,7 +304,7 @@ window.CRV_PONTE = {
   },
   // código que roda dentro do painel, antes de tudo
   scriptPainel(){
-    return `(function(){var P=window.parent&&window.parent.__CRV_PAINEL;
+    return `(function(){var P=window.parent&&((window.parent.__CRV_PONTES||{})[window.name]||window.parent.__CRV_PAINEL);
 window.claude={use:function(n){return Promise.resolve(P?P.capacidade(n):null)}};
 var f0=window.fetch.bind(window);
 window.fetch=function(u,o){var s=typeof u==='string'?u:(u&&u.url)||'';if(s.indexOf('/_blob/')===0&&P)return P.blob(s.slice(7).split(/[?#]/)[0]);return f0(u,o)};

@@ -842,6 +842,15 @@ renderSummary(); renderGeral(); initFrota(); renderFrota(); renderDisp(); render
 let T0='geral'; try{ const t=localStorage.getItem('onibus-tab'); if(TABS.includes(t)) T0=t; }catch(e){}
 setTab(T0);
 (async()=>{ try{ DL = await window.claude?.use?.('downloads') ?? null; }catch(e){ DL=null; } })();
+
+/* Central do dia (Início do app) */
+window.CRV_PENDENCIAS=function(){
+  const R=[], bi=b=>({nome:'Ônibus '+b.f,mat:'',det:`${b.en} · ${b.pax} passageiros · vistoria vencida em ${fmt(b.pv)}`});
+  const L=LVREAL(); if(L.length) R.push({id:'on-vist',sev:'crit',t:'Ônibus liberados com vistoria vencida',d:`Acompanhamento de ${fmt(REF)}.`,itens:L.map(bi)});
+  if(typeof INT_RODA!=='undefined'&&INT_RODA.length) R.push({id:'on-int',sev:'crit',t:'Ônibus interditados pela Segurança e liberados no acompanhamento',d:'Falta o relatório da Segurança liberando.',itens:INT_RODA.map(b=>({nome:'Ônibus '+b.f,mat:'',det:`${b.en} · interditado em ${fmt(b.seg.d)}`}))});
+  return R;
+};
+
 </script>
 
 </body></html>
