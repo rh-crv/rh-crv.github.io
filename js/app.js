@@ -710,6 +710,8 @@ async function coletarCentral(){
   try {
     try { out.push(...await pendenciasQuadro()); } catch(e){ console.warn('central quadro', e); }
     try { out.push(...await pendenciasDesligamento()); } catch(e){ console.warn('central desligamento', e); }
+    if (ehAdmin()) try { const u = await ultimoBackup(); const d = u && u.em ? Math.floor((Date.now() - new Date(u.em)) / 864e5) : null;
+      if (d == null || d > 7) out.push({ id:'bk', sev:'info', t:'Cópia de segurança do app', d: d == null ? 'Nenhuma cópia feita ainda.' : `A última foi há ${d} dias. Recomendado: uma vez por semana.`, painel:'', rota:'#/admin', pnome:'Administração', n: d == null ? '!' : d + 'd', itens:[{ nome:'Baixar a cópia em Administração → Cópia de segurança', mat:'', det:'Guarda tudo o que foi lançado no app e não existe nas planilhas.' }] }); } catch(_){}
     for (const id of CENTRAL_FONTES) {
       if (location.hash !== '#/central') break;
       const p = E.paineis.find(x => x.id === id);
@@ -1723,12 +1725,90 @@ async function telaAdmin(){
       <button class="aba ${abaAdmin==='usuarios'?'ativa':''}" data-aba="usuarios">Usuários e acessos</button>
       <button class="aba ${abaAdmin==='paineis'?'ativa':''}" data-aba="paineis">Painéis e frentes</button>
       <button class="aba ${abaAdmin==='historico'?'ativa':''}" data-aba="historico">Histórico</button>
+      <button class="aba ${abaAdmin==='backup'?'ativa':''}" data-aba="backup">Cópia de segurança</button>
     </div><div id="admin-corpo" class="cartao"><div class="spinner" style="margin:20px auto"></div></div>`);
   document.querySelector('.trilha [data-ir]').onclick = () => location.hash = '#/';
   document.querySelectorAll('[data-aba]').forEach(b => b.onclick = () => { abaAdmin = b.dataset.aba; telaAdmin(); });
   if (abaAdmin === 'usuarios') return adminUsuarios();
   if (abaAdmin === 'paineis') return adminPaineis();
+  if (abaAdmin === 'backup') return adminBackup();
   return adminHistorico();
+}
+
+/* ---------- Cópia de segurança: tudo o que foi lançado no app (registros), bases carregadas e usuários ---------- */
+async function lerTudo(tabela, campos, ordem){
+  const out = []; for (let i = 0; ; i += 1000) {
+    let q = sb.from(tabela).select(campos).range(i, i + 999); if (ordem) q = q.order(ordem);
+    const { data, error } = await q; if (error) throw error; out.push(...(data || [])); if (!data || data.length < 1000) break; }
+  return out;
+}
+async function ultimoBackup(){ try { const { data } = await sb.from('registros').select('dados').eq('painel', 'quadro').eq('caminho', 'sistema/backup').maybeSingle(); return data && data.dados; } catch(_) { return null; } }
+async function adminBackup(){
+  const c = $('#admin-corpo');
+  const ult = await ultimoBackup();
+  const dias = ult && ult.em ? Math.floor((Date.now() - new Date(ult.em)) / 864e5) : null;
+  c.innerHTML = `<div class="cartao-cab"><h3>Cópia de segurança</h3></div>
+    <p style="margin-top:0">Guarda tudo o que foi <b>lançado dentro do app</b> e não existe nas planilhas: programações de férias, avaliações de experiência, entrevistas de desligamento, checklist de desligamento, RDs, sanções e treinamentos cadastrados, crachás, créditos manuais, fichas e demais anotações. Leva também a lista de bases carregadas e de usuários (sem senhas).</p>
+    <div class="bk-st ${dias == null || dias > 7 ? 'alerta' : ''}">${ult && ult.em ? `Última cópia em <b>${esc(new Date(ult.em).toLocaleString('pt-BR'))}</b>${ult.por ? ' por ' + esc(ult.por) : ''} (${dias === 0 ? 'hoje' : dias === 1 ? 'ontem' : 'há ' + dias + ' dias'}).` : 'Nenhuma cópia feita ainda.'} Recomendado: uma vez por semana.</div>
+    <div class="bk-bts"><button class="btn prim" id="bk-xls">Baixar cópia em Excel</button><button class="btn borda" id="bk-json">Baixar arquivo para restaurar</button><button class="btn borda" id="bk-rest">Restaurar de um arquivo</button></div>
+    <p class="bk-nota">O Excel é para consultar e guardar (uma aba por tipo de lançamento). O arquivo para restaurar devolve ao app os lançamentos que tiverem sido apagados, sem mexer no que já existe. As bases (Quadro, Férias, Unimed…) não precisam de cópia: são refeitas carregando as planilhas de novo. Os currículos em PDF ficam guardados à parte e não entram nesta cópia.</p>
+    <div id="bk-msg" class="bk-msg"></div>`;
+  const msg = t => { $('#bk-msg').innerHTML = t; };
+  const coletar = async () => {
+    msg('<span class="spinner pq"></span> Lendo os lançamentos…');
+    const regs = await lerTudo('registros', 'painel,caminho,colecao,doc_id,dados,atualizado_em,atualizado_por');
+    const pacs = await lerTudo('pacotes', 'painel,referencia,atualizado_em,atualizado_por,tamanho_kb');
+    let perf = []; try { perf = await lerTudo('perfis', 'nome,usuario,papel,ativo,frentes'); } catch(_) { try { perf = await lerTudo('perfis', 'nome,usuario,papel,ativo'); } catch(__){} }
+    return { regs: regs.filter(r => r.caminho !== 'sistema/backup'), pacs, perf };
+  };
+  const marcar = async (tipo, n) => { const d = { em:new Date().toISOString(), por:E.perfil.nome, tipo, n };
+    try { await sb.from('registros').upsert({ painel:'quadro', caminho:'sistema/backup', colecao:'sistema', doc_id:'backup', dados:d, atualizado_por:E.perfil.nome }, { onConflict:'painel,caminho' }); } catch(_){}
+    try { localStorage.removeItem(centralChave()); } catch(_){} };
+  const nomeP = id => (E.paineis.find(p => p.id === id) || {}).nome || id;
+  const dataArq = () => new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
+  $('#bk-xls').onclick = async () => { try {
+    const { regs, pacs, perf } = await coletar(); msg('<span class="spinner pq"></span> Montando o Excel…');
+    const wb = XLSX.utils.book_new(), usados = new Set();
+    const nomeAba = t => { let n = t.replace(/[\\/?*\[\]:]/g, ' ').slice(0, 31).trim(); let k = 2; while (usados.has(n)) n = t.slice(0, 28) + ' ' + (k++); usados.add(n); return n; };
+    const resumo = [['Painel', 'Tipo de lançamento', 'Quantidade', 'Último lançamento']];
+    const grupos = new Map(); regs.forEach(r => { const k = r.painel + '|' + r.colecao; if (!grupos.has(k)) grupos.set(k, []); grupos.get(k).push(r); });
+    [...grupos].sort((a, b) => a[0].localeCompare(b[0])).forEach(([k, L]) => { const [pn, col] = k.split('|');
+      const chaves = []; L.forEach(r => Object.keys(r.dados || {}).forEach(c => { if (!chaves.includes(c)) chaves.push(c); }));
+      const cel = v => v == null ? '' : typeof v === 'object' ? JSON.stringify(v).slice(0, 32000) : v;
+      const aoa = [['Identificador', 'Atualizado em', 'Atualizado por'].concat(chaves)].concat(L.map(r => [r.doc_id, r.atualizado_em ? new Date(r.atualizado_em).toLocaleString('pt-BR') : '', r.atualizado_por || ''].concat(chaves.map(c => cel(r.dados[c])))));
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), nomeAba(nomeP(pn) + ' - ' + col));
+      resumo.push([nomeP(pn), col, L.length, L.map(r => r.atualizado_em || '').sort().pop() ? new Date(L.map(r => r.atualizado_em || '').sort().pop()).toLocaleString('pt-BR') : '']); });
+    const ws0 = XLSX.utils.aoa_to_sheet(resumo); ws0['!cols'] = [{ wch:36 }, { wch:24 }, { wch:12 }, { wch:20 }];
+    const wb2 = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb2, ws0, 'Resumo');
+    wb.SheetNames.forEach(n => XLSX.utils.book_append_sheet(wb2, wb.Sheets[n], n));
+    XLSX.utils.book_append_sheet(wb2, XLSX.utils.aoa_to_sheet([['Painel', 'Dados de', 'Carregado em', 'Por']].concat(pacs.map(p => [nomeP(p.painel), fmtRef(p.referencia), p.atualizado_em ? new Date(p.atualizado_em).toLocaleString('pt-BR') : '', p.atualizado_por || '']))), 'Bases carregadas');
+    if (perf.length) XLSX.utils.book_append_sheet(wb2, XLSX.utils.aoa_to_sheet([['Nome', 'Usuário', 'Papel', 'Ativo', 'Frentes']].concat(perf.map(u => [u.nome, u.usuario, nomePapel(u.papel), u.ativo ? 'Sim' : 'Não', Array.isArray(u.frentes) ? u.frentes.join(', ') : (u.frentes || '')]))), 'Usuários');
+    baixar(new Blob([XLSX.write(wb2, { bookType:'xlsx', type:'array' })], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'Copia de seguranca Gestao de Pessoas ' + dataArq() + '.xlsx');
+    await marcar('excel', regs.length); registrar('quadro', 'cópia de segurança (Excel)', regs.length + ' lançamentos');
+    msg(`<b style="color:var(--cane)">Cópia gerada:</b> ${regs.length} lançamentos em ${grupos.size} tipos. Guarde o arquivo numa pasta segura (ex.: OneDrive da empresa).`); adminBackupStatus();
+  } catch(e) { msg('<span style="color:var(--coral)">Não consegui gerar a cópia: ' + esc(traduzErro(e)) + '</span>'); } };
+  $('#bk-json').onclick = async () => { try {
+    const { regs, pacs, perf } = await coletar();
+    const arq = { tipo:'crv-backup', versao:1, gerado:new Date().toISOString(), por:E.perfil.nome, registros:regs, bases:pacs, usuarios:perf };
+    baixar(new Blob([JSON.stringify(arq)], { type:'application/json' }), 'Restauracao Gestao de Pessoas ' + dataArq() + '.json');
+    await marcar('arquivo', regs.length); registrar('quadro', 'cópia de segurança (arquivo)', regs.length + ' lançamentos');
+    msg(`<b style="color:var(--cane)">Arquivo gerado:</b> ${regs.length} lançamentos. Guarde junto com o Excel.`); adminBackupStatus();
+  } catch(e) { msg('<span style="color:var(--coral)">Não consegui gerar: ' + esc(traduzErro(e)) + '</span>'); } };
+  $('#bk-rest').onclick = () => { const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.json,application/json';
+    inp.onchange = async () => { const f = inp.files[0]; if (!f) return; let arq;
+      try { arq = JSON.parse(await f.text()); } catch(_) { return msg('<span style="color:var(--coral)">Arquivo inválido.</span>'); }
+      if (arq.tipo !== 'crv-backup' || !Array.isArray(arq.registros)) return msg('<span style="color:var(--coral)">Este não é um arquivo de restauração do app.</span>');
+      const atuais = new Set((await lerTudo('registros', 'painel,caminho')).map(r => r.painel + '|' + r.caminho));
+      const falt = arq.registros.filter(r => !atuais.has(r.painel + '|' + r.caminho));
+      if (!falt.length) return msg(`Nada a restaurar: os ${arq.registros.length} lançamentos da cópia de ${esc(new Date(arq.gerado).toLocaleString('pt-BR'))} já estão no app.`);
+      msg(`A cópia de ${esc(new Date(arq.gerado).toLocaleString('pt-BR'))} tem <b>${falt.length}</b> lançamento(s) que não estão mais no app. <button class="btn prim peq" id="bk-ok">Restaurar esses ${falt.length}</button>`);
+      $('#bk-ok').onclick = async () => { try { for (let i = 0; i < falt.length; i += 100) {
+          const { error } = await sb.from('registros').upsert(falt.slice(i, i + 100).map(r => ({ painel:r.painel, caminho:r.caminho, colecao:r.colecao, doc_id:r.doc_id, dados:r.dados, atualizado_por:(r.atualizado_por || '') + ' (restaurado)' })), { onConflict:'painel,caminho', ignoreDuplicates:true });
+          if (error) throw error; }
+        registrar('quadro', 'restaurou cópia de segurança', falt.length + ' lançamentos'); msg(`<b style="color:var(--cane)">${falt.length} lançamento(s) restaurado(s).</b>`);
+      } catch(e) { msg('<span style="color:var(--coral)">Não consegui restaurar: ' + esc(traduzErro(e)) + '</span>'); } };
+    }; inp.click(); };
+  async function adminBackupStatus(){ const u = await ultimoBackup(); const el = c.querySelector('.bk-st'); if (el && u) { el.classList.remove('alerta'); el.innerHTML = `Última cópia em <b>${esc(new Date(u.em).toLocaleString('pt-BR'))}</b>${u.por ? ' por ' + esc(u.por) : ''} (hoje). Recomendado: uma vez por semana.`; } }
 }
 
 const frentesExistentes = () => [...new Set(E.paineis.map(p=>p.frente))].sort((a,b)=>(ORDEM_FRENTES.indexOf(a)+1||99)-(ORDEM_FRENTES.indexOf(b)+1||99));

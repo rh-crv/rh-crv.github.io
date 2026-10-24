@@ -439,3 +439,8 @@ body{font-variant-numeric:tabular-nums}
 .ini-capa-bt{margin-top:18px;border:0;border-radius:12px;padding:11px 20px;background:var(--amber);color:#2b1d00;font:inherit;font-weight:800;font-size:14.5px;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.25)}
 .ini-capa-bt:hover{filter:brightness(1.06)}
 @media (max-width:700px){.ini-capa{min-height:calc(100vh - 110px);border-radius:16px}.ini-capa h1{font-size:27px}.ini-capa-tx{padding:26px 18px 30px}}
+/* Cópia de segurança */
+.bk-st{background:rgba(46,138,87,.08);border:1px solid rgba(46,138,87,.25);border-radius:10px;padding:10px 12px;font-size:13.5px;margin:10px 0}
+.bk-st.alerta{background:rgba(233,162,59,.12);border-color:rgba(233,162,59,.4)}
+.bk-bts{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.bk-nota{font-size:12.5px;color:var(--mut)}.bk-msg{margin-top:10px;font-size:13.5px}
