@@ -1993,7 +1993,7 @@ async function adminUsuarios(){
     <p style="color:var(--mut);margin-top:0;font-size:13px"><b>Administrador principal</b> faz tudo: importa bases, cria e tira painéis, cadastra usuários e muda configurações · <b>Equipe RH</b> vê todos os painéis (inclusive restritos) e faz todos os lançamentos, mas não importa bases nem mexe na estrutura · <b>Editor</b> vê e atualiza as frentes liberadas · <b>Leitor</b> só consulta as frentes liberadas · <b>Gestor de área</b> vê só a própria equipe (experiência, férias, frequência, novos e crachás), sem acesso aos painéis. Painéis <span class="selo restrito">restrito</span> são só de administradores.</p>
     ${data.map((u,i)=>`<div class="linha-u ${u.ativo?'':'inativo'}">
       <div class="av" style="background:${PALETA[i%PALETA.length]}">${esc(iniciais(u.nome))}</div>
-      <div class="info"><b>${esc(u.nome)}</b> ${u.ativo?'':'<small>(desativado)</small>'}<br><small>@${esc(u.usuario)} · ${esc(nomePapel(u.papel))}${u.papel==='admin'?' · todas as frentes':u.papel==='rh'?' · todos os painéis, só lançamentos':(u.paineis_ver||[]).length||(u.paineis_editar||[]).length?` · ${u.frentes?.length ? esc(u.frentes.join(', ')) + ' + ' : ''}painéis: ${esc([...(u.paineis_ver||[]), ...(u.paineis_editar||[])].map(id => (E.paineis.find(x => x.id === id) || {}).nome || id).join(', '))}`:u.papel==='gestor'?` · ${(u.areas||[]).length ? esc((u.areas||[]).map(k=>k.slice(2)).join(', ')) : 'nenhuma área vinculada'}`:` · ${u.frentes?.length ? esc(u.frentes.join(', ')) : 'nenhuma frente liberada'}`}</small></div>
+      <div class="info"><b>${esc(u.nome)}</b> ${u.ativo?'':'<small>(desativado)</small>'}<br><small>@${esc(u.usuario)} · ${esc(nomePapel(u.papel))}${u.papel==='admin'?' · todas as frentes':u.papel==='rh'?' · todos os painéis, só lançamentos':(u.paineis_ver||[]).length||(u.paineis_editar||[]).length?` · ${u.frentes?.length ? esc(u.frentes.join(', ')) + ' + ' : ''}painéis: ${esc([...(u.paineis_ver||[]), ...(u.paineis_editar||[])].map(id => (E.paineis.find(x => x.id === id) || {}).nome || id).join(', '))}`:u.papel==='gestor'?` · ${(u.areas||[]).filter(k=>k.startsWith('a:')).length ? 'setor: ' + esc((u.areas||[]).filter(k=>k.startsWith('a:')).map(k=>k.slice(2)).join(', ')) : 'nenhum setor vinculado'}`:` · ${u.frentes?.length ? esc(u.frentes.join(', ')) : 'nenhuma frente liberada'}`}</small></div>
       <button class="btn peq borda" data-edit="${esc(u.user_id)}">Editar</button>
       <button class="btn peq borda" data-senha="${esc(u.user_id)}">Nova senha</button>
     </div>`).join('')}`;
@@ -2021,9 +2021,9 @@ function formUsuario(u, todos){
         <div class="checks gs-areas u-pain">${E.paineis.filter(x => x.id !== 'curriculos' && x.id !== 'sysprocard-credito').slice().sort((a, b) => a.frente.localeCompare(b.frente, 'pt-BR') || a.nome.localeCompare(b.nome, 'pt-BR')).map(x => { const v = (u?.paineis_ver || []).includes(x.id), ed = (u?.paineis_editar || []).includes(x.id);
           return `<div class="u-pl" data-q="${esc(normal(x.nome + ' ' + x.frente))}"><span><b>${esc(x.nome)}</b><small>${esc(x.frente)}${x.nivel === 'restrito' ? ' · restrito' : ''}</small></span><label><input type="checkbox" data-pv="${esc(x.id)}" ${v || ed ? 'checked' : ''}> Ver e exportar</label><label><input type="checkbox" data-pe="${esc(x.id)}" ${ed ? 'checked' : ''}> Pode lançar</label></div>`; }).join('')}</div>
         <small style="color:var(--mut)">Além das frentes marcadas acima. Use para liberar só alguns painéis, por exemplo para Treinamento e Desenvolvimento. "Ver e exportar" permite consultar e baixar PDF e Excel, sem alterar nada. "Pode lançar" só quando você permitir.</small></div>
-      <div class="campo oculto" id="u-areas-box"><label>Equipe que o gestor vê</label><input id="u-areas-q" type="search" placeholder="Filtrar áreas e gerências" style="margin-bottom:6px">
+      <div class="campo oculto" id="u-areas-box"><label>Setor(es) que o gestor vê</label><input id="u-areas-q" type="search" placeholder="Filtrar setores" style="margin-bottom:6px">
         <div class="checks gs-areas" id="u-areas"><small style="color:var(--mut)">Carregando as áreas do Quadro…</small></div>
-        <small style="color:var(--mut)">Marque a área (como no Quadro) ou a gerência. O gestor vê só essas pessoas, sem CPF, salário, saúde ou ocorrências sensíveis.</small></div>
+        <small style="color:var(--mut)">Marque o setor (coluna Setor da planilha do Quadro). Dá para marcar mais de um. O gestor vê só as pessoas desses setores, sem CPF, salário, saúde ou ocorrências sensíveis.</small></div>
       ${!novo ? `<div class="campo"><label><input type="checkbox" id="u-ativo" ${u.ativo?'checked':''}> Usuário ativo (desmarque para bloquear o acesso)</label></div>` : ''}`,
     pe: `<button class="btn borda" id="u-c">Cancelar</button><button class="btn prim" id="u-ok">${novo?'Criar usuário':'Salvar'}</button>`,
     aoAbrir: m => {
@@ -2033,7 +2033,7 @@ function formUsuario(u, todos){
       m.querySelectorAll('[data-pv]').forEach(i => i.onchange = () => { if (!i.checked) m.querySelector(`[data-pe="${i.dataset.pv}"]`).checked = false; });
       $('#u-pain-q').oninput = e => { const q = normal(e.target.value); m.querySelectorAll('.u-pl').forEach(l => l.style.display = !q || l.dataset.q.includes(q) ? '' : 'none'); };
       GESTOR().opcoes().then(L => { const box = $('#u-areas'); if (!box) return; const sel = new Set(u?.areas || []);
-        box.innerHTML = L.length ? L.map(o => `<label data-q="${esc(normal(o.k))}"><input type="checkbox" value="${esc(o.k)}" ${sel.has(o.k)?'checked':''}> <span>${esc(o.k.slice(2))}</span> <small>${o.k[0]==='g'?'gerência':'área'} · ${o.n}</small></label>`).join('') : '<small>Carregue o Quadro Geral para listar as áreas.</small>';
+        box.innerHTML = L.length ? L.map(o => `<label data-q="${esc(normal(o.k))}"><input type="checkbox" value="${esc(o.k)}" ${sel.has(o.k)?'checked':''}> <span>${esc(o.k.slice(2))}</span> <small>${o.n} pessoas</small></label>`).join('') : '<small>Carregue o Quadro Geral para listar as áreas.</small>';
         $('#u-areas-q').oninput = e => { const q = normal(e.target.value); box.querySelectorAll('label').forEach(l => l.style.display = !q || l.dataset.q.includes(q) ? '' : 'none'); }; });
       $('#u-c').onclick = fecharModal;
       $('#u-ok').onclick = async () => {
@@ -2041,8 +2041,8 @@ function formUsuario(u, todos){
         const nome = $('#u-nome').value.trim();
         const papel = $('#u-papel').value;
         const fr = papel === 'admin' || papel === 'gestor' || papel === 'rh' ? [] : [...m.querySelectorAll('#u-frentes-box .checks input:checked')].map(x=>x.value);
-        const ar = papel === 'gestor' ? [...m.querySelectorAll('#u-areas input:checked')].map(x=>x.value) : [];
-        if (papel === 'gestor' && !ar.length) return erro('Marque pelo menos uma área para o gestor.');
+        const ar = papel === 'gestor' ? [...m.querySelectorAll('#u-areas input:checked')].map(x=>x.value).filter(k => k.startsWith('a:')) : [];
+        if (papel === 'gestor' && !ar.length) return erro('Marque pelo menos um setor para o gestor.');
         const semPain = papel === 'admin' || papel === 'gestor' || papel === 'rh';
         const pe = semPain ? [] : [...m.querySelectorAll('[data-pe]:checked')].map(x => x.dataset.pe), pv = semPain ? [] : [...m.querySelectorAll('[data-pv]:checked')].map(x => x.dataset.pv).filter(id => !pe.includes(id));
         const comPain = o => (pv.length || pe.length || (u && u.paineis_ver !== undefined)) ? Object.assign(o, { paineis_ver:pv, paineis_editar:pe }) : o;

@@ -13,7 +13,7 @@ const { sb, E, $, esc, normal, brD, fMat, fDias, moldura, abrirModal, fecharModa
 const hoje = () => new Date().toISOString().slice(0, 10);
 const addD = (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 const nomeChave = k => k.slice(2);
-const tipoChave = k => k[0] === 'g' ? 'Gerência' : 'Área';
+const tipoChave = k => k[0] === 'g' ? 'Gerência' : 'Setor';
 const DEC = { efetivar:'Efetivar', encerrar:'Encerrar contrato', prorrogar:'Prorrogar' };
 const DECG = [['efetivar', 'Efetivar', 'Fica no quadro como efetivo'], ['prorrogar', 'Prorrogar', 'Avaliar mais um pouco, até o fim do contrato'], ['encerrar', 'Encerrar o contrato', 'Não continua após o vencimento']];
 // formulário oficial RE.0150.07 (SGI, versão 05): nota de 0 a 5 por fator; pontos = nota × 2; total = média dos pontos; meta 70%
@@ -39,7 +39,8 @@ const blocoAssinatura = (pref, nome) => `<div class="gs-ass"><label><input type=
 /* opções de área/gerência para o cadastro do gestor */
 async function opcoes(){
   const Q = await window.CRV_QUADRO(); if (!Q) return [];
-  const c = {}; Object.values(Q.mapa).forEach(p => { if (p.situacao === 'Desligado') return; if (p.area && !/^(afastados|desistentes)$/i.test(p.area)) c['a:' + p.area] = (c['a:' + p.area] || 0) + 1; if (p.gerencia && !/classificar/i.test(p.gerencia)) c['g:' + p.gerencia] = (c['g:' + p.gerencia] || 0) + 1; });
+  // só o Setor da planilha (área do Quadro); gerência não é usada porque o cadastro dela não é confiável
+  const c = {}; Object.values(Q.mapa).forEach(p => { if (p.situacao === 'Desligado') return; if (p.area && !/^(afastados|desistentes)$/i.test(p.area)) c['a:' + p.area] = (c['a:' + p.area] || 0) + 1; });
   return Object.entries(c).map(([k, n]) => ({ k, n })).sort((a, b) => a.k[0].localeCompare(b.k[0]) || a.k.localeCompare(b.k, 'pt-BR'));
 }
 const assinatura = () => ['quadro', 'experiencia', 'ferias', 'crachas', 'sancoes', 'rd', 'alojamentos', 'curriculos'].map(id => id + ':' + ((E.metas[id] && (E.metas[id].atualizado_em || E.metas[id].referencia)) || '')).join('|');
@@ -115,7 +116,7 @@ async function gerar(forcar){
   if (!E.perfil || E.perfil.papel !== 'admin') return { ok:false };
   const { data: G, error } = await sb.from('perfis').select('areas,papel,ativo').eq('papel', 'gestor');
   if (error) return { ok:false, erro:error };
-  const chaves = [...new Set((G || []).filter(g => g.ativo).flatMap(g => g.areas || []))];
+  const chaves = [...new Set((G || []).filter(g => g.ativo).flatMap(g => g.areas || []))].filter(k => k.startsWith('a:'));
   const sig = assinatura();
   if (!forcar) { try { const { data } = await sb.from('area_dados').select('dados').eq('chave', '__meta').maybeSingle(); if (data && data.dados && data.dados.sig === sig && JSON.stringify(data.dados.chaves) === JSON.stringify(chaves.slice().sort())) return { ok:true, igual:true }; } catch(_){} }
   if (!chaves.length) return { ok:true, n:0 };
@@ -227,7 +228,7 @@ async function tela(){
     if (L12.length) al.push([L12.some(x => /^Sus/.test(x.t)) ? 'crit' : '', `${L12.length} sanç${L12.length > 1 ? 'ões' : 'ão'} nos últimos 12 meses`]);
     if (p.fa90 >= 3) al.push(['crit', `${p.fa90} faltas em 90 dias`]);
     if (p.exp && !p.exp.enc && [p.exp.v1, p.exp.v2].some(d => d && d >= h && d <= em15)) al.push(['', 'Experiência vencendo em até 15 dias']);
-    abrirModal({ titulo:p.n, largo:true, corpo:`<div class="gs-fid"><div><small>Matrícula</small><b>${esc(p.m)}</b></div><div><small>Função</small><b>${esc(p.f)}</b></div><div><small>Departamento / seção</small><b>${esc(p.s)}</b></div><div><small>Área · gerência</small><b>${esc([p.area, p.ger].filter(Boolean).join(' · '))}</b></div>
+    abrirModal({ titulo:p.n, largo:true, corpo:`<div class="gs-fid"><div><small>Matrícula</small><b>${esc(p.m)}</b></div><div><small>Função</small><b>${esc(p.f)}</b></div><div><small>Departamento / seção</small><b>${esc(p.s)}</b></div><div><small>Setor</small><b>${esc(p.area || '')}</b></div>
         <div><small>Admissão</small><b>${esc(brD(p.adm))}</b></div><div><small>Tempo de casa</small><b>${esc(tc)}</b></div><div><small>Contrato</small><b>${esc(p.v)}</b></div><div><small>Situação</small><b>${esc(p.sit)}</b></div><div><small>Cidade de residência</small><b>${esc(p.cid || '—')}</b></div><div><small>Alojamento</small><b>${esc(p.alo ? p.alo.casa + (p.alo.q ? ', quarto ' + p.alo.q : '') + (p.alo.orig ? ' · origem ' + p.alo.orig : '') : 'Não alojado')}</b></div></div>
       ${al.length ? `<div class="fc-al" style="margin:10px 0 0">${al.map(a => `<span class="fc-a ${a[0]}">${esc(a[1])}</span>`).join('')}</div>` : ''}
       <div class="gs-fs">${S.map(([t, hh]) => `<section class="fc-sec cartao"><header><h3>${esc(t)}</h3></header>${hh}</section>`).join('')}</div>
@@ -235,7 +236,7 @@ async function tela(){
       pe:`<span style="flex:1"></span><button class="btn borda" id="gf-pdf">PDF da ficha</button><button class="btn prim" id="gf-x">Fechar</button>`,
       aoAbrir: m => { m.querySelector('#gf-x').onclick = fecharModal; m.querySelector('#gf-pdf').onclick = () => { const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit:'pt', format:'a4' });
         cabecalhoPDF(doc, 'Ficha do colaborador', p.n); let y = 100;
-        doc.autoTable({ startY:y, body:[['Matrícula', p.m, 'Função', p.f], ['Departamento', p.s, 'Área', [p.area, p.ger].filter(Boolean).join(' · ')], ['Admissão', brD(p.adm), 'Tempo de casa', tc], ['Contrato', p.v, 'Situação', p.sit], ['Cidade', p.cid || '—', 'Alojamento', p.alo ? p.alo.casa + (p.alo.q ? ', quarto ' + p.alo.q : '') : 'Não alojado']], styles:{ fontSize:8.5, cellPadding:3 }, columnStyles:{ 0:{ fontStyle:'bold', cellWidth:80 }, 2:{ fontStyle:'bold', cellWidth:80 } }, margin:{ left:30, right:30 } });
+        doc.autoTable({ startY:y, body:[['Matrícula', p.m, 'Função', p.f], ['Departamento', p.s, 'Setor', p.area || ''], ['Admissão', brD(p.adm), 'Tempo de casa', tc], ['Contrato', p.v, 'Situação', p.sit], ['Cidade', p.cid || '—', 'Alojamento', p.alo ? p.alo.casa + (p.alo.q ? ', quarto ' + p.alo.q : '') : 'Não alojado']], styles:{ fontSize:8.5, cellPadding:3 }, columnStyles:{ 0:{ fontStyle:'bold', cellWidth:80 }, 2:{ fontStyle:'bold', cellWidth:80 } }, margin:{ left:30, right:30 } });
         const sec = (t, cab, L) => { y = doc.lastAutoTable.finalY + 16; if (y > 760) { doc.addPage(); y = 40; } doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(20, 33, 61); doc.text(t, 30, y);
           doc.autoTable({ startY:y + 5, head:[cab], body:L.length ? L.map(l => l.map(String)) : [cab.map((_, i) => i ? '' : 'Nada registrado')], styles:{ fontSize:8, cellPadding:2.6, overflow:'linebreak' }, headStyles:{ fillColor:[36,66,124] }, margin:{ left:30, right:30 } }); };
         if (p.exp) sec('Período de experiência', ['Etapa', 'Data', 'Avaliação da área'], [['1º vencimento', brD(p.exp.v1), p.exp.dec1 || 'pendente'], ['Vencimento final', brD(p.exp.v2), p.exp.dec2 || 'pendente']]);
@@ -384,7 +385,7 @@ async function semGestor(){
   try { const { data: G } = await sb.from('perfis').select('areas,papel,ativo').eq('papel', 'gestor'); const K = new Set((G || []).filter(g => g.ativo).flatMap(g => g.areas || []));
     const Q = await window.CRV_QUADRO(); const d = await window.CRV_DADOS('experiencia'); if (!Q || !d) return out; const h = hoje(), lim = addD(h, 20);
     (d.dados.RAW || []).forEach(r => { const m = fMat(r[0]), c = Q.mapa[m]; if (!c || c.situacao === 'Desligado') return; const v = [r[7], r[8]].filter(x => x && x >= h && x <= lim).sort()[0]; if (!v || r[17]) return;
-      if (K.has('a:' + c.area) || K.has('g:' + c.gerencia)) return; out.push({ nome:c.nome, mat:m, det:`${c.area || ''} · ${c.gerencia || ''} · vence em ${brD(v)}` }); }); } catch(_){}
+      if (K.has('a:' + c.area)) return; out.push({ nome:c.nome, mat:m, det:`${c.area || 'sem setor'} · ${c.setor || ''} · vence em ${brD(v)}` }); }); } catch(_){}
   return out; }
 async function pendenciasEnvios(){ if (!E.perfil || !['admin', 'rh'].includes(E.perfil.papel)) return []; const out = [];
   const S = E.perfil.papel === 'admin' ? await semGestor() : []; if (S.length) out.push({ id:'sem-gestor', sev:'warn', t:'Experiências vencendo em áreas sem gestor no app', painel:'', rota:'#/admin', pnome:'Administração', d:'Todas as áreas respondem pelo app: cadastre o gestor dessas áreas (Administração → Usuários → Gestor de área) para ele conseguir avaliar.', itens:S });
