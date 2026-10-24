@@ -276,6 +276,7 @@ function moldura(conteudo){
           <div class="lat-plinha"><button class="lat-item ${h==='#/central'?'ativo':''}" data-ir="#/central"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg><span>Central do dia</span></button><button class="lat-pseta" aria-label="Mostrar opções da Central do dia" aria-expanded="${h==='#/desligamento'?'true':'false'}">${CHEV}</button></div>
           <div class="lat-psub"><button class="lat-acao ${h==='#/desligamento'?'ativo':''}" data-ir="#/desligamento" style="--cor:var(--coral)"><i>${IA('<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>')}</i><span>Checklist de desligamento</span></button></div>
         </div>
+        <button class="lat-item ${h.startsWith('#/ficha')?'ativo':''}" data-ir="#/ficha"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2.5"/><path d="M5.5 17c.6-1.8 2-2.7 3.5-2.7s2.9.9 3.5 2.7M14 9h4M14 13h4"/></svg><span>Ficha do colaborador</span></button>
         <div class="lat-busca"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="lat-q" type="search" placeholder="Buscar painel ou ação" autocomplete="off" aria-label="Buscar painel"></div>
         <div class="lat-sec">Frentes</div>
         <div class="lat-vazio" id="lat-vazio" hidden>Nenhum painel com esse nome.</div>
@@ -357,6 +358,7 @@ function rota(){
   if (h.startsWith('#/p/')) { const [id, acao] = h.slice(4).split('/'); return telaPainel(decodeURIComponent(id), acao || ''); }
   if (h === '#/admin' && ehAdmin()) return telaAdmin();
   if (h === '#/central') return telaCentral();
+  if (h === '#/ficha' || h.startsWith('#/ficha/')) return telaFicha(h.split('/')[2] || '');
   if (h === '#/desligamento') return telaDesligamento();
   if (h === '#/conta') return telaConta();
   telaInicio();
@@ -515,6 +517,128 @@ async function pendenciasDesligamento(){
     d:`Cruzamento do Quadro com ${nomes.join(', ')}. Cartão Alimentação e Premium não entram: o saldo pode ser usado depois da saída.`,
     itens: L.map(x => ({ nome:x.nome, mat:x.mat, det:`${x.deslig ? 'desligado em ' + brD(x.deslig) + ' · ' : ''}${x.pend.map(k => { const d = DCK.find(q => q.k === k); return `${d.n}: ${d.acao.toLowerCase()}`; }).join(' · ')}` })) }];
 }
+/* =====================================================================
+   FICHA 360 DO COLABORADOR: tudo da pessoa numa tela, a partir de todos os painéis que o usuário pode ver.
+   ===================================================================== */
+const fPode = id => { const p = E.paineis.find(x => x.id === id); return p && podeVer(p) && E.metas[id] ? p : null; };
+const fMat = m => String(m == null ? '' : m).replace(/^0+(?=\d)/, '');
+const fDias = (a, b) => Math.round((new Date((b || new Date().toISOString().slice(0, 10)) + 'T12:00:00') - new Date(a + 'T12:00:00')) / 864e5);
+const fCasa = (adm, fim) => { if (!adm) return ''; const d = fDias(adm, fim), m = Math.floor(d / 30.44); return m < 1 ? d + ' dias' : m < 12 ? m + (m === 1 ? ' mês' : ' meses') : Math.floor(m / 12) + (m < 24 ? ' ano' : ' anos') + (m % 12 ? ' e ' + (m % 12) + (m % 12 === 1 ? ' mês' : ' meses') : ''); };
+const fIdade = n => { if (!n) return ''; const h = new Date(), d = new Date(n + 'T12:00:00'); let a = h.getFullYear() - d.getFullYear(); if (h.getMonth() < d.getMonth() || (h.getMonth() === d.getMonth() && h.getDate() < d.getDate())) a--; return a + ' anos'; };
+const fCpf = c => { const d = String(c || '').replace(/\D/g, ''); return d.length >= 11 ? '***.' + d.slice(3, 6) + '.' + d.slice(6, 9) + '-' + d.slice(9, 11) : ''; };
+async function fichaDados(mat){
+  const Q = await window.CRV_QUADRO(); const c = Q && Q.mapa[mat]; if (!c) return null;
+  const F = { mat, c, sec: [] }; const hoje = new Date().toISOString().slice(0, 10);
+  const cpf8 = String(c.cpf || '').replace(/\D/g, '').slice(-8);
+  const tarefas = [];
+  // Férias
+  if (fPode('ferias')) tarefas.push((async () => {
+    const d = await window.CRV_DADOS('ferias'); const p = d && (d.dados.DATA || []).find(x => String(x.c) === mat); if (!p) return;
+    const PR = {}; (await window.CRV_REGS('ferias', 'prog')).forEach(x => { if (x._id && x._id.startsWith(mat + '_')) PR[x._id] = x; });
+    const L = (p.p || []).map(([de, ate, lim, saldo, , nulo, plan]) => { const g = PR[mat + '_' + de]; const pg = g ? (g.retorno ? 'aguarda retorno' : (g.parcelas && g.parcelas.length ? g.parcelas : [{ inicio:g.inicio, dias:g.dias }]).map(q => brD(q.inicio) + ' (' + q.dias + 'd)').join(' + ')) : (plan && /^\d{4}/.test(plan) ? brD(plan) + ' (planilha)' : '');
+      const st = nulo ? 'Nulo' : saldo <= 0 ? 'Gozado' : ate > hoje ? 'Em aquisição' : lim < hoje && !pg ? 'Vencido' : fDias(hoje, lim) <= 90 && !pg ? 'Vence em ' + fDias(hoje, lim) + ' dias' : pg ? 'Programado' : 'A gozar';
+      return [brD(de) + ' a ' + brD(ate), brD(lim), nulo ? '0' : Math.round(saldo) + 'd', pg || '—', st]; });
+    F.sec.push({ k:'ferias', t:'Férias', painel:'ferias', ref:d.referencia, cab:['Período aquisitivo', 'Data limite', 'Saldo', 'Programação', 'Situação'], linhas:L, alerta: L.some(l => l[4] === 'Vencido') ? 'Período vencido sem programação' : '' }); })());
+  // Frequência e disciplina
+  tarefas.push((async () => {
+    const O = await window.CRV_OCORR([mat]); const o = O.P[mat];
+    if (fPode('absenteismo') || fPode('quadro')) { const at = o ? o.at : [], fa = o ? o.fa : [];
+      F.sec.push({ k:'abs', t:'Atestados e faltas (2026)', painel:'absenteismo', ref:O.abs, resumo:[['Dias de atestado', at.length], ['Faltas', fa.length], ['Último atestado', at.length ? brD(at[at.length - 1]) : '—'], ['Última falta', fa.length ? brD(fa[fa.length - 1]) : '—']] }); }
+    if (fPode('sancoes')) { const L = o ? o.adv.map(x => [brD(x.data), 'Advertência', x.motivo || '']).concat(o.sus.map(x => [brD(x.data), 'Suspensão' + (x.dias ? ' (' + x.dias + 'd)' : ''), x.motivo || ''])) : [];
+      L.sort((a, b) => b[0].split('/').reverse().join('').localeCompare(a[0].split('/').reverse().join('')));
+      F.sec.push({ k:'sanc', t:'Sanções disciplinares', painel:'sancoes', cab:['Data', 'Tipo', 'Motivo'], linhas:L, alerta: o && o.sus.length >= 3 ? o.sus.length + 'ª suspensão ou mais' : '' }); }
+  })());
+  // RD
+  if (fPode('rd')) tarefas.push((async () => { const d = await window.CRV_DADOS('rd'); const D = d && d.dados.D; if (!D) return;
+    const DES = ['Sem tratativa', 'Ausência de culpa', 'Culpa apontada, sem medida', 'Medida disciplinar', 'Desconto', 'Sem informação'];
+    const L = D.rows.filter(r => fMat(r[2]) === mat).map(r => [String(r[0]), brD(r[1]), DES[r[9]] || '', r[10] || '', r[11] != null ? 'R$ ' + Number(r[11]).toLocaleString('pt-BR', { minimumFractionDigits:2 }) : '']);
+    F.sec.push({ k:'rd', t:'Registros de dano (RD)', painel:'rd', ref:D.base, cab:['RD', 'Data', 'Desfecho', 'Tratativa', 'Valor'], linhas:L, alerta: L.some(l => l[2] === 'Sem tratativa') ? 'RD sem tratativa' : '' }); })());
+  // Benefícios
+  tarefas.push((async () => { const B = [];
+    for (const t of ['alimentacao', 'convenio', 'premium']) { if (!fPode('cartao-' + t)) continue; const d = await window.CRV_DADOS('cartao-' + t); const C = d && d.dados.CARTAO; if (!C) continue;
+      const r = (C.rows || []).find(x => fMat(x.mat) === mat); B.push([C.titulo, r && r.card ? r.card : 'Sem cartão', r && r.idc ? 'ID ' + r.idc : '', brD(C.refPlanilha)]); }
+    if (fPode('unimed')) { const d = await window.CRV_DADOS('unimed'); const U = d && d.dados.DATA; if (U) { const r = (U.P || []).find(x => fMat(x[0]) === mat);
+      const PLN = ['Local', 'Nacional Enfermaria', 'Nacional Apartamento']; B.push(['Unimed', r && r[8] >= 0 ? 'Titular · ' + (PLN[r[8]] || 'plano') : 'Sem plano', r && r[11] && r[11].length ? r[11].length + ' dependente' + (r[11].length > 1 ? 's' : '') + ': ' + r[11].map(x => x[0]).join(', ') : '', brD(d.referencia)]); } }
+    if (fPode('uniodonto')) { const d = await window.CRV_DADOS('uniodonto'); const U = d && d.dados.DATA; if (U) { const t = (U.T || []).find(x => fMat(x[5] || x[1]) === mat);
+      B.push(['Uniodonto', t ? 'Titular' : 'Sem plano', t && t[7] && t[7].length ? t[7].length + ' dependente' + (t[7].length > 1 ? 's' : '') + ': ' + t[7].map(x => x[1]).join(', ') : '', brD(d.referencia)]); } }
+    if (fPode('alojamentos')) { const d = await window.CRV_DADOS('alojamentos'); const A = d && d.dados.DATA; if (A) { const x = (A.people || []).find(y => y.t === 'c' && fMat(y.m) === mat);
+      B.push(['Alojamento', x ? 'Alojado' : 'Não alojado', x ? ((A.houses[x.h] || {}).n || '') + (x.q ? ', quarto ' + x.q : '') : '', brD(d.referencia)]); } }
+    if (B.length) F.sec.push({ k:'ben', t:'Benefícios e alojamento', cab:['Benefício', 'Situação', 'Detalhe', 'Base de'], linhas:B, alerta: c.situacao === 'Desligado' && B.some(b => /Titular|Ativo|Alojado/.test(b[1]) && !/Alimenta|Premium/.test(b[0])) ? 'Desligado com benefício ativo' : '' });
+  })());
+  // Experiência
+  if (fPode('experiencia')) tarefas.push((async () => { const d = await window.CRV_DADOS('experiencia'); const R = d && d.dados.RAW; if (!R) return; const r = R.find(x => fMat(x[0]) === mat); if (!r) return;
+    const reg = (await window.CRV_REGS('experiencia', 'registros')).find(x => x._id === 'm' + mat) || {};
+    const DEC = { efetivar:'Efetivar', encerrar:'Encerrar contrato', prorrogar:'Prorrogar' };
+    const L = [['1º vencimento', r[7] ? brD(r[7]) : '—', reg.pr && reg.pr.decisao ? 'Área: ' + (DEC[reg.pr.decisao] || reg.pr.decisao) : ''], ['Vencimento final (' + r[9] + ' dias)', brD(r[8]), reg.ef && reg.ef.decisao ? 'Área: ' + (DEC[reg.ef.decisao] || reg.ef.decisao) : '']];
+    if (reg.enc && reg.enc.data) L.push(['Encerramento', brD(reg.enc.data), '']);
+    F.sec.push({ k:'exp', t:'Período de experiência', painel:'experiencia', cab:['Etapa', 'Data', 'Avaliação'], linhas:L, alerta: r[8] < hoje && !(reg.ef && reg.ef.decisao) && !(reg.enc && reg.enc.data) && !r[17] ? 'Prazo encerrado sem decisão' : '' }); })());
+  // Crachás de treinamento
+  if (fPode('crachas')) tarefas.push((async () => { const L = (await window.CRV_REGS('crachas', 'treinamentos')).filter(x => fMat(x.mat) === mat && !x.excluido);
+    if (L.length) F.sec.push({ k:'cr', t:'Crachás de treinamento', painel:'crachas', cab:['Função em treinamento', 'Início', 'Vencimento', 'Resultado'], linhas:L.map(x => [x.funcaoTrein || '', brD(x.inicio), brD(x.fim), String(x.resultado || '—').replace(/_/g, ' ').toLowerCase()]) }); })());
+  // Processos trabalhistas e bloqueio para recontratação
+  if (fPode('processos')) tarefas.push((async () => { const d = await window.CRV_DADOS('processos'); const DB = d && d.dados.DB; if (!DB) return;
+    const p = (DB.P || []).find(x => fMat(x.mat) === mat || (cpf8 && String(x.c || '').replace(/\D/g, '').slice(-8) === cpf8)); if (!p) return;
+    F.sec.push({ k:'proc', t:'Processos trabalhistas', painel:'processos', cab:['Processo', 'Empresa', 'Tipo'], linhas:(p.p || []).map(x => [x[0], x[1], x[2]]), alerta:(p.p || []).length ? (p.p.length === 1 ? '1 processo' : p.p.length + ' processos') : '' });
+    if (p.bq) F.bloqueio = p.bq; })());
+  // Quadro: estabilidade, entrevista de desligamento, checklist
+  tarefas.push((async () => { const { data } = await sb.from('registros').select('colecao,dados').eq('painel', 'quadro').in('colecao', ['estabilidade', 'entrevistas_resp', 'deslig_check']).range(0, 4999);
+    (data || []).forEach(x => { const v = x.dados || {}; if (fMat(v.mat) !== mat || v.excluida) return;
+      if (x.colecao === 'estabilidade' && !v.encerrada) (F.estab = F.estab || []).push(v);
+      if (x.colecao === 'entrevistas_resp') F.entrevista = v;
+      if (x.colecao === 'deslig_check') F.dck = v; }); })());
+  await Promise.all(tarefas.map(p => p.catch(e => console.warn('ficha', e))));
+  const ORD = ['exp', 'ferias', 'abs', 'sanc', 'rd', 'ben', 'cr', 'proc'];
+  F.sec.sort((a, b) => ORD.indexOf(a.k) - ORD.indexOf(b.k));
+  return F;
+}
+function telaFicha(matIni){
+  moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Gestão de Pessoas · CRV Industrial</div><h1>Ficha do colaborador</h1><div class="ini-data">Tudo da pessoa em um lugar só, a partir de todos os painéis</div></div></section>
+    <div class="fc-busca cartao"><input id="fc-q" type="search" placeholder="Digite o nome ou a matrícula" autocomplete="off" aria-label="Buscar colaborador"><div class="fc-sug" id="fc-sug" hidden></div></div>
+    <div id="fc-corpo"></div>`);
+  const q = $('#fc-q'), sug = $('#fc-sug'); let Q = null;
+  window.CRV_QUADRO().then(x => { Q = x; if (matIni) abrir(fMat(matIni)); });
+  const busca = () => { if (!Q) return; const t = normal(q.value.trim()); if (t.length < 2) { sug.hidden = true; return; }
+    const L = Object.entries(Q.mapa).filter(([m, c]) => m === t || normal(c.nome).includes(t)).sort((a, b) => (a[1].situacao === 'Desligado') - (b[1].situacao === 'Desligado') || a[1].nome.localeCompare(b[1].nome)).slice(0, 10);
+    sug.innerHTML = L.length ? L.map(([m, c]) => `<button data-m="${esc(m)}"><b>${esc(c.nome)}</b><span>${esc(m)} · ${esc(c.funcao)} · <i class="${c.situacao === 'Desligado' ? 'des' : ''}">${esc(c.situacao)}</i></span></button>`).join('') : '<div class="fc-nada">Ninguém encontrado no Quadro (empresa 5).</div>';
+    sug.hidden = false; sug.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { sug.hidden = true; q.value = ''; abrir(b.dataset.m); }); };
+  q.oninput = busca; q.onkeydown = e => { if (e.key === 'Enter') { const b = sug.querySelector('[data-m]'); if (b) b.click(); } };
+  setTimeout(() => q.focus(), 50);
+  async function abrir(mat){
+    try { history.replaceState(null, '', '#/ficha/' + mat); } catch(_){}
+    const corpo = $('#fc-corpo'); corpo.innerHTML = '<div class="cartao vazio"><div class="spinner" style="margin:0 auto"></div><p>Juntando as informações dos painéis…</p></div>';
+    const F = await fichaDados(mat); if (!$('#fc-corpo')) return;
+    if (!F) { corpo.innerHTML = '<div class="cartao vazio"><h3>Matrícula não encontrada no Quadro</h3></div>'; return; }
+    const c = F.c, des = c.situacao === 'Desligado';
+    const al = [];
+    if (F.bloqueio) al.push(['crit', 'Bloqueado para recontratação: ' + F.bloqueio[0]]);
+    (F.estab || []).forEach(e => al.push(['warn', 'Estabilidade: ' + (e.tipo || '') + (e.fim ? ' até ' + brD(e.fim) : '')]));
+    F.sec.filter(x => x.alerta).forEach(x => al.push([x.k === 'ben' || x.k === 'proc' ? 'crit' : 'warn', x.t + ': ' + x.alerta]));
+    corpo.innerHTML = `<section class="fc-cab cartao ${des ? 'des' : ''}">
+        <div class="fc-av">${esc(iniciais(c.nome))}</div>
+        <div class="fc-id"><h2>${esc(c.nome)}</h2><div class="fc-sub">Matrícula ${esc(mat)} · ${esc(c.funcao)}</div>
+          <div class="fc-pills"><span class="fc-pill ${des ? 'r' : c.situacao === 'Afastado' ? 'a' : 'v'}">${esc(c.situacao)}</span>${c.vinculo ? `<span class="fc-pill n">${esc(c.vinculo)}</span>` : ''}</div></div>
+        <button class="btn borda" id="fc-pdf">PDF da ficha</button>
+        <dl class="fc-dl"><div><dt>Setor / seção</dt><dd>${esc([c.area, c.setor].filter(Boolean).join(' · ')) || '—'}</dd></div><div><dt>Gerência</dt><dd>${esc(c.gerencia || '—')}</dd></div>
+          <div><dt>Admissão</dt><dd>${esc(brD(c.admissao))} · ${esc(fCasa(c.admissao, des ? c.deslig : ''))}</dd></div>${des ? `<div><dt>Desligamento</dt><dd>${esc(brD(c.deslig))}</dd></div>` : ''}
+          <div><dt>Idade</dt><dd>${esc(fIdade(c.nasc)) || '—'}</dd></div><div><dt>CPF</dt><dd>${esc(fCpf(c.cpf)) || '—'}</dd></div><div><dt>Centro de custo</dt><dd>${esc([c.cc, c.ccd].filter(Boolean).join(' · ')) || '—'}</dd></div></dl></section>
+      ${al.length ? `<section class="fc-al">${al.map(a => `<span class="fc-a ${a[0]}">${esc(a[1])}</span>`).join('')}</section>` : ''}
+      <div class="fc-grade">${F.sec.map(x => `<section class="fc-sec cartao"><header><h3>${esc(x.t)}</h3>${x.ref ? `<small>base de ${esc(brD(x.ref))}</small>` : ''}${x.painel && fPode(x.painel) ? `<button class="link" data-ir="#/p/${esc(x.painel)}">Abrir painel ›</button>` : ''}</header>
+          ${x.resumo ? `<div class="fc-res">${x.resumo.map(r => `<div><b>${esc(r[1])}</b><span>${esc(r[0])}</span></div>`).join('')}</div>`
+          : x.linhas && x.linhas.length ? `<div class="fc-tw"><table class="fc-t"><thead><tr>${x.cab.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${x.linhas.map(l => `<tr>${l.map(v => `<td>${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`
+          : '<p class="fc-vz">Nada registrado.</p>'}</section>`).join('')}
+        ${F.entrevista ? `<section class="fc-sec cartao"><header><h3>Entrevista de desligamento</h3><button class="link" data-ir="#/p/quadro/entr">Abrir respostas ›</button></header><div class="fc-res"><div><b>${esc((F.entrevista.mot || []).join('; ') || '—')}</b><span>Motivo</span></div><div><b>${esc(F.entrevista.volta || 'Não respondeu')}</b><span>Voltaria a trabalhar</span></div></div></section>` : ''}
+      </div>`;
+    corpo.querySelectorAll('[data-ir]').forEach(b => b.onclick = () => location.hash = b.dataset.ir);
+    $('#fc-pdf').onclick = () => { const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit:'pt', format:'a4' });
+      cabecalhoPDF(doc, 'Ficha do colaborador', `${c.nome} · matrícula ${mat}`);
+      doc.autoTable({ startY:100, head:[['Campo', 'Informação']], body:[['Nome', c.nome], ['Matrícula', mat], ['Situação', c.situacao + (des ? ' em ' + brD(c.deslig) : '')], ['Função', c.funcao], ['Setor / seção', [c.area, c.setor].filter(Boolean).join(' · ')], ['Gerência', c.gerencia || ''], ['Contrato', c.vinculo || ''], ['Admissão', brD(c.admissao) + ' · ' + fCasa(c.admissao, des ? c.deslig : '')]].concat(al.map(a => ['Atenção', a[1]])),
+        styles:{ fontSize:8.5, cellPadding:3 }, headStyles:{ fillColor:[36,66,124] }, columnStyles:{ 0:{ cellWidth:120, fontStyle:'bold' } } });
+      F.sec.forEach(x => { const y = doc.lastAutoTable.finalY + 18; doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.text(x.t, 40, y);
+        doc.autoTable({ startY:y + 5, head:[x.resumo ? ['Indicador', 'Valor'] : x.cab], body: x.resumo ? x.resumo.map(r => [r[0], String(r[1])]) : (x.linhas.length ? x.linhas : [x.cab.map((h, i) => i ? '' : 'Nada registrado')]), styles:{ fontSize:8, cellPadding:2.5, overflow:'linebreak' }, headStyles:{ fillColor:[46,138,87] } }); });
+      rodapePDF(doc); baixar(doc.output('blob'), 'Ficha ' + c.nome.split(' ')[0] + ' ' + mat + '.pdf'); };
+  }
+}
+
 /* ---------- telas: Central do dia e Checklist de desligamento ---------- */
 function telaCentral(){
   moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Gestão de Pessoas · CRV Industrial</div><h1>Central do dia</h1><div class="ini-data">Pendências de todos os painéis, das mais urgentes para as menos urgentes</div></div></section><section class="central" id="central"></section>`);
@@ -546,7 +670,7 @@ async function telaDesligamento(){
         <label>Desligados desde <input type="date" id="dk-desde" value="${esc(F.desde)}"></label>
         <label class="dk-chk"><input type="checkbox" id="dk-res" ${F.res ? 'checked' : ''}> Mostrar também os resolvidos</label></section>
       <section class="dk-lista">${L.length ? L.map(x => `<article class="dk-p ${x.pend.length ? '' : 'feito'}">
-          <div class="dk-quem"><b>${esc(x.nome)}</b><span>${esc(x.mat)} · ${esc(x.funcao)}${x.setor ? ' · ' + esc(x.setor) : ''}</span><span class="dk-dt">Desligado em <b>${esc(brD(x.deslig)) || '—'}</b></span></div>
+          <div class="dk-quem"><b><a class="cd-fl" href="#/ficha/${esc(x.mat)}">${esc(x.nome)}</a></b><span>${esc(x.mat)} · ${esc(x.funcao)}${x.setor ? ' · ' + esc(x.setor) : ''}</span><span class="dk-dt">Desligado em <b>${esc(brD(x.deslig)) || '—'}</b></span></div>
           <div class="dk-bens">${DCK.filter(d => x.b[d.k]).map(d => { const b = x.b[d.k], ok = x.ok[d.k];
             return `<div class="dk-b ${ok ? 'ok' : ''}"><div><strong>${esc(d.n)}</strong><small>${esc(b.det)}${b.depois && !ok ? ` · <i title="O desligamento é posterior à base deste benefício; a exclusão pode já ter sido feita">saiu depois da base de ${esc(brD(b.ref))}</i>` : ''}</small>
               ${ok ? `<small class="dk-okt">Feito em ${esc(new Date(ok.em).toLocaleDateString('pt-BR'))}${ok.por ? ' por ' + esc(String(ok.por).split(' ')[0]) : ''}</small>` : `<small class="dk-ac">${esc(d.acao)}</small>`}</div>
@@ -607,7 +731,7 @@ function desenharCentral(c, carregando){
       <button class="btn borda cd-at" id="cd-at" ${carregando ? 'disabled' : ''}>${carregando ? '<span class="spinner pq"></span>' : 'Atualizar'}</button></header>
     ${L.length ? `<div class="cd-lista">${L.map(x => { const n = x.n || x.itens.length, ab = centralAbertos.has(x.id); return `<article class="cd-it ${ab ? 'aberto' : ''}" style="--c:${COR[x.sev]}" data-cid="${esc(x.id)}">
         <button class="cd-l" data-tog="${esc(x.id)}" aria-expanded="${ab}"><b class="cd-n">${n}</b><span class="cd-tx"><strong>${esc(x.t)}</strong><small>${esc(x.pnome)}${x.d ? ' · ' + esc(x.d) : ''}</small></span><span class="cd-seta">›</span></button>
-        <div class="cd-nomes">${x.itens.slice(0, 40).map(i => `<div class="cd-p"><b>${esc(i.nome)}</b>${i.mat ? `<span class="cd-m">${esc(i.mat)}</span>` : ''}<small>${esc(i.det || '')}</small></div>`).join('')}${x.itens.length > 40 ? `<div class="cd-mais">+ ${x.itens.length - 40} no painel</div>` : ''}
+        <div class="cd-nomes">${x.itens.slice(0, 40).map(i => `<div class="cd-p"><b>${i.mat ? `<a class="cd-fl" href="#/ficha/${esc(fMat(i.mat))}">${esc(i.nome)}</a>` : esc(i.nome)}</b>${i.mat ? `<span class="cd-m">${esc(i.mat)}</span>` : ''}<small>${esc(i.det || '')}</small></div>`).join('')}${x.itens.length > 40 ? `<div class="cd-mais">+ ${x.itens.length - 40} no painel</div>` : ''}
           <button class="btn prim cd-ir" data-ir="${x.rota ? x.rota : '#/p/' + encodeURIComponent(x.painel) + (x.acao ? '/' + x.acao : '')}">Abrir ${esc(x.pnome)}</button></div></article>`; }).join('')}</div>`
       : carregando && !c ? '<div class="cd-vazio">Lendo os painéis: Experiência, Férias, Crachás, Ônibus, Sanções, RD, Jovem Aprendiz, Treinamentos, Quadro e benefícios…</div>' : c ? '<div class="cd-vazio ok">Tudo em dia nos painéis acompanhados.</div>' : ''}`;
   el.querySelector('#cd-at').onclick = () => coletarCentral();
