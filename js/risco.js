@@ -176,5 +176,6 @@ async function tela(p, cfg){
     rodapePDF(doc); baixar(doc.output('blob'), nome + '.pdf'); };
   desenhar();
 }
-return { tela, pendencias, daPessoa, RES };
+async function niveis(){ const D = await dados(); const o = {}; (D && D.L || []).forEach(x => o[x.mat] = { niv:x.niv, S:x.S }); return o; }
+return { tela, pendencias, daPessoa, niveis, RES };
 };
