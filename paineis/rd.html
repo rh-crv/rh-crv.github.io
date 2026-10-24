@@ -1424,6 +1424,15 @@ function montarBotao(){
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',montarBotao);else montarBotao();
 window.CRV_NOVO=()=>abrir();
 })();
+
+/* Central do dia (Início do app) */
+window.CRV_PENDENCIAS=function(){
+  const lim=new Date(Date.now()-30*864e5), L=R.filter(r=>r.desf===0&&r.d&&r.d<lim).sort((a,b)=>a.d-b.d);
+  if(!L.length) return [];
+  return [{id:'rd-st',sev:'warn',t:'RDs sem tratativa há mais de 30 dias',d:'Meta do painel: zerar o que passou de 30 dias, começando pelos mais antigos.',n:new Set(L.map(r=>r.rd)).size,
+    itens:L.map(r=>({nome:r.n,mat:r.mat,det:`RD ${r.rd} de ${r.ds.split('-').reverse().join('/')}${r.dep?' · '+r.dep:''}`}))}];
+};
+
 </script>
 <!-- ===== fim: cadastro de novos ===== -->
 

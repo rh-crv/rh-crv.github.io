@@ -1221,5 +1221,14 @@ function corrigir(t){const ids=G[t].map(r=>(window.CRV_TR_ID||{})[r.row]).filter
     catch(e){ok=false;el('ctOk').disabled=false;m.style.color='#8a2a1a';m.textContent='Não consegui corrigir: '+((e&&e.message)||'sem permissão')}}}
 render();
 })();
+
+/* Central do dia (Início do app) */
+window.CRV_PENDENCIAS=function(){
+  const T=window.CRV_TR; if(!T||!T.ROWS) return null;
+  const MSx=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'], L=T.ROWS.filter(r=>r.pend).sort((a,b)=>a.m-b.m);
+  if(!L.length) return [];
+  return [{id:'tr-pend',sev:'info',t:'Treinamentos previstos sem lançamento',d:'Enquanto não forem lançados, os meses não entram no resultado da meta.',itens:L.map(r=>({nome:r.t||'Treinamento',mat:'',det:`previsto em ${MSx[r.m]||''}`}))}];
+};
+
 </script>
 </body></html>

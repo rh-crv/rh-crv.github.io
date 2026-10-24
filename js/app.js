@@ -414,7 +414,7 @@ function telaInicio(){
    Cada painel calcula as próprias pendências (window.CRV_PENDENCIAS) com as mesmas regras que mostra na tela;
    o app abre os painéis escondidos, recolhe e guarda o resultado por algumas horas.
    ===================================================================== */
-const CENTRAL_FONTES = ['experiencia', 'ferias', 'crachas', 'onibus'];
+const CENTRAL_FONTES = ['experiencia', 'ferias', 'crachas', 'onibus', 'sancoes', 'rd', 'jovem', 'renapsi', 'treinamentos'];
 const CENTRAL_VALIDADE = 3 * 3600e3;
 const centralChave = () => 'crv-central-' + (E.perfil ? E.perfil.id || E.perfil.nome : '');
 let centralRodando = false;
@@ -609,7 +609,7 @@ function desenharCentral(c, carregando){
         <button class="cd-l" data-tog="${esc(x.id)}" aria-expanded="${ab}"><b class="cd-n">${n}</b><span class="cd-tx"><strong>${esc(x.t)}</strong><small>${esc(x.pnome)}${x.d ? ' · ' + esc(x.d) : ''}</small></span><span class="cd-seta">›</span></button>
         <div class="cd-nomes">${x.itens.slice(0, 40).map(i => `<div class="cd-p"><b>${esc(i.nome)}</b>${i.mat ? `<span class="cd-m">${esc(i.mat)}</span>` : ''}<small>${esc(i.det || '')}</small></div>`).join('')}${x.itens.length > 40 ? `<div class="cd-mais">+ ${x.itens.length - 40} no painel</div>` : ''}
           <button class="btn prim cd-ir" data-ir="${x.rota ? x.rota : '#/p/' + encodeURIComponent(x.painel) + (x.acao ? '/' + x.acao : '')}">Abrir ${esc(x.pnome)}</button></div></article>`; }).join('')}</div>`
-      : carregando && !c ? '<div class="cd-vazio">Lendo Experiência, Férias, Crachás, Ônibus, Quadro e benefícios…</div>' : c ? '<div class="cd-vazio ok">Tudo em dia nos painéis acompanhados.</div>' : ''}`;
+      : carregando && !c ? '<div class="cd-vazio">Lendo os painéis: Experiência, Férias, Crachás, Ônibus, Sanções, RD, Jovem Aprendiz, Treinamentos, Quadro e benefícios…</div>' : c ? '<div class="cd-vazio ok">Tudo em dia nos painéis acompanhados.</div>' : ''}`;
   el.querySelector('#cd-at').onclick = () => coletarCentral();
   el.querySelectorAll('[data-tog]').forEach(b => b.onclick = () => { const id = b.dataset.tog; centralAbertos.has(id) ? centralAbertos.delete(id) : centralAbertos.add(id); b.closest('.cd-it').classList.toggle('aberto'); b.setAttribute('aria-expanded', centralAbertos.has(id)); });
   el.querySelectorAll('.cd-ir').forEach(b => b.onclick = () => location.hash = b.dataset.ir);

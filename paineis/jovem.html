@@ -1187,6 +1187,15 @@ window.CRV_NOVO=()=>{try{go('bas')}catch(_){}novo()};window.CRV_JOV_FICHA=ficha;
   document.getElementById('jfNovo').onclick=novo;document.getElementById('jfDesl').onclick=desl;document.getElementById('jfAts').onclick=listaAt})();
 atualizar();
 })();
+
+/* Central do dia (Início do app) */
+window.CRV_PENDENCIAS=function(){
+  const m=MESES[MESES.length-1]; if(!m) return [];
+  const c=calc(m), L=c.js.filter(j=>j.rad===2);
+  if(!L.length) return [];
+  return [{id:'jv-int-jov',sev:'warn',t:'Jovens aprendizes em intervenção (João Bittar)',d:'Radar de '+m.nome+'. Acompanhar primeiro.',itens:L.map(j=>({nome:j.n,mat:j.mat||'',det:(j.setor?j.setor+' · ':'')+j.sinais.join(' · ')}))}];
+};
+
 </script>
 
 </body></html>

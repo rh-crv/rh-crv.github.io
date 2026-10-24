@@ -854,6 +854,14 @@ function montarBotao(){const alvo=document.querySelector('header .hin')||documen
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',montarBotao);else montarBotao();
 window.CRV_DOCDISC=abrir;
 })();
+
+/* Central do dia (Início do app) */
+window.CRV_PENDENCIAS=function(){
+  const ps=people(R26), s3=ps.filter(o=>o.ss>=3&&o.p.si!=='DEMITIDO').sort((a,b)=>b.ss-a.ss);
+  if(!s3.length) return [];
+  return [{id:'sa-s3',sev:'warn',t:'Ativos na 3ª suspensão ou mais',d:'Casos para análise com o gestor e o Jurídico antes de nova medida.',itens:s3.map(o=>({nome:o.p.n,mat:o.p.mat,det:`${o.ss}ª suspensão · ${o.a} advertência${o.a===1?'':'s'} em 2026 · ${o.p.de||''}`}))}];
+};
+
 </script>
 <!-- ===== fim: documentos disciplinares ===== -->
 
