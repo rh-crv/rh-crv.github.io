@@ -68,6 +68,7 @@ tr.det td>div{max-width:calc(min(1320px,100vw) - 76px);position:sticky;left:12px
 .kpi:hover .go,.kpi:focus-visible .go{opacity:1}
 .kpi .k{font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--fg-3);font-weight:700}
 .kpi .v{font-family:var(--f-display);font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1;margin-top:4px;color:var(--fg)}
+.kpi[data-kk=venc] .v,.kpi[data-kk=v90] .v{color:var(--k)}
 .kpi .h{font-size:12.5px;color:var(--fg-3)}
 .kpi .h b{color:var(--fg-2);font-weight:600}
 /* filtros */
@@ -313,6 +314,36 @@ body.has-sel .wrap>.foot{margin-bottom:90px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
 .gst.acd{background:#fdebd3;color:#8a4b00;border-color:#e0b171}
 .gst{display:inline-block;font:700 11.5px/1.5 inherit;padding:1px 9px;border-radius:99px;background:#f3e3f6;color:#7a2e8e;border:1px solid #c79ad2;white-space:nowrap;margin-left:6px;vertical-align:1px}
+
+/* ===== acabamento profissional (v2) ===== */
+.att{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;margin:14px 0 0;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}
+.att>div{padding:11px 16px;border-left:1px solid var(--line-2);min-width:0}.att>div:first-child{border-left:0}
+.att small{display:block;font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--c,var(--fg-3));margin-bottom:3px}
+.att p{margin:0;font-size:13px;line-height:1.4;color:var(--fg-2)}.att p b{color:var(--fg)}
+.att .lk{all:unset;cursor:pointer;font-weight:700;color:var(--c,var(--fg));text-decoration:underline dotted;text-underline-offset:3px}
+@media (max-width:600px){.att>div:first-child{display:none}.att>div:nth-child(2){border-top:0}}
+@media (max-width:860px){.att{grid-template-columns:1fr}.att>div{border-left:0;border-top:1px solid var(--line-2)}.att>div:first-child{border-top:0}}
+.cf-wrap{margin-top:14px}
+.count-line{margin-top:10px}
+@media (max-width:600px){
+  .summary{display:flex;overflow-x:auto;gap:10px;margin-inline:-16px;padding:0 16px 6px;scroll-snap-type:x mandatory;scrollbar-width:none}
+  .summary::-webkit-scrollbar{display:none}
+  .summary .kpi{flex:0 0 44%;scroll-snap-align:start}
+  .band-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.band-meta br{display:none}.edit-chip{margin-top:0}
+}
+/* alertas agrupados por pessoa */
+.it.grp .pers{display:flex;flex-direction:column;gap:6px;grid-column:1/-1;margin-top:6px}
+.it.grp .pr{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:6px 10px;border-radius:8px;background:var(--surface-2)}
+.it.grp .pr .lim{margin-left:auto;font-size:12.5px;white-space:nowrap}
+.np{display:inline-block;margin-left:6px;font-size:11px;font-weight:800;color:var(--c);background:var(--c-bg);border-radius:20px;padding:1px 8px;vertical-align:1px}
+.ab-h .d .pp{font-weight:700;color:var(--fg)}
+.res-tog{margin-left:auto}
+#resolved .ab.fechado .res-g{display:none}
+/* tabelas mais enxutas */
+#tNo td:nth-child(3),.tProg td:nth-child(3){min-width:240px}
+#tNo td .small,.tProg td:nth-child(3) .small{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;max-width:420px}
+.tProg td:nth-child(7){max-width:230px}
+.tProg td:nth-child(7)>.ob{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 </style>
 
 <div class="band">
@@ -331,6 +362,7 @@ body.has-sel .wrap>.foot{margin-bottom:90px}
 
 <div class="wrap">
   <section class="summary" id="summary" aria-label="Resumo"></section>
+  <section class="att" id="att" aria-label="Leitura rápida"></section>
 
   <div class="filters" role="search">
     <div class="fld"><label for="fGer">Gerência</label><select id="fGer"></select></div>
@@ -359,7 +391,7 @@ body.has-sel .wrap>.foot{margin-bottom:90px}
 
   <section id="v-alertas">
     <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <div class="small">Só o que está <b>pendente</b>: períodos sem programação, ou com data fora do prazo. Quem já está de férias ou programado aparece em "Já resolvidos", logo abaixo. Clique no nome para ver os períodos<span class="own-only"> e programar</span>.</div>
+      <div class="small">Períodos <b>pendentes</b>: sem data ou com data fora do prazo. Clique no nome para ver o histórico<span class="own-only"> e programar</span>.</div>
     </div>
     <div class="ablocks" id="ablocks"></div>
     <div id="resolved" style="margin-top:16px"></div>
@@ -532,6 +564,7 @@ const MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov'
 const MESES_L = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const nf = n => (Math.round(n*10)/10).toLocaleString('pt-BR');
+const pl = (n,a,b) => `${nf(n)} ${n===1?a:b}`;
 const $ = id => document.getElementById(id);
 $('hoje').textContent = HOJE.toLocaleDateString('pt-BR');
 
@@ -672,14 +705,21 @@ function renderSummary(ps){
   const upcoming = per.filter(x=>{const s=progState(x); return s && s.parts.some(q=>q.k==='fut');}).length;
   const comSaldo = per.filter(x=>x.saldo>0 && x.adquirido).length;
   const K = [
-    {id:'colab', k:'Colaboradores', v:ps.length, h:`<b>${ps.filter(p=>p.af).length}</b> afastados`, c:'var(--brand)'},
-    {id:'agozar', k:'Períodos a gozar', v:comSaldo, h:`adquiridos com saldo`, c:'var(--ok)'},
     {id:'venc', k:'Vencidos', v:venc.length, h:`pendentes · <b>${resV}</b> já resolvidos`, c:'var(--crit)'},
     {id:'v90', k:'Vencem em 90 dias', v:urg.length-venc.length, h:`pendentes · <b>${res90}</b> já programados`, c:'var(--ser)'},
     {id:'ferias', k:'De férias hoje', v:onVac, h:`<b>${upcoming}</b> com saída marcada`, c:'var(--vac)'},
+    {id:'agozar', k:'Períodos a gozar', v:comSaldo, h:`adquiridos com saldo`, c:'var(--ok)'},
+    {id:'colab', k:'Colaboradores', v:ps.length, h:`<b>${ps.filter(p=>p.af).length}</b> afastados`, c:'var(--brand)'},
     {id:'nulos', k:'Períodos nulos', v:per.filter(x=>x.nulo).length, h:`<b>${ps.filter(p=>p.nNulo).length}</b> colaboradores`, c:'var(--null)'},
   ];
   $('summary').innerHTML = K.map(o=>`<button type="button" class="kpi" data-kk="${o.id}" style="--k:${o.c}" title="Clique para ver quem está por trás deste número"><div class="k">${o.k}</div><div class="v">${o.v.toLocaleString('pt-BR')}</div><div class="h">${o.h}</div><div class="go">ver lista</div></button>`).join('');
+  { const pz = a=>new Set(a.map(x=>x.person.c)).size;
+    const d30=urg.filter(x=>x.st==='d30'), d60=urg.filter(x=>x.st==='d60'||x.st==='d90');
+    const ondeTxt = `<b>${nf(comSaldo)}</b> períodos adquiridos com saldo. <b>${nf(onVac)}</b> pessoas de férias hoje e <b>${nf(upcoming)}</b> com saída marcada.`;
+    const pontoTxt = venc.length ? `<button class="lk" data-kk="venc">${pl(venc.length,'período vencido','períodos vencidos')}</button> sem programação, de ${pl(pz(venc),'pessoa','pessoas')}. Férias concedidas depois do prazo são pagas em dobro (CLT, art. 137).`
+      : d30.length ? `<button class="lk" data-kk="v90">${pl(d30.length,'período vence','períodos vencem')} em até 30 dias</button> sem data programada.` : 'Nenhum período vencido ou vencendo em 30 dias sem programação.';
+    const acompTxt = d60.length ? `<b>${nf(d60.length)}</b> períodos vencem em 31 a 90 dias sem data. Mande a lista às áreas para programarem.` : 'Nenhum período vencendo em 31 a 90 dias sem data.';
+    $('att').innerHTML = `<div><small>Onde estamos</small><p>${ondeTxt}</p></div><div style="--c:${venc.length?'var(--crit)':'var(--ser)'}"><small>Principal ponto de atenção</small><p>${pontoTxt}</p></div><div style="--c:var(--info)"><small>O que acompanhar</small><p>${acompTxt}</p></div>`; }
   $('ctAlertas').textContent = semdata; $('ctAlertas').title = `${semdata} períodos pendentes (vencidos ou vencendo em 90 dias, sem programação no prazo)`;
   $('ctAlertas').classList.toggle('hot', semdata>0);
 }
@@ -697,6 +737,18 @@ function itemHtml(x){
     ${openIt.has(x.key)?`<div class="it-det">${timeline(p)}</div>`:''}
   </div>`;
 }
+function grpHtml(L){
+  if(L.length===1) return itemHtml(L[0]);
+  const x=L[0], p=x.person, ord=L.slice().sort((a,b)=>a.limD-b.limD);
+  return `<div class="it grp ab-${x.st}" data-key="${x.key}" tabindex="0" role="button" aria-expanded="${openIt.has(x.key)}">
+    <div style="min-width:0"><div class="nm">${esc(p.n)}<span class="np">${L.length} períodos</span>${tags(p).replace(/<span class="tag db"[^>]*>[^<]*<\/span>/,'')}</div><div class="meta">${p.c} · ${esc(p.dp)} › ${esc(p.d)} · adm. ${fmtS(p.a)}</div></div>
+    <div class="right"><div class="lim">Mais antigo: limite ${fmtS(ord[0].lim)}</div></div>
+    <div class="pers">${ord.map(q=>{ const has=!!progOf(q); const dt=q.dias<0?`<b>${-q.dias} dias</b> atrás`:`em <b>${q.dias} dias</b>`;
+      return `<div class="pr"><span class="small mono">${fmtS(q.de)} – ${fmtS(q.ate)} · saldo ${nf(q.saldo)}d</span>${progChip(q,true)}${CAN_EDIT&&!q.nulo&&q.saldo>0?`<button type="button" class="btn sm" data-prog="${q.key}">${has?'Editar':'Programar'}</button>`:''}<span class="lim">Limite ${fmtS(q.lim)} · ${dt}</span></div>`; }).join('')}</div>
+    ${openIt.has(x.key)?`<div class="it-det">${timeline(p)}</div>`:''}
+  </div>`;
+}
+let resAberto=false;
 function renderAlertas(ps){
   const set=new Set(ps);
   const all = PERIODS.filter(x=>set.has(x.person) && URG.includes(x.st)).sort((a,b)=>a.limD-b.limD||a.person.n.localeCompare(b.person.n));
@@ -705,9 +757,11 @@ function renderAlertas(ps){
     const rows = all.filter(x=>x.st===b.k);
     const late = rows.filter(x=>progOf(x)).length;
     const ok = res.filter(x=>x.urg===b.k).length;
-    return `<div class="ab ab-${b.k}"><div class="ab-h"><span class="num">${rows.length}</span><div><h3>${b.t}</h3><div class="d">${b.d}</div></div>
+    const byP=new Map(); rows.forEach(x=>{ const k=x.person.c; if(!byP.has(k)) byP.set(k,[]); byP.get(k).push(x); });
+    const np=byP.size;
+    return `<div class="ab ab-${b.k}"><div class="ab-h"><span class="num">${rows.length}</span><div><h3>${b.t}</h3><div class="d">${b.d}${rows.length&&np!==rows.length?` · <span class="pp">${pl(np,'pessoa','pessoas')}</span>`:''}</div></div>
       <div class="nd">${ok?`<b style="color:var(--ok)">${ok}</b>já resolvido${ok>1?'s':''}`:''}</div></div>
-      <div class="ab-list">${rows.length?rows.map(itemHtml).join(''):`<div class="it-empty">${ok?'Nada pendente: todos já estão programados ou de férias.':'Nenhum período nesta faixa.'}</div>`}${late?`<div class="it-empty" style="padding:8px 16px;text-align:left">${late} com data que passa do prazo. Ajuste a programação.</div>`:''}</div></div>`;
+      <div class="ab-list">${rows.length?[...byP.values()].map(grpHtml).join(''):`<div class="it-empty">${ok?'Nada pendente: todos já estão programados ou de férias.':'Nenhum período nesta faixa.'}</div>`}${late?`<div class="it-empty" style="padding:8px 16px;text-align:left">${late} com data que passa do prazo. Ajuste a programação.</div>`:''}</div></div>`;
   }).join('');
   const grp = [
     {k:'ferias', t:'De férias agora'},
@@ -715,9 +769,10 @@ function renderAlertas(ps){
     {k:'ret', t:'Aguardam retorno do afastamento'},
     {k:'gozado', t:'Férias já gozadas (aguardam atualização da planilha)'},
   ].map(g=>({...g, rows:res.filter(x=>x.st===g.k).sort((a,b)=>a.limD-b.limD)})).filter(g=>g.rows.length);
-  $('resolved').innerHTML = grp.length ? `<div class="ab ab-ok"><div class="ab-h"><span class="num">${res.length}</span><div><h3>Já resolvidos</h3><div class="d">Venciam ou vencem em até 90 dias, mas já estão de férias, programados ou aguardando retorno. Não entram nos alertas.</div></div></div>
+  $('resolved').innerHTML = grp.length ? `<div class="ab ab-ok ${resAberto?'':'fechado'}"><div class="ab-h"><span class="num">${res.length}</span><div><h3>Já resolvidos</h3><div class="d">${grp.map(g=>`${g.t.replace(/ \(.*\)$/,'')}: <b>${g.rows.length}</b>`).join(' · ')}. Não entram nos alertas.</div></div><button type="button" class="btn sm res-tog" data-rtog="1">${resAberto?'Esconder lista':'Ver lista'}</button></div>
     ${grp.map(g=>`<div class="res-g"><div class="res-h">${g.t} <span>${g.rows.length}</span></div>${g.rows.map(itemHtml).join('')}</div>`).join('')}</div>` : '';
 }
+document.addEventListener('click',e=>{ if(e.target.closest('[data-rtog]')){ resAberto=!resAberto; render(); } });
 function itemClick(e){
   const b=e.target.closest('[data-prog]'); if(b){ e.stopPropagation(); openDlg(b.dataset.prog); return; }
   if (e.target.closest('.it-det')) return;
@@ -752,6 +807,7 @@ $('ovList').addEventListener('click',e=>{ if(e.target===$('ovList')) closeList()
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&!$('ovList').hidden&&$('ov').hidden) closeList(); });
 $('listItems').addEventListener('click',itemClick); $('listItems').addEventListener('keydown',itemKey);
 $('summary').addEventListener('click',e=>{ const b=e.target.closest('[data-kk]'); if(!b) return; const k=b.dataset.kk;
+$('att').addEventListener('click',e=>{ const b=e.target.closest('[data-kk]'); if(!b) return; const k=$('summary').querySelector('[data-kk="'+b.dataset.kk+'"]'); if(k) k.click(); });
   if(k==='colab'){ tab='nominal'; render(); document.querySelector('.tabs').scrollIntoView({behavior:'smooth',block:'start'}); } else openList(k); });
 
 // ---------- programação ----------
@@ -792,7 +848,7 @@ function renderProg(ps){
     return `<tr class="row" data-c="${p.c}" tabindex="0" style="--rc:${q.late?'var(--crit)':KC[r.kind]}">
     <td>${pc}${q.n>1?`<div class="small">${q.i+1}ª parcela de ${q.n}</div>`:''}${r.s.falta>0?`<div class="small">faltam ${nf(r.s.falta)}d sem data</div>`:''}</td><td class="mono" style="white-space:nowrap">${q.dias}d${q.abono?`<div class="ab-tag">+ ${q.abono} abono</div>`:''}</td><td><span class="nm">${esc(p.n)}</span>${tags(p)}<div class="small">${p.c} · ${esc(p.d)} · adm. ${fmtS(p.a)}</div></td>
     <td class="small">${esc(p.g)}</td><td class="mono">${fmtS(x.de)} – ${fmtS(x.ate)}</td><td class="mono">${fmtS(x.lim)}</td>
-    <td class="small">${esc(r.s.g.obs||'')}${r.s.g.src==='planilha'?'<div>(planilha)</div>':''}</td>
+    <td class="small"><div class="ob" title="${esc(r.s.g.obs||'')}">${esc(r.s.g.obs||'')}</div>${r.s.g.src==='planilha'?'<div>(planilha)</div>':''}</td>
     <td>${CAN_EDIT?`<button type="button" class="btn sm" data-prog="${x.key}">Editar</button>`:''}</td></tr>`; };
   const head = `<thead><tr><th>Férias</th><th>Dias</th><th>Colaborador</th><th>Gerência</th><th>Período aquisitivo</th><th>Data limite</th><th>Observação</th><th></th></tr></thead>`;
   const groups = {}; dated.forEach(r=>{ (groups[r.mes]=groups[r.mes]||[]).push(r); });

@@ -27,10 +27,11 @@ const CSS = `
 .cf-c button{border:0;background:rgba(0,0,0,.08);color:inherit;width:20px;height:20px;border-radius:50%;cursor:pointer;font-weight:800;line-height:1;flex:none;padding:0}
 .cf-z{color:#5d6a85;font-size:13px}
 .cf-l{border:0;background:none;color:#24427c;font:700 12.5px inherit;font-family:inherit;cursor:pointer;text-decoration:underline;padding:0}
+.cf-x{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto;align-items:center}
 .cf-wrap.cf-off>.cf-box{display:none!important}
 .cf-hd{display:none}
 @media (max-width:760px){
-  .cf-tool{padding:8px 10px;gap:8px}.cf-act{flex:1 1 auto}.cf-z{display:none}
+  .cf-tool{padding:8px 10px;gap:8px}.cf-act{flex:1 1 auto}.cf-z{display:none}.cf-x{flex:1 1 100%;margin-left:0;flex-wrap:nowrap;gap:6px}.cf-x>*{flex:1 1 0!important;min-width:0!important;padding:7px 6px!important;font-size:12.5px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .cf-wrap:not(.cf-off)>.cf-box select{max-width:100%!important;width:100%!important}
   .cf-wrap:not(.cf-off)>.cf-box{position:fixed!important;left:0;right:0;bottom:0;top:auto;z-index:2000;max-height:82vh;overflow:auto;margin:0!important;border-radius:18px 18px 0 0!important;box-shadow:0 -10px 40px rgba(0,0,0,.25)!important;background:#fff!important;padding:0 16px 18px!important;display:block!important;width:auto!important}
   .cf-wrap:not(.cf-off)::before{content:"";position:fixed;inset:0;background:rgba(10,20,40,.45);z-index:1999}
@@ -76,6 +77,9 @@ function montar(box){
   const tl = document.createElement('div'); tl.className = 'cf-tool';
   tl.innerHTML = '<button type="button" class="cf-b" data-cf="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>Filtros<span class="cf-n" hidden></span></button><div class="cf-act"></div>';
   w.insertBefore(tl, box);
+  // botões de ação (PDF, Excel, imprimir, selecionar) não ficam escondidos: vão para a barra
+  const xs = [...box.querySelectorAll('button,a.btn')].filter(b => /\b(pdf|excel|exportar|imprimir|selecionar|gerar)\b/i.test(b.textContent) && !b.closest('[role=group],.chips,.seg'));
+  if (xs.length) { const xw = document.createElement('div'); xw.className = 'cf-x'; xs.forEach(b => xw.appendChild(b)); tl.appendChild(xw); }
   const hd = document.createElement('div'); hd.className = 'cf-hd'; hd.innerHTML = '<b>Filtros</b><button type="button">Ver resultado</button>';
   box.insertBefore(hd, box.firstChild);
   const tg = tl.querySelector('[data-cf=t]');
