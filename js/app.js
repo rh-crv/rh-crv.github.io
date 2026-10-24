@@ -13,7 +13,7 @@ const sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_KEY, {
 /* ---------- identidade visual das frentes ---------- */
 const FRENTES = {
   'Quadro e movimentação':         { cor:'#24427c', ic:'pessoas',   desc:'Quadro, admissões, rescisões e experiência' },
-  'Atração e perfil':              { cor:'#1f8a8a', ic:'lupa',      desc:'Currículos, seleção e perfil' },
+  'Atração e perfil':              { cor:'#1f8a8a', ic:'lupa',      desc:'Recrutamento, seleção e perfil' },
   'Frequência e férias':           { cor:'#e9a23b', ic:'calendario',desc:'Absenteísmo, férias e sanções' },
   'Benefícios':                    { cor:'#2e8a57', ic:'presente',  desc:'VA, plano de saúde, odonto e farmácia' },
   'Jovem Aprendiz':                { cor:'#7a4fb5', ic:'capelo',    desc:'Programa Conexão Aprendiz' },
@@ -697,27 +697,22 @@ async function consultaDetalhe(p){
   let rd = []; if (fPode('rd')) { const d = await window.CRV_DADOS('rd'); const D = d && d.dados.D; const DES = ['Sem tratativa', 'Ausência de culpa', 'Culpa apontada, sem medida', 'Medida disciplinar', 'Desconto', 'Sem informação'];
     if (D) rd = D.rows.filter(r => crv.includes(String(r[2]))).map(r => [String(r[0]), brD(r[1]), DES[r[9]] || '', r[10] || '']); }
   let ent = null; try { const { data } = await sb.from('registros').select('dados').eq('painel', 'quadro').eq('colecao', 'entrevistas_resp').range(0, 4999); ent = (data || []).map(x => x.dados).find(v => v && !v.excluida && crv.includes(String(v.mat))) || null; } catch(_){}
-  let cvs = []; if (fPode('curriculos')) { const C = await window.CRV_REGS('curriculos', 'candidatos'); cvs = C.filter(c => nNome(c.nome) === p.n); }
-  return { bloq, proc, sanc, rd, ent, cvs };
+  return { bloq, proc, sanc, rd, ent };
 }
 function telaConsulta(){
   moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Atração e perfil</div><h1>Consulta de candidato</h1><div class="ini-data">Pelo CPF ou pelo nome: se já trabalhou em alguma das empresas, se tem bloqueio e o histórico, para a área analisar junto com o currículo</div></div></section>
     <div class="fc-busca cartao"><input id="cs-q" type="search" placeholder="CPF (só números ou com pontos) ou nome completo" autocomplete="off" aria-label="CPF ou nome"><div class="fc-sug" id="cs-sug" hidden></div></div>
     <div id="cs-corpo"><div class="cartao vazio"><p>Digite o CPF ou o nome do candidato.</p></div></div>`);
-  const q = $('#cs-q'), sug = $('#cs-sug'); let B = null, CV = [];
+  const q = $('#cs-q'), sug = $('#cs-sug'); let B = null;
   consultaBase().then(x => { B = x; if (!x) $('#cs-corpo').innerHTML = '<div class="cartao vazio"><h3>Sem a base do Quadro Geral</h3></div>'; });
-  if (fPode('curriculos')) window.CRV_REGS('curriculos', 'candidatos').then(L => { CV = L.filter(c => c.nome); });
   const buscar = () => { if (!B) return; const t = q.value.trim(), dg = t.replace(/\D/g, ''); let L = [];
     const soNum = dg.length && dg.length === t.replace(/[\s.\-]/g, '').length;
     if (soNum && dg.length >= 6) L = B.L.filter(p => p.d && p.d.includes(dg));
     else if (soNum) L = B.L.filter(p => p.pass.some(x => x.mat === dg.replace(/^0+/, '')));
-    else if (t.length >= 3) { const n = nNome(t); L = B.L.filter(p => p.n.includes(n));
-      // candidatos do Banco de Currículos que nunca passaram pelas empresas
-      const ja = new Set(L.map(p => p.n)); const vistos = new Set();
-      CV.filter(c => nNome(c.nome).includes(n) && !ja.has(nNome(c.nome))).forEach(c => { const k = nNome(c.nome); if (vistos.has(k)) return; vistos.add(k); L.push({ id:'cv:' + k, nome:c.nome, cpf:'', d:'', n:k, pass:[], soCv:true }); }); }
+    else if (t.length >= 3) { const n = nNome(t); L = B.L.filter(p => p.n.includes(n)); }
     if (!t) { sug.hidden = true; return; }
     L = L.slice(0, 12);
-    sug.innerHTML = L.length ? L.map(p => { const u = p.pass[0]; if (!u) return `<button data-id="${esc(String(p.id))}"><b>${esc(p.nome)}</b><span>Currículo no banco · nunca trabalhou nas empresas do Quadro</span></button>`; return `<button data-id="${esc(String(p.id))}"><b>${esc(p.nome)}</b><span>${p.d ? esc(fCpf(p.cpf)) + ' · ' : ''}${p.pass.length} passage${p.pass.length > 1 ? 'ns' : 'm'} · última: ${esc(u.emp)} ${u.atual ? '<i>(' + esc(u.sit) + ' hoje)</i>' : 'até ' + esc(brD(u.saida))}</span></button>`; }).join('')
+    sug.innerHTML = L.length ? L.map(p => { const u = p.pass[0]; return `<button data-id="${esc(String(p.id))}"><b>${esc(p.nome)}</b><span>${p.d ? esc(fCpf(p.cpf)) + ' · ' : ''}${p.pass.length} passage${p.pass.length > 1 ? 'ns' : 'm'} · última: ${esc(u.emp)} ${u.atual ? '<i>(' + esc(u.sit) + ' hoje)</i>' : 'até ' + esc(brD(u.saida))}</span></button>`; }).join('')
       : `<div class="fc-nada">${dg.length >= 6 ? 'Nenhum CPF encontrado: não consta passagem por nenhuma das empresas do Quadro.' : 'Ninguém com esse nome no Quadro (todas as empresas).'}</div>`;
     sug.hidden = false; sug.querySelectorAll('[data-id]').forEach(b => b.onclick = () => { sug.hidden = true; abrir(L.find(p => String(p.id) === b.dataset.id)); }); };
   q.oninput = buscar; q.onkeydown = e => { if (e.key === 'Enter') { const b = sug.querySelector('[data-id]'); if (b) b.click(); else buscar(); } };
@@ -748,7 +743,6 @@ function telaConsulta(){
         <section class="fc-sec cartao"><header><h3>Registros de dano (RD)</h3></header>${X.rd.length ? `<div class="fc-tw"><table class="fc-t"><thead><tr><th>RD</th><th>Data</th><th>Desfecho</th><th>Tratativa</th></tr></thead><tbody>${X.rd.map(l => `<tr>${l.map(v => `<td>${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '<p class="fc-vz">Nada registrado.</p>'}</section>
         ${X.ent ? `<section class="fc-sec cartao"><header><h3>Entrevista de desligamento</h3></header><div class="fc-res"><div><b>${esc((X.ent.mot || []).join('; ') || '—')}</b><span>Motivo</span></div><div><b>${esc(X.ent.volta || 'Não respondeu')}</b><span>Voltaria a trabalhar</span></div></div></section>` : ''}
         ${X.proc ? `<section class="fc-sec cartao cs-sens"><header><h3>Processos trabalhistas</h3><small>informação sensível: não vai no PDF para a área</small></header><div class="fc-tw"><table class="fc-t"><thead><tr><th>Processo</th><th>Empresa</th><th>Tipo</th></tr></thead><tbody>${(X.proc.p || []).map(x => `<tr><td>${esc(x[0])}</td><td>${esc(x[1])}</td><td>${esc(x[2])}</td></tr>`).join('')}</tbody></table></div></section>` : ''}
-        <section class="fc-sec cartao"><header><h3>Currículo recebido</h3>${fPode('rs') ? '<button class="link" data-ir="#/p/rs">Abrir Recrutamento e Seleção ›</button>' : ''}</header>${X.cvs.length ? `<div class="fc-tw"><table class="fc-t"><thead><tr><th>Recebido em</th><th>Área</th><th>Aderência</th><th>Situação</th></tr></thead><tbody>${X.cvs.map(c => `<tr><td>${esc(brD(c.recebidoEm))}</td><td>${esc(c.area_principal || '')}</td><td>${esc(c.aderencia || '')}</td><td>${esc(c.status || c.funil || '')}</td></tr>`).join('')}</tbody></table></div>` : '<p class="fc-vz">Nenhum currículo com esse nome no banco.</p>'}</section>
       </div>`;
     C.querySelectorAll('[data-ir]').forEach(b => b.onclick = () => location.hash = b.dataset.ir);
     $('#cs-pdf').onclick = () => { const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit:'pt', format:'a4' });

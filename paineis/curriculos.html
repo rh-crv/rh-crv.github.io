@@ -1915,7 +1915,8 @@ const emAberto = v => v.status === 'aberta' || v.status === 'suspensa';
 const ativa = x => !x.resultado;
 const cdtsDe = id => S.cdts.filter(x => x.vagaId === id);
 const fluxoDe = v => FLUXO[v.fluxo] || FLUXO.curto;
-const candDe = x => S.cands.find(c => c.id === x.candId) || null;
+const RSO = window.CRV_MODO_CV === 'rs'; // no app: R&S sem ligação com o Banco de Currículos
+const candDe = x => RSO ? null : (S.cands.find(c => c.id === x.candId) || null);
 const vagaDe = id => S.vagas.find(v => v.id === id) || null;
 function vagaInfo(v){
   const cs = cdtsDe(v.id), q = Math.max(1, +v.qtd || 1);
@@ -1956,7 +1957,7 @@ function setView(v, semHash){
   $('#vwBanco').hidden = S.view !== 'banco'; $('#vwRs').hidden = S.view !== 'rs';
   $('#tituloTopo').textContent = S.view === 'rs' ? 'Recrutamento e Seleção' : 'Banco de Currículos';
   $('#subTopo').textContent = S.view === 'rs'
-    ? 'As vagas abertas, os candidatos do banco em cada etapa e o que ainda falta preencher por departamento.'
+    ? (RSO ? 'As vagas abertas, os candidatos em cada etapa e o que ainda falta preencher por departamento.' : 'As vagas abertas, os candidatos do banco em cada etapa e o que ainda falta preencher por departamento.')
     : 'Currículos recebidos, área indicada, aderência aos requisitos e semáforo do RH.';
   if(!semHash){ try{ history.replaceState(null, '', S.view === 'rs' ? '#rs' : '#banco'); }catch(_){} }
   renderNav(); renderAvisos(); if(S.view === 'rs') renderRs(true);
@@ -1976,7 +1977,7 @@ function abrirQuem(titulo, sub, html){
   $('#quem').hidden = false; document.body.style.overflow = 'hidden';
 }
 function fecharQuem(){ $('#quem').hidden = true; document.body.style.overflow = ''; }
-const qCdt = x => { const v = vagaDe(x.vagaId), c = candDe(x); return `<div class="qrow"><button type="button" class="lk" data-irc="${esc(x.candId)}">${esc((c && c.nome) || x.nome || 'Sem nome')}</button><span class="q2">${esc(v ? v.titulo : 'Vaga excluída')}</span><span>${x.resultado ? esc(RESULT[x.resultado] || '') : esc(ETAPA[x.etapa] || '') + ' · ' + diasEntre(x.etapaEm) + ' d'}</span></div>`; };
+const qCdt = x => { const v = vagaDe(x.vagaId), c = candDe(x); return `<div class="qrow">${RSO ? '<b>' + esc(x.nome || 'Sem nome') + '</b>' : `<button type="button" class="lk" data-irc="${esc(x.candId)}">${esc((c && c.nome) || x.nome || 'Sem nome')}</button>`}<span class="q2">${esc(v ? v.titulo : 'Vaga excluída')}</span><span>${x.resultado ? esc(RESULT[x.resultado] || '') : esc(ETAPA[x.etapa] || '') + ' · ' + diasEntre(x.etapaEm) + ' d'}</span></div>`; };
 const qVaga = v => { const i = vagaInfo(v); return `<div class="qrow"><button type="button" class="lk" data-irv="${esc(v.id)}">${esc(v.titulo)}</button><span class="q2">${esc(frenteDe(v))}${v.secao ? ' · ' + esc(v.secao) : ''}</span><span>${i.adm} de ${i.q} · ${i.proc} em processo</span></div>`; };
 function irCand(id){
   const c = S.cands.find(x => x.id === id);
@@ -2032,7 +2033,7 @@ function renderRsFunil(){
   const lin = ETAPA_ORD.map(e => ({e, n:proc.filter(x => x.etapa === e).length}));
   const max = Math.max(1, ...lin.map(l => l.n));
   $('#rsFunil').innerHTML = proc.length ? lin.map(l => `<button type="button" class="frow" data-qe="${l.e}" style="--c:${ETAPA_COR[l.e]}"><span class="nm"><i class="sw"></i><span>${ETAPA[l.e]}</span></span><span class="trk"><i style="width:${(l.n / max * 100).toFixed(1)}%"></i></span><span class="ct">${l.n}</span></button>`).join('')
-    : `<p class="muted small" style="margin:0">${S.rsLoaded ? 'Ainda não há candidatos em processo. Abra uma vaga e inclua candidatos do banco: cada etapa aparece aqui.' : 'Carregando…'}</p>`;
+    : `<p class="muted small" style="margin:0">${S.rsLoaded ? (RSO ? 'Ainda não há candidatos em processo. Abra uma vaga e inclua os candidatos: cada etapa aparece aqui.' : 'Ainda não há candidatos em processo. Abra uma vaga e inclua candidatos do banco: cada etapa aparece aqui.') : 'Carregando…'}</p>`;
   const m = new Map();
   S.vagas.filter(emAberto).forEach(v => { const k = frenteDe(v); m.set(k, (m.get(k) || 0) + vagaInfo(v).rest); });
   const fr = [...m].sort((a, b) => b[1] - a[1]), mx = Math.max(1, ...fr.map(f => f[1]));
@@ -2106,7 +2107,7 @@ function renderRsVagas(){
   $('#rsNova').hidden = !S.canWrite;
   const xs = vagasFiltradas();
   if(!S.rsLoaded){ $('#rsVagas').innerHTML = `<div class="empty"><span>Carregando as vagas…</span></div>`; return; }
-  if(!S.vagas.length){ $('#rsVagas').innerHTML = `<div class="empty"><b>Nenhuma vaga cadastrada ainda.</b><span>Abra a primeira pelo botão "Abrir vaga" ou a partir de uma frente da previsão de quadro, logo acima. Depois inclua os candidatos do banco e acompanhe etapa por etapa.</span></div>`; return; }
+  if(!S.vagas.length){ $('#rsVagas').innerHTML = `<div class="empty"><b>Nenhuma vaga cadastrada ainda.</b><span>Abra a primeira pelo botão "Abrir vaga" ou a partir de uma frente da previsão de quadro, logo acima. Depois inclua os candidatos${RSO ? '' : ' do banco'} e acompanhe etapa por etapa.</span></div>`; return; }
   if(!xs.length){ $('#rsVagas').innerHTML = `<div class="empty"><b>Nenhuma vaga com esses filtros.</b><span>Troque a situação ou a frente.</span></div>`; return; }
   $('#rsVagas').innerHTML = xs.map(vagaCard).join('');
 }
@@ -2140,7 +2141,7 @@ function vagaCorpo(v, i){
     ${emAberto(v) && i.rest === 0 ? `<div class="notice"><b>Todas as posições foram preenchidas.</b> Feche a vaga para ela sair da lista de abertas e contar no tempo médio.</div>` : ''}
     <div class="steps" role="toolbar" aria-label="Etapas">${fx.et.map(e => `<button type="button" class="stp" data-etf="${e}" aria-pressed="${RS.etF === e}" style="--c:${ETAPA_COR[e]}"><b>${i.cs.filter(x => ativa(x) && x.etapa === e).length}</b><span>${ETAPA[e]}</span></button>`).join('')}<button type="button" class="stp" data-etf="fim" aria-pressed="${RS.etF === 'fim'}" style="--c:var(--ink-3)"><b>${enc.length}</b><span>Encerrados</span></button></div>
     <div><h3 style="margin-bottom:8px">Candidatos nesta vaga${RS.etF ? ' · ' + (RS.etF === 'fim' ? 'encerrados' : ETAPA[RS.etF]) + ` <button type="button" class="copy" data-etf="">mostrar todos</button>` : ''}</h3>
-      <div class="cdts">${lista.length ? lista.map(x => cdtRow(x, v, ro)).join('') : `<span class="muted small">${i.cs.length ? 'Ninguém nesta etapa.' : 'Nenhum candidato incluído ainda. Use a busca abaixo para trazer do banco.'}</span>`}</div></div>
+      <div class="cdts">${lista.length ? lista.map(x => cdtRow(x, v, ro)).join('') : `<span class="muted small">${i.cs.length ? 'Ninguém nesta etapa.' : (RSO ? 'Nenhum candidato incluído ainda. Cadastre logo abaixo.' : 'Nenhum candidato incluído ainda. Use a busca abaixo para trazer do banco.')}</span>`}</div></div>
     ${!ro && emAberto(v) ? addBox(v, i) : ''}
     <div class="actions">${acoes}${S.downloads ? `<button type="button" class="btn" data-vpdf="${v.id}">Baixar acompanhamento em PDF</button>` : ''}</div>
   </div>`;
@@ -2148,7 +2149,7 @@ function vagaCorpo(v, i){
 function cdtRow(x, v, ro){
   const c = candDe(x), fx = fluxoDe(v), pos = fx.et.indexOf(x.etapa), prox = pos >= 0 ? fx.et[pos + 1] : null, ant = pos > 0 ? fx.et[pos - 1] : null;
   const aberto = RS.cOpen.has(x.id), nome = (c && c.nome) || x.nome || 'Sem nome', dis = ro ? ' disabled' : '';
-  const sub = c ? [c.cargo_atual, c.exColab === 'sim' ? 'já trabalhou na CRV' : ''].filter(Boolean).join(' · ') : 'não está mais no banco de currículos';
+  const sub = c ? [c.cargo_atual, c.exColab === 'sim' ? 'já trabalhou na CRV' : ''].filter(Boolean).join(' · ') : (RSO ? (x.contato || '') : 'não está mais no banco de currículos');
   let ac = '';
   if(!ro && ativa(x)){
     if(x.etapa === 'decisao') ac = `<button type="button" class="btn ok" data-cdec="aprovado" data-id="${x.id}">Aprovado pela área</button><button type="button" class="btn" data-cfim="nao_aprovado" data-id="${x.id}">Não aprovado</button><button type="button" class="btn" data-cfim="banco" data-id="${x.id}">Banco de talentos</button>`;
@@ -2162,7 +2163,7 @@ function cdtRow(x, v, ro){
   return `<div class="cdt${x.resultado ? ' fim' : ''}">
     <div class="cdt-h">
       <i class="luz ${c && c.semaforo ? c.semaforo : ''}" title="Semáforo do RH: ${c ? semLabel(c) : 'sem dado'}"></i>
-      <span class="cdt-n"><button type="button" class="lk" data-irc="${esc(x.candId)}" title="Abrir no Banco de Currículos">${esc(nome)}</button><span>${esc(sub)}</span></span>
+      <span class="cdt-n">${RSO ? '<b>' + esc(nome) + '</b>' : `<button type="button" class="lk" data-irc="${esc(x.candId)}" title="Abrir no Banco de Currículos">${esc(nome)}</button>`}<span>${esc(sub)}</span></span>
       ${c && c.status === 'triado' ? `<span class="pill ${aderClass(c.aderencia)}">${esc(c.aderencia)} · ${c.score ?? ''}</span>` : ''}
       ${x.resultado ? `<span class="pill ${x.resultado === 'admitido' ? 'alta' : x.resultado === 'banco' ? 'media' : 'baixa'}">${RESULT[x.resultado]}</span><span class="small muted">${dataFmt(x.encerradoEm)}</span>`
         : `<span class="etp" style="--c:${ETAPA_COR[x.etapa] || 'var(--ink-3)'}"><i></i>${ETAPA[x.etapa] || ''}</span><span class="small muted">há ${diasEntre(x.etapaEm)} d</span>`}
@@ -2190,6 +2191,10 @@ function sugestoes(v, i){
   return {ok, bloq};
 }
 function addBox(v, i){
+  if(RSO) return `<div class="addbox">
+    <div class="panel-h"><h3>Incluir candidato</h3><span class="hint">Cadastro direto na vaga</span></div>
+    <div class="rs-add"><input id="rsNNome" type="text" maxlength="120" placeholder="Nome completo do candidato" aria-label="Nome do candidato"><input id="rsNCont" type="text" maxlength="120" placeholder="Telefone ou observação (opcional)" aria-label="Contato"><button type="button" class="btn primary" data-cnovo="${v.id}">Incluir</button></div>
+  </div>`;
   const s = sugestoes(v, i), outras = new Set(S.cdts.filter(x => ativa(x) && x.vagaId !== v.id).map(x => x.candId));
   return `<div class="addbox">
     <div class="panel-h"><h3>Incluir candidatos do banco</h3><span class="hint">${RS.addQ ? 'Busca em todo o banco' : v.areaBanco ? 'Sugestões da área ' + esc(areaNome(v.areaBanco)) + ', liberados primeiro' : 'Todo o banco, liberados primeiro'}</span></div>
@@ -2223,7 +2228,7 @@ async function salvarVaga(){
     } else {
       const ref = S.db.collection('vagas').doc();
       await ref.set({...dados, status:'aberta', abertaEm:new Date().toISOString(), fechadaEm:null, criadoPor:S.uid || null});
-      RS.open = ref.id; RS.st = 'ativas'; RS.fr = 'all'; toast('Vaga aberta. Agora inclua os candidatos do banco.');
+      RS.open = ref.id; RS.st = 'ativas'; RS.fr = 'all'; toast(RSO ? 'Vaga aberta. Agora inclua os candidatos.' : 'Vaga aberta. Agora inclua os candidatos do banco.');
     }
     RS.form = null; renderRs(true);
   }catch(e){ rsErro(e); }
@@ -2238,6 +2243,13 @@ async function incluirCand(vagaId, candId){
     if((c.funil || 'novo') === 'novo') atualizar(candId, {funil:'em_analise'});
     toast('Incluído na vaga.');
   }catch(e){ rsErro(e); }
+}
+async function incluirNovo(vagaId){
+  const el = $('#rsNNome'), nome = String(el && el.value || '').trim().replace(/\s+/g, ' '), contato = String(($('#rsNCont') || {}).value || '').trim();
+  if(nome.length < 3){ toast('Informe o nome do candidato.'); if(el) el.focus(); return; }
+  if(S.cdts.some(x => x.vagaId === vagaId && norm(x.nome || '') === norm(nome))){ toast('Este candidato já está nesta vaga.'); return; }
+  const agora = new Date().toISOString();
+  try{ await S.db.collection('candidaturas').doc().set({vagaId, candId:'', nome:nome.slice(0,120), contato:contato.slice(0,120), etapa:'triagem', etapaEm:agora, incluidoEm:agora, resultado:null, encerradoEm:null, incluidoPor:S.uid || null}); toast('Incluído na vaga.'); }catch(e){ rsErro(e); }
 }
 function encerrar(id, r){
   const x = S.cdts.find(y => y.id === id); if(!x || !RESULT[r]) return;
@@ -2309,6 +2321,7 @@ $('#rsVagas').addEventListener('click', e => {
   if(t.id === 'rsAddMais'){ RS.addN += 12; renderRsVagas(); return; }
   if(!S.canWrite) return;
   const agora = new Date().toISOString();
+  if((b = ds('cnovo'))){ incluirNovo(b.dataset.cnovo); return; }
   if((b = ds('cadd'))){ incluirCand(b.dataset.id, b.dataset.cadd); return; }
   if((b = ds('cet'))){ rsUp('candidaturas', b.dataset.id, {etapa:b.dataset.cet, etapaEm:agora}, 'Etapa: ' + ETAPA[b.dataset.cet]); return; }
   if((b = ds('cdec'))){ rsUp('candidaturas', b.dataset.id, {etapa:'admissao', etapaEm:agora, areaDecisao:'aprovado', areaEm:agora}, 'Aprovado pela área. Seguiu para admissão.'); RS.cOpen.add(b.dataset.id); renderRsVagas(); return; }
@@ -2417,7 +2430,7 @@ $('#vwRs').addEventListener('focusout', () => { setTimeout(() => { if(RS.pend &&
    O banco fica escondido; ao clicar num candidato do R&S aparece só a ficha dele, com o botão de voltar. */
 if (window.CRV_MODO_CV === 'rs') {
   const st = document.createElement('style');
-  st.textContent = '#vnav,#envio,#vwBanco>#kpis,#vwBanco>#strip,#vwBanco>.grid2,#vwBanco>.foot,#vwBanco .tabs,#vwBanco .filters,#vwBanco .legenda,#btnEnviarTopo,#btnAreas,#btnRel,#btnExport{display:none!important}.rs-volta{margin:0 0 12px}';
+  st.textContent = '.campo:has(#vf-area),.cdt .luz,.rs-banco{display:none!important}.rs-add{display:grid;grid-template-columns:2fr 2fr auto;gap:8px}.rs-add input{padding:9px 11px;border:1px solid var(--line,#d9dee7);border-radius:9px;font:inherit;min-width:0}@media(max-width:640px){.rs-add{grid-template-columns:1fr}}#vnav,#envio,#vwBanco>#kpis,#vwBanco>#strip,#vwBanco>.grid2,#vwBanco>.foot,#vwBanco .tabs,#vwBanco .filters,#vwBanco .legenda,#btnEnviarTopo,#btnAreas,#btnRel,#btnExport{display:none!important}.rs-volta{margin:0 0 12px}';
   document.head.appendChild(st);
   const _sv = setView;
   setView = function(v, semHash){ _sv(v, true);
