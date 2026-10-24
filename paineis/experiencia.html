@@ -1494,4 +1494,29 @@ window.CRV_PENDENCIAS=function(forcar){
 </script>
 
 
+<script>
+/* O formulário RE.0150.07 é preenchido só pela área (pelo gestor no app ou em papel). O RH recebe e dá andamento:
+   aqui o formulário fica só para consulta e download do que a área enviou. Os formulários em branco para as áreas continuam. */
+(()=>{
+  const tf=document.getElementById("tF"); if(tf) tf.textContent="Formulários recebidos";
+  const st=document.createElement("style");
+  st.textContent="#fmSave,#fmClr{display:none!important}#fmBox input,#fmBox textarea{pointer-events:none}#fmBox textarea,#fmBox input:not([type=radio]){background:transparent}.fmb.semform{display:none!important}.fm-ro{margin:8px 0 12px;padding:9px 12px;border-radius:9px;background:rgba(36,66,124,.07);font-size:13px}";
+  document.head.appendChild(st);
+  const h2=document.querySelector(".fmtop h2"); if(h2) h2.textContent="Formulário recebido da área";
+  const sub=document.querySelector(".fmtop .sub"); if(sub) sub.textContent="Avaliação de Período de Experiência e Desempenho · RE.0150.07 · Versão 05. Preenchido pelo gestor da área; o RH só consulta e dá andamento.";
+  const vz=document.getElementById("fmEmpty"); if(vz) vz.textContent="Escolha um colaborador para ver o formulário que a área enviou. Na aba Nominal, o botão “Formulário” aparece só para quem já tem formulário recebido.";
+  const _r=fmRender;
+  fmRender=function(){ _r();
+    const p=FMP; if(!p) return; const s=fmSaved(p), box=document.getElementById("fmBox");
+    box.querySelectorAll("input,textarea").forEach(e=>{e.readOnly=true; if(e.type==="radio"||e.type==="checkbox") e.disabled=true;});
+    let n=document.getElementById("fmRo"); if(!n){ n=document.createElement("p"); n.id="fmRo"; n.className="fm-ro"; box.prepend(n); }
+    n.textContent=s?("Formulário recebido"+(s.gestor?" de "+s.gestor:"")+(s.dataRec?" em "+fdy(pd(s.dataRec)):"")+". Somente consulta."):"Nenhum formulário recebido da área para esta etapa.";
+    ["fmPdf","fmXls"].forEach(id=>{const b=document.getElementById(id); if(b) b.hidden=!s;});
+    document.querySelectorAll(".fmrh,.fmtipo").forEach(e=>e.style.display=s?"":"none");
+  };
+  const marca=()=>document.querySelectorAll(".fmb").forEach(b=>{const p=P.find(x=>x.mat===+b.dataset.m); b.classList.toggle("semform",!(p&&fmSaved(p)));});
+  new MutationObserver(()=>{ clearTimeout(marca._t); marca._t=setTimeout(marca,60); }).observe(document.body,{childList:true,subtree:true});
+  marca();
+})();
+</script>
 </body></html>
