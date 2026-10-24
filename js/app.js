@@ -234,14 +234,23 @@ function moldura(conteudo){
   const acaoAtual = h.startsWith('#/p/') ? (h.slice(4).split('/')[1] || '') : '';
   let subAbertos = {};
   try { subAbertos = JSON.parse(localStorage.getItem('crv-menu-sub') || '{}'); } catch(_){}
+  const CHEV = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
+  const CAD = '<svg class="cad" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
+  const IA = d => `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+  const icAcao = n => /^(cadastrar|lançar|registrar|emitir|aplicar)/i.test(n) ? IA('<path d="M12 5v14M5 12h14"/>')
+    : /^(histórico|respostas|relatório|créditos|gratificação)/i.test(n) ? IA('<path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/>')
+    : /^(autorização|termo|desconto|entrevista)/i.test(n) ? IA('<path d="M14 3H6v18h12V7z"/><path d="M14 3v4h4M9 13h6M9 17h4"/>')
+    : /^(todas|acompanhamento)/i.test(n) ? IA('<path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/>')
+    : IA('<circle cx="12" cy="12" r="3.5"/>');
   const itemPainel = (x, cfg) => {
     const subs = SUBACOES[x.id];
-    const bt = `<button class="lat-painel ${x.id===atual&&!acaoAtual?'ativo':''}" data-ir="#/p/${encodeURIComponent(x.id)}" style="--cor:${cfg.cor}">${esc(x.nome)}${x.nivel==='restrito'?' <i class="cad" title="Restrito">●</i>':''}</button>`;
+    const rest = x.nivel==='restrito' ? `<span class="lat-rest" title="Acesso restrito">${CAD}</span>` : '';
+    const bt = `<button class="lat-painel ${x.id===atual&&!acaoAtual?'ativo':''} ${x.id===atual?'atual':''}" data-ir="#/p/${encodeURIComponent(x.id)}" data-busca="${esc((x.nome+' '+(subs||[]).map(s=>s.nome).join(' ')).toLowerCase())}" style="--cor:${cfg.cor}"><span class="lat-pn">${esc(x.nome)}</span>${rest}</button>`;
     if (!subs) return bt;
     const aberto = x.id === atual || subAbertos[x.id];
-    return `<div class="lat-pgrupo ${aberto?'aberto':''}" data-pid="${esc(x.id)}">
-      <div class="lat-plinha">${bt}<button class="lat-pseta" title="Mostrar opções" aria-label="Mostrar opções">›</button></div>
-      <div class="lat-psub">${subs.map(s => `<button class="lat-acao ${x.id===atual&&acaoAtual===s.acao?'ativo':''}" data-pid="${esc(x.id)}" data-acao="${esc(s.acao)}" style="--cor:${cfg.cor}">${esc(s.nome)}</button>`).join('')}</div>
+    return `<div class="lat-pgrupo ${aberto?'aberto':''}" data-pid="${esc(x.id)}" data-busca="${esc((x.nome+' '+subs.map(s=>s.nome).join(' ')).toLowerCase())}">
+      <div class="lat-plinha">${bt}<button class="lat-pseta" title="${subs.length} opções" aria-label="Mostrar opções de ${esc(x.nome)}" aria-expanded="${aberto?'true':'false'}">${CHEV}</button></div>
+      <div class="lat-psub">${subs.map(s => `<button class="lat-acao ${x.id===atual&&acaoAtual===s.acao?'ativo':''}" data-pid="${esc(x.id)}" data-acao="${esc(s.acao)}" style="--cor:${cfg.cor}"><i>${icAcao(s.nome)}</i><span>${esc(s.nome)}</span></button>`).join('')}</div>
     </div>`;
   };
   const visiveis = E.paineis.filter(podeVer);
@@ -263,10 +272,12 @@ function moldura(conteudo){
       </div>
       <nav class="lat-nav">
         <button class="lat-item ${h==='#/'||h===''?'ativo':''}" data-ir="#/">${svg('casa')}<span>Início</span></button>
+        <div class="lat-busca"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="lat-q" type="search" placeholder="Buscar painel ou ação" autocomplete="off" aria-label="Buscar painel"></div>
         <div class="lat-sec">Frentes</div>
+        <div class="lat-vazio" id="lat-vazio" hidden>Nenhum painel com esse nome.</div>
         ${frentes.map(f => { const cfg = FRENTES[f] || FRENTES['Outros controles']; return `
           <div class="lat-grupo ${abertas[f]?'aberto':''}" data-frente="${esc(f)}">
-            <button class="lat-frente"><span class="lat-ic" style="background:${cfg.cor}">${svg(cfg.ic,'#fff')}</span><span class="lat-nome">${esc(f)}</span><span class="lat-seta">›</span></button>
+            <button class="lat-frente ${f===frenteAtual?'atual':''}" aria-expanded="${abertas[f]?'true':'false'}"><span class="lat-ic" style="background:${cfg.cor}">${svg(cfg.ic,'#fff')}</span><span class="lat-nome">${esc(f)}</span><span class="lat-qt">${grupos[f].length}</span><span class="lat-seta">${CHEV}</span></button>
             <div class="lat-sub">${grupos[f].map(x => itemPainel(x, cfg)).join('')}</div>
           </div>`; }).join('')}
         <div class="lat-sec">Conta</div>
@@ -298,15 +309,32 @@ function moldura(conteudo){
   $('#t-logo').onclick = () => { fechar(); location.hash = '#/'; };
   lat.querySelectorAll('[data-ir]').forEach(b => b.onclick = () => { fechar(); if (location.hash === b.dataset.ir) rota(); else location.hash = b.dataset.ir; });
   lat.querySelectorAll('.lat-frente').forEach(b => b.onclick = () => {
-    const g = b.parentElement; g.classList.toggle('aberto');
-    abertas[g.dataset.frente] = g.classList.contains('aberto');
+    const g = b.parentElement, abrir = !g.classList.contains('aberto');
+    if (abrir && !lat.classList.contains('buscando')) lat.querySelectorAll('.lat-grupo.aberto').forEach(o => { if (o !== g) { o.classList.remove('aberto'); o.querySelector('.lat-frente').setAttribute('aria-expanded','false'); } });
+    g.classList.toggle('aberto', abrir); b.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+    abertas = {}; lat.querySelectorAll('.lat-grupo.aberto').forEach(o => abertas[o.dataset.frente] = true);
     try { localStorage.setItem('crv-menu-abertas', JSON.stringify(abertas)); } catch(_){}
   });
-  lat.querySelectorAll('.lat-pseta').forEach(b => b.onclick = () => {
+  lat.querySelectorAll('.lat-pseta').forEach(b => b.onclick = e => {
+    e.stopPropagation();
     const g = b.closest('.lat-pgrupo'); g.classList.toggle('aberto');
+    b.setAttribute('aria-expanded', g.classList.contains('aberto') ? 'true' : 'false');
     subAbertos[g.dataset.pid] = g.classList.contains('aberto');
     try { localStorage.setItem('crv-menu-sub', JSON.stringify(subAbertos)); } catch(_){}
   });
+  const q = $('#lat-q');
+  if (q) q.oninput = () => {
+    const t = q.value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const norm = v => (v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    lat.classList.toggle('buscando', !!t);
+    let n = 0;
+    lat.querySelectorAll('.lat-grupo').forEach(g => {
+      let tem = 0;
+      g.querySelectorAll('.lat-sub>.lat-painel,.lat-sub>.lat-pgrupo').forEach(it => { const ok = !t || norm(it.dataset.busca).includes(t) || norm(g.dataset.frente.toLowerCase()).includes(t); it.style.display = ok ? '' : 'none'; if (ok) tem++; });
+      g.style.display = tem ? '' : 'none'; g.classList.toggle('achou', !!t && !!tem); n += tem;
+    });
+    $('#lat-vazio').hidden = !t || n > 0;
+  };
   lat.querySelectorAll('.lat-acao').forEach(b => b.onclick = () => {
     fechar();
     const id = b.dataset.pid, acao = b.dataset.acao;
@@ -402,6 +430,8 @@ function blocoFrente(f, lista){
 // opções que aparecem abaixo do painel no menu (seta)
 const SUBACOES = {
   quadro:   [{ acao:'hcol', nome:'Histórico do colaborador' }, { acao:'ent', nome:'Entrevista de desligamento' }, { acao:'entr', nome:'Respostas das entrevistas' }, { acao:'estab', nome:'Estabilidade' }],
+  admissoes: [{ acao:'vq', nome:'Todas as empresas e anos' }, { acao:'vp', nome:'Acompanhamento 2026' }],
+  rescisoes: [{ acao:'vq', nome:'Todas as empresas e anos' }, { acao:'vp', nome:'Acompanhamento 2026' }],
   curriculos: [{ acao:'ctr', nome:'Em contratação' }],
   jovem:    [{ acao:'novo', nome:'Cadastrar jovem' }, { acao:'dslj', nome:'Registrar desligamento' }, { acao:'atj', nome:'Atestados' }],
   renapsi:  [{ acao:'novo', nome:'Cadastrar jovem' }, { acao:'dslj', nome:'Registrar desligamento' }, { acao:'atj', nome:'Atestados' }],
@@ -447,6 +477,7 @@ async function telaPainel(id, acao){
   const p = E.paineis.find(x => x.id === id);
   if (!p || !podeVer(p)) { toast('Painel não encontrado ou sem acesso.', true); location.hash = '#/'; return; }
   const cfg = FRENTES[p.frente] || FRENTES['Outros controles'];
+  if (VISTA_QUADRO[id] && (acao === 'vq' || acao === 'vp')) { try { localStorage.setItem('crv-vista-' + id, acao.slice(1)); } catch(_){} try { history.replaceState(null, '', '#/p/' + encodeURIComponent(id)); } catch(_){} acao = ''; }
   if (MODELOS[id]) return telaModelo(p, cfg, acao);
   moldura(`<div class="trilha"><button data-ir="#/">Início</button> › <span>${esc(p.frente)}</span> › <b>${esc(p.nome)}</b></div>
     <div class="cartao vazio"><div class="spinner" style="margin:0 auto"></div><p>Carregando dados...</p></div>`);
