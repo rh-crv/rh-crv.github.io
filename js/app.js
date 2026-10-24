@@ -58,6 +58,14 @@ const iniciais = n => String(n||'?').split(/\s+/).filter(Boolean).slice(0,2).map
 const usuarioParaEmail = u => normal(u).replace(/\s+/g,'.').replace(/[^a-z0-9._-]/g,'') + '@' + CFG.DOMINIO_LOGIN;
 const ehAdmin = () => E.perfil?.papel === 'admin';   // administradora principal: importa bases, mexe na estrutura, usuários e configurações
 const ehRH = () => ['admin', 'rh'].includes(E.perfil?.papel);   // equipe RH: vê tudo e lança tudo, sem importar bases nem mudar estrutura
+/* menu do gestor: mesmas frentes e cores do app, só com o que ele vê da equipe */
+const GESTOR_MENU = [
+  ['Quadro e movimentação', [['eq', 'Equipe'], ['mov', 'Admissões e saídas'], ['pv', 'Quadro x previsto'], ['exp', 'Período de experiência'], ['nov', 'Novos colaboradores']]],
+  ['Frequência e férias', [['fer', 'Férias'], ['freq', 'Frequência']]],
+  ['Ocorrências, risco e jurídico', [['disc', 'Disciplina e RD']]],
+  ['Treinamento e liderança', [['cr', 'Em treinamento']]],
+  ['Alojamento e transporte', [['alo', 'Alojamento']]],
+  ['Atendimento e escuta', [['env', 'Meus envios ao RH']]] ];
 const nomePapel = p => ({admin:'Administrador principal', rh:'Equipe RH', editor:'Editor', leitor:'Leitor', gestor:'Gestor de área'}[p] || p);
 
 function toast(msg, erro=false){
@@ -315,7 +323,11 @@ function moldura(conteudo){
       </div>
       <nav class="lat-nav">
         ${p.papel === 'gestor' ? '' : `<button class="lat-item ${h==='#/'||h===''?'ativo':''}" data-ir="#/">${svg('casa')}<span>Início</span></button>`}
-        ${p.papel === 'gestor' ? `<button class="lat-item ${h!=='#/conta'?'ativo':''}" data-ir="#/">${svg('usuario')}<span>Minha equipe</span></button>` : `
+        ${p.papel === 'gestor' ? `<button class="lat-item ${h==='#/'||h===''?'ativo':''}" data-ir="#/">${svg('casa')}<span>Minha equipe</span></button>
+        <div class="lat-sec">Painéis da equipe</div>
+        ${GESTOR_MENU.map(([f, itens]) => { const cfg = FRENTES[f] || { cor:'#24427c', ic:'pessoas' }; const aqui = itens.some(([k]) => h === '#/eq/' + k); const ab = aqui || abertas['g:' + f];
+          return `<div class="lat-grupo ${ab ? 'aberto' : ''}" data-frente="${esc('g:' + f)}"><button class="lat-frente ${aqui ? 'atual' : ''}" aria-expanded="${ab ? 'true' : 'false'}"><span class="lat-ic" style="background:${cfg.cor}">${svg(cfg.ic, '#fff')}</span><span class="lat-nome">${esc(f)}</span><span class="lat-seta">${CHEV}</span></button>
+            <div class="lat-sub">${itens.map(([k, n]) => `<button class="lat-painel ${h === '#/eq/' + k ? 'ativo atual' : ''}" data-ir="#/eq/${k}" data-busca="${esc(n.toLowerCase())}" style="--cor:${cfg.cor}"><span class="lat-pn">${esc(n)}</span></button>`).join('')}</div></div>`; }).join('')}` : `
         <div class="lat-pgrupo lat-cgrupo ${h==='#/central'||h==='#/desligamento'||h==='#/bases'||h==='#/envios'||subAbertos.__central?'aberto':''}" data-pid="__central">
           <div class="lat-plinha"><button class="lat-item ${h==='#/central'?'ativo':''}" data-ir="#/central"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg><span>Central do dia</span></button><button class="lat-pseta" aria-label="Mostrar opções da Central do dia" aria-expanded="${h==='#/desligamento'||h==='#/bases'||h==='#/envios'?'true':'false'}">${CHEV}</button></div>
           <div class="lat-psub"><button class="lat-acao ${h==='#/desligamento'?'ativo':''}" data-ir="#/desligamento" style="--cor:var(--coral)"><i>${IA('<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>')}</i><span>Checklist de desligamento</span></button><button class="lat-acao ${h==='#/bases'?'ativo':''}" data-ir="#/bases" style="--cor:var(--cane)"><i>${IA('<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>')}</i><span>Saúde das bases</span></button>${ehRH() ? `<button class="lat-acao ${h==='#/envios'?'ativo':''}" data-ir="#/envios" style="--cor:#24427c"><i>${IA('<path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/>')}</i><span>Envios dos gestores</span></button>` : ''}</div>
@@ -402,7 +414,7 @@ function rota(){
   if (!E.perfil) return;
   fecharModal();
   const h = location.hash || '#/';
-  if (E.perfil.papel === 'gestor') return h === '#/conta' ? telaConta() : GESTOR().tela();
+  if (E.perfil.papel === 'gestor') return h === '#/conta' ? telaConta() : GESTOR().tela(h.startsWith('#/eq/') ? h.slice(5) : '');
   if (h.startsWith('#/p/')) { const [id, acao] = h.slice(4).split('/'); return telaPainel(decodeURIComponent(id), acao || ''); }
   if (h === '#/admin' && ehAdmin()) return telaAdmin();
   if (h === '#/central') return telaCentral();

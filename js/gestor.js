@@ -131,9 +131,15 @@ async function gerar(forcar){
 }
 async function ultimaGeracao(){ try { const { data } = await sb.from('area_dados').select('dados').eq('chave', '__meta').maybeSingle(); return data && data.dados; } catch(_){ return null; } }
 
-/* tela do gestor */
-async function tela(){
-  moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Gestão de Pessoas</div><h1>Minha equipe</h1><div class="ini-data" id="gs-sub">Carregando…</div></div>
+/* tela do gestor: resumo (#/) ou um painel da equipe (#/eq/<painel>) */
+const PAINEL_G = { eq:['Quadro e movimentação', 'Equipe', 'Quem é da sua equipe: função, departamento, contrato e cidade.'], mov:['Quadro e movimentação', 'Admissões e saídas', 'Quem entrou e quem saiu, com tipo e motivo das saídas por período.'],
+  pv:['Quadro e movimentação', 'Quadro x previsto', 'Quantas pessoas a previsão de quadro pede e quantas a equipe tem hoje.'], exp:['Quadro e movimentação', 'Período de experiência', 'Vencimentos e avaliação de experiência: avalie e envie ao RH pelo app.'],
+  nov:['Quadro e movimentação', 'Novos colaboradores', 'Quem entrou nos últimos 120 dias: integração e conversas do RH.'], fer:['Frequência e férias', 'Férias', 'Períodos, data limite e saldo: programe e envie ao RH até o dia 15 do mês anterior.'],
+  freq:['Frequência e férias', 'Frequência', 'Faltas e dias de atestado (só a quantidade) nos últimos 30 e 90 dias.'], disc:['Ocorrências, risco e jurídico', 'Disciplina e RD', 'Advertências, suspensões e registros de dano da equipe.'],
+  cr:['Treinamento e liderança', 'Em treinamento', 'Quem está com crachá de treinamento e até quando.'], alo:['Alojamento e transporte', 'Alojamento', 'Quem da equipe está alojado, onde e de qual cidade veio.'],
+  env:['Atendimento e escuta', 'Meus envios ao RH', 'Tudo o que você programou ou avaliou e enviou, com a situação de cada envio.'] };
+async function tela(abaIni){
+  moldura(`<section class="ini-topo"><div><div class="ini-eyebrow" id="gs-eye">Gestão de Pessoas</div><h1 id="gs-h1">Minha equipe</h1><div class="ini-data" id="gs-sub">Carregando…</div></div>
       <div class="dk-acoes"><button class="btn borda" id="gs-xls">Excel</button><button class="btn borda" id="gs-pdf">PDF</button></div></section>
     <div id="gs-corpo"><div class="cartao vazio"><div class="spinner" style="margin:0 auto"></div></div></div>`);
   const { data, error } = await sb.from('area_dados').select('chave,dados,atualizado_em').neq('chave', '__meta');
@@ -166,7 +172,8 @@ async function tela(){
   const discL = P.filter(p => (p.san || []).length || (p.rd || []).length).sort((a, b) => s12(b).length - s12(a).length || (b.san || []).length - (a.san || []).length);
   const ABAS = [['eq', 'Equipe', P.length], ['mov', 'Admissões e saídas', MSAI.filter(x => x.d >= addD(h, -90)).length], ['pv', 'Quadro x previsto', PVI.reduce((t, x) => t + Math.max(0, x.p - x.t), 0)], ['exp', 'Experiência', expL.filter(p => p.prox && p.prox <= em15).length], ['fer', 'Férias', ferL.filter(f => /Vencido|Vence/.test(f.st)).length], ['freq', 'Frequência', P.filter(p => p.fa30).length], ['disc', 'Disciplina', P.filter(p => s12(p).length).length], ['nov', 'Novos colaboradores', novos.length], ['alo', 'Alojamento', aloL.length], ['cr', 'Em treinamento', crL.length], ['env', 'Meus envios', ENV.filter(e => e.status === 'devolvido').length]];
   const FQ = P.filter(p => p.fa90 || p.at90).sort((a, b) => b.fa90 - a.fa90 || b.at90 - a.at90);
-  let aba = 'eq', q = ''; const fq = { v:'', c:'' };
+  let aba = abaIni && PAINEL_G[abaIni] ? abaIni : 'resumo', q = ''; const fq = { v:'', c:'' };
+  if (aba !== 'resumo') { $('#gs-eye').textContent = PAINEL_G[aba][0]; $('#gs-h1').textContent = PAINEL_G[aba][1]; $('#gs-sub').innerHTML = `<span class="gs-desc">${esc(PAINEL_G[aba][2])}</span> ` + $('#gs-sub').innerHTML; }
   const tabelas = {
     eq: () => { const L = P.filter(p => (!fq.v || p.v === fq.v) && (!fq.c || (p.cid || '(sem cidade)') === fq.c)); return { t:'Equipe', cab:['Colaborador', 'Matrícula', 'Função', 'Seção', 'Contrato', 'Cidade', 'Admissão', 'Situação', 'Sanções 12 meses', 'Faltas no ano'], lin:L.map(p => [p.n, p.m, p.f, p.s, p.v, p.cid || '', brD(p.adm), p.sit, s12(p).length, p.faAno || 0]), mats:L.map(p => p.m), hl:L.map(p => s12(p).length >= 3) }; },
     mov: () => { const de = desde(), Ad = MADM.filter(x => x.d >= de), Sa = MSAI.filter(x => x.d >= de); const L = [...Ad.map(x => ['Admissão', x]), ...Sa.map(x => ['Saída', x])].sort((a, b) => b[1].d.localeCompare(a[1].d));
@@ -198,8 +205,12 @@ async function tela(){
       return PVI.length ? `<section class="cartao gs-resw"><div class="gs-mv"><div><small>Previsto</small><b>${pr}</b></div><div><small>Atual</small><b>${at}</b></div><div><small>Falta contratar</small><b style="color:#a3301c">${f}</b></div><div><small>Em experiência</small><b>${PVI.reduce((t, x) => t + x.x, 0)}</b></div></div><p class="nr-nota" style="padding:6px 0 0">A falta mostra onde o quadro está abaixo do previsto; não é vaga aprovada. Para abrir vaga, fale com a Gestão de Pessoas.</p></section>`
         : '<section class="cartao gs-resw"><p class="nr-nota" style="padding:0">A previsão de quadro desta área ainda não foi cadastrada.</p></section>'; }
     return ''; };
-  const desenhar = () => { const T = tabelas[aba](), nq = normal(q); const idx = T.lin.map((l, i) => i).filter(i => !nq || normal(T.lin[i].join(' ')).includes(nq));
-    c.innerHTML = `<section class="dk-kpis gs-k">${ABAS.map(([k, t, n]) => `<button class="dk-k ${aba === k ? 'on' : ''}" data-a="${k}" style="--c:${{ eq:'#2f6fa8', exp:'var(--amber)', fer:'#8e3b6a', freq:'var(--coral)', disc:'#a1341f', nov:'var(--cane)', cr:'#b5731a', mov:'#2f8a8a', pv:'#5a4fb0', alo:'#7a6a2a', env:'#24427c' }[k]}"><span>${t}</span><b>${n}</b><small>${{ eq:'pessoas', exp:'vencendo em 15 dias', fer:'vencidas ou vencendo', freq:'com falta em 30 dias', disc:'com sanção em 12 meses', nov:'até 120 dias de casa', cr:'com crachá de treinamento', mov:'saídas em 90 dias', pv:'posições a contratar', alo:'alojados', env:'devolvidos pelo RH' }[k]}</small></button>`).join('')}</section>
+  const desenhar = () => {
+    if (aba === 'resumo') { c.innerHTML = `<section class="gs-res-g">${ABAS.map(([k, t, n]) => `<button class="gs-rc" data-ir="#/eq/${k}" style="--c:${{ eq:'#2f6fa8', exp:'var(--amber)', fer:'#8e3b6a', freq:'var(--coral)', disc:'#a1341f', nov:'var(--cane)', cr:'#b5731a', mov:'#2f8a8a', pv:'#5a4fb0', alo:'#7a6a2a', env:'#24427c' }[k]}"><span class="gs-rf">${esc(PAINEL_G[k][0])}</span><b>${esc(PAINEL_G[k][1])}</b><strong>${n}</strong><small>${{ eq:'pessoas', exp:'vencendo em 15 dias', fer:'vencidas ou vencendo', freq:'com falta em 30 dias', disc:'com sanção em 12 meses', nov:'até 120 dias de casa', cr:'com crachá de treinamento', mov:'saídas em 90 dias', pv:'posições a contratar', alo:'alojados', env:'devolvidos pelo RH' }[k]}</small><em>Abrir ›</em></button>`).join('')}</section>
+      <p class="nr-fonte">Escolha um painel aqui ou no menu ao lado. Quadro de ${esc(brD(ref.quadro))}. Dúvidas ou correções: fale com a Gestão de Pessoas.</p>`;
+      c.querySelectorAll('[data-ir]').forEach(b => b.onclick = () => location.hash = b.dataset.ir); return; }
+    const T = tabelas[aba](), nq = normal(q); const idx = T.lin.map((l, i) => i).filter(i => !nq || normal(T.lin[i].join(' ')).includes(nq));
+    c.innerHTML = `<section class="dk-kpis gs-k" hidden>${ABAS.map(([k, t, n]) => `<button class="dk-k ${aba === k ? 'on' : ''}" data-a="${k}" style="--c:${{ eq:'#2f6fa8', exp:'var(--amber)', fer:'#8e3b6a', freq:'var(--coral)', disc:'#a1341f', nov:'var(--cane)', cr:'#b5731a', mov:'#2f8a8a', pv:'#5a4fb0', alo:'#7a6a2a', env:'#24427c' }[k]}"><span>${t}</span><b>${n}</b><small>${{ eq:'pessoas', exp:'vencendo em 15 dias', fer:'vencidas ou vencendo', freq:'com falta em 30 dias', disc:'com sanção em 12 meses', nov:'até 120 dias de casa', cr:'com crachá de treinamento', mov:'saídas em 90 dias', pv:'posições a contratar', alo:'alojados', env:'devolvidos pelo RH' }[k]}</small></button>`).join('')}</section>
       ${extra()}
       <section class="dk-filtros cartao"><input id="gs-q" type="search" placeholder="Buscar nome, matrícula ou função" value="${esc(q)}"></section>
       <section class="fc-sec cartao"><header><h3>${esc(T.t)}</h3><small>${idx.length} linha${idx.length === 1 ? '' : 's'}</small></header>${idx.length ? `<div class="fc-tw"><table class="fc-t"><thead><tr>${T.cab.map(x => `<th>${esc(x)}</th>`).join('')}${T.acao ? `<th>${esc(T.acaoT || '')}</th>` : ''}</tr></thead><tbody>${idx.map(i => `<tr class="${T.hl && T.hl[i] ? 'gs-hl' : ''}">${T.lin[i].map((v, j) => `<td>${j === 0 && T.mats ? `<button class="gs-nm" data-f="${esc(T.mats[i])}">${esc(v)}</button>` : esc(v)}</td>`).join('')}${T.acao ? `<td class="gs-ac">${T.acao[i] || ''}</td>` : ''}</tr>`).join('')}</tbody></table></div>` : '<p class="fc-vz">Nada aqui.</p>'}</section>
@@ -331,9 +342,9 @@ async function tela(){
     if (first) { toast('Ninguém em experiência com avaliação a fazer.'); return; }
     rodapePDF(doc); baixar(doc.output('blob'), 'Avaliações de experiência em branco.pdf'); }
   const nome = 'Minha equipe ' + new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
-  $('#gs-xls').onclick = () => { const wb = XLSX.utils.book_new(); Object.keys(tabelas).forEach(k => { const T = tabelas[k](); const ws = XLSX.utils.aoa_to_sheet([T.cab, ...T.lin]); ws['!cols'] = T.cab.map((x, i) => ({ wch: i === 0 ? 34 : 18 })); XLSX.utils.book_append_sheet(wb, ws, T.t.replace(/[\\/?*[\]:]/g, '-').slice(0, 31)); });
+  $('#gs-xls').onclick = () => { const wb = XLSX.utils.book_new(); (aba === 'resumo' ? Object.keys(tabelas) : [aba]).forEach(k => { const T = tabelas[k](); const ws = XLSX.utils.aoa_to_sheet([T.cab, ...T.lin]); ws['!cols'] = T.cab.map((x, i) => ({ wch: i === 0 ? 34 : 18 })); XLSX.utils.book_append_sheet(wb, ws, T.t.replace(/[\\/?*[\]:]/g, '-').slice(0, 31)); });
     baixar(new Blob([XLSX.write(wb, { bookType:'xlsx', type:'array' })], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), nome + '.xlsx'); };
-  $('#gs-pdf').onclick = () => { const T = tabelas[aba](); const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit:'pt', format:'a4', orientation:'landscape' });
+  $('#gs-pdf').onclick = () => { const T = tabelas[aba === 'resumo' ? 'eq' : aba](); const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit:'pt', format:'a4', orientation:'landscape' });
     cabecalhoPDF(doc, 'Minha equipe · ' + T.t, A.map(a => a.nome).join(', '));
     doc.autoTable({ startY:104, head:[T.cab], body:T.lin.map(l => l.map(String)), margin:{ left:30, right:30 }, styles:{ fontSize:8, cellPadding:3 }, headStyles:{ fillColor:[36,66,124] }, alternateRowStyles:{ fillColor:[244,246,250] } });
     rodapePDF(doc); baixar(doc.output('blob'), nome + ' ' + T.t + '.pdf'); };
