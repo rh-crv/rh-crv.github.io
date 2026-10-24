@@ -2223,6 +2223,16 @@ if(location.hash=='#nominal')st.tab='n';if(location.hash=='#ficha')st.tab='f';if
 $('fq').oninput=fsearch;$('fq').onfocus=fsearch;
 const fstep=d=>{const L=flist(),i=L.findIndex(r=>r[MAT]==st.fi)+d;if(L[i]){st.fi=L[i][MAT];ficha()}};
 $('fprev').onclick=()=>fstep(-1);$('fnext').onclick=()=>fstep(1);
+/* Admissões e Rescisões ficam nos painéis próprios (histórico completo de todas as empresas e anos);
+   no Quadro Geral as abas saem. O painel de Admissões/Rescisões abre este mesmo arquivo em modo restrito. */
+const MODOQ=window.CRV_MODO_QUADRO||'';
+if(MODOQ){st.tab=MODOQ;
+  const sg=document.querySelector('header .seg');if(sg)sg.hidden=true;
+  const h1=document.querySelector('header h1');if(h1)h1.textContent=MODOQ=='a'?'Admissões':'Rescisões';
+  const sm=document.querySelector('header h1+small');if(sm)sm.textContent='Todas as empresas e todos os anos · base do Quadro Geral de __CRV_REFBR__';
+  const ex=document.createElement('style');ex.textContent='header .ent-btn,header .es-btn,header .seg{display:none!important}';document.head.appendChild(ex);
+  document.addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if(b&&b.dataset.tab!==MODOQ){e.stopPropagation();e.preventDefault()}},true);
+}else{['tb-a','tb-r'].forEach(id=>{const b=$(id);if(b)b.hidden=true});if(st.tab=='a'||st.tab=='r'||st.tab=='d')st.tab='g'}
 render();
 </script>
 

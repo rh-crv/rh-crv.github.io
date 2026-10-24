@@ -318,3 +318,9 @@ body{font-variant-numeric:tabular-nums}
 .lat-acao::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--cor);flex:none}
 .lat-acao:hover{opacity:1;background:rgba(255,255,255,.06)}
 .lat-acao.ativo{opacity:1;background:rgba(255,255,255,.12);font-weight:600}
+/* Admissões / Rescisões: troca entre histórico completo e acompanhamento 2026 */
+.vista-seg{display:inline-flex;gap:4px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px;margin:0 0 10px;box-shadow:var(--sombra);max-width:100%;overflow-x:auto}
+.vista-seg button{border:0;background:none;padding:8px 14px;border-radius:9px;font:inherit;font-weight:700;font-size:13.5px;color:var(--mut);cursor:pointer;white-space:nowrap}
+.vista-seg button.on{background:var(--hd2);color:#fff;box-shadow:0 2px 6px rgba(36,66,124,.25)}
+.vista-seg button:not(.on):hover{background:rgba(127,127,127,.08);color:var(--ink)}
+.vista-seg+.modelo-area iframe{height:calc(100vh - 240px)}

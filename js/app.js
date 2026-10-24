@@ -820,9 +820,19 @@ const AVISOS = { curriculos: 'Recrutamento e Seleção fica aqui dentro, no quad
 
 const fmtRef = r => r ? r.split('-').reverse().join('/') : '—';
 
+// Admissões e Rescisões: além do acompanhamento 2026 (planilha), mostram o histórico completo
+// de todas as empresas e anos, calculado da base do Quadro Geral (mesmo código, sem a aba no Quadro)
+const VISTA_QUADRO = { admissoes:'a', rescisoes:'r' };
+const vistaDe = id => { try { return localStorage.getItem('crv-vista-' + id) || 'q'; } catch(_) { return 'q'; } };
 async function telaModelo(p, cfg, acao){
   const editar = podeEditar(p);
-  moldura(`<div id="modelo-area" class="cartao vazio"><div class="spinner" style="margin:0 auto"></div><p>Abrindo o painel…</p></div>`);
+  const vq = VISTA_QUADRO[p.id];
+  const sel = vq ? vistaDe(p.id) : '';
+  const nomeV = p.id === 'admissoes' ? 'Admissões' : 'Rescisões';
+  moldura((vq ? `<div class="vista-seg" role="tablist"><button data-vq="q" class="${sel === 'q' ? 'on' : ''}">Todas as empresas e anos</button><button data-vq="p" class="${sel === 'p' ? 'on' : ''}">${nomeV} 2026 · acompanhamento</button></div>` : '') +
+    `<div id="modelo-area" class="cartao vazio"><div class="spinner" style="margin:0 auto"></div><p>Abrindo o painel…</p></div>`);
+  if (vq) document.querySelectorAll('.vista-seg [data-vq]').forEach(b => b.onclick = () => { try { localStorage.setItem('crv-vista-' + p.id, b.dataset.vq); } catch(_){} telaModelo(p, cfg); });
+  if (vq && sel === 'q') return telaVistaQuadro(p, vq, acao);
   const meta = { set innerHTML(v){}, set textContent(v){} };   // informações do painel ficam só em Administração
   const [pac, tpl] = await Promise.all([
     sb.from('pacotes').select('referencia,conteudo,atualizado_em,atualizado_por').eq('painel', PAC_DE[p.id] || p.id).maybeSingle(),
@@ -867,6 +877,34 @@ async function telaModelo(p, cfg, acao){
         try { history.replaceState(null, '', '#/p/' + encodeURIComponent(p.id)); } catch(_){}
       }, 150);
     };
+  } catch(e){ area.innerHTML = `<div class="erro">Não consegui montar o painel: ${esc(e.message)}</div>`; }
+}
+
+async function telaVistaQuadro(p, vq, acao){
+  const q = E.paineis.find(x => x.id === 'quadro') || { id:'quadro', nome:'Quadro Geral', frente:p.frente };
+  const [pac, tpl] = await Promise.all([
+    sb.from('pacotes').select('referencia,conteudo,atualizado_em,atualizado_por').eq('painel', 'quadro').maybeSingle(),
+    fetch(MODELOS.quadro + '?v=' + CFG.VERSAO, { cache:'no-cache' }).then(r => r.ok ? r.text() : Promise.reject(new Error('Arquivo do painel não encontrado.'))).catch(e => ({ erro:e }))
+  ]);
+  const area = $('#modelo-area'); if (!area) return;
+  if (pac.error || tpl.erro) { area.innerHTML = `<div class="erro">${esc(pac.error ? traduzErro(pac.error) : tpl.erro.message)}</div>`; return; }
+  const d = pac.data;
+  if (!d) { area.innerHTML = `${svg('planilha')}<h3>Ainda sem a base do Quadro Geral</h3><p>O histórico de todas as empresas é calculado a partir da base do Quadro Geral. ${ehAdmin() ? 'Carregue o arquivo do Quadro em <b>Administração → Painéis e frentes</b>.' : ''}</p>`; return; }
+  if (d.conteudo && d.conteudo.arquivo) {
+    try { d.conteudo = await lerArquivoPacote('quadro', d.conteudo.arquivo); }
+    catch(_) { area.innerHTML = `<div class="erro">Não consegui abrir a base do Quadro Geral.</div>`; return; }
+  }
+  try {
+    window.CRV_QUEM = E.perfil.nome;
+    window.__CRV_PAINEL = window.CRV_PONTE.criar({ sb, painel:'quadro', perfil: () => E.perfil, quem: () => E.perfil.nome, podeEditar: () => podeEditar(q), ehAdmin: () => ehAdmin() });
+    window.CRV_RECARREGAR = () => { if (location.hash.startsWith('#/p/' + encodeURIComponent(p.id))) telaPainel(p.id); };
+    const tplM = tpl.replace(/<head[^>]*>/i, m => m + `<script>window.CRV_MODO_QUADRO=${JSON.stringify(vq)};<\/script>`);
+    const html = montarModelo(tplM, d.conteudo, d.referencia, Object.assign({}, q, { frente: p.frente }), []);
+    const url = URL.createObjectURL(new Blob([html], { type:'text/html' }));
+    area.className = 'modelo-area';
+    area.innerHTML = `<iframe id="modelo-frame" title="${esc(p.nome)}" src="${url}"></iframe>`;
+    E.painelAberto = p.id;
+    $('#modelo-frame').onload = () => setTimeout(() => URL.revokeObjectURL(url), 2000);
   } catch(e){ area.innerHTML = `<div class="erro">Não consegui montar o painel: ${esc(e.message)}</div>`; }
 }
 
