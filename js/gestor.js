@@ -160,7 +160,12 @@ async function tela(abaIni){
   const ref = A[0].ref || {}, h = hoje();
   const uniq = L => { const v = new Set(); return L.filter(x => { const k = x.m + '|' + x.d; if (v.has(k)) return false; v.add(k); return true; }); };
   const MADM = uniq(A.flatMap(a => (a.MOV || {}).adm || [])).sort((a, b) => b.d.localeCompare(a.d)), MSAI = uniq(A.flatMap(a => (a.MOV || {}).sai || [])).sort((a, b) => b.d.localeCompare(a.d));
-  const PVI = A.flatMap(a => (a.PV && a.PV.itens) || []).filter((x, i, arr) => arr.findIndex(y => y.n === x.n) === i);
+  const PVI = A.flatMap(a => (a.PV && a.PV.itens) || []).filter((x, i, arr) => arr.findIndex(y => y.n === x.n) === i).map(x => Object.assign({}, x));
+  { // recalcula aqui o atual de cada item: função por palavra inteira e cada pessoa em um item só (vale também para visões geradas antes da correção)
+    const pal = x => normal(x || '').replace(/[^a-z0-9]+/g, ' ').trim(), tem = (t, n) => (' ' + pal(t) + ' ').includes(' ' + pal(n) + ' ');
+    const at = P.filter(p => p.sit === 'Ativo'), secs = new Set(at.map(p => normal(p.s)));
+    const dono = {}; at.forEach(p => { let best = null; PVI.forEach(it => { if (secs.has(normal(it.n)) || !(tem(p.f, it.n) || tem(p.s, it.n))) return; if (!best || pal(it.n).length > pal(best.n).length) best = it; }); if (best) dono[p.m] = best; });
+    PVI.forEach(it => { const L = secs.has(normal(it.n)) ? at.filter(p => normal(p.s) === normal(it.n)) : at.filter(p => dono[p.m] === it); it.t = L.length; it.x = L.filter(p => p.v === 'Experiência').length; it.mats = L.map(p => p.m); }); }
   const pvPos = (A.find(a => a.PV) || {}).PV;
   let per = 3; const PERS = [[1, 'Último mês'], [3, '3 meses'], [6, '6 meses'], [12, '12 meses']];
   const desde = () => addD(h, -30 * per - (per === 12 ? 5 : 0));
