@@ -308,9 +308,9 @@ function moldura(conteudo){
       </div>
       <nav class="lat-nav">
         <button class="lat-item ${h==='#/'||h===''?'ativo':''}" data-ir="#/">${svg('casa')}<span>Início</span></button>
-        <div class="lat-pgrupo lat-cgrupo ${h==='#/central'||h==='#/desligamento'||subAbertos.__central?'aberto':''}" data-pid="__central">
-          <div class="lat-plinha"><button class="lat-item ${h==='#/central'?'ativo':''}" data-ir="#/central"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg><span>Central do dia</span></button><button class="lat-pseta" aria-label="Mostrar opções da Central do dia" aria-expanded="${h==='#/desligamento'?'true':'false'}">${CHEV}</button></div>
-          <div class="lat-psub"><button class="lat-acao ${h==='#/desligamento'?'ativo':''}" data-ir="#/desligamento" style="--cor:var(--coral)"><i>${IA('<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>')}</i><span>Checklist de desligamento</span></button></div>
+        <div class="lat-pgrupo lat-cgrupo ${h==='#/central'||h==='#/desligamento'||h==='#/bases'||subAbertos.__central?'aberto':''}" data-pid="__central">
+          <div class="lat-plinha"><button class="lat-item ${h==='#/central'?'ativo':''}" data-ir="#/central"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg><span>Central do dia</span></button><button class="lat-pseta" aria-label="Mostrar opções da Central do dia" aria-expanded="${h==='#/desligamento'||h==='#/bases'?'true':'false'}">${CHEV}</button></div>
+          <div class="lat-psub"><button class="lat-acao ${h==='#/desligamento'?'ativo':''}" data-ir="#/desligamento" style="--cor:var(--coral)"><i>${IA('<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>')}</i><span>Checklist de desligamento</span></button><button class="lat-acao ${h==='#/bases'?'ativo':''}" data-ir="#/bases" style="--cor:var(--cane)"><i>${IA('<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>')}</i><span>Saúde das bases</span></button></div>
         </div>
         <button class="lat-item ${h.startsWith('#/ficha')?'ativo':''}" data-ir="#/ficha"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2.5"/><path d="M5.5 17c.6-1.8 2-2.7 3.5-2.7s2.9.9 3.5 2.7M14 9h4M14 13h4"/></svg><span>Ficha do colaborador</span></button>
         <button class="lat-item ${h==='#/consulta'?'ativo':''}" data-ir="#/consulta"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="6"/><path d="M20 20l-5.6-5.6M8 10h4M10 8v4"/></svg><span>Consulta de candidato</span></button>
@@ -399,6 +399,7 @@ function rota(){
   if (h === '#/ficha' || h.startsWith('#/ficha/')) return telaFicha(h.split('/')[2] || '');
   if (h === '#/consulta') return telaConsulta();
   if (h === '#/relatorio') return REL().tela();
+  if (h === '#/bases') return BASES().tela();
   if (h === '#/desligamento') return telaDesligamento();
   if (h === '#/conta') return telaConta();
   telaInicio();
@@ -541,7 +542,8 @@ let _nr1 = null;
 const ctxMod = () => ({ sb, E, $, esc, normal, brD, fMat, fDias, podeVer, podeEditar, moldura, abrirModal, fecharModal, toast, traduzErro, baixar, cabecalhoPDF, rodapePDF, centralChave });
 const NR1 = () => _nr1 || (_nr1 = window.CRV_NR1_INIT ? window.CRV_NR1_INIT(ctxMod()) : null);
 let _risco = null; const RISCO = () => _risco || (_risco = window.CRV_RISCO_INIT(ctxMod()));
-let _rel = null; const REL = () => _rel || (_rel = window.CRV_REL_INIT(Object.assign(ctxMod(), { NR1, RISCO })));
+let _rel = null; const REL = () => _rel || (_rel = window.CRV_REL_INIT(Object.assign(ctxMod(), { NR1, RISCO, BASES })));
+let _bases = null; const BASES = () => _bases || (_bases = window.CRV_BASES_INIT(Object.assign(ctxMod(), { ehAdmin, FRENTES })));
 let _onb = null; const ONB = () => _onb || (_onb = window.CRV_ONB_INIT(Object.assign(ctxMod(), { RISCO })));
 async function pendenciasDesligamento(){
   const D = await dadosDesligamento(); if (!D) return [];
@@ -845,6 +847,7 @@ async function coletarCentral(){
     try { out.push(...await pendenciasDesligamento()); } catch(e){ console.warn('central desligamento', e); }
     try { out.push(...await RISCO().pendencias()); } catch(e){ console.warn('central risco', e); }
     try { out.push(...await ONB().pendencias()); } catch(e){ console.warn('central onboarding', e); }
+    try { out.push(...await BASES().pendencias()); } catch(e){ console.warn('central bases', e); }
     if (ehAdmin()) try { const u = await ultimoBackup(); const d = u && u.em ? Math.floor((Date.now() - new Date(u.em)) / 864e5) : null;
       if (d == null || d > 7) out.push({ id:'bk', sev:'info', t:'Cópia de segurança do app', d: d == null ? 'Nenhuma cópia feita ainda.' : `A última foi há ${d} dias. Recomendado: uma vez por semana.`, painel:'', rota:'#/admin', pnome:'Administração', n: d == null ? '!' : d + 'd', itens:[{ nome:'Baixar a cópia em Administração → Cópia de segurança', mat:'', det:'Guarda tudo o que foi lançado no app e não existe nas planilhas.' }] }); } catch(_){}
     for (const id of CENTRAL_FONTES) {
@@ -1187,7 +1190,7 @@ function abrirExportar(){
 let _logUlt = '';
 window.CRV_LOG_EXPORT = nome => { const k = String(nome || '') + '|' + Math.floor(Date.now() / 3000); if (k === _logUlt) return; _logUlt = k;
   const h = location.hash || ''; const pid = h.startsWith('#/p/') ? decodeURIComponent(h.slice(4).split('/')[0]) : null;
-  const onde = pid ? null : h.startsWith('#/ficha') ? 'Ficha do colaborador' : h.startsWith('#/desligamento') ? 'Checklist de desligamento' : h.startsWith('#/relatorio') ? 'Relatório da diretoria' : h.startsWith('#/admin') ? 'Administração' : '';
+  const onde = pid ? null : h.startsWith('#/ficha') ? 'Ficha do colaborador' : h.startsWith('#/desligamento') ? 'Checklist de desligamento' : h.startsWith('#/relatorio') ? 'Relatório da diretoria' : h.startsWith('#/bases') ? 'Saúde das bases' : h.startsWith('#/admin') ? 'Administração' : '';
   const painel = pid ? (PAC_DE[pid] || pid) : null;
   registrar(painel && E.paineis.some(p => p.id === painel) ? painel : null, 'exportou arquivo', String(nome || '') + (onde ? ' · ' + onde : '')); };
 function baixar(blob, nome){
@@ -1385,6 +1388,7 @@ async function telaModelo(p, cfg, acao){
     const url = URL.createObjectURL(new Blob([html], { type:'text/html' }));
     area.className = 'modelo-area';
     area.innerHTML = `<iframe id="modelo-frame" title="${esc(p.nome)}" src="${url}"></iframe>`;
+    BASES().aviso(PAC_DE[p.id] || p.id).then(h => { if (!h || !$('#modelo-frame')) return; area.insertAdjacentHTML('afterbegin', h); area.querySelectorAll('.sb-av [data-ir]').forEach(b => b.onclick = () => location.hash = b.dataset.ir); }).catch(() => {});
     E.painelAberto = p.id;
     $('#modelo-frame').onload = () => {
       setTimeout(() => URL.revokeObjectURL(url), 2000);
@@ -1420,6 +1424,7 @@ async function telaVistaQuadro(p, vq, acao){
     const url = URL.createObjectURL(new Blob([html], { type:'text/html' }));
     area.className = 'modelo-area';
     area.innerHTML = `<iframe id="modelo-frame" title="${esc(p.nome)}" src="${url}"></iframe>`;
+    BASES().aviso(PAC_DE[p.id] || p.id).then(h => { if (!h || !$('#modelo-frame')) return; area.insertAdjacentHTML('afterbegin', h); area.querySelectorAll('.sb-av [data-ir]').forEach(b => b.onclick = () => location.hash = b.dataset.ir); }).catch(() => {});
     E.painelAberto = p.id;
     $('#modelo-frame').onload = () => setTimeout(() => URL.revokeObjectURL(url), 2000);
   } catch(e){ area.innerHTML = `<div class="erro">Não consegui montar o painel: ${esc(e.message)}</div>`; }

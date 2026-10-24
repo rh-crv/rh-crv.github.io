@@ -7,7 +7,8 @@
    ===================================================================== */
 window.CRV_REL_INIT = function(X){
 'use strict';
-const { sb, E, $, esc, normal, brD, fMat, fDias, podeVer, podeEditar, moldura, abrirModal, fecharModal, toast, traduzErro, baixar, cabecalhoPDF, rodapePDF, NR1, RISCO } = X;
+const { sb, E, $, esc, normal, brD, fMat, fDias, podeVer, podeEditar, moldura, abrirModal, fecharModal, toast, traduzErro, baixar, cabecalhoPDF, rodapePDF, NR1, RISCO, BASES } = X;
+const TEND = ['Turnover do mês', 'Pedidos de demissão', 'Saídas com até 90 dias de casa', 'Dias de atestado por colaborador', 'Faltas por colaborador', 'Advertências', 'Suspensões', 'Ouvidorias abertas'];
 
 const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 const mesTxt = k => { const [a, m] = k.split('-'); return MESES[+m - 1] + '/' + a; };
@@ -87,7 +88,11 @@ async function calcular(mes){
   { const k3 = mesAnt(mesAnt(mesAnt(mes))), k4 = mesAnt(k3); const coorte = k => { const L = mats.filter(m => String(M[m].admissao || '').slice(0, 7) === k); const s = L.filter(m => M[m].situacao === 'Desligado' && M[m].deslig && fDias(M[m].admissao, M[m].deslig) <= 90); return { L, s, r: L.length ? 100 - 100 * s.length / L.length : null }; };
     const a = coorte(k3), b = coorte(k4);
     if (a.L.length) I('mov', `Retenção aos 90 dias (admitidos em ${mesTxt(k3)})`, a.r, b.r, { pior:'down', suf:'%', lista:() => [`Admitidos em ${mesTxt(k3)} que saíram com até 90 dias`, ['Colaborador', 'Matrícula', 'Função', 'Área', 'Saída'], a.s.map(m => pes(m, brD(M[m].deslig)))] }); }
-  // variação e sugestões factuais
+  return finalizar(out);
+}
+/* variação e sugestões factuais (também usada para mês fechado) */
+function finalizar(out){
+  const mes = out.mes;
   out.ind.forEach(x => { x.var = x.b != null && x.b !== 0 ? (x.a - x.b) / Math.abs(x.b) : null;
     x.ruim = !x.neutro && !x.semLanc && x.var != null && (x.pior === 'up' ? x.var > 0 : x.var < 0); });
   out.sug = out.ind.filter(x => x.ruim && !x.semLanc && Math.abs(x.var) >= .15 && Math.abs(x.a - x.b) >= 2 && !/por colaborador/.test(x.t))
@@ -101,12 +106,19 @@ async function tela(){
   if (!E.perfil || E.perfil.papel !== 'admin') { location.hash = '#/'; return; }
   const h = new Date().toISOString().slice(0, 10), atual = h.slice(0, 7);
   const opc = []; for (let k = atual; k >= '2026-01'; k = mesAnt(k)) opc.push(k);
-  let mes = mesAnt(atual), R = null, T = {};
+  let mes = mesAnt(atual), R = null, T = {}, FECH = {};
   moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Gestão de Pessoas</div><h1>Relatório da diretoria</h1><div class="ini-data">Onde estamos, o principal ponto de atenção, o que fazer e o que acompanhar</div></div>
       <div class="dk-acoes"><label class="rl-mes">Mês <select id="rl-mes">${opc.map(k => `<option value="${k}" ${k === mes ? 'selected' : ''}>${mesTxt(k)}</option>`).join('')}</select></label><button class="btn borda" id="rl-xls">Excel</button><button class="btn prim" id="rl-pdf">PDF</button></div></section>
     <div id="rl-corpo"><div class="cartao vazio"><div class="spinner" style="margin:0 auto"></div><p>Calculando o mês…</p></div></div>`);
+  const lerFechados = async () => { FECH = {}; try { const { data } = await sb.from('registros').select('doc_id,dados').eq('painel', 'quadro').eq('colecao', 'relatorio_fechado').range(0, 999); (data || []).forEach(x => { if (x.dados && !x.dados.reaberto) FECH[x.doc_id] = x.dados; }); } catch(_){} 
+    const sel = $('#rl-mes'); if (sel) [...sel.options].forEach(o => o.textContent = mesTxt(o.value) + (FECH[o.value] ? '  ✓ fechado' : '')); };
+  // mês fechado: números guardados no fechamento; as listas de pessoas vêm dos dados atuais
+  const doFechado = (f, vivo) => finalizar({ mes, refQ:f.refQ, notas:f.notas || [], fechado:f,
+    ind: f.ind.map(x => Object.assign({}, x, { lista: vivo && (vivo.ind.find(y => y.t === x.t) || {}).lista })) });
+  const usarAnterior = o => { const fa = FECH[mesAnt(mes)]; if (!fa) return o; o.ind.forEach(x => { const y = fa.ind.find(z => z.t === x.t); if (y && !x.foto) x.b = y.a; }); return finalizar(o); };
   const carregar = async () => { $('#rl-corpo').innerHTML = '<div class="cartao vazio"><div class="spinner" style="margin:0 auto"></div><p>Calculando o mês…</p></div>';
-    try { R = await calcular(mes); } catch(e){ console.warn('relatorio', e); R = null; }
+    await lerFechados();
+    try { const vivo = await calcular(mes); R = FECH[mes] ? usarAnterior(doFechado(FECH[mes], vivo)) : (vivo ? usarAnterior(vivo) : null); } catch(e){ console.warn('relatorio', e); R = null; }
     try { const { data } = await sb.from('registros').select('dados').eq('painel', 'quadro').eq('colecao', 'relatorio_mensal').eq('doc_id', mes).maybeSingle(); T = (data && data.dados) || {}; } catch(_){ T = {}; }
     desenhar(); };
   $('#rl-mes').onchange = e => { mes = e.target.value; carregar(); };
@@ -116,8 +128,18 @@ async function tela(){
     const card = (x, i) => { const v = x.var, cor = x.neutro || v == null || Math.abs(v) < .005 ? '' : x.ruim ? 'r' : 'v';
       return `<button class="rl-k ${x.lista ? '' : 'sem'}" data-i="${i}" ${x.lista ? '' : 'disabled'}><span>${esc(x.t)}</span><b>${esc(fmt(x, x.a))}</b>
         <small>${x.foto ? 'posição de hoje' : x.b == null ? 'sem comparação' : `<i class="rl-v ${cor}">${v == null ? '' : (v > 0 ? '▲ ' : v < 0 ? '▼ ' : '') + nf(Math.abs(100 * v)) + '%'}</i> ${esc(mesTxt(mesAnt(mes)).split('/')[0])}: ${esc(fmt(x, x.b))}`}</small>${x.extra ? `<small>${esc(x.extra)}</small>` : ''}</button>`; };
-    c.innerHTML = `${SEC.map(([k, t]) => { const L = R.ind.map((x, i) => [x, i]).filter(([x]) => x.sec === k); return L.length ? `<section class="rl-sec"><h3>${t}</h3><div class="rl-g">${L.map(([x, i]) => card(x, i)).join('')}</div></section>` : ''; }).join('')}
+    const f = R.fechado, passado = mes < atual;
+    const est = f ? `<section class="cartao rl-est ok"><div><b>Mês fechado</b><span>em ${esc(new Date(f.fechadoEm).toLocaleDateString('pt-BR'))} por ${esc(f.fechadoPor || '')}${f.ressalvas && f.ressalvas.length ? ' · com ressalvas: ' + esc(f.ressalvas.join('; ')) : ''}. Os números deste mês não mudam mais, mesmo com bases novas.</span></div><button class="btn borda" id="rl-reab">Reabrir</button></section>`
+      : `<section class="cartao rl-est"><div><b>Mês em aberto</b><span>${passado ? 'Os números ainda mudam quando as bases forem atualizadas. Feche o mês para guardar os números e formar a série histórica.' : 'Mês corrente: feche depois que ele terminar e as bases estiverem atualizadas.'}</span></div>${passado ? '<button class="btn prim" id="rl-fech">Fechar o mês</button>' : ''}</section>`;
+    const TL = Object.keys(FECH).sort().filter(k => k <= mes).slice(-12);
+    const tend = TL.length >= 2 ? `<section class="fc-sec cartao rl-tend"><header><h3>Tendência dos meses fechados</h3><small>${TL.length} meses</small></header><div class="fc-tw"><table class="fc-t"><thead><tr><th>Indicador</th>${TL.map(k => `<th>${esc(mesTxt(k).slice(0, 3))}/${k.slice(2, 4)}</th>`).join('')}<th></th></tr></thead><tbody>
+        ${TEND.map(t => { const v = TL.map(k => { const x = FECH[k].ind.find(z => z.t === t); return x ? x : null; }); if (!v.some(Boolean)) return ''; const nums = v.map(x => x ? x.a : null), ok = nums.filter(n => n != null), mx = Math.max(...ok), mn = Math.min(...ok);
+          const pts = nums.map((n, i) => n == null ? null : [6 + i * (108 / Math.max(1, nums.length - 1)), 24 - (mx === mn ? 9 : 18 * (n - mn) / (mx - mn))]).filter(Boolean);
+          return `<tr><td>${esc(t)}</td>${v.map(x => `<td>${x ? esc(fmt(x, x.a)) : '—'}</td>`).join('')}<td><svg class="rl-sp" viewBox="0 0 120 30" width="120" height="30"><polyline fill="none" stroke="currentColor" stroke-width="2" points="${pts.map(p => p.join(',')).join(' ')}"/>${pts.length ? `<circle cx="${pts[pts.length - 1][0]}" cy="${pts[pts.length - 1][1]}" r="2.6" fill="currentColor"/>` : ''}</svg></td></tr>`; }).join('')}</tbody></table></div></section>`
+      : `<section class="cartao rl-est"><div><b>Tendência</b><span>A série aparece a partir de 2 meses fechados${TL.length ? ' (já tem ' + TL.length + ')' : ''}. ${mes > '2026-01' ? 'Você pode fechar de uma vez os meses anteriores de 2026 com os dados de hoje; eles ficam marcados como fechados depois.' : ''}</span></div>${mes > '2026-01' ? '<button class="btn borda" id="rl-lote">Fechar meses anteriores</button>' : ''}</section>`;
+    c.innerHTML = `${est}${SEC.map(([k, t]) => { const L = R.ind.map((x, i) => [x, i]).filter(([x]) => x.sec === k); return L.length ? `<section class="rl-sec"><h3>${t}</h3><div class="rl-g">${L.map(([x, i]) => card(x, i)).join('')}</div></section>` : ''; }).join('')}
       ${R.notas.length ? `<p class="nr-fonte">${R.notas.map(esc).join(' ')}</p>` : ''}
+      ${tend}
       <section class="cartao rl-txt"><header><h3>Análise do RH</h3><small>O que você escrever aqui vai no PDF. Fica salvo por mês.</small></header>
         ${R.sug.length ? `<div class="rl-sug"><span>Sugestões a partir dos números (clique para inserir no ponto de atenção):</span>${R.sug.map((s, i) => `<button class="rl-s" data-s="${i}">${esc(s)}</button>`).join('')}</div>` : '<p class="nr-nota" style="padding:0 0 8px">Nenhuma piora acima de 15% em relação ao mês anterior.</p>'}
         <label>Principal ponto de atenção<textarea id="rl-t1" rows="3" maxlength="1200">${esc(T.ponto || '')}</textarea></label>
@@ -130,6 +152,42 @@ async function tela(){
         aoAbrir: m => m.querySelectorAll('a.cd-fl').forEach(a => a.onclick = () => fecharModal()) }); });
     c.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { const t = $('#rl-t1'); t.value = (t.value.trim() ? t.value.trim() + '\n' : '') + R.sug[+b.dataset.s]; t.focus(); });
     $('#rl-sv').onclick = salvar;
+    const bf = $('#rl-fech'); if (bf) bf.onclick = fechar;
+    const br = $('#rl-reab'); if (br) br.onclick = async () => { if (br.dataset.conf !== '1') { br.dataset.conf = '1'; br.textContent = 'Confirmar: reabrir'; return; }
+      const { error } = await sb.from('registros').upsert({ painel:'quadro', caminho:'relatorio_fechado/' + mes, colecao:'relatorio_fechado', doc_id:mes, dados:Object.assign({}, R.fechado, { reaberto:true, reabertoEm:new Date().toISOString(), reabertoPor:E.perfil.nome }), atualizado_por:E.perfil.nome }, { onConflict:'painel,caminho' });
+      if (error) { toast(traduzErro(error), true); return; } toast('Mês reaberto.'); carregar(); };
+    const bl = $('#rl-lote'); if (bl) bl.onclick = fecharAnteriores;
+  }
+  const snap = (o, ress) => ({ mes:o.mes, refQ:o.refQ, notas:o.notas, ressalvas:ress || [], fechadoEm:new Date().toISOString(), fechadoPor:E.perfil.nome,
+    ind:o.ind.map(x => ({ sec:x.sec, t:x.t, a:x.a, b:x.b, d:x.d, suf:x.suf, neutro:x.neutro, pior:x.pior, foto:x.foto, extra:x.extra, semLanc:x.semLanc })) });
+  const gravarFech = async (k, d) => { const { error } = await sb.from('registros').upsert({ painel:'quadro', caminho:'relatorio_fechado/' + k, colecao:'relatorio_fechado', doc_id:k, dados:d, atualizado_por:E.perfil.nome }, { onConflict:'painel,caminho' }); if (error) throw error; };
+  async function conferir(k, o){
+    const fim = fimMes(k), I = await BASES().internas(), iso = BASES().isoDe, ref = id => iso(E.metas[id] && (E.metas[id].referencia || E.metas[id].atualizado_em));
+    const C = [['Quadro Geral', ref('quadro')], ['Absenteísmo (dentro do Quadro)', I['quadro:abs']], ['Rescisões (dentro do Quadro)', I['quadro:resc']]];
+    if (E.metas.sancoes) C.push(['Sanções', ref('sancoes')]); if (E.metas.ouvidorias) C.push(['Ouvidorias', ref('ouvidorias')]);
+    const L = C.map(([t, ate]) => ({ t, ate, ok: !!ate && ate >= fim }));
+    const tr = o.ind.find(x => x.t === 'Treinamentos realizados'); if (tr) L.push({ t:'Treinamentos lançados', ate:'', ok:!tr.semLanc, det: tr.semLanc ? tr.extra : 'sem previstos pendentes' });
+    return L;
+  }
+  async function fechar(){
+    salvar().catch(() => {});
+    const L = await conferir(mes, R); const pend = L.filter(x => !x.ok);
+    abrirModal({ titulo:`Fechar ${mesTxt(mes)}`, largo:true, corpo:`<p class="nr-nota" style="margin:0 0 10px;padding:0">Antes de fechar, confira se as bases já cobrem o mês inteiro (até ${esc(brD(fimMes(mes)))}). Depois de fechado, os números ficam guardados como estão.</p>
+      <div class="rl-ck">${L.map(x => `<div class="${x.ok ? 'ok' : 'no'}"><i>${x.ok ? '✓' : '!'}</i><b>${esc(x.t)}</b><span>${x.det ? esc(x.det) : x.ate ? 'vai até ' + esc(brD(x.ate)) : 'sem data'}</span></div>`).join('')}</div>
+      ${pend.length ? '<p class="nr-nota" style="margin:10px 0 0;padding:0;color:#a3301c">Há bases que não cobrem o mês inteiro. O ideal é atualizar antes. Se fechar assim, o relatório guarda essas ressalvas.</p>' : ''}`,
+      pe:`<span style="flex:1"></span><button class="btn borda" id="fc-c">Cancelar</button><button class="btn ${pend.length ? 'perigo' : 'prim'}" id="fc-ok">${pend.length ? 'Fechar com ressalvas' : 'Fechar o mês'}</button>`,
+      aoAbrir: m => { m.querySelector('#fc-c').onclick = fecharModal; m.querySelector('#fc-ok').onclick = async () => {
+        try { await gravarFech(mes, snap(R, pend.map(x => x.t + (x.ate ? ' até ' + brD(x.ate) : '')))); fecharModal(); toast(mesTxt(mes) + ' fechado.'); carregar(); } catch(e){ toast(traduzErro(e), true); } }; } });
+  }
+  async function fecharAnteriores(){
+    const L = []; for (let k = mesAnt(mes); k >= '2026-01'; k = mesAnt(k)) if (!FECH[k]) L.push(k);
+    if (!L.length) { toast('Os meses anteriores já estão fechados.'); return; }
+    abrirModal({ titulo:'Fechar meses anteriores', corpo:`<p class="nr-nota" style="margin:0;padding:0">Vou fechar ${L.length} ${L.length === 1 ? 'mês' : 'meses'} (${esc(L.slice().reverse().map(k => mesTxt(k).slice(0, 3)).join(', '))}) com os dados de hoje. Fica registrado que o fechamento foi feito depois, com as ressalvas de cada mês.</p>`,
+      pe:`<span style="flex:1"></span><button class="btn borda" id="fa-c">Cancelar</button><button class="btn prim" id="fa-ok">Fechar</button>`,
+      aoAbrir: m => { m.querySelector('#fa-c').onclick = fecharModal; m.querySelector('#fa-ok').onclick = async () => { const b = m.querySelector('#fa-ok'); b.disabled = true;
+        try { for (const k of L.slice().reverse()) { b.textContent = 'Fechando ' + mesTxt(k) + '…'; const o = await calcular(k); if (!o) continue; const ck = await conferir(k, o);
+            const d = snap(o, ck.filter(x => !x.ok).map(x => x.t + (x.ate ? ' até ' + brD(x.ate) : ''))); d.retroativo = true; await gravarFech(k, d); }
+          fecharModal(); toast('Meses fechados.'); carregar(); } catch(e){ toast(traduzErro(e), true); b.disabled = false; } }; } });
   }
   async function salvar(){
     const d = { mes, ponto:$('#rl-t1').value.trim(), fazer:$('#rl-t2').value.trim(), acomp:$('#rl-t3').value.trim(), em:new Date().toISOString(), por:E.perfil.nome };
@@ -137,13 +195,16 @@ async function tela(){
     if (error) { toast(traduzErro(error), true); return false; } T = d; const st = $('#rl-st'); if (st) st.textContent = 'Salvo agora'; toast('Análise salva.'); return true;
   }
   const textoAtual = () => ({ ponto:($('#rl-t1') || {}).value || T.ponto || '', fazer:($('#rl-t2') || {}).value || T.fazer || '', acomp:($('#rl-t3') || {}).value || T.acomp || '' });
-  const escolher = (tipo, fazer) => abrirModal({ titulo:`Exportar em ${tipo}`, corpo:`<p class="nr-nota" style="margin:0 0 10px;padding:0">Escolha o que vai no relatório.</p><div class="nr-esc">${SEC.filter(([k]) => R.ind.some(x => x.sec === k)).map(([k, t]) => `<label><input type="checkbox" value="${k}" checked> ${t}</label>`).join('')}<label><input type="checkbox" value="txt" checked> Análise do RH</label></div>`,
+  const escolher = (tipo, fazer) => abrirModal({ titulo:`Exportar em ${tipo}`, corpo:`<p class="nr-nota" style="margin:0 0 10px;padding:0">Escolha o que vai no relatório.</p><div class="nr-esc">${SEC.filter(([k]) => R.ind.some(x => x.sec === k)).map(([k, t]) => `<label><input type="checkbox" value="${k}" checked> ${t}</label>`).join('')}${tendL().length >= 2 ? '<label><input type="checkbox" value="tend" checked> Tendência dos meses fechados</label>' : ''}<label><input type="checkbox" value="txt" checked> Análise do RH</label></div>`,
     pe:`<span style="flex:1"></span><button class="btn borda" id="ex-c">Cancelar</button><button class="btn prim" id="ex-ok">Baixar</button>`,
     aoAbrir: m => { m.querySelector('#ex-c').onclick = fecharModal; m.querySelector('#ex-ok').onclick = () => { const sel = [...m.querySelectorAll('input:checked')].map(i => i.value); fecharModal(); fazer(sel); }; } });
   const linhasSec = k => R.ind.filter(x => x.sec === k).map(x => [x.t, fmt(x, x.a), x.foto ? 'posição de hoje' : fmt(x, x.b), x.var == null || x.foto ? '' : Math.abs(x.var) < .005 ? '0%' : (x.var > 0 ? '+' : '') + nf(100 * x.var) + '%', x.extra || '']);
+  const tendL = () => Object.keys(FECH).sort().filter(k => k <= mes).slice(-12);
+  const tendTab = (n) => { const TL = tendL().slice(-n); return { cab:['Indicador', ...TL.map(k => mesTxt(k).slice(0, 3) + '/' + k.slice(2, 4))], lin: TEND.map(t => [t, ...TL.map(k => { const x = FECH[k].ind.find(z => z.t === t); return x ? fmt(x, x.a) : '—'; })]) }; };
   const nomeArq = () => 'Relatorio diretoria ' + mesTxt(mes).replace('/', ' ');
   $('#rl-xls').onclick = () => { if (!R) return; escolher('Excel', sel => { const tx = textoAtual(); const aoa = [['Relatório da diretoria · Gestão de Pessoas CRV · ' + mesTxt(mes)], []];
     SEC.filter(([k]) => sel.includes(k)).forEach(([k, t]) => { aoa.push([t], ['Indicador', mesTxt(mes), mesTxt(mesAnt(mes)), 'Variação', 'Observação'], ...linhasSec(k), []); });
+    if (sel.includes('tend')) { const T2 = tendTab(12); aoa.push(['Tendência dos meses fechados'], T2.cab, ...T2.lin, []); }
     if (sel.includes('txt')) aoa.push(['Principal ponto de atenção', tx.ponto], ['O que fazer', tx.fazer], ['O que acompanhar', tx.acomp]);
     if (R.notas.length) aoa.push([], [R.notas.join(' ')]);
     const ws = XLSX.utils.aoa_to_sheet(aoa); ws['!cols'] = [{ wch:44 }, { wch:18 }, { wch:18 }, { wch:12 }, { wch:30 }]; const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Relatório');
@@ -159,6 +220,10 @@ async function tela(){
       doc.autoTable({ startY:y + 12, head:[['Indicador', mesTxt(mes), mesTxt(mesAnt(mes)), 'Variação', '']], body:L, margin:{ left:30, right:30 }, styles:{ fontSize:8.5, cellPadding:3 }, headStyles:{ fillColor:[36,66,124] }, columnStyles:{ 0:{ cellWidth:190 }, 4:{ textColor:[93,106,133] } },
         didParseCell: d => { if (d.section === 'body' && d.column.index === 3) { const x = R.ind.filter(z => z.sec === k)[d.row.index]; if (x && !x.neutro && x.var) d.cell.styles.textColor = x.ruim ? [163,48,28] : [29,107,66]; } } });
       y = doc.lastAutoTable.finalY + 18; });
+    if (sel.includes('tend')) { const T2 = tendTab(8); if (y > 680) { doc.addPage(); y = 40; } doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(20, 33, 61); doc.text('Tendência dos meses fechados', 30, y + 6);
+      doc.autoTable({ startY:y + 12, head:[T2.cab], body:T2.lin, margin:{ left:30, right:30 }, styles:{ fontSize:8, cellPadding:2.6 }, headStyles:{ fillColor:[46,138,87] }, columnStyles:{ 0:{ cellWidth:150 } } }); y = doc.lastAutoTable.finalY + 18; }
+    if (R.fechado) R.notas = R.notas.concat(['Mês fechado em ' + new Date(R.fechado.fechadoEm).toLocaleDateString('pt-BR') + (R.fechado.ressalvas && R.fechado.ressalvas.length ? ', com ressalvas: ' + R.fechado.ressalvas.join('; ') : '') + '.']).filter((v, i, a) => a.indexOf(v) === i);
+    else R.notas = R.notas.filter(v => !/^Mês fechado/.test(v)).concat(['Mês em aberto: números sujeitos a atualização.']).filter((v, i, a) => a.indexOf(v) === i);
     const nota = 'Fonte: bases do app (Quadro de ' + brD(R.refQ) + ', absenteísmo, sanções, ouvidorias, treinamentos). ' + R.notas.join(' ') + ' Quadro no fim do mês e turnover aproximados pelo Quadro atual.';
     if (y > 760) { doc.addPage(); y = 40; } doc.setFontSize(7.5); doc.setTextColor(93, 106, 133); doc.text(doc.splitTextToSize(nota, W - 60), 30, y + 4);
     rodapePDF(doc); baixar(doc.output('blob'), nomeArq() + '.pdf'); }); };
