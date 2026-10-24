@@ -27,7 +27,18 @@ async function salvar(col, id, dados){
   const { error } = await sb.from('registros').upsert({ painel:'onboarding', caminho:col + '/' + id, colecao:col, doc_id:id, dados, atualizado_por:E.perfil.nome }, { onConflict:'painel,caminho' });
   if (error) throw error; try { localStorage.removeItem(centralChave()); } catch(_){}
 }
-async function cfg(){ const L = await regs('config'); const c = L.find(x => x._id === 'itens'), i = L.find(x => x._id === 'inicio'); return { itens: c && Array.isArray(c.itens) && c.itens.length ? c.itens : ITENS_PADRAO, inicio: (i && i.data) || '' }; }
+async function cfg(){ const L = await regs('config'); const c = L.find(x => x._id === 'itens'), i = L.find(x => x._id === 'inicio'); return { itens: c && Array.isArray(c.itens) && c.itens.length ? c.itens : ITENS_PADRAO, inicio: (i && i.data) || '', lote2410: L.some(x => x._id === 'lote-20261024') }; }
+/* marca itens em lote para quem foi admitido entre duas datas (e ainda está na empresa); mantém o que já estava marcado */
+async function marcarLote(M, CK, de, ate, ids, nota){
+  const ck = {}; CK.forEach(x => ck[fMat(x.mat || x._id)] = x);
+  const em = new Date().toISOString(), rows = [];
+  Object.entries(M).forEach(([m, c]) => { if (c.situacao === 'Desligado' || !c.admissao || c.admissao < de || c.admissao > ate) return;
+    const ok = Object.assign({}, (ck[m] && ck[m].ok) || {}); let mud = false; ids.forEach(id => { if (!ok[id]) { ok[id] = { em, por:E.perfil.nome, lote:nota }; mud = true; } });
+    if (mud) rows.push({ painel:'onboarding', caminho:'check/' + m, colecao:'check', doc_id:m, dados:{ mat:m, nome:c.nome, adm:c.admissao, ok }, atualizado_por:E.perfil.nome }); });
+  for (let i = 0; i < rows.length; i += 200) { const { error } = await sb.from('registros').upsert(rows.slice(i, i + 200), { onConflict:'painel,caminho' }); if (error) throw error; }
+  try { localStorage.removeItem(centralChave()); } catch(_){}
+  return rows.length;
+}
 
 // situação de cada marco: ok (feita), pend (já chegou a hora), atr (15 dias depois e sem conversa), fut (ainda não chegou)
 // na = o prazo já tinha passado quando o acompanhamento começou (não é cobrado)
@@ -46,7 +57,13 @@ async function dicas(mats){
 async function dados(dias){
   const Q = await window.CRV_QUADRO(); if (!Q) return null;
   const M = Q.mapa, h = hoje(), desde = addD(h, -dias);
-  const [C, CK, CV] = await Promise.all([cfg(), regs('check'), regs('conversas')]); const itens = C.itens; let ini = C.inicio;
+  let [C, CK, CV] = await Promise.all([cfg(), regs('check'), regs('conversas')]); const itens = C.itens; let ini = C.inicio;
+  // 24/10/2026: o RH informou que todos os admitidos estão com o checklist completo, menos o Cartão Alimentação de quem entrou em outubro
+  { const pp = E.paineis.find(x => x.id === 'onboarding');
+    if (!C.lote2410 && pp && podeEditar(pp)) { try { const nota = 'Informado pelo RH em 24/10/2026';
+      await marcarLote(M, CK, '2000-01-01', '2026-09-30', itens.map(i => i.id), nota);
+      await marcarLote(M, CK, '2026-10-01', '2026-10-24', itens.filter(i => i.id !== 'va').map(i => i.id), nota);
+      await salvar('config', 'lote-20261024', { em:new Date().toISOString(), por:E.perfil.nome }); CK = await regs('check'); } catch(e){ console.warn('lote onboarding', e); } } }
   // a primeira vez que alguém com permissão abre, o acompanhamento começa hoje
   if (!ini) { ini = h; const pp = E.paineis.find(x => x.id === 'onboarding'); if (pp && podeEditar(pp)) salvar('config', 'inicio', { data:h }).catch(() => {}); }
   const ck = {}; CK.forEach(x => ck[fMat(x.mat || x._id)] = x);
@@ -151,7 +168,7 @@ async function tela(p){
   }
   function vItens(c){
     let it = D.itens.map(i => Object.assign({}, i));
-    const pintar = () => { c.innerHTML = `<section class="cartao nr-leg">Itens que o RH confere para cada pessoa admitida. Comecei com uma lista inicial: ajuste para a rotina da CRV. Remover um item não apaga o que já foi marcado.</section>
+    let pintar = () => { c.innerHTML = `<section class="cartao nr-leg">Itens que o RH confere para cada pessoa admitida. Comecei com uma lista inicial: ajuste para a rotina da CRV. Remover um item não apaga o que já foi marcado.</section>
       <section class="fc-sec cartao" style="padding:14px"><div class="ob-it">${it.map((i, k) => `<div class="ob-ir"><input value="${esc(i.nome)}" data-in="${k}" maxlength="80"><button class="btn borda" data-up="${k}" ${k ? '' : 'disabled'} aria-label="Subir">↑</button><button class="btn borda" data-rm="${k}" aria-label="Remover">Remover</button></div>`).join('')}</div>
         <div class="ob-ini"><label>Acompanhamento iniciado em <input type="date" id="ob-ini" value="${esc(D.ini)}"></label><small>Prazos de conversa anteriores a esta data não são cobrados.</small></div>
         <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn borda" id="ob-add">+ Item</button><span style="flex:1"></span><button class="btn borda" id="ob-pad">Voltar à lista inicial</button><button class="btn prim" id="ob-sv">Salvar itens</button></div></section>`;
@@ -163,7 +180,20 @@ async function tela(p){
       $('#ob-sv').onclick = async () => { const L = it.map(i => ({ id:i.id, nome:String(i.nome || '').trim() })).filter(i => i.nome); if (!L.length) { toast('Deixe pelo menos um item.', true); return; }
         const ni = $('#ob-ini').value;
         try { await salvar('config', 'itens', { itens:L }); if (ni && ni !== D.ini) await salvar('config', 'inicio', { data:ni }); toast('Itens salvos.'); await carregar(); } catch(e){ toast(traduzErro(e), true); } }; };
-    pintar();
+    const addLote = () => {
+    const lt = document.createElement('section'); lt.className = 'fc-sec cartao'; lt.style.cssText = 'padding:14px;margin-top:12px';
+    lt.innerHTML = `<h3 style="margin:0 0 4px;font-size:15px">Marcar em lote</h3><p class="nr-nota" style="padding:0 0 10px">Marca os itens escolhidos como feitos para todos os admitidos no período que ainda estão na empresa. O que já estava marcado continua como está.</p>
+      <div class="ob-ini" style="margin-top:0"><label>Admitidos de <input type="date" id="lt-de"></label><label>até <input type="date" id="lt-ate" value="${hoje()}"></label></div>
+      <div class="ob-tm" style="margin:10px 0">${D.itens.map(i => `<label><input type="checkbox" value="${esc(i.id)}" checked> ${esc(i.nome)}</label>`).join('')}</div>
+      <div style="display:flex;justify-content:flex-end"><button class="btn prim" id="lt-ok">Marcar como feito</button></div>`;
+    c.appendChild(lt);
+    $('#lt-ok').onclick = async () => { const de = $('#lt-de').value || '2000-01-01', ate = $('#lt-ate').value || hoje(), ids = [...lt.querySelectorAll('.ob-tm input:checked')].map(i => i.value);
+      if (!ids.length) { toast('Escolha pelo menos um item.', true); return; }
+      const n = Object.values(D.M).filter(x => x.situacao !== 'Desligado' && x.admissao >= de && x.admissao <= ate).length;
+      const b = $('#lt-ok'); if (b.dataset.conf !== '1') { b.dataset.conf = '1'; b.textContent = `Confirmar para ${n} admitido${n === 1 ? '' : 's'}`; return; }
+      b.disabled = true; try { const q = await marcarLote(D.M, await regs('check'), de, ate, ids, 'Marcado em lote'); toast(`${q} ficha${q === 1 ? '' : 's'} atualizada${q === 1 ? '' : 's'}.`); await carregar(); } catch(e){ toast(traduzErro(e), true); b.disabled = false; } };
+    };
+    const _p = pintar; pintar = () => { _p(); addLote(); }; pintar();
   }
   function formConversa(x, k, cv){
     const v = cv || { data:hoje(), como:'bem', temas:[], obs:'', quem:E.perfil.nome };
