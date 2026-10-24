@@ -1426,7 +1426,7 @@ function montarModelo(tpl, conteudo, referencia, p, novos){
 /* ---------- carregar arquivos de dados (um ou vários de uma vez) ---------- */
 function escolherPacotes(esperado){
   const inp = document.createElement('input');
-  inp.type = 'file'; inp.multiple = !esperado; inp.accept = '.json,.zip,application/json,application/zip';
+  inp.type = 'file'; inp.multiple = !esperado; inp.accept = '.json,.zip,.xlsx,.xls,application/json,application/zip,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel';
   inp.onchange = () => inp.files.length && carregarPacotes([...inp.files], esperado);
   inp.click();
 }
@@ -1466,6 +1466,13 @@ async function carregarPacotes(arquivos, esperado){
   const itens = [];
   for (const f of arquivos) {
     if (/\.zip$/i.test(f.name)) { itens.push({ f, zip:true, painel: esperado || null }); continue; }
+    if (/\.xlsx?$/i.test(f.name)) {
+      // planilha original: o app converte sozinho no arquivo de dados do painel
+      try { const L = await window.CRV_IMPORT.ler(f);
+        L.forEach(x => { const txt = JSON.stringify(x.pac); itens.push({ f:{ name: f.name, size: txt.length }, pac:x.pac, painel:x.pac.painel, rotulo:x.rotulo }); }); }
+      catch(e){ itens.push({ f, erro: e.message }); }
+      continue;
+    }
     try { const pac = await lerPacote(f); itens.push({ f, pac, painel: pac.painel }); }
     catch(e){ itens.push({ f, erro: e.message }); }
   }
@@ -1485,7 +1492,7 @@ async function carregarPacotes(arquivos, esperado){
     corpo: `<p style="margin-top:0;color:var(--mut)">Os dados atuais de cada painel serão substituídos pela versão do arquivo. As anotações feitas no app (avaliações, programações, fichas…) <b>são mantidas</b>.</p>
       <div class="tabela-env" style="max-height:340px"><table class="tab"><thead><tr><th>Arquivo</th><th>Painel</th><th>Dados de</th><th>Situação</th></tr></thead><tbody>
       ${itens.map((i, n) => `<tr style="cursor:default"><td>${esc(i.f.name)}</td><td>${esc(i.painel ? nomeP(i.painel) : '—')}</td>
-        <td>${i.pac ? (i.pac.estab ? 'lista de estabilidade (' + i.pac.itens.length + ')' : i.pac.entr ? 'entrevistas de desligamento (' + i.pac.itens.length + ')' : fmtRef(i.pac.referencia)) : (i.zip ? 'arquivos' : '—')}</td>
+        <td>${i.rotulo ? esc(i.rotulo) + '<br><small>' + esc(fmtRef(i.pac.referencia)) + '</small>' : i.pac ? (i.pac.estab ? 'lista de estabilidade (' + i.pac.itens.length + ')' : i.pac.entr ? 'entrevistas de desligamento (' + i.pac.itens.length + ')' : fmtRef(i.pac.referencia)) : (i.zip ? 'arquivos' : '—')}</td>
         <td id="pk-st-${n}">${i.erro ? `<span style="color:var(--coral)">${esc(i.erro)}</span>` : 'pronto'}</td></tr>`).join('')}
       </tbody></table></div>`,
     pe: `<button class="btn borda" id="pk-c">Cancelar</button><button class="btn prim" id="pk-ok" ${validos.length ? '' : 'disabled'}>Salvar no app</button>`,
@@ -1699,7 +1706,7 @@ function formSenha(u){
 function adminPaineis(){
   const c = $('#admin-corpo');
   const frentes = frentesExistentes();
-  c.innerHTML = `<div class="cartao-cab"><h3>Painéis do app</h3><button class="btn prim" id="p-lote">Carregar arquivos de dados</button></div>
+  c.innerHTML = `<div class="cartao-cab"><h3>Painéis do app</h3><button class="btn prim" id="p-lote">Carregar planilhas ou arquivos de dados</button></div>
     <p style="color:var(--mut);margin-top:0;font-size:13px"><b>Carregar arquivos de dados:</b> selecione de uma vez todos os arquivos de dados (.json) que o Claude preparou — cada um vai para o seu painel.</p>
     <p style="color:var(--mut);margin-top:0;font-size:13px">Mude a frente ou o nível de acesso de cada painel. <b>Restrito</b>: só administradores. <b>Controlado</b>: quem tiver a frente liberada. <b>Geral</b>: também quem tiver a frente liberada (dado operacional).</p>
     <div class="tabela-env" style="max-height:none"><table class="tab"><thead><tr><th>Painel</th><th>Frente</th><th>Nível</th><th>Dados</th><th>Arquivo de dados</th></tr></thead><tbody>
