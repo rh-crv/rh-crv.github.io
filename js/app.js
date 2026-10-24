@@ -57,7 +57,7 @@ const fmtNum = n => Number(n||0).toLocaleString('pt-BR');
 const iniciais = n => String(n||'?').split(/\s+/).filter(Boolean).slice(0,2).map(p=>p[0]).join('').toUpperCase();
 const usuarioParaEmail = u => normal(u).replace(/\s+/g,'.').replace(/[^a-z0-9._-]/g,'') + '@' + CFG.DOMINIO_LOGIN;
 const ehAdmin = () => E.perfil?.papel === 'admin';
-const nomePapel = p => ({admin:'Administrador', editor:'Editor', leitor:'Leitor'}[p] || p);
+const nomePapel = p => ({admin:'Administrador', editor:'Editor', leitor:'Leitor', gestor:'Gestor de área'}[p] || p);
 
 function toast(msg, erro=false){
   const t = document.createElement('div');
@@ -77,6 +77,7 @@ function traduzErro(e){
   if (m.includes('rate limit')) return 'Muitas tentativas seguidas. Aguarde alguns minutos e tente de novo.';
   if (m.includes('failed to fetch') || m.includes('network')) return 'Sem conexão com o servidor. Verifique a internet.';
   if (m.includes('row-level security') || m.includes('permission denied')) return 'Você não tem permissão para essa ação.';
+  if ((m.includes('areas') && m.includes('column')) || m.includes('area_dados') || m.includes('perfis_papel_check')) return 'Falta preparar o banco para o perfil de gestor: rode o arquivo 04_gestor.sql no Supabase (SQL Editor).';
   if (m.includes('relation') && m.includes('does not exist')) return 'O banco ainda não foi preparado. Rode o arquivo SQL no Supabase (passo a passo).';
   return e?.message || 'Algo deu errado. Tente novamente.';
 }
@@ -115,6 +116,7 @@ async function entrarNoApp(){
     await carregarCatalogo();
     window.addEventListener('hashchange', rota);
     rota();
+    if (ehAdmin()) setTimeout(() => GESTOR().gerar(false).catch(() => {}), 8000);
   } catch(e){
     $('#app').innerHTML = `<div class="login-fundo"><div class="login-card"><img class="logo" src="img/logo-crv.png" alt="CRV Industrial">
       <div class="erro" style="margin-top:18px">${esc(traduzErro(e))}</div>
@@ -307,7 +309,8 @@ function moldura(conteudo){
         <div class="lat-tit"><b>Gestão de Pessoas</b><span>Unidade Capinópolis</span></div>
       </div>
       <nav class="lat-nav">
-        <button class="lat-item ${h==='#/'||h===''?'ativo':''}" data-ir="#/">${svg('casa')}<span>Início</span></button>
+        ${p.papel === 'gestor' ? '' : `<button class="lat-item ${h==='#/'||h===''?'ativo':''}" data-ir="#/">${svg('casa')}<span>Início</span></button>`}
+        ${p.papel === 'gestor' ? `<button class="lat-item ${h!=='#/conta'?'ativo':''}" data-ir="#/">${svg('usuario')}<span>Minha equipe</span></button>` : `
         <div class="lat-pgrupo lat-cgrupo ${h==='#/central'||h==='#/desligamento'||h==='#/bases'||subAbertos.__central?'aberto':''}" data-pid="__central">
           <div class="lat-plinha"><button class="lat-item ${h==='#/central'?'ativo':''}" data-ir="#/central"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg><span>Central do dia</span></button><button class="lat-pseta" aria-label="Mostrar opções da Central do dia" aria-expanded="${h==='#/desligamento'||h==='#/bases'?'true':'false'}">${CHEV}</button></div>
           <div class="lat-psub"><button class="lat-acao ${h==='#/desligamento'?'ativo':''}" data-ir="#/desligamento" style="--cor:var(--coral)"><i>${IA('<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>')}</i><span>Checklist de desligamento</span></button><button class="lat-acao ${h==='#/bases'?'ativo':''}" data-ir="#/bases" style="--cor:var(--cane)"><i>${IA('<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>')}</i><span>Saúde das bases</span></button></div>
@@ -323,6 +326,7 @@ function moldura(conteudo){
             <button class="lat-frente ${f===frenteAtual?'atual':''}" aria-expanded="${abertas[f]?'true':'false'}"><span class="lat-ic" style="background:${cfg.cor}">${svg(cfg.ic,'#fff')}</span><span class="lat-nome">${esc(f)}</span><span class="lat-seta">${CHEV}</span></button>
             <div class="lat-sub">${grupos[f].map(x => itemPainel(x, cfg)).join('')}</div>
           </div>`; }).join('')}
+        `}
         <div class="lat-sec">Conta</div>
         ${ehAdmin() ? `<button class="lat-item ${h==='#/admin'?'ativo':''}" data-ir="#/admin">${svg('engrenagem')}<span>Administração</span></button>` : ''}
         <button class="lat-item ${h==='#/conta'?'ativo':''}" data-ir="#/conta">${svg('usuario')}<span>Minha conta</span></button>
@@ -393,6 +397,7 @@ function rota(){
   if (!E.perfil) return;
   fecharModal();
   const h = location.hash || '#/';
+  if (E.perfil.papel === 'gestor') return h === '#/conta' ? telaConta() : GESTOR().tela();
   if (h.startsWith('#/p/')) { const [id, acao] = h.slice(4).split('/'); return telaPainel(decodeURIComponent(id), acao || ''); }
   if (h === '#/admin' && ehAdmin()) return telaAdmin();
   if (h === '#/central') return telaCentral();
@@ -544,6 +549,7 @@ const NR1 = () => _nr1 || (_nr1 = window.CRV_NR1_INIT ? window.CRV_NR1_INIT(ctxM
 let _risco = null; const RISCO = () => _risco || (_risco = window.CRV_RISCO_INIT(ctxMod()));
 let _rel = null; const REL = () => _rel || (_rel = window.CRV_REL_INIT(Object.assign(ctxMod(), { NR1, RISCO, BASES })));
 let _bases = null; const BASES = () => _bases || (_bases = window.CRV_BASES_INIT(Object.assign(ctxMod(), { ehAdmin, FRENTES })));
+let _gestor = null; const GESTOR = () => _gestor || (_gestor = window.CRV_GESTOR_INIT(ctxMod()));
 let _onb = null; const ONB = () => _onb || (_onb = window.CRV_ONB_INIT(Object.assign(ctxMod(), { RISCO })));
 async function pendenciasDesligamento(){
   const D = await dadosDesligamento(); if (!D) return [];
@@ -1802,6 +1808,7 @@ async function carregarPacotes(arquivos, esperado){
           } catch(e){ console.error(e); st.innerHTML = `<span style="color:var(--coral)">${esc(traduzErro(e))}<br><small>${esc((e && (e.message || e.error || e.statusCode)) || String(e))}</small></span>`; }
         }
         bt.textContent = 'Concluído'; $('#pk-c').disabled = false; $('#pk-c').textContent = 'Fechar';
+        setTimeout(() => GESTOR().gerar(true).catch(() => {}), 1500);
         $('#pk-c').onclick = () => { fecharModal(); rota(); };
         toast(`${ok} de ${validos.length} carregados.`);
         await carregarCatalogo();
@@ -1972,15 +1979,19 @@ async function adminUsuarios(){
   const { data, error } = await sb.from('perfis').select('*').order('nome');
   const c = $('#admin-corpo');
   if (error) { c.innerHTML = `<div class="erro">${esc(traduzErro(error))}</div>`; return; }
+  const temG = data.some(u => u.papel === 'gestor'); const ug = temG ? await GESTOR().ultimaGeracao() : null;
   c.innerHTML = `<div class="cartao-cab"><h3>${data.length} usuário(s)</h3><button class="btn prim" id="u-novo">+ Novo usuário</button></div>
-    <p style="color:var(--mut);margin-top:0;font-size:13px"><b>Administrador</b> vê e mexe em tudo · <b>Editor</b> vê e atualiza as frentes liberadas · <b>Leitor</b> só consulta as frentes liberadas. Painéis <span class="selo restrito">restrito</span> são só de administradores.</p>
+    ${temG ? `<div class="gs-adm cartao"><div><b>Visão dos gestores</b><small>${ug && ug.em ? 'Atualizada em ' + esc(new Date(ug.em).toLocaleString('pt-BR')) + ' · ' + (ug.chaves || []).length + ' área(s)' : 'Ainda não gerada'}. Atualiza sozinha quando você entra no app ou carrega as bases.</small></div><button class="btn borda" id="u-gerar">Atualizar agora</button></div>` : ''}
+    <p style="color:var(--mut);margin-top:0;font-size:13px"><b>Administrador</b> vê e mexe em tudo · <b>Editor</b> vê e atualiza as frentes liberadas · <b>Leitor</b> só consulta as frentes liberadas · <b>Gestor de área</b> vê só a própria equipe (experiência, férias, frequência, novos e crachás), sem acesso aos painéis. Painéis <span class="selo restrito">restrito</span> são só de administradores.</p>
     ${data.map((u,i)=>`<div class="linha-u ${u.ativo?'':'inativo'}">
       <div class="av" style="background:${PALETA[i%PALETA.length]}">${esc(iniciais(u.nome))}</div>
-      <div class="info"><b>${esc(u.nome)}</b> ${u.ativo?'':'<small>(desativado)</small>'}<br><small>@${esc(u.usuario)} · ${esc(nomePapel(u.papel))}${u.papel==='admin'?' · todas as frentes':` · ${u.frentes?.length ? esc(u.frentes.join(', ')) : 'nenhuma frente liberada'}`}</small></div>
+      <div class="info"><b>${esc(u.nome)}</b> ${u.ativo?'':'<small>(desativado)</small>'}<br><small>@${esc(u.usuario)} · ${esc(nomePapel(u.papel))}${u.papel==='admin'?' · todas as frentes':u.papel==='gestor'?` · ${(u.areas||[]).length ? esc((u.areas||[]).map(k=>k.slice(2)).join(', ')) : 'nenhuma área vinculada'}`:` · ${u.frentes?.length ? esc(u.frentes.join(', ')) : 'nenhuma frente liberada'}`}</small></div>
       <button class="btn peq borda" data-edit="${esc(u.user_id)}">Editar</button>
       <button class="btn peq borda" data-senha="${esc(u.user_id)}">Nova senha</button>
     </div>`).join('')}`;
   $('#u-novo').onclick = () => formUsuario(null, data);
+  const bg = $('#u-gerar'); if (bg) bg.onclick = async () => { bg.disabled = true; bg.textContent = 'Atualizando…'; const r = await GESTOR().gerar(true).catch(e => ({ ok:false, erro:e }));
+    if (r.ok) { toast(`Visão dos gestores atualizada (${r.n || 0} área(s)).`); adminUsuarios(); } else { toast(traduzErro(r.erro), true); bg.disabled = false; bg.textContent = 'Atualizar agora'; } };
   c.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => formUsuario(data.find(u=>u.user_id===b.dataset.edit), data));
   c.querySelectorAll('[data-senha]').forEach(b => b.onclick = () => formSenha(data.find(u=>u.user_id===b.dataset.senha)));
 }
@@ -1995,20 +2006,29 @@ function formUsuario(u, todos){
       ${novo ? `<div class="campo"><label>Usuário (para entrar no app)</label><input id="u-user" autocapitalize="none" spellcheck="false" placeholder="ex.: maria.silva"><small style="color:var(--mut)">Sem espaços e sem acentos. A pessoa não precisa ter e-mail.</small></div>
       <div class="campo"><label>Senha inicial</label><input id="u-senha" type="text" minlength="6" placeholder="mínimo 6 caracteres"><small style="color:var(--mut)">Passe a senha para a pessoa. Ela pode trocar depois em "Minha conta".</small></div>` : `<p style="color:var(--mut);margin-top:0">Usuário: <b>@${esc(u.usuario)}</b></p>`}
       <div class="campo"><label>Perfil</label><select id="u-papel">
-        ${['leitor','editor','admin'].map(p=>`<option value="${p}" ${(u?.papel||'leitor')===p?'selected':''}>${nomePapel(p)}</option>`).join('')}</select></div>
+        ${['leitor','editor','gestor','admin'].map(p=>`<option value="${p}" ${(u?.papel||'leitor')===p?'selected':''}>${nomePapel(p)}</option>`).join('')}</select></div>
       <div class="campo" id="u-frentes-box"><label>Frentes liberadas</label>
         <div class="checks">${frentes.map(f=>`<label><input type="checkbox" value="${esc(f)}" ${(u?.frentes||[]).includes(f)?'checked':''}> ${esc(f)}</label>`).join('')}</div></div>
+      <div class="campo oculto" id="u-areas-box"><label>Equipe que o gestor vê</label><input id="u-areas-q" type="search" placeholder="Filtrar áreas e gerências" style="margin-bottom:6px">
+        <div class="checks gs-areas" id="u-areas"><small style="color:var(--mut)">Carregando as áreas do Quadro…</small></div>
+        <small style="color:var(--mut)">Marque a área (como no Quadro) ou a gerência. O gestor vê só essas pessoas, sem CPF, salário, saúde ou ocorrências sensíveis.</small></div>
       ${!novo ? `<div class="campo"><label><input type="checkbox" id="u-ativo" ${u.ativo?'checked':''}> Usuário ativo (desmarque para bloquear o acesso)</label></div>` : ''}`,
     pe: `<button class="btn borda" id="u-c">Cancelar</button><button class="btn prim" id="u-ok">${novo?'Criar usuário':'Salvar'}</button>`,
     aoAbrir: m => {
-      const atualizaFrentes = () => $('#u-frentes-box').classList.toggle('oculto', $('#u-papel').value === 'admin');
+      const atualizaFrentes = () => { const pp = $('#u-papel').value; $('#u-frentes-box').classList.toggle('oculto', pp === 'admin' || pp === 'gestor'); $('#u-areas-box').classList.toggle('oculto', pp !== 'gestor'); };
       $('#u-papel').onchange = atualizaFrentes; atualizaFrentes();
+      GESTOR().opcoes().then(L => { const box = $('#u-areas'); if (!box) return; const sel = new Set(u?.areas || []);
+        box.innerHTML = L.length ? L.map(o => `<label data-q="${esc(normal(o.k))}"><input type="checkbox" value="${esc(o.k)}" ${sel.has(o.k)?'checked':''}> <span>${esc(o.k.slice(2))}</span> <small>${o.k[0]==='g'?'gerência':'área'} · ${o.n}</small></label>`).join('') : '<small>Carregue o Quadro Geral para listar as áreas.</small>';
+        $('#u-areas-q').oninput = e => { const q = normal(e.target.value); box.querySelectorAll('label').forEach(l => l.style.display = !q || l.dataset.q.includes(q) ? '' : 'none'); }; });
       $('#u-c').onclick = fecharModal;
       $('#u-ok').onclick = async () => {
         const bt = $('#u-ok'); const erro = t => { $('#u-msg').innerHTML = `<div class="erro">${esc(t)}</div>`; bt.disabled=false; bt.textContent = novo?'Criar usuário':'Salvar'; };
         const nome = $('#u-nome').value.trim();
         const papel = $('#u-papel').value;
-        const fr = papel === 'admin' ? [] : [...m.querySelectorAll('.checks input:checked')].map(x=>x.value);
+        const fr = papel === 'admin' || papel === 'gestor' ? [] : [...m.querySelectorAll('#u-frentes-box .checks input:checked')].map(x=>x.value);
+        const ar = papel === 'gestor' ? [...m.querySelectorAll('#u-areas input:checked')].map(x=>x.value) : [];
+        if (papel === 'gestor' && !ar.length) return erro('Marque pelo menos uma área para o gestor.');
+        const comAreas = o => (papel === 'gestor' || (u && u.areas !== undefined)) ? Object.assign(o, { areas:ar }) : o;
         if (!nome) return erro('Informe o nome.');
         bt.disabled = true; bt.textContent = 'Salvando...';
         try {
@@ -2023,9 +2043,10 @@ function formUsuario(u, todos){
             const { data, error } = await temp.auth.signUp({ email: usuarioParaEmail(usuario), password: senha, options:{ data:{ nome, usuario } } });
             if (error) throw error;
             if (!data.user || (data.user.identities && data.user.identities.length === 0)) return erro('Esse usuário já existe.');
-            const r = await sb.from('perfis').insert({ user_id:data.user.id, usuario, nome, papel, frentes:fr });
+            const r = await sb.from('perfis').insert(comAreas({ user_id:data.user.id, usuario, nome, papel, frentes:fr }));
             if (r.error) throw r.error;
             registrar(null, 'criou usuário', `${nome} (@${usuario}) · ${nomePapel(papel)}`);
+            if (papel === 'gestor') GESTOR().gerar(true).catch(() => {});
             fecharModal();
             abrirModal({ titulo:'Usuário criado', corpo:`<div class="ok">Acesso de <b>${esc(nome)}</b> liberado.</div>
               <p>Passe estes dados para a pessoa:</p>
@@ -2036,9 +2057,10 @@ function formUsuario(u, todos){
             const ativo = $('#u-ativo').checked;
             const adminsAtivos = todos.filter(x => x.papel==='admin' && x.ativo && x.user_id !== u.user_id).length;
             if (u.papel === 'admin' && (papel !== 'admin' || !ativo) && adminsAtivos === 0) return erro('Precisa existir pelo menos um administrador ativo.');
-            const r = await sb.from('perfis').update({ nome, papel, frentes:fr, ativo }).eq('user_id', u.user_id);
+            const r = await sb.from('perfis').update(comAreas({ nome, papel, frentes:fr, ativo })).eq('user_id', u.user_id);
             if (r.error) throw r.error;
             registrar(null, 'alterou acesso', `${nome} · ${nomePapel(papel)}${ativo?'':' · desativado'}`);
+            if (papel === 'gestor' || u.papel === 'gestor') GESTOR().gerar(true).catch(() => {});
             fecharModal(); toast('Acesso atualizado.');
             if (u.user_id === E.perfil.user_id) { E.perfil = { ...E.perfil, nome, papel, frentes:fr, ativo }; if (papel !== 'admin') { location.hash = '#/'; return; } }
             adminUsuarios();

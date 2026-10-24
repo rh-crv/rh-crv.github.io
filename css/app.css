@@ -549,3 +549,10 @@ body{font-variant-numeric:tabular-nums}
 .rl-ck{display:grid;gap:6px}.rl-ck>div{display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:center;border:1px solid var(--line);border-radius:9px;padding:7px 10px;font-size:13px}
 .rl-ck i{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-weight:800;font-size:12px}.rl-ck .ok i{background:rgba(46,138,87,.15);color:#1d6b42}.rl-ck .no i{background:rgba(212,87,63,.15);color:#a3301c}.rl-ck span{color:var(--mut);font-size:12px}
 @media (max-width:640px){.rl-est{flex-direction:column;align-items:flex-start}}
+/* Gestor de área */
+.gs-ch{display:inline-block;background:rgba(36,66,124,.09);color:var(--hd2);font-weight:700;font-size:12px;border-radius:20px;padding:3px 10px;margin:2px 6px 2px 0}
+.gs-k{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+.gs-hl td{background:rgba(233,162,59,.1)}.gs-hl td:first-child{box-shadow:inset 3px 0 0 var(--amber);font-weight:700}
+.gs-areas{max-height:260px;overflow:auto;display:grid!important;grid-template-columns:1fr;gap:4px;border:1px solid var(--line);border-radius:9px;padding:8px}
+.gs-areas label{display:flex;gap:6px;align-items:center;font-size:13px}.gs-areas small{color:var(--mut);margin-left:auto}
+.gs-adm{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:10px 14px;margin:0 0 12px;border-left:4px solid var(--cane)}.gs-adm>div{display:flex;flex-direction:column}.gs-adm small{color:var(--mut)}
