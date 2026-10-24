@@ -650,6 +650,7 @@ setupFilters();render();
 .ds-top{grid-column:1/-1;border:1px solid #e0e5ef;border-radius:8px;padding:8px 10px;display:grid;grid-template-columns:1fr auto;gap:6px}
 .ds-top input,.ds-top textarea{border:1px solid #d5dbe6;border-radius:6px;padding:6px 8px;font:inherit;background:#f7f9fc}
 .ds-top textarea{grid-column:1/-1;min-height:54px}
+.ds-ped{margin-left:8px;background:#a1341f;color:#fff}.ds-pd{display:flex;gap:12px;align-items:flex-start;border:1px solid #d5dbe6;border-left:4px solid #a1341f;border-radius:10px;padding:10px 12px;margin:0 0 10px;font-size:12.5px;line-height:1.5}.ds-pd>div:first-child{flex:1;min-width:0}.ds-pt{font-weight:700;color:#a1341f}.ds-pdx{white-space:pre-wrap;background:#f6f8fb;border-radius:8px;padding:8px 10px;margin:6px 0}.ds-pa{display:flex;flex-direction:column;gap:6px}.ds-pm{border:1px solid #d5dbe6;border-radius:7px;padding:5px 8px;font:inherit;font-size:12px;width:170px}@media(max-width:640px){.ds-pd{flex-direction:column}.ds-pa{flex-direction:row;flex-wrap:wrap}}
 .ds-mini{border:1px solid #d5dbe6;background:#fff;border-radius:7px;padding:4px 9px;font-size:11.5px;cursor:pointer;font-weight:600;color:#14213d}
 .ds-mini.perigo{color:#a3301c;border-color:#e7b8b0}.ds-mini.perigo.conf{background:#a3301c;color:#fff}
 .ds-pe{display:flex;gap:8px;justify-content:flex-end;align-items:center;padding:12px 18px;border-top:1px solid #e0e5ef;flex-wrap:wrap}.ds-pe .esp{flex:1;color:#5d6a85;font-size:12px}
@@ -782,7 +783,7 @@ function abrir(pre){
         try{await D.collection('documentos').doc(x._id).update({excluido:true,excluidoEm:new Date().toISOString(),excluidoPor:quem()});MUDOU=true;listar()}catch(er){g('dMsg').textContent='Sem permissão para excluir.'}});
     }catch(_){h.innerHTML='<p style="padding:8px;margin:0;color:#8a2a1a">Não consegui ler o registro.</p>'}};
   listar();
-  calcFim();sync();if(e.mat){ult=String(e.mat);}
+  calcFim();sync();if(e.mat){if(e.nome)ult=String(e.mat);else setTimeout(puxar,60);}
   g('dG').onclick=async()=>{const msg=g('dMsg');
     const d={tipo,titulo:TIT[tipo],mat:g('dM').value.trim(),nome:g('dN').value.trim().toUpperCase(),cpf:g('dCpf').value.trim(),dep:g('dDep').value.trim().toUpperCase(),func:g('dFun').value.trim().toUpperCase(),adm:g('dAdm').value,
       data:g('dData').value||hoje(),assunto:g('dAss').value.trim().toUpperCase(),desc:g('dDesc').value.trim(),enq:g('dEnq').value,cat:g('dCat')&&g('dCat').value!==''?+g('dCat').value:'',ger:GER,enqC:g('dEnqC').value.trim(),enqO:g('dEnqO').value.trim(),
@@ -791,7 +792,8 @@ function abrir(pre){
     const falta=[!d.mat&&'matrícula',!d.nome&&'nome',tipo!=='ori'&&!d.assunto&&'assunto',tipo!=='ori'&&!d.desc&&'descrição',(tipo==='ori'||d.junto)&&!d.obj&&'objetivo da orientação',tipo==='sus'&&!d.ini&&'início da suspensão'].filter(Boolean);
     if(falta.length){msg.style.color='#a3301c';msg.textContent='Falta preencher: '+falta.join(', ')+'.';return}
     if(tipo==='ori'&&!d.oAss)d.oAss=d.assunto;
-    try{await pdf(d);const D=await db();if(D){try{await D.collection('documentos').add(Object.assign({},d,{emitidoEm:new Date().toISOString(),por:quem()}));MUDOU=true;listar()}catch(_){}}
+    try{await pdf(d);const D=await db();if(D){try{await D.collection('documentos').add(Object.assign({},d,{emitidoEm:new Date().toISOString(),por:quem()},e._ped?{pedido:e._ped}:{}));MUDOU=true;listar()}catch(_){}
+      if(e._ped){try{await D.collection('pedidos').doc(e._ped).update({emitido:true,emitidoEm:new Date().toISOString(),emitidoPor:quem(),docTipo:d.tipo});e._ped=null;window.CRV_PED_ATU&&window.CRV_PED_ATU()}catch(_){}}}
       msg.style.color='#1d5c3a';msg.textContent=tipo==='ori'?'PDF gerado. Imprima, colha as assinaturas e arquive.':'PDF gerado e lançado no painel e no histórico do colaborador (atualiza ao fechar esta janela).'}catch(er){msg.style.color='#a3301c';msg.textContent='Não consegui gerar: '+(er.message||er)}};
   if(!e.mat)setTimeout(()=>g('dM').focus(),60);
 }
@@ -851,6 +853,24 @@ async function pdf(d){
 }
 function montarBotao(){const alvo=document.querySelector('header .hin')||document.querySelector('header');if(!alvo||document.querySelector('.ds-btn'))return;
   const b=document.createElement('button');b.className='ds-btn';b.type='button';b.textContent='Emitir advertência / suspensão / orientação';b.onclick=()=>abrir();alvo.appendChild(b)}
+/* pedidos de sanção enviados pelos gestores e aceitos pelo RH */
+const TPN={ori:'Orientação',adv:'Advertência',sus:'Suspensão'};
+async function pedidos(){const D=await db();if(!D)return;let L=[];try{const s=await D.collection('pedidos').get();L=s.docs.map(d=>Object.assign({_id:d.id},d.data())).filter(x=>!x.emitido).sort((a,b)=>(a.aceitoEm||'')<(b.aceitoEm||'')?-1:1)}catch(_){return}
+  let b=document.querySelector('.ds-ped');const alvo=document.querySelector('header .hin')||document.querySelector('header');
+  if(!L.length){if(b)b.remove();return}
+  if(!b&&alvo){b=document.createElement('button');b.className='ds-btn ds-ped';b.type='button';alvo.appendChild(b)}
+  if(!b)return;b.textContent='Pedidos dos gestores ('+L.length+')';b.onclick=()=>verPedidos(L)}
+function verPedidos(L){const w=document.createElement('div');w.className='ds-fundo';
+  w.innerHTML=`<div class="ds-modal" role="dialog" aria-modal="true"><div class="ds-cab"><h3>Pedidos dos gestores<small>Pedidos de sanção aceitos no app. Emita o documento (a medida pode ser mudada pelo RH) ou descarte com o motivo.</small></h3><button class="ds-mini" id="pX">Fechar</button></div><div class="ds-corpo" style="display:block">${L.map(x=>`<div class="ds-pd" data-id="${esc(x._id)}"><div><b>${esc(tc(x.nome||''))}</b> · ${esc(x.mat)} · ${esc(x.funcao||'')} · ${esc(x.area||'')}<br><span class="ds-pt">${esc(TPN[x.tipo]||x.tipo)}${x.tipo==='sus'?' de '+esc(x.dias)+' dia(s)':''}</span> · fato em ${br(x.data)}${x.hora?' às '+esc(x.hora):''}${x.local?' · '+esc(x.local):''} · pedido de ${esc(x.gestor||'')}<br><b>${esc(x.assunto||'')}</b><div class="ds-pdx">${esc(x.desc||'')}</div>${x.test?'<small>Testemunhas: '+esc(x.test)+'</small><br>':''}${x.ant?'<small>Já orientado antes: '+esc(x.ant)+'</small><br>':''}${x.rhObs?'<small>Obs. do RH no aceite: '+esc(x.rhObs)+'</small>':''}</div><div class="ds-pa"><button class="ds-mini" data-a="em">Emitir documento</button><button class="ds-mini perigo" data-a="ds">Descartar</button></div></div>`).join('')}</div></div>`;
+  document.body.appendChild(w);const fe=()=>w.remove();w.querySelector('#pX').onclick=fe;
+  w.querySelectorAll('.ds-pd').forEach(el=>{const x=L.find(y=>y._id===el.dataset.id);
+    el.querySelector('[data-a=em]').onclick=()=>{fe();const desc=[x.desc,(x.data?'Data do ocorrido: '+br(x.data)+(x.hora?', às '+x.hora:''):'')+(x.local?'. Local: '+x.local:''),x.test?'Testemunhas: '+x.test:''].filter(Boolean).join('\n\n');
+      abrir({tipo:x.tipo||'adv',mat:x.mat,data:hoje(),assunto:String(x.assunto||'').toUpperCase(),desc,dias:x.tipo==='sus'&&x.dias?String(x.dias):'',_ped:x._id})};
+    el.querySelector('[data-a=ds]').onclick=async b=>{const bt=b.currentTarget;if(!bt.dataset.c){bt.dataset.c=1;bt.textContent='Confirmar descarte';const m=document.createElement('input');m.placeholder='Motivo do descarte';m.className='ds-pm';bt.parentNode.prepend(m);m.focus();return}
+      const mo=(bt.parentNode.querySelector('.ds-pm')||{}).value||'';if(mo.trim().length<5){bt.parentNode.querySelector('.ds-pm').focus();return}
+      try{const D=await db();await D.collection('pedidos').doc(x._id).update({emitido:'descartado',descartadoEm:new Date().toISOString(),descartadoPor:quem(),motivoDescarte:mo.trim()});el.remove();pedidos();if(!w.querySelector('.ds-pd'))fe()}catch(_){bt.textContent='Sem permissão'}}})}
+window.CRV_PED_ATU=pedidos;
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(pedidos,300));else setTimeout(pedidos,300);
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',montarBotao);else montarBotao();
 window.CRV_DOCDISC=abrir;
 })();

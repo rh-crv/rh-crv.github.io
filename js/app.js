@@ -86,6 +86,7 @@ function traduzErro(e){
   if (m.includes('rate limit')) return 'Muitas tentativas seguidas. Aguarde alguns minutos e tente de novo.';
   if (m.includes('failed to fetch') || m.includes('network')) return 'Sem conexão com o servidor. Verifique a internet.';
   if (m.includes('row-level security') || m.includes('permission denied')) return 'Você não tem permissão para essa ação.';
+  if (m.includes('gestor_envios_tipo_check')) return 'O pedido de sanção ainda não foi liberado no banco: peça ao RH para rodar o arquivo 06_pedido_sancao.sql no Supabase.';
   if ((m.includes('areas') && m.includes('column')) || m.includes('area_dados') || m.includes('gestor_envios') || m.includes('perfis_papel_check')) return 'Falta preparar o banco para o perfil de gestor: rode o arquivo 04_gestor.sql no Supabase (SQL Editor).';
   if (m.includes('paineis_ver') || m.includes('paineis_editar')) return 'Falta preparar o banco para liberar painéis um a um: rode o arquivo 05_equipe_rh.sql atualizado no Supabase.';
   if (m.includes('perfis_papel_check') && m.includes('rh')) return 'Falta preparar o banco para a Equipe RH: rode o arquivo 05_equipe_rh.sql no Supabase.';
