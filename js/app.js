@@ -277,7 +277,7 @@ function moldura(conteudo){
         <div class="lat-vazio" id="lat-vazio" hidden>Nenhum painel com esse nome.</div>
         ${frentes.map(f => { const cfg = FRENTES[f] || FRENTES['Outros controles']; return `
           <div class="lat-grupo ${abertas[f]?'aberto':''}" data-frente="${esc(f)}">
-            <button class="lat-frente ${f===frenteAtual?'atual':''}" aria-expanded="${abertas[f]?'true':'false'}"><span class="lat-ic" style="background:${cfg.cor}">${svg(cfg.ic,'#fff')}</span><span class="lat-nome">${esc(f)}</span><span class="lat-qt">${grupos[f].length}</span><span class="lat-seta">${CHEV}</span></button>
+            <button class="lat-frente ${f===frenteAtual?'atual':''}" aria-expanded="${abertas[f]?'true':'false'}"><span class="lat-ic" style="background:${cfg.cor}">${svg(cfg.ic,'#fff')}</span><span class="lat-nome">${esc(f)}</span><span class="lat-seta">${CHEV}</span></button>
             <div class="lat-sub">${grupos[f].map(x => itemPainel(x, cfg)).join('')}</div>
           </div>`; }).join('')}
         <div class="lat-sec">Conta</div>
