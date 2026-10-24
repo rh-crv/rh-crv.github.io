@@ -428,3 +428,14 @@ body{font-variant-numeric:tabular-nums}
 .fc-vz{padding:12px 14px;margin:0;color:var(--mut);font-size:13px}
 .cd-fl{color:inherit;text-decoration:none;border-bottom:1px dotted currentColor}.cd-fl:hover{color:var(--hd2)}
 @media (max-width:700px){.fc-grade{grid-template-columns:1fr}.fc-cab{grid-template-columns:auto 1fr}.fc-cab #fc-pdf{grid-column:1/-1}}
+/* ===== Início: capa ===== */
+.ini-capa{position:relative;border-radius:20px;overflow:hidden;min-height:calc(100vh - 80px);display:flex;align-items:flex-end;box-shadow:var(--sombra)}
+.ini-arte{position:absolute;inset:0;width:100%;height:100%}
+.ini-capa-tx{position:relative;z-index:1;width:100%;padding:34px 36px 40px;color:#fff;text-align:center;display:flex;flex-direction:column;align-items:center}
+.ini-capa-logo{width:210px;max-width:60%;background:#fff;border-radius:12px;padding:8px 14px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.ini-capa h1{margin:18px 0 2px;font-size:34px;letter-spacing:-.01em;color:#fff}
+.ini-capa p{margin:0;font-size:15px;opacity:.85}
+.ini-capa-saud{margin-top:14px;font-size:13.5px;opacity:.75}
+.ini-capa-bt{margin-top:18px;border:0;border-radius:12px;padding:11px 20px;background:var(--amber);color:#2b1d00;font:inherit;font-weight:800;font-size:14.5px;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+.ini-capa-bt:hover{filter:brightness(1.06)}
+@media (max-width:700px){.ini-capa{min-height:calc(100vh - 110px);border-radius:16px}.ini-capa h1{font-size:27px}.ini-capa-tx{padding:26px 18px 30px}}

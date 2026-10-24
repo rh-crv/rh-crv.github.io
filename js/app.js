@@ -369,46 +369,34 @@ function rota(){
    ===================================================================== */
 const nomeBonito = n => String(n||'').toLowerCase().replace(/(^|\s)(\S)/g, (m, e, l) => e + l.toUpperCase()).replace(/\b(Da|De|Do|Das|Dos|E)\b/g, x => x.toLowerCase());
 function telaInicio(){
-  const visiveis = E.paineis.filter(podeVer);
-  const grupos = {};
-  visiveis.forEach(p => (grupos[p.frente] = grupos[p.frente] || []).push(p));
-  const frentes = Object.keys(grupos).sort((a,b) => (ORDEM_FRENTES.indexOf(a)+1||99) - (ORDEM_FRENTES.indexOf(b)+1||99));
   const agora = new Date(), hora = agora.getHours();
   const saud = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
   const hoje = agora.toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
-  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
-  // situação dos dados
-  const dataRef = p => { const m = E.metas[p.id]; if (!m) return null; return m.referencia ? new Date(m.referencia + 'T12:00') : new Date(m.atualizado_em); };
-  const comDados = visiveis.filter(p => E.metas[p.id]);
-  const dias = d => Math.floor((agora - d) / 864e5);
-  const antigos = comDados.filter(p => dias(dataRef(p)) > 30);
-  const semana = comDados.filter(p => dias(new Date(E.metas[p.id].atualizado_em)) <= 7);
-  const semDados = visiveis.filter(p => !E.metas[p.id]);
-
-  moldura(`
-    <section class="ini-topo">
-      <div>
-        <div class="ini-eyebrow">CRV Industrial · Unidade Capinópolis</div>
-        <h1>${saud}, ${esc(nomeBonito(E.perfil.nome).split(' ')[0])}</h1>
-        <div class="ini-data">${esc(hoje.charAt(0).toUpperCase() + hoje.slice(1))}</div>
-      </div>
-    </section>
-    <section class="central" id="central"></section>
-    ${!standalone ? `<div class="ini-instalar" id="faixa-instalar"><span>Use como aplicativo no celular ou no computador.</span><button class="link" id="b-inst">Instalar</button><button class="link" id="b-inst-x" aria-label="Fechar">×</button></div>` : ''}
-    ${frentes.length ? '' : `<div class="cartao vazio"><h3>Nenhum painel liberado</h3><p>Peça ao administrador para liberar as frentes que você usa.</p></div>`}
-  `);
-  if ($('#faixa-instalar')) {
-    try { if (localStorage.getItem('crv-inst-x')) $('#faixa-instalar').remove(); } catch(_){}
-    $('#b-inst') && ($('#b-inst').onclick = instalarApp);
-    $('#b-inst-x') && ($('#b-inst-x').onclick = () => { $('#faixa-instalar').remove(); try{localStorage.setItem('crv-inst-x','1')}catch(_){} });
-  }
-  document.querySelectorAll('[data-painel]').forEach(b => b.onclick = () => location.hash = '#/p/' + encodeURIComponent(b.dataset.painel));
-  iniciarCentral();
-  $('#busca')?.addEventListener('input', ev => {
-    const q = normal(ev.target.value);
-    document.querySelectorAll('.tile').forEach(b => b.classList.toggle('oculto', q && !normal(b.dataset.nome).includes(q)));
-    document.querySelectorAll('.ini-frente').forEach(f => f.classList.toggle('oculto', !f.querySelector('.tile:not(.oculto)')));
-  });
+  moldura(`<section class="ini-capa" aria-label="Gestão de Pessoas">
+    <svg class="ini-arte" viewBox="0 0 800 520" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <defs><linearGradient id="ic-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#10213f"/><stop offset=".55" stop-color="#173b52"/><stop offset="1" stop-color="#1f6b4f"/></linearGradient>
+        <linearGradient id="ic-c" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#2e8a57" stop-opacity=".55"/><stop offset="1" stop-color="#7fd19b" stop-opacity=".08"/></linearGradient></defs>
+      <rect width="800" height="520" fill="url(#ic-g)"/>
+      <g stroke="url(#ic-c)" stroke-width="7" stroke-linecap="round" fill="none">
+        ${[40,85,130,600,645,690,735,775].map((x, k) => `<path d="M${x} 520 C ${x + 6} 400, ${x - 8} 300, ${x + 4} ${170 + (k % 3) * 40}"/><path d="M${x + 2} ${330 + (k % 2) * 30} q 40 -40 78 -44" stroke-width="4"/><path d="M${x} ${260 + (k % 3) * 20} q -36 -30 -70 -30" stroke-width="4"/>`).join('')}
+      </g>
+      <g transform="translate(400 215)">
+        <circle r="150" fill="#ffffff" fill-opacity=".05"/><circle r="108" fill="#ffffff" fill-opacity=".06"/>
+        <g transform="translate(-74 6)"><circle cy="-46" r="25" fill="#2e8a57"/><path d="M-44 52 c0-44 18-66 44-66 s44 22 44 66 z" fill="#2e8a57"/></g>
+        <g transform="translate(74 6)"><circle cy="-46" r="25" fill="#d4573f"/><path d="M-44 52 c0-44 18-66 44-66 s44 22 44 66 z" fill="#d4573f"/></g>
+        <g transform="translate(0 -6)"><circle cy="-56" r="31" fill="#e9a23b"/><path d="M-54 58 c0-54 22-80 54-80 s54 26 54 80 z" fill="#e9a23b"/></g>
+      </g>
+      <path d="M0 470 C 200 440, 600 500, 800 455 L800 520 L0 520 Z" fill="#000" fill-opacity=".18"/>
+    </svg>
+    <div class="ini-capa-tx">
+      <img class="ini-capa-logo" src="img/logo-crv.png" alt="CRV Industrial">
+      <h1>Gestão de Pessoas</h1>
+      <p>CRV Industrial · Unidade Capinópolis</p>
+      <div class="ini-capa-saud">${saud}, ${esc(nomeBonito(E.perfil.nome).split(' ')[0])} · ${esc(hoje.charAt(0).toUpperCase() + hoje.slice(1))}</div>
+      <button class="ini-capa-bt" data-ir="#/central">Abrir a Central do dia</button>
+    </div>
+  </section>`);
+  document.querySelectorAll('.ini-capa [data-ir]').forEach(b => b.onclick = () => location.hash = b.dataset.ir);
 }
 
 /* =====================================================================
@@ -704,12 +692,12 @@ async function coletarCentral(){
     try { out.push(...await pendenciasQuadro()); } catch(e){ console.warn('central quadro', e); }
     try { out.push(...await pendenciasDesligamento()); } catch(e){ console.warn('central desligamento', e); }
     for (const id of CENTRAL_FONTES) {
-      if (!['', '#/', '#/central'].includes(location.hash)) break;
+      if (location.hash !== '#/central') break;
       const p = E.paineis.find(x => x.id === id);
       if (!p || !podeVer(p) || !E.metas[id]) continue;
       try { out.push(...await pendenciasDoPainel(p)); } catch(e){ console.warn('central', id, e); }
     }
-    if (['', '#/', '#/central'].includes(location.hash)) {
+    if (location.hash === '#/central') {
       const c = { em: new Date().toISOString(), ass: centralAss(), itens: out };
       try { localStorage.setItem(centralChave(), JSON.stringify(c)); } catch(_){}
       desenharCentral(c, false);
