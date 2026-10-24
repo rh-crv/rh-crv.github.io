@@ -18,7 +18,7 @@ const FRENTES = {
   'Benefícios':                    { cor:'#2e8a57', ic:'presente',  desc:'VA, plano de saúde, odonto e farmácia' },
   'Jovem Aprendiz':                { cor:'#7a4fb5', ic:'capelo',    desc:'Programa Conexão Aprendiz' },
   'Treinamento e liderança':       { cor:'#d4573f', ic:'trofeu',    desc:'T&D, pesquisas e lideranças' },
-  'Ocorrências, risco e jurídico': { cor:'#a1341f', ic:'alerta',    desc:'RD, fadiga, processos e ouvidorias' },
+  'Ocorrências, risco e jurídico': { cor:'#a1341f', ic:'alerta',    desc:'RD, fadiga, processos e NR-1' },
   'Atendimento e escuta':          { cor:'#4a6a8a', ic:'balcao',    desc:'Recepção do RH e ouvidorias' },
   'Alojamento e transporte':       { cor:'#8a7a2e', ic:'onibus',    desc:'Alojamentos e ônibus' },
   'Remuneração e gratificações':   { cor:'#5d6a85', ic:'pasta',     desc:'Gratificação BPP, horas extras e gratificação' }
@@ -138,6 +138,9 @@ async function carregarCatalogo(){
       if (dif && E.perfil && E.perfil.papel === 'admin') sb.from('paineis').update(alvo).eq('id', 'rs').then(() => {}, () => {}); }
     else if (cv && E.perfil && E.perfil.papel === 'admin') { const n = { id:'rs', frente:cv.frente, nome:'Recrutamento e Seleção', nivel:cv.nivel, ordem:cv.ordem };
       sb.from('paineis').insert(n).then(() => {}, () => {}); E.paineis.push(n); } }
+  // Riscos Psicossociais (NR-1): painel do app (sem planilha), restrito; o administrador cria no banco
+  if (!E.paineis.some(x => x.id === 'nr1') && E.perfil && E.perfil.papel === 'admin') { const n = { id:'nr1', frente:'Ocorrências, risco e jurídico', nome:'Riscos Psicossociais (NR-1)', nivel:'restrito', ordem:69 };
+    sb.from('paineis').insert(n).then(() => {}, () => {}); E.paineis.push(n); }
   // organização do menu (out/2026): frentes renomeadas e painéis que mudaram de lugar; o administrador grava no banco
   { const REN = { 'Outros controles':'Remuneração e gratificações', 'RH externo':'Alojamento e transporte', 'Atendimento':'Atendimento e escuta' };
     const MOV = { sancoes:'Ocorrências, risco e jurídico', ouvidorias:'Atendimento e escuta' };
@@ -528,6 +531,9 @@ async function marcarDesligamento(x, k, feito){
   x.ok = ok; x.pend = Object.keys(x.b).filter(q => !x.ok[q]);
   try { localStorage.removeItem(centralChave()); } catch(_){}
 }
+/* Riscos Psicossociais (NR-1): js/nr1.js recebe as funções do app quando é usado */
+let _nr1 = null;
+const NR1 = () => _nr1 || (_nr1 = window.CRV_NR1_INIT({ sb, E, $, esc, normal, brD, fMat, fDias, podeVer, podeEditar, moldura, abrirModal, fecharModal, toast, traduzErro, baixar, cabecalhoPDF, rodapePDF, centralChave }));
 async function pendenciasDesligamento(){
   const D = await dadosDesligamento(); if (!D) return [];
   const L = D.L.filter(x => x.pend.length);
@@ -824,6 +830,7 @@ async function coletarCentral(){
   try {
     try { out.push(...await pendenciasQuadro()); } catch(e){ console.warn('central quadro', e); }
     try { out.push(...await pendenciasDesligamento()); } catch(e){ console.warn('central desligamento', e); }
+    try { out.push(...await NR1().pendencias()); } catch(e){ console.warn('central nr1', e); }
     if (ehAdmin()) try { const u = await ultimoBackup(); const d = u && u.em ? Math.floor((Date.now() - new Date(u.em)) / 864e5) : null;
       if (d == null || d > 7) out.push({ id:'bk', sev:'info', t:'Cópia de segurança do app', d: d == null ? 'Nenhuma cópia feita ainda.' : `A última foi há ${d} dias. Recomendado: uma vez por semana.`, painel:'', rota:'#/admin', pnome:'Administração', n: d == null ? '!' : d + 'd', itens:[{ nome:'Baixar a cópia em Administração → Cópia de segurança', mat:'', det:'Guarda tudo o que foi lançado no app e não existe nas planilhas.' }] }); } catch(_){}
     for (const id of CENTRAL_FONTES) {
@@ -892,6 +899,7 @@ const SUBACOES = {
   ouvidorias: [{ acao:'nova', nome:'Cadastrar ouvidoria' }],
   rd:       [{ acao:'novo', nome:'Cadastrar RD' }, { acao:'aut', nome:'Autorização de desconto' }, { acao:'hist', nome:'Histórico de autorizações' }],
   fadiga:   [{ acao:'novo', nome:'Cadastrar ocorrência' }, { acao:'trat', nome:'Aplicar tratativa' }],
+  nr1:      [{ acao:'plano', nome:'Plano de ação' }, { acao:'fatores', nome:'Os 13 fatores' }],
   treinamentos: [{ acao:'novo', nome:'Cadastrar treinamento' }],
   'cartao-alimentacao': [{ acao:'rel', nome:'Relatório de conferência' }],
   'cartao-convenio':    [{ acao:'desc', nome:'Desconto em folha' }, { acao:'termo', nome:'Termo de opção' }, { acao:'rel', nome:'Relatório de conferência' }],
@@ -931,6 +939,7 @@ async function telaPainel(id, acao){
   if (!p || !podeVer(p)) { toast('Painel não encontrado ou sem acesso.', true); location.hash = '#/'; return; }
   const cfg = FRENTES[p.frente] || FRENTES['Remuneração e gratificações'];
   if (VISTA_QUADRO[id] && (acao === 'vq' || acao === 'vp')) { try { localStorage.setItem('crv-vista-' + id, acao.slice(1)); } catch(_){} try { history.replaceState(null, '', '#/p/' + encodeURIComponent(id)); } catch(_){} acao = ''; }
+  if (id === 'nr1') return NR1().telaNR1(p, cfg, acao);
   if (MODELOS[id]) return telaModelo(p, cfg, acao);
   moldura(`<div class="trilha"><button data-ir="#/">Início</button> › <span>${esc(p.frente)}</span> › <b>${esc(p.nome)}</b></div>
     <div class="cartao vazio"><div class="spinner" style="margin:0 auto"></div><p>Carregando dados...</p></div>`);
