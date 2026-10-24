@@ -1943,7 +1943,8 @@ async function adminBackup(){
     const grupos = new Map(); regs.forEach(r => { const k = r.painel + '|' + r.colecao; if (!grupos.has(k)) grupos.set(k, []); grupos.get(k).push(r); });
     [...grupos].sort((a, b) => a[0].localeCompare(b[0])).forEach(([k, L]) => { const [pn, col] = k.split('|');
       const chaves = []; L.forEach(r => Object.keys(r.dados || {}).forEach(c => { if (!chaves.includes(c)) chaves.push(c); }));
-      const cel = v => v == null ? '' : typeof v === 'object' ? JSON.stringify(v).slice(0, 32000) : v;
+      const LIM = 32000, cortar = t => t.length > LIM ? t.slice(0, LIM) + ' … (texto cortado no Excel; completo no arquivo para restaurar)' : t;
+      const cel = v => v == null ? '' : typeof v === 'object' ? cortar(JSON.stringify(v)) : typeof v === 'string' ? cortar(v) : v;   // o Excel aceita até 32.767 caracteres por célula
       const aoa = [['Identificador', 'Atualizado em', 'Atualizado por'].concat(chaves)].concat(L.map(r => [r.doc_id, r.atualizado_em ? new Date(r.atualizado_em).toLocaleString('pt-BR') : '', r.atualizado_por || ''].concat(chaves.map(c => cel(r.dados[c])))));
       XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), nomeAba(nomeP(pn) + ' - ' + col));
       resumo.push([nomeP(pn), col, L.length, L.map(r => r.atualizado_em || '').sort().pop() ? new Date(L.map(r => r.atualizado_em || '').sort().pop()).toLocaleString('pt-BR') : '']); });
