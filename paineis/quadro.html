@@ -2987,6 +2987,80 @@ carregar();
 </script>
 <!-- ===== fim: estabilidade ===== -->
 
+<!-- ===== Filtros compactos ===== -->
+<style>
+.ftool{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:10px 12px;margin-bottom:12px}
+.ftb{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--trk);color:var(--ink);border-radius:10px;padding:8px 14px;font:700 14px var(--f-body);cursor:pointer;white-space:nowrap}
+.ftb:hover{border-color:var(--navy2)}.ftb svg{width:16px;height:16px}
+.ftb .n{background:var(--amber);color:#16284d;border-radius:20px;padding:0 7px;font-size:12px}
+.ftb.on{background:var(--hd2);border-color:var(--hd2);color:#fff}
+.fact{display:flex;gap:6px;flex-wrap:wrap;flex:1;min-width:0;align-items:center}
+.fact .fc{display:inline-flex;align-items:center;gap:4px;background:var(--amber-soft);color:var(--amber-ink);border-radius:20px;padding:4px 6px 4px 11px;font:600 12.5px var(--f-body);max-width:260px}
+.fact .fc span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fact .fc button{border:0;background:rgba(0,0,0,.08);color:inherit;width:20px;height:20px;border-radius:50%;cursor:pointer;font-weight:800;line-height:1;flex:none}
+.fact .fz{color:var(--mut);font-size:13px}
+.fact .fl0{border:0;background:none;color:var(--navy);font:700 12.5px var(--f-body);cursor:pointer;text-decoration:underline}
+.fexp{position:relative}
+.fmenu{position:absolute;right:0;top:calc(100% + 6px);z-index:60;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 34px rgba(20,33,61,.18);padding:6px;min-width:250px;display:grid;gap:2px}
+.fmenu[hidden]{display:none}
+.fmenu .repb{all:unset;display:flex;gap:10px;align-items:center;padding:10px 12px;border-radius:8px;cursor:pointer;font:600 14px var(--f-body);color:var(--ink)}
+.fmenu .repb:hover{background:var(--trk)}
+.fmenu .repb:before{content:"";width:9px;height:9px;border-radius:3px;background:#c3352f;flex:none}
+.fmenu .repb.cp:before{background:#16284d}.fmenu .repb.x:before{background:#1a7f5a}
+.fmenu .repb[hidden]{display:none}
+#filters.fc0>.fbar{display:none}
+#filters>.fbar .fshd{display:none}
+@media (max-width:760px){
+  .ftool{padding:8px 10px;gap:8px}.ftb{padding:8px 12px;font-size:13.5px}
+  .fact{order:3;flex:1 1 100%}
+  .fexp{margin-left:auto}
+  #filters:not(.fc0)>.fbar{position:fixed;left:0;right:0;bottom:0;z-index:200;max-height:82vh;overflow:auto;border-radius:18px 18px 0 0;margin:0;box-shadow:0 -10px 40px rgba(0,0,0,.25);padding:0 16px 16px}
+  #filters:not(.fc0)::before{content:"";position:fixed;inset:0;background:rgba(10,20,40,.45);z-index:199}
+  #filters>.fbar .fshd{display:flex;position:sticky;top:0;background:var(--card);z-index:2;align-items:center;justify-content:space-between;padding:14px 0 10px;margin-bottom:4px;border-bottom:1px solid var(--line);flex:1 1 100%}
+  .fshd b{font:800 17px var(--f-disp)}.fshd button{border:0;background:var(--hd2);color:#fff;border-radius:10px;padding:9px 16px;font:700 14px var(--f-body);cursor:pointer}
+  .fbar .fl{flex:1 1 100%;flex-direction:column;align-items:stretch;gap:5px}
+  .fbar .bar{flex:1 1 100%}
+  .fbar .bar .lab{flex:1 1 100%;margin-bottom:2px}
+  header .ent-btn,header .es-btn{padding:6px 10px!important;font-size:12px!important}
+  header .seg{display:flex;flex-wrap:nowrap!important;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}
+  header .seg::-webkit-scrollbar{display:none}
+  header .seg button{flex:0 0 auto!important;white-space:nowrap;scroll-snap-align:start}
+}
+</style>
+<script>
+(function(){
+const fs=document.getElementById('filters');if(!fs)return;
+const fb=fs.querySelector('.fbar'),rw=fb&&fb.querySelector('.repw');if(!fb||!rw)return;
+const tl=document.createElement('div');tl.className='ftool';
+tl.innerHTML='<button type="button" class="ftb" id="ftTog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>Filtros<span class="n" id="ftN" hidden></span></button><div class="fact" id="ftAct"></div><div class="fexp"><button type="button" class="ftb" id="ftExp">Exportar ▾</button><div class="fmenu" id="ftMenu" hidden></div></div>';
+fs.insertBefore(tl,fb);
+const menu=tl.querySelector('#ftMenu');[...rw.children].forEach(b=>menu.appendChild(b));rw.remove();
+const sel=document.getElementById('selBar');if(sel)fs.insertBefore(sel,fb.nextSibling);
+const hd=document.createElement('div');hd.className='fshd';hd.innerHTML='<b>Filtros</b><button type="button">Ver resultado</button>';fb.insertBefore(hd,fb.firstChild);
+const set=open=>{fs.classList.toggle('fc0',!open);tl.querySelector('#ftTog').classList.toggle('on',open);try{localStorage.setItem('crv-q-fopen',open?'1':'0')}catch(_){}};
+let ini='0';try{ini=localStorage.getItem('crv-q-fopen')||'0'}catch(_){}
+set(ini==='1'&&!matchMedia('(max-width:760px)').matches);
+tl.querySelector('#ftTog').onclick=()=>set(fs.classList.contains('fc0'));
+hd.querySelector('button').onclick=()=>set(false);
+const on=document.querySelector('header .seg button.on');if(on&&on.scrollIntoView)try{on.scrollIntoView({inline:'nearest',block:'nearest'})}catch(_){}
+fs.addEventListener('mousedown',e=>{if(e.target===fs)set(false)});
+const ex=tl.querySelector('#ftExp');ex.onclick=e=>{e.stopPropagation();menu.hidden=!menu.hidden};
+menu.addEventListener('click',()=>{menu.hidden=true});
+document.addEventListener('click',e=>{if(!menu.hidden&&!tl.querySelector('.fexp').contains(e.target))menu.hidden=true});
+const limpa=t=>t.replace(/\s*\(\d[\d.,]*( pessoas)?\)\s*$/,'');
+const resumo=()=>{const A=[];
+  fb.querySelectorAll('.bar').forEach(b=>{if(b.hidden||b.closest('[hidden]'))return;const on=b.querySelector('.chip.on');if(on&&on.dataset.v){const l=(b.querySelector('.lab')||{}).textContent||'';A.push({t:limpa(on.textContent),l,clr:()=>{const z=b.querySelector('.chip[data-v=""]');z&&z.click()}})}});
+  fb.querySelectorAll('select').forEach(s=>{if(s.closest('[hidden]')||!s.value)return;const o=s.options[s.selectedIndex];const l=(s.parentElement.querySelector('.lab')||{}).textContent||'';A.push({t:limpa(o?o.textContent:s.value),l,clr:()=>{s.value='';s.dispatchEvent(new Event('change',{bubbles:true}))}})});
+  const ac=tl.querySelector('#ftAct'),n=tl.querySelector('#ftN');
+  n.hidden=!A.length;n.textContent=A.length;
+  ac.innerHTML=A.length?A.map((a,i)=>'<span class="fc" title="'+a.l.replace(/"/g,'')+'"><span>'+a.t.replace(/</g,'&lt;')+'</span><button type="button" data-i="'+i+'" aria-label="Tirar filtro">×</button></span>').join('')+(A.length>1?'<button type="button" class="fl0">Limpar tudo</button>':''):'<span class="fz">Sem filtros: mostrando todo o quadro</span>';
+  ac.querySelectorAll('button[data-i]').forEach(b=>b.onclick=()=>A[+b.dataset.i].clr());
+  const lt=ac.querySelector('.fl0');if(lt)lt.onclick=()=>{const x=document.getElementById('fDepX');if(x&&!x.hidden)x.click();else A.forEach(a=>a.clr())};
+};
+let tm=null;new MutationObserver(()=>{clearTimeout(tm);tm=setTimeout(resumo,30)}).observe(fb,{subtree:true,childList:true,attributes:true,attributeFilter:['class','hidden']});
+fb.addEventListener('change',()=>setTimeout(resumo,30));resumo();
+})();
+</script>
 </body></html>
 
 <style>
