@@ -131,7 +131,9 @@ function converterQuadro(R, antigo, REF){
   if (q.ABSD && Array.isArray(q.ABSD.PR)) dados.ABSD = Object.assign({}, q.ABSD, { PR: q.ABSD.PR.map(x => typeof x === 'number' ? remap(x) : x) });
   if (q.AXD) { const A = JSON.parse(JSON.stringify(q.AXD)); (A.ADR || []).forEach(e => { e[2] = remap(e[2]); }); (A.EXR || []).forEach(e => { e[2] = e[2] != null ? remap(e[2]) : null; }); dados.AXD = A; }
   const CPFM = {}; recs.forEach(o => { if (o.ec === '5' && o.cpf) CPFM[String(o.mat)] = o.cpf; });
-  Object.assign(dados, { D, X, DM, PID, CPFM });
+  // CPF de cada pessoa (todas as empresas), na mesma ordem do identificador de pessoa: permite buscar ex-colaboradores pelo CPF
+  const CPFP = []; pid.forEach((i, k) => { CPFP[i] = /^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(k) ? k : ''; });
+  Object.assign(dados, { D, X, DM, PID, CPFM, CPFP });
   const resumo = { ativos: D.filter(d => d[8] === 'Ativo').length, afastados: D.filter(d => d[8] === 'Afastado').length, desligados: DM.length, linhas: recs.length, areaMantida: ovr, refPerdidas: perdidos, semRegra: Object.keys(semArea) };
   return { pac: { tipo:'crv-pacote', painel:'quadro', referencia: REF, dados }, resumo };
 }

@@ -300,6 +300,7 @@ function moldura(conteudo){
           <div class="lat-psub"><button class="lat-acao ${h==='#/desligamento'?'ativo':''}" data-ir="#/desligamento" style="--cor:var(--coral)"><i>${IA('<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>')}</i><span>Checklist de desligamento</span></button></div>
         </div>
         <button class="lat-item ${h.startsWith('#/ficha')?'ativo':''}" data-ir="#/ficha"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2.5"/><path d="M5.5 17c.6-1.8 2-2.7 3.5-2.7s2.9.9 3.5 2.7M14 9h4M14 13h4"/></svg><span>Ficha do colaborador</span></button>
+        <button class="lat-item ${h==='#/consulta'?'ativo':''}" data-ir="#/consulta"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="6"/><path d="M20 20l-5.6-5.6M8 10h4M10 8v4"/></svg><span>Consulta de candidato</span></button>
         <div class="lat-busca"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="lat-q" type="search" placeholder="Buscar painel ou ação" autocomplete="off" aria-label="Buscar painel"></div>
         <div class="lat-sec">Frentes</div>
         <div class="lat-vazio" id="lat-vazio" hidden>Nenhum painel com esse nome.</div>
@@ -382,6 +383,7 @@ function rota(){
   if (h === '#/admin' && ehAdmin()) return telaAdmin();
   if (h === '#/central') return telaCentral();
   if (h === '#/ficha' || h.startsWith('#/ficha/')) return telaFicha(h.split('/')[2] || '');
+  if (h === '#/consulta') return telaConsulta();
   if (h === '#/desligamento') return telaDesligamento();
   if (h === '#/conta') return telaConta();
   telaInicio();
@@ -647,6 +649,113 @@ function telaFicha(matIni){
       F.sec.forEach(x => { const y = doc.lastAutoTable.finalY + 18; doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.text(x.t, 40, y);
         doc.autoTable({ startY:y + 5, head:[x.resumo ? ['Indicador', 'Valor'] : x.cab], body: x.resumo ? x.resumo.map(r => [r[0], String(r[1])]) : (x.linhas.length ? x.linhas : [x.cab.map((h, i) => i ? '' : 'Nada registrado')]), styles:{ fontSize:8, cellPadding:2.5, overflow:'linebreak' }, headStyles:{ fillColor:[46,138,87] } }); });
       rodapePDF(doc); baixar(doc.output('blob'), 'Ficha ' + c.nome.split(' ')[0] + ' ' + mat + '.pdf'); };
+  }
+}
+
+/* =====================================================================
+   CONSULTA DE CANDIDATO / EX-COLABORADOR: pelo CPF ou pelo nome, em todas as empresas do Quadro.
+   Mostra se já passou pela empresa, bloqueio para recontratação, motivos de saída, sanções, RD e currículo no banco;
+   gera o PDF para a área analisar junto com o currículo.
+   ===================================================================== */
+const nNome = v => String(v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/\s+/g, ' ').trim();
+let _consBase = null;
+async function consultaBase(){
+  const Q = await window.CRV_DADOS('quadro'); if (!Q) return null;
+  const k = Q.referencia + '|' + (Q.dados.D || []).length + '|' + (Q.dados.DM || []).length;
+  if (_consBase && _consBase.k === k) return _consBase;
+  const { D = [], DM = [], PID = [], CPFM = {}, CPFP = [], AXD = {} } = Q.dados;
+  const pess = new Map(); const pe = (id, nome) => { if (!pess.has(id)) pess.set(id, { id, nome, cpf:'', pass:[] }); return pess.get(id); };
+  const saida = new Map(); (AXD.EXR || []).forEach(e => { if (typeof e[2] === 'number' && e[2] < 0) saida.set(-e[2] - 1, e); });
+  D.forEach((r, i) => { const id = PID[i] != null ? PID[i] : 'a' + i; const p = pe(id, r[1]);
+    p.pass.push({ emp:'CRV (5)', mat:String(r[0]), funcao:r[2], secao:r[3], area:r[5], adm:r[9], saida:'', sit:r[8], atual:true });
+    if (!p.cpf) p.cpf = CPFP[id] || CPFM[String(r[0])] || ''; });
+  DM.forEach((r, j) => { const id = r[26] != null ? r[26] : 'd' + j; const p = pe(id, r[1]); const e = saida.get(j);
+    p.pass.push({ emp:r[21], mat:String(r[0]), funcao:r[2], secao:r[3], area:r[5], adm:r[9], saida:r[20], sit:'Desligado', tipo: e && e[3] >= 0 ? (AXD.TIP || [])[e[3]] : '', mot: e && e[4] ? e[4].map(x => (AXD.MOT || [])[x]).filter(Boolean) : [], obs: e ? e[7] || '' : '', re3:r[24] });
+    if (!p.cpf) p.cpf = CPFP[id] || (/\(5\)/.test(r[21]) ? CPFM[String(r[0])] || '' : ''); });
+  pess.forEach(p => { p.pass.sort((a, b) => String(b.adm).localeCompare(String(a.adm))); p.n = nNome(p.nome); p.d = String(p.cpf).replace(/\D/g, ''); });
+  _consBase = { k, ref:Q.referencia, L:[...pess.values()] };
+  return _consBase;
+}
+async function consultaDetalhe(p){
+  const crv = p.pass.filter(x => /\(5\)/.test(x.emp)).map(x => x.mat);
+  const bloq = [];
+  for (const id of ['admissoes', 'rescisoes']) { if (!fPode(id)) continue; const d = await window.CRV_DADOS(id); const B = d && d.dados.BLQ; if (B) crv.forEach(m => { if (B[m] && !bloq.some(b => b.m === m && b.t === B[m][0])) bloq.push({ m, t:B[m][0], o:B[m][1], fonte:id === 'admissoes' ? 'Acompanhamento de admissões' : 'Acompanhamento de rescisões' }); }); }
+  let proc = null;
+  if (fPode('processos')) { const d = await window.CRV_DADOS('processos'); const DB = d && d.dados.DB; if (DB) { const c8 = p.d.slice(-8);
+    proc = (DB.P || []).find(x => (c8 && String(x.c || '').replace(/\D/g, '').slice(-8) === c8) || crv.includes(String(x.mat)));
+    if (proc && proc.bq && !bloq.some(b => b.t === proc.bq[0])) bloq.push({ m:String(proc.mat || ''), t:proc.bq[0], o:proc.bq[1], fonte:'Processos trabalhistas' }); } }
+  const O = crv.length ? await window.CRV_OCORR(crv) : { P:{} };
+  const sanc = []; crv.forEach(m => { const o = O.P[m]; if (!o) return; o.adv.forEach(x => sanc.push([brD(x.data), 'Advertência', x.motivo || ''])); o.sus.forEach(x => sanc.push([brD(x.data), 'Suspensão' + (x.dias ? ' (' + x.dias + 'd)' : ''), x.motivo || ''])); });
+  sanc.sort((a, b) => b[0].split('/').reverse().join('').localeCompare(a[0].split('/').reverse().join('')));
+  let rd = []; if (fPode('rd')) { const d = await window.CRV_DADOS('rd'); const D = d && d.dados.D; const DES = ['Sem tratativa', 'Ausência de culpa', 'Culpa apontada, sem medida', 'Medida disciplinar', 'Desconto', 'Sem informação'];
+    if (D) rd = D.rows.filter(r => crv.includes(String(r[2]))).map(r => [String(r[0]), brD(r[1]), DES[r[9]] || '', r[10] || '']); }
+  let ent = null; try { const { data } = await sb.from('registros').select('dados').eq('painel', 'quadro').eq('colecao', 'entrevistas_resp').range(0, 4999); ent = (data || []).map(x => x.dados).find(v => v && !v.excluida && crv.includes(String(v.mat))) || null; } catch(_){}
+  let cvs = []; if (fPode('curriculos')) { const C = await window.CRV_REGS('curriculos', 'candidatos'); cvs = C.filter(c => nNome(c.nome) === p.n); }
+  return { bloq, proc, sanc, rd, ent, cvs };
+}
+function telaConsulta(){
+  moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Atração e perfil</div><h1>Consulta de candidato</h1><div class="ini-data">Pelo CPF ou pelo nome: se já trabalhou em alguma das empresas, se tem bloqueio e o histórico, para a área analisar junto com o currículo</div></div></section>
+    <div class="fc-busca cartao"><input id="cs-q" type="search" placeholder="CPF (só números ou com pontos) ou nome completo" autocomplete="off" aria-label="CPF ou nome"><div class="fc-sug" id="cs-sug" hidden></div></div>
+    <div id="cs-corpo"><div class="cartao vazio"><p>Digite o CPF ou o nome do candidato.</p></div></div>`);
+  const q = $('#cs-q'), sug = $('#cs-sug'); let B = null, CV = [];
+  consultaBase().then(x => { B = x; if (!x) $('#cs-corpo').innerHTML = '<div class="cartao vazio"><h3>Sem a base do Quadro Geral</h3></div>'; });
+  if (fPode('curriculos')) window.CRV_REGS('curriculos', 'candidatos').then(L => { CV = L.filter(c => c.nome); });
+  const buscar = () => { if (!B) return; const t = q.value.trim(), dg = t.replace(/\D/g, ''); let L = [];
+    const soNum = dg.length && dg.length === t.replace(/[\s.\-]/g, '').length;
+    if (soNum && dg.length >= 6) L = B.L.filter(p => p.d && p.d.includes(dg));
+    else if (soNum) L = B.L.filter(p => p.pass.some(x => x.mat === dg.replace(/^0+/, '')));
+    else if (t.length >= 3) { const n = nNome(t); L = B.L.filter(p => p.n.includes(n));
+      // candidatos do Banco de Currículos que nunca passaram pelas empresas
+      const ja = new Set(L.map(p => p.n)); const vistos = new Set();
+      CV.filter(c => nNome(c.nome).includes(n) && !ja.has(nNome(c.nome))).forEach(c => { const k = nNome(c.nome); if (vistos.has(k)) return; vistos.add(k); L.push({ id:'cv:' + k, nome:c.nome, cpf:'', d:'', n:k, pass:[], soCv:true }); }); }
+    if (!t) { sug.hidden = true; return; }
+    L = L.slice(0, 12);
+    sug.innerHTML = L.length ? L.map(p => { const u = p.pass[0]; if (!u) return `<button data-id="${esc(String(p.id))}"><b>${esc(p.nome)}</b><span>Currículo no banco · nunca trabalhou nas empresas do Quadro</span></button>`; return `<button data-id="${esc(String(p.id))}"><b>${esc(p.nome)}</b><span>${p.d ? esc(fCpf(p.cpf)) + ' · ' : ''}${p.pass.length} passage${p.pass.length > 1 ? 'ns' : 'm'} · última: ${esc(u.emp)} ${u.atual ? '<i>(' + esc(u.sit) + ' hoje)</i>' : 'até ' + esc(brD(u.saida))}</span></button>`; }).join('')
+      : `<div class="fc-nada">${dg.length >= 6 ? 'Nenhum CPF encontrado: não consta passagem por nenhuma das empresas do Quadro.' : 'Ninguém com esse nome no Quadro (todas as empresas).'}</div>`;
+    sug.hidden = false; sug.querySelectorAll('[data-id]').forEach(b => b.onclick = () => { sug.hidden = true; abrir(L.find(p => String(p.id) === b.dataset.id)); }); };
+  q.oninput = buscar; q.onkeydown = e => { if (e.key === 'Enter') { const b = sug.querySelector('[data-id]'); if (b) b.click(); else buscar(); } };
+  setTimeout(() => q.focus(), 50);
+  async function abrir(p){
+    const C = $('#cs-corpo'); C.innerHTML = '<div class="cartao vazio"><div class="spinner" style="margin:0 auto"></div><p>Juntando o histórico…</p></div>';
+    const X = await consultaDetalhe(p); if (!$('#cs-corpo')) return;
+    const atual = p.pass.find(x => x.atual);
+    const jc = p.pass.filter(x => /justa causa/i.test(x.tipo || '') || /justa causa/i.test(x.obs || ''));
+    const curto = p.pass.filter(x => x.saida && x.adm && fDias(x.adm, x.saida) <= 90);
+    const pts = [];
+    if (X.bloq.length) X.bloq.forEach(b => pts.push(['crit', 'Bloqueado para recontratação: ' + b.t + (b.o ? ' — ' + b.o : ''), b.fonte]));
+    if (atual) pts.push(['info', 'Já é colaborador hoje: ' + atual.sit + ' na CRV, matrícula ' + atual.mat, '']);
+    jc.forEach(x => pts.push(['crit', 'Saída por justa causa em ' + brD(x.saida) + ' (' + x.emp + ')', '']));
+    if (curto.length) pts.push(['warn', curto.length === 1 ? 'Saiu com até 90 dias de casa em uma passagem' : `Saiu com até 90 dias de casa em ${curto.length} passagens`, '']);
+    if (X.sanc.filter(s => /Suspens/.test(s[1])).length >= 3) pts.push(['warn', X.sanc.filter(s => /Suspens/.test(s[1])).length + ' suspensões no histórico', '']);
+    if (X.rd.some(r => /culpa apontada|medida|desconto/i.test(r[2]))) pts.push(['warn', 'RD com culpa apontada ou medida', '']);
+    const ver = X.bloq.length || jc.length ? ['r', 'Bloqueio ou restrição registrada'] : pts.some(x => x[0] === 'warn') ? ['a', 'Pontos para a área avaliar'] : p.pass.length ? ['v', 'Sem bloqueio registrado'] : ['v', 'Nunca trabalhou nas empresas'];
+    C.innerHTML = `<section class="fc-cab cartao cs-cab ${ver[0]}"><div class="fc-av">${esc(iniciais(p.nome))}</div>
+        <div class="fc-id"><h2>${esc(p.nome)}</h2><div class="fc-sub">${p.d ? 'CPF ' + esc(fCpf(p.cpf)) + ' · ' : ''}${p.pass.length ? p.pass.length + ' passage' + (p.pass.length > 1 ? 'ns' : 'm') + ' pelas empresas' : 'Não consta passagem por nenhuma das empresas'} (base do Quadro de ${esc(brD(B.ref))})</div>
+          <div class="fc-pills"><span class="fc-pill ${ver[0] === 'r' ? 'r' : ver[0] === 'a' ? 'a' : 'v'}">${esc(ver[1])}</span></div></div>
+        <button class="btn prim" id="cs-pdf">PDF para a área</button></section>
+      ${pts.length ? `<section class="fc-al">${pts.map(x => `<span class="fc-a ${x[0] === 'crit' ? 'crit' : x[0] === 'info' ? 'info' : ''}" title="${esc(x[2])}">${esc(x[1])}</span>`).join('')}</section>` : ''}
+      <div class="fc-grade">
+        <section class="fc-sec cartao" style="grid-column:1/-1"><header><h3>Passagens pelas empresas</h3></header><div class="fc-tw"><table class="fc-t"><thead><tr><th>Empresa</th><th>Matrícula</th><th>Função</th><th>Seção / setor</th><th>Admissão</th><th>Saída</th><th>Tempo</th><th>Tipo e motivo da saída</th></tr></thead>
+          <tbody>${p.pass.length ? '' : '<tr><td colspan="8">Não consta passagem por nenhuma das empresas do Quadro (CRV, APFO, CAPFO). Para confirmar, busque também pelo CPF.</td></tr>'}${p.pass.map(x => `<tr><td>${esc(x.emp)}</td><td>${esc(x.mat)}</td><td>${esc(x.funcao)}</td><td>${esc([x.secao, x.area].filter(Boolean).join(' · '))}</td><td>${esc(brD(x.adm))}</td><td>${x.atual ? '<b>' + esc(x.sit) + ' hoje</b>' : esc(brD(x.saida))}</td><td>${esc(fCasa(x.adm, x.saida || ''))}</td><td>${esc([x.tipo, (x.mot || []).join(', '), x.obs].filter(Boolean).join(' · ')) || (x.atual ? '' : '<span class="fc-vz2">não informado</span>')}${x.re3 ? ' · readmitido em até 3 dias' : ''}</td></tr>`).join('')}</tbody></table></div></section>
+        <section class="fc-sec cartao"><header><h3>Sanções disciplinares (CRV)</h3></header>${X.sanc.length ? `<div class="fc-tw"><table class="fc-t"><thead><tr><th>Data</th><th>Tipo</th><th>Motivo</th></tr></thead><tbody>${X.sanc.map(l => `<tr>${l.map(v => `<td>${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '<p class="fc-vz">Nada registrado.</p>'}</section>
+        <section class="fc-sec cartao"><header><h3>Registros de dano (RD)</h3></header>${X.rd.length ? `<div class="fc-tw"><table class="fc-t"><thead><tr><th>RD</th><th>Data</th><th>Desfecho</th><th>Tratativa</th></tr></thead><tbody>${X.rd.map(l => `<tr>${l.map(v => `<td>${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '<p class="fc-vz">Nada registrado.</p>'}</section>
+        ${X.ent ? `<section class="fc-sec cartao"><header><h3>Entrevista de desligamento</h3></header><div class="fc-res"><div><b>${esc((X.ent.mot || []).join('; ') || '—')}</b><span>Motivo</span></div><div><b>${esc(X.ent.volta || 'Não respondeu')}</b><span>Voltaria a trabalhar</span></div></div></section>` : ''}
+        ${X.proc ? `<section class="fc-sec cartao cs-sens"><header><h3>Processos trabalhistas</h3><small>informação sensível: não vai no PDF para a área</small></header><div class="fc-tw"><table class="fc-t"><thead><tr><th>Processo</th><th>Empresa</th><th>Tipo</th></tr></thead><tbody>${(X.proc.p || []).map(x => `<tr><td>${esc(x[0])}</td><td>${esc(x[1])}</td><td>${esc(x[2])}</td></tr>`).join('')}</tbody></table></div></section>` : ''}
+        <section class="fc-sec cartao"><header><h3>Currículo no Banco de Currículos</h3>${fPode('curriculos') ? '<button class="link" data-ir="#/p/curriculos">Abrir banco ›</button>' : ''}</header>${X.cvs.length ? `<div class="fc-tw"><table class="fc-t"><thead><tr><th>Recebido em</th><th>Área</th><th>Aderência</th><th>Situação</th></tr></thead><tbody>${X.cvs.map(c => `<tr><td>${esc(brD(c.recebidoEm))}</td><td>${esc(c.area_principal || '')}</td><td>${esc(c.aderencia || '')}</td><td>${esc(c.status || c.funil || '')}</td></tr>`).join('')}</tbody></table></div>` : '<p class="fc-vz">Nenhum currículo com esse nome no banco.</p>'}</section>
+      </div>`;
+    C.querySelectorAll('[data-ir]').forEach(b => b.onclick = () => location.hash = b.dataset.ir);
+    $('#cs-pdf').onclick = () => { const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit:'pt', format:'a4' });
+      cabecalhoPDF(doc, 'Histórico do candidato', p.nome);
+      doc.autoTable({ startY:100, head:[['Resumo para a área', '']], body:[['Candidato', p.nome], ['CPF', p.d ? fCpf(p.cpf) : 'não informado'], ['Situação', ver[1]], ['Passagens pelas empresas', String(p.pass.length)]].concat(pts.map(x => ['Atenção', /^Bloqueado/.test(x[1]) && /processo|trabalhist|judicial|justi[cç]a do trabalho/i.test(x[1]) ? 'Bloqueado para recontratação (motivo com a Gestão de Pessoas)' : x[1]])),
+        styles:{ fontSize:9, cellPadding:3.5 }, headStyles:{ fillColor:[36,66,124] }, columnStyles:{ 0:{ cellWidth:150, fontStyle:'bold' } } });
+      const sec = (t, cab, body) => { const y = doc.lastAutoTable.finalY + 18; doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(20,33,61); doc.text(t, 40, y);
+        doc.autoTable({ startY:y + 5, head:[cab], body: body.length ? body : [cab.map((h, i) => i ? '' : 'Nada registrado')], styles:{ fontSize:8, cellPadding:2.5, overflow:'linebreak' }, headStyles:{ fillColor:[46,138,87] } }); };
+      sec('Passagens pelas empresas', ['Empresa', 'Matrícula', 'Função', 'Admissão', 'Saída', 'Tempo', 'Tipo e motivo da saída'], p.pass.map(x => [x.emp, x.mat, x.funcao, brD(x.adm), x.atual ? x.sit + ' hoje' : brD(x.saida), fCasa(x.adm, x.saida || ''), [x.tipo, (x.mot || []).join(', ')].filter(Boolean).join(' · ')]));
+      sec('Sanções disciplinares', ['Data', 'Tipo', 'Motivo'], X.sanc);
+      sec('Registros de dano (RD)', ['RD', 'Data', 'Desfecho', 'Tratativa'], X.rd);
+      const y = doc.lastAutoTable.finalY + 22; doc.setFont('helvetica', 'italic'); doc.setFontSize(8); doc.setTextColor(93,106,133);
+      doc.text(doc.splitTextToSize('Documento interno da Gestão de Pessoas para análise de recontratação, junto com o currículo. Não inclui dados de saúde nem processos judiciais. Uso restrito à área solicitante.', 515), 40, y);
+      rodapePDF(doc); baixar(doc.output('blob'), 'Historico candidato ' + p.nome.split(' ')[0] + '.pdf'); };
   }
 }
 

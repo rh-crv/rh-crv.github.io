@@ -444,3 +444,7 @@ body{font-variant-numeric:tabular-nums}
 .bk-st.alerta{background:rgba(233,162,59,.12);border-color:rgba(233,162,59,.4)}
 .bk-bts{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
 .bk-nota{font-size:12.5px;color:var(--mut)}.bk-msg{margin-top:10px;font-size:13.5px}
+/* Consulta de candidato */
+.cs-cab.r{border-top-color:var(--coral)}.cs-cab.a{border-top-color:var(--amber)}.cs-cab.v{border-top-color:var(--cane)}
+.fc-a.info{background:rgba(36,66,124,.09);color:var(--hd2)}
+.cs-sens{border:1px dashed rgba(212,87,63,.5)}.fc-vz2{color:var(--mut);font-style:italic}
