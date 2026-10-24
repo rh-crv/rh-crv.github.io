@@ -1165,7 +1165,7 @@ function montarModelo(tpl, conteudo, referencia, p, novos){
     .ttl p,.hero p,.top p.lead,.top .sub,.hero .sub{font-size:13px!important;margin-top:2px!important}
   </style>`;
   html = /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, m => m + ponte) : ponte + html;
-  const capa = cssCapa(p);
+  const capa = cssCapa(p) + `<script defer src="${base}js/painel-filtros.js?v=${CFG.VERSAO}"><\/script>`;
   html = /<\/head>/i.test(html) ? html.replace(/<\/head>/i, m => compacto + capa + m) : html + compacto + capa;
 
   if (conteudo && conteudo.blocos) {               // formato 2: vários blocos por script
