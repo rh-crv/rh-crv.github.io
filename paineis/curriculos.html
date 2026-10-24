@@ -2413,7 +2413,22 @@ $('#cands').addEventListener('click', e => { const b = e.target.closest('[data-i
 $('#vwRs').addEventListener('focusout', () => { setTimeout(() => { if(RS.pend && !rsCampoAtivo()) renderRs(); }, 300); });
 
 /* ---------- conexão ---------- */
+/* No app, o Banco de Currículos saiu do menu: este arquivo abre só como Recrutamento e Seleção.
+   O banco fica escondido; ao clicar num candidato do R&S aparece só a ficha dele, com o botão de voltar. */
+if (window.CRV_MODO_CV === 'rs') {
+  const st = document.createElement('style');
+  st.textContent = '#vnav,#envio,#vwBanco>#kpis,#vwBanco>#strip,#vwBanco>.grid2,#vwBanco>.foot,#vwBanco .tabs,#vwBanco .filters,#vwBanco .legenda,#btnEnviarTopo,#btnAreas,#btnRel,#btnExport{display:none!important}.rs-volta{margin:0 0 12px}';
+  document.head.appendChild(st);
+  const _sv = setView;
+  setView = function(v, semHash){ _sv(v, true);
+    let bt = document.getElementById('rsVolta');
+    if (S.view === 'banco') { if (!bt) { bt = document.createElement('button'); bt.id = 'rsVolta'; bt.type = 'button'; bt.className = 'btn rs-volta'; bt.textContent = '← Voltar para Recrutamento e Seleção'; bt.onclick = () => setView('rs'); $('#vwBanco').prepend(bt); }
+      $('#tituloTopo').textContent = 'Recrutamento e Seleção'; $('#subTopo').textContent = 'Ficha do candidato'; }
+  };
+  render(); renderJobs(); setView('rs', true);
+} else {
 render(); renderJobs(); setView(location.hash === '#rs' ? 'rs' : 'banco', true);
+}
 (async () => {
   const [db, user, assets, sample, downloads] = await Promise.all(['db','user','assets','sample','downloads'].map(use));
   Object.assign(S, {db, user, assets, sample, downloads});

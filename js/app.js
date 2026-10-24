@@ -130,7 +130,14 @@ async function carregarCatalogo(){
     sb.from('pacotes').select('painel,referencia,atualizado_em,atualizado_por')
   ]);
   if (p.error) throw p.error;
-  E.paineis = (p.data || []).filter(x => x.id !== 'rs' && x.id !== 'absenteismo-gestao'); // R&S fica dentro do Banco de Currículos; Absenteísmo Gestão foi retirado (fica só o do RH)
+  E.paineis = (p.data || []).filter(x => x.id !== 'absenteismo-gestao'); // R&S fica dentro do Banco de Currículos; Absenteísmo Gestão foi retirado (fica só o do RH)
+  // Recrutamento e Seleção vira painel próprio (com "Em contratação"); o Banco de Currículos sai do menu
+  { const cv = E.paineis.find(x => x.id === 'curriculos'), rs = E.paineis.find(x => x.id === 'rs');
+    if (rs) { const alvo = { nome:'Recrutamento e Seleção', frente: cv ? cv.frente : 'Atração e perfil', nivel: cv ? cv.nivel : rs.nivel, ordem: cv ? cv.ordem : rs.ordem };
+      const dif = Object.keys(alvo).some(k => rs[k] !== alvo[k]); Object.assign(rs, alvo);
+      if (dif && E.perfil && E.perfil.papel === 'admin') sb.from('paineis').update(alvo).eq('id', 'rs').then(() => {}, () => {}); }
+    else if (cv && E.perfil && E.perfil.papel === 'admin') { const n = { id:'rs', frente:cv.frente, nome:'Recrutamento e Seleção', nivel:cv.nivel, ordem:cv.ordem };
+      sb.from('paineis').insert(n).then(() => {}, () => {}); E.paineis.push(n); } }
   // organização do menu (out/2026): frentes renomeadas e painéis que mudaram de lugar; o administrador grava no banco
   { const REN = { 'Outros controles':'Remuneração e gratificações', 'RH externo':'Alojamento e transporte', 'Atendimento':'Atendimento e escuta' };
     const MOV = { sancoes:'Ocorrências, risco e jurídico', ouvidorias:'Atendimento e escuta' };
@@ -160,7 +167,7 @@ async function carregarCatalogo(){
   if (NOVOS.length && E.perfil && E.perfil.papel === 'admin') {
     await sb.from('paineis').insert(NOVOS.map((n, i) => ({ ...n, ordem: (n.id.startsWith('cartao-') || n.id === 'sysprocard-credito') ? (sp ? sp.ordem : 40) + 1 + i : n.ordem })));
     const r2 = await sb.from('paineis').select('*').order('ordem');
-    if (!r2.error) E.paineis = (r2.data || []).filter(x => x.id !== 'rs' && x.id !== 'absenteismo-gestao');
+    if (!r2.error) E.paineis = (r2.data || []).filter(x => x.id !== 'absenteismo-gestao');
   }
   // os cartões ficam logo abaixo do Sysprocard
   if (sp) { const ix = E.paineis.indexOf(sp); const OC = ['sysprocard-credito','cartao-alimentacao','cartao-convenio','cartao-adm','cartao-premium']; const cs = E.paineis.filter(x => OC.includes(x.id)).sort((a,b) => OC.indexOf(a.id) - OC.indexOf(b.id));
@@ -276,7 +283,7 @@ function moldura(conteudo){
       <div class="lat-psub">${fil.map(p => `<button class="lat-acao ${p.id===atual?'ativo':''}" data-ir="#/p/${encodeURIComponent(p.id)}" style="--cor:${cfg.cor}"><i>${IA(p.id === 'sysprocard-credito' ? '<path d="M12 5v14M5 12h14"/>' : '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/>')}</i><span>${esc(p.nome)}</span>${p.nivel==='restrito'?`<span class="lat-rest">${CAD}</span>`:''}</button>`).join('')}</div>
     </div>`;
   };
-  const visiveis = E.paineis.filter(p => podeVer(p) && !(SYSG.includes(p.id) && E.paineis.some(q => q.id === 'sysprocard' && podeVer(q))));
+  const visiveis = E.paineis.filter(p => podeVer(p) && p.id !== 'curriculos' && !(SYSG.includes(p.id) && E.paineis.some(q => q.id === 'sysprocard' && podeVer(q))));
   const grupos = {};
   visiveis.forEach(x => (grupos[x.frente] = grupos[x.frente] || []).push(x));
   const frentes = Object.keys(grupos).sort((a,b) => (ORDEM_FRENTES.indexOf(a)+1||99) - (ORDEM_FRENTES.indexOf(b)+1||99));
@@ -741,7 +748,7 @@ function telaConsulta(){
         <section class="fc-sec cartao"><header><h3>Registros de dano (RD)</h3></header>${X.rd.length ? `<div class="fc-tw"><table class="fc-t"><thead><tr><th>RD</th><th>Data</th><th>Desfecho</th><th>Tratativa</th></tr></thead><tbody>${X.rd.map(l => `<tr>${l.map(v => `<td>${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '<p class="fc-vz">Nada registrado.</p>'}</section>
         ${X.ent ? `<section class="fc-sec cartao"><header><h3>Entrevista de desligamento</h3></header><div class="fc-res"><div><b>${esc((X.ent.mot || []).join('; ') || '—')}</b><span>Motivo</span></div><div><b>${esc(X.ent.volta || 'Não respondeu')}</b><span>Voltaria a trabalhar</span></div></div></section>` : ''}
         ${X.proc ? `<section class="fc-sec cartao cs-sens"><header><h3>Processos trabalhistas</h3><small>informação sensível: não vai no PDF para a área</small></header><div class="fc-tw"><table class="fc-t"><thead><tr><th>Processo</th><th>Empresa</th><th>Tipo</th></tr></thead><tbody>${(X.proc.p || []).map(x => `<tr><td>${esc(x[0])}</td><td>${esc(x[1])}</td><td>${esc(x[2])}</td></tr>`).join('')}</tbody></table></div></section>` : ''}
-        <section class="fc-sec cartao"><header><h3>Currículo no Banco de Currículos</h3>${fPode('curriculos') ? '<button class="link" data-ir="#/p/curriculos">Abrir banco ›</button>' : ''}</header>${X.cvs.length ? `<div class="fc-tw"><table class="fc-t"><thead><tr><th>Recebido em</th><th>Área</th><th>Aderência</th><th>Situação</th></tr></thead><tbody>${X.cvs.map(c => `<tr><td>${esc(brD(c.recebidoEm))}</td><td>${esc(c.area_principal || '')}</td><td>${esc(c.aderencia || '')}</td><td>${esc(c.status || c.funil || '')}</td></tr>`).join('')}</tbody></table></div>` : '<p class="fc-vz">Nenhum currículo com esse nome no banco.</p>'}</section>
+        <section class="fc-sec cartao"><header><h3>Currículo recebido</h3>${fPode('rs') ? '<button class="link" data-ir="#/p/rs">Abrir Recrutamento e Seleção ›</button>' : ''}</header>${X.cvs.length ? `<div class="fc-tw"><table class="fc-t"><thead><tr><th>Recebido em</th><th>Área</th><th>Aderência</th><th>Situação</th></tr></thead><tbody>${X.cvs.map(c => `<tr><td>${esc(brD(c.recebidoEm))}</td><td>${esc(c.area_principal || '')}</td><td>${esc(c.aderencia || '')}</td><td>${esc(c.status || c.funil || '')}</td></tr>`).join('')}</tbody></table></div>` : '<p class="fc-vz">Nenhum currículo com esse nome no banco.</p>'}</section>
       </div>`;
     C.querySelectorAll('[data-ir]').forEach(b => b.onclick = () => location.hash = b.dataset.ir);
     $('#cs-pdf').onclick = () => { const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit:'pt', format:'a4' });
@@ -884,7 +891,7 @@ const SUBACOES = {
   quadro:   [{ acao:'hcol', nome:'Histórico do colaborador' }, { acao:'ent', nome:'Entrevista de desligamento' }, { acao:'entr', nome:'Respostas das entrevistas' }, { acao:'estab', nome:'Estabilidade' }],
   admissoes: [{ acao:'vq', nome:'Todas as empresas e anos' }, { acao:'vp', nome:'Acompanhamento 2026' }],
   rescisoes: [{ acao:'vq', nome:'Todas as empresas e anos' }, { acao:'vp', nome:'Acompanhamento 2026' }],
-  curriculos: [{ acao:'ctr', nome:'Em contratação' }],
+  rs: [{ acao:'ctr', nome:'Em contratação' }],
   jovem:    [{ acao:'novo', nome:'Cadastrar jovem' }, { acao:'dslj', nome:'Registrar desligamento' }, { acao:'atj', nome:'Atestados' }],
   renapsi:  [{ acao:'novo', nome:'Cadastrar jovem' }, { acao:'dslj', nome:'Registrar desligamento' }, { acao:'atj', nome:'Atestados' }],
   sancoes:  [{ acao:'doc', nome:'Emitir advertência / suspensão / orientação' }],
@@ -1305,9 +1312,11 @@ const MODELOS = Object.fromEntries(MODELOS_LISTA.map(id => [id, `paineis/${id}.h
 MODELOS['cartao-adm'] = 'paineis/cartao-adm.html';
 // o crédito manual usa o mesmo arquivo, os mesmos dados e os mesmos créditos salvos do Vale-Alimentação Sysprocard
 MODELOS['sysprocard-credito'] = 'paineis/sysprocard.html';
-const PAC_DE = { 'sysprocard-credito':'sysprocard' };
+// Recrutamento e Seleção: mesmo arquivo e mesmos dados do Banco de Currículos, aberto só na parte de R&S (o Banco saiu do menu)
+MODELOS['rs'] = 'paineis/curriculos.html';
+const PAC_DE = { 'sysprocard-credito':'sysprocard', 'rs':'curriculos' };
 // recursos que dependem do Claude e não funcionam no app
-const AVISOS = { curriculos: 'Recrutamento e Seleção fica aqui dentro, no quadro "Recrutamento e Seleção". A leitura automática de currículos por IA só funciona dentro do Claude; aqui você consulta, cadastra e acompanha.' };
+const AVISOS = {};
 
 const fmtRef = r => r ? r.split('-').reverse().join('/') : '—';
 
@@ -1607,7 +1616,7 @@ const CAPA_MODO = {
   vars:  ['absenteismo','absenteismo-gestao','admissoes','jovem','processos','quadro','rd','rescisoes'],
   band:  ['alojamentos','ferias','recepcao'],
   hd:    ['experiencia'],
-  hero:  ['curriculos'],
+  hero:  ['curriculos','rs'],
   top:   ['crachas','treinamentos','conexao'],
   header:['perfil','lideres']
 };
@@ -1633,7 +1642,7 @@ function montarModelo(tpl, conteudo, referencia, p, novos){
   const nomeOk = n => /^[A-Za-z_$][\w$]*$/.test(n);
   const base = location.href.split('#')[0].replace(/[^/]*$/, '');
   let html = tpl.split('__CRV_REFBR__').join(fmtRef(referencia)).split('__CRV_BASE__').join(base);
-  const ponte = `<script>window.CRV_PAINEL_ID=${JSON.stringify(p.id)};<\/script><script>${window.CRV_PONTE.scriptPainel()}<\/script>` + (novos ? `<script>window.CRV_NOVOS=${jsValor(novos)};<\/script>` : '');
+  const ponte = (p.id === 'rs' ? '<script>window.CRV_MODO_CV="rs";<\/script>' : '') + `<script>window.CRV_PAINEL_ID=${JSON.stringify(p.id)};<\/script><script>${window.CRV_PONTE.scriptPainel()}<\/script>` + (novos ? `<script>window.CRV_NOVOS=${jsValor(novos)};<\/script>` : '');
   // visual compacto: capa mais baixa e títulos menores em todos os painéis
   const compacto = `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@400;500;600;700&display=swap">
   <style id="crv-padrao">
