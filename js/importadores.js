@@ -286,15 +286,16 @@ async function ler(f){
   if (det.tipo === 'hist') {
     const Q = await window.CRV_QUADRO(); if (!Q || !Q.mapa) throw new Error('carregue o Quadro Geral antes dos históricos');
     let mapaH = Q.mapa, ligaCRV = null;
-    if (det.h === 'ocor' && s((det.R[0] || [])[0]) === '6') { // APFO: confere com os desligados da empresa 6 no Quadro e liga a quem hoje está na CRV
+    const EMP = s((det.R[0] || [])[0]); let EMPN = '';
+    if (det.h === 'ocor' && EMP && EMP !== '5') { // outra empresa do grupo (APFO 6, CAPFO 16…): confere com os desligados dela no Quadro e liga a quem hoje está na CRV
       const QD = await window.CRV_DADOS('quadro'), DM = (QD && QD.dados && QD.dados.DM) || []; mapaH = {};
-      DM.forEach(r => { if (!/\(6\)\s*$/.test(s(r[21]))) return; const m = s(r[0]); if (!mapaH[m] || s(r[20]) > (mapaH[m].deslig || '')) mapaH[m] = { nome:s(r[1]), funcao:s(r[2]), setor:s(r[3]), area:s(r[5]), gerencia:s(r[6]), admissao:s(r[9]), deslig:s(r[20]), nasc:s(r[27]) }; });
-      if (!Object.keys(mapaH).length) throw new Error('o Quadro carregado não tem os desligados da APFO (empresa 6) para conferir as matrículas');
+      const reE = new RegExp('\\(' + EMP + '\\)\\s*$'); DM.forEach(r => { if (!reE.test(s(r[21]))) return; if (!EMPN) EMPN = s(r[21]).replace(/\s*\(\d+\)\s*$/, ''); const m = s(r[0]); if (!mapaH[m] || s(r[20]) > (mapaH[m].deslig || '')) mapaH[m] = { nome:s(r[1]), funcao:s(r[2]), setor:s(r[3]), area:s(r[5]), gerencia:s(r[6]), admissao:s(r[9]), deslig:s(r[20]), nasc:s(r[27]) }; });
+      if (!Object.keys(mapaH).length) throw new Error('o Quadro carregado não tem os desligados da empresa ' + EMP + ' para conferir as matrículas');
       const porNome = {}; Object.entries(Q.mapa).forEach(([m, o]) => { if (o.situacao === 'Desligado') return; const k = nomeN(o.nome); (porNome[k] = porNome[k] || []).push([m, o]); });
       ligaCRV = m => { const a = mapaH[m]; if (!a) return ''; const L = (porNome[nomeN(a.nome)] || []).filter(([, o]) => !a.nasc || !o.nasc || o.nasc === a.nasc); return L.length === 1 ? L[0][0] : ''; };
     }
     let pac = converterHist(det.h, det.R, mapaH, REF);
-    if (ligaCRV) { pac.hist = 'ocor6'; pac.docPre = 'a'; pac.extra = {}; let lig = 0;
+    if (ligaCRV) { pac.hist = 'ocor' + EMP; pac.docPre = 'a'; pac.empNome = EMPN || 'Empresa ' + EMP; pac.extra = {}; let lig = 0;
       Object.keys(pac.itens).forEach(m => { const a = mapaH[m], c = ligaCRV(m); if (c) lig++; pac.extra[m] = { p:[a.nome, a.funcao, a.area, a.setor, a.gerencia, 'Desligado', a.admissao, a.deslig], crv:c }; }); pac.n.ligados = lig; } const T = { ferias:'Histórico de férias', depto:'Histórico de departamentos', cargo:'Histórico de funções', dep:'Dependentes da folha', curso:'Treinamentos realizados', exame:'Exames ocupacionais (ASO)', afast:'Histórico de afastamentos', ocor:'Ocorrências do ponto', ocor6:'Ocorrências do ponto da APFO (empresa 6)', apos:'Aposentadorias', estab:'Estabilidades da folha' }[det.h];
     if (det.h === 'estab') { // entra no cadastro de estabilidade que o app já usa (Quadro Geral, Central, checklist de desligamento)
       const TIP = c => /CIP/i.test(c) ? 'CIPA' : /ACIDENTE/i.test(c) ? 'Acidente de trabalho' : /GESTANTE/i.test(c) ? 'Gestante' : /APOSENT/i.test(c) ? 'Pré-aposentadoria' : /SINDIC/i.test(c) ? 'Dirigente sindical' : 'Outro';
@@ -302,9 +303,9 @@ async function ler(f){
       const hoje = new Date().toISOString().slice(0, 10);
       out.push({ pac:{ estab:true, painel:'quadro', referencia:REF, itens }, rotulo:`${T}: ${itens.length} registros, ${itens.filter(x => x.fim >= hoje).length} vigentes` + (pac.n.nomeDiferente ? ` · ${pac.n.nomeDiferente} com nome diferente do Quadro (fora)` : '') });
       return out; }
-    if (det.h === 'ocor') { const T = pac.hist === 'ocor6' ? 'Ocorrências do ponto da APFO (empresa 6)' : 'Ocorrências do ponto', br = d => d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : '';
+    if (det.h === 'ocor') { const T = pac.hist !== 'ocor' ? 'Ocorrências do ponto da ' + pac.empNome + ' (empresa ' + pac.empresa + ')' : 'Ocorrências do ponto', br = d => d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : '';
       if (!pac.faixa) { out.push({ pac, rotulo:`${T}: arquivo sem lançamentos (nada a salvar)` }); return out; }
-      if (pac.empresa && !['5', '6'].includes(pac.empresa)) throw new Error('o relatório é da empresa ' + pac.empresa + '; o app lê a empresa 5 (CRV) e a 6 (APFO)');
+      
       out.push({ pac, rotulo:`${T} de ${br(pac.faixa[0])} a ${br(pac.faixa[1])}: ${pac.n.linhas} lançamentos de ${pac.n.pessoas} pessoas (faltas, faltas justificadas, suspensões e licenças; ${pac.n.atestados} atestados ficam de fora)` + (pac.n.nomeDiferente ? ` · ${pac.n.nomeDiferente} com nome diferente do Quadro (fora)` : '') + (pac.n.foraDoQuadro ? ` · ${pac.n.foraDoQuadro} matrículas fora do Quadro` : '') + (pac.n.ligados != null ? ` · ${pac.n.ligados} estão hoje na CRV (aparecem na ficha deles)` : '') }); return out; }
     out.push({ pac, rotulo:`${T}: ${pac.n.linhas} ${det.h === 'dep' ? 'dependentes' : 'registros'} de ${pac.n.pessoas} ${det.h === 'dep' ? 'colaboradores' : 'pessoas'}` + (pac.n.anuladas ? ` · ${pac.n.anuladas} anuladas fora` : '') + (pac.n.nomeDiferente ? ` · ${pac.n.nomeDiferente} com nome diferente do Quadro (fora)` : '') });
     return out;

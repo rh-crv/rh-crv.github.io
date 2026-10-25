@@ -18,6 +18,7 @@ const chaveOk = k => /^[ad]:/.test(k || '');
 const daChave = (k, p) => k[0] === 'a' ? p.area === k.slice(2) : k[0] === 'd' ? (p.area + '|' + p.setor) === k.slice(2) : false;
 const tipoChave = k => k[0] === 'd' ? 'Departamento' : 'Setor';
 const DEC = { efetivar:'Efetivar', encerrar:'Encerrar contrato', prorrogar:'Prorrogar' };
+const OCN = { f:'Falta', j:'Falta justificada', s:'Suspensão' };
 const DECG = [['efetivar', 'Efetivar', 'Fica no quadro como efetivo'], ['prorrogar', 'Prorrogar', 'Avaliar mais um pouco, até o fim do contrato'], ['encerrar', 'Encerrar o contrato', 'Não continua após o vencimento']];
 // formulário oficial RE.0150.07 (SGI, versão 05): nota de 0 a 5 por fator; pontos = nota × 2; total = média dos pontos; meta 70%
 const FORM_COD = 'RE.0150.07 · Versão 05';
@@ -60,6 +61,14 @@ async function recortes(chaves){
   let HD = {}, HC = {}; try { HD = await window.CRV_HIST('depto'); HC = await window.CRV_HIST('cargo'); } catch(_){}
   const traj = m => (HD[m] || []).map(x => [x[0], 'd', x[1], x[2]]).concat((HC[m] || []).map(x => [x[0], 'f', x[1], x[2]])).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 25);
   const dentro = (p, k) => p.situacao !== 'Desligado' && daChave(k, p);
+  // ocorrências do ponto (faltas, faltas justificadas e suspensões; sem atestados), da CRV e das outras empresas do grupo
+  let HO = {}; const HOE = {}; try { HO = await window.CRV_HIST('ocor'); } catch(_){}
+  for (const e of [['6', 'APFO'], ['16', 'CAPFO']]) { try { (await window.CRV_REGS('quadro', 'hist_ocor' + e[0])).forEach(x => { if (String(x._id || '').startsWith('c') && x.mat) (HOE[fMat(x.mat)] = HOE[fMat(x.mat)] || []).push([x.emp || e[1], x.l || []]); }); } catch(_){} }
+  const ocHist = m => { const fontes = [['', HO[m] || []]].concat(HOE[m] || []), Y = [], EP = [];
+    fontes.forEach(([emp, L]) => { const ano = {}, ep = []; L.forEach(x => { if (!'fjs'.includes(x[1])) return; const y = x[0].slice(0, 4); (ano[y] = ano[y] || { f:0, j:0, s:0 })[x[1]]++;
+        const u = ep[ep.length - 1]; if (u && u[2] === x[1] && fDias(u[1], x[0]) === 1) { u[1] = x[0]; u[3]++; } else ep.push([x[0], x[0], x[1], 1, emp]); });
+      Object.keys(ano).forEach(y => Y.push([y, ano[y].f, ano[y].j, ano[y].s, emp])); EP.push(...ep); });
+    return Y.length ? { y:Y.sort((a, b) => b[0].localeCompare(a[0])), ep:EP.sort((a, b) => b[0].localeCompare(a[0])).slice(0, 20) } : null; };
   // bases auxiliares (lidas uma vez)
   const EXP = {}; let refExp = '';
   try { const d = await window.CRV_DADOS('experiencia'); refExp = d && d.referencia || ''; const R = d && d.dados.RAW || []; const reg = {}; (await window.CRV_REGS('experiencia', 'registros')).forEach(x => reg[x._id] = x);
@@ -100,7 +109,7 @@ async function recortes(chaves){
         rd: (RD[m] || []).sort((a, b) => String(b.d).localeCompare(String(a.d))),
         exp: p.vinculo === 'Experiência' || (EXP[m] && EXP[m].v2 >= addD(h, -30)) ? EXP[m] || null : null, fer: FER[m] || [], cr:(CR[m] || []).filter(x => !x.fim || x.fim >= addD(h, -30)), ob };
     }).sort((a, b) => a.n.localeCompare(b.n, 'pt-BR'));
-    P.forEach(p => { p.cid = CID[p.m] || ''; p.alo = ALO[p.m] || null; const t = traj(p.m); if (t.length) p.tr = t; });
+    P.forEach(p => { p.cid = CID[p.m] || ''; p.alo = ALO[p.m] || null; const t = traj(p.m); if (t.length) p.tr = t; const oh = ocHist(p.m); if (oh) p.oh = oh; });
     // movimentação dos últimos 13 meses (inclui quem já saiu)
     const MOV = { adm:[], sai:[] };
     Object.entries(M).forEach(([m, p]) => { if (!casa(k, p)) return;
@@ -255,6 +264,7 @@ async function tela(abaIni){
     const S = [
       ['Período de experiência', p.exp ? tab(['Etapa', 'Data', 'Avaliação da área'], [['1º vencimento', brD(p.exp.v1), p.exp.dec1 || 'pendente'], ['Vencimento final', brD(p.exp.v2), p.exp.dec2 || 'pendente']], '') : '<p class="fc-vz">Fora do período de experiência.</p>'],
       ['Frequência', tab(['', '30 dias', '90 dias', `${h.slice(0, 4)}`], [['Faltas', p.fa30, p.fa90, p.faAno || 0], ['Dias de atestado', '—', p.at90, p.atAno || 0]], '') + (ref.abs ? `<p class="nr-nota" style="padding:6px 14px">Até ${esc(brD(ref.abs))}. Motivo de atestado não aparece aqui.</p>` : '')],
+      ['Faltas e suspensões no ponto (histórico)', p.oh ? tab(['Ano', 'Faltas', 'Faltas justificadas', 'Dias de suspensão'], p.oh.y.map(x => [x[0] + (x[4] ? ' (' + x[4] + ')' : ''), x[1], x[2], x[3]]), '') + tab(['Últimos registros', 'Ocorrência', 'Dias'], p.oh.ep.map(e => [brD(e[0]) + (e[1] !== e[0] ? ' a ' + brD(e[1]) : ''), OCN[e[2]] + (e[4] ? ' (' + e[4] + ')' : ''), e[3]]), '') + '<p class="nr-nota" style="padding:6px 14px">Lançamentos do ponto, sem atestados. Entre parênteses, a época em outra empresa do grupo.</p>' : '<p class="fc-vz">Nenhuma falta ou suspensão no histórico do ponto.</p>'],
       ['Sanções disciplinares', tab(['Data', 'Tipo', 'Motivo'], (p.san || []).map(x => [brD(x.d), x.t, x.mot]), 'Nenhuma sanção registrada.')],
       ['Registros de dano (RD)', tab(['RD', 'Data', 'Desfecho', 'Tratativa'], (p.rd || []).map(x => [x.n, brD(x.d), x.des, x.tr]), 'Nenhum RD registrado.')],
       ['Férias', tab(['Período aquisitivo', 'Data limite', 'Saldo', 'Programação', 'Situação'], (p.fer || []).map(f => [brD(f.de) + ' a ' + brD(f.ate), brD(f.lim), f.saldo + 'd', f.prog || '—', f.st]), 'Sem período em aberto.')],
@@ -278,6 +288,7 @@ async function tela(abaIni){
           doc.autoTable({ startY:y + 5, head:[cab], body:L.length ? L.map(l => l.map(String)) : [cab.map((_, i) => i ? '' : 'Nada registrado')], styles:{ fontSize:8, cellPadding:2.6, overflow:'linebreak' }, headStyles:{ fillColor:[36,66,124] }, margin:{ left:30, right:30 } }); };
         if (p.exp) sec('Período de experiência', ['Etapa', 'Data', 'Avaliação da área'], [['1º vencimento', brD(p.exp.v1), p.exp.dec1 || 'pendente'], ['Vencimento final', brD(p.exp.v2), p.exp.dec2 || 'pendente']]);
         sec('Frequência' + (ref.abs ? ' (até ' + brD(ref.abs) + ')' : ''), ['', '30 dias', '90 dias', h.slice(0, 4)], [['Faltas', p.fa30, p.fa90, p.faAno || 0], ['Dias de atestado', '—', p.at90, p.atAno || 0]]);
+        if (p.oh) { sec('Faltas e suspensões no ponto (por ano)', ['Ano', 'Faltas', 'Faltas justificadas', 'Dias de suspensão'], p.oh.y.map(x => [x[0] + (x[4] ? ' (' + x[4] + ')' : ''), x[1], x[2], x[3]])); sec('Últimos registros do ponto', ['Período', 'Ocorrência', 'Dias'], p.oh.ep.map(e => [brD(e[0]) + (e[1] !== e[0] ? ' a ' + brD(e[1]) : ''), OCN[e[2]] + (e[4] ? ' (' + e[4] + ')' : ''), e[3]])); }
         sec('Sanções disciplinares', ['Data', 'Tipo', 'Motivo'], (p.san || []).map(x => [brD(x.d), x.t, x.mot]));
         sec('Registros de dano (RD)', ['RD', 'Data', 'Desfecho', 'Tratativa'], (p.rd || []).map(x => [x.n, brD(x.d), x.des, x.tr]));
         sec('Férias', ['Período aquisitivo', 'Data limite', 'Saldo', 'Programação', 'Situação'], (p.fer || []).map(f => [brD(f.de) + ' a ' + brD(f.ate), brD(f.lim), f.saldo + 'd', f.prog || '—', f.st]));
