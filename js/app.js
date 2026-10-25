@@ -1416,7 +1416,7 @@ async function telaModelo(p, cfg, acao){
     }
     window.CRV_RECARREGAR = () => { if (location.hash.startsWith('#/p/' + encodeURIComponent(p.id))) telaPainel(p.id); };
     let tplU = tpl;
-    if ((PAC_DE[p.id] || p.id) === 'unimed') { // o painel da Unimed cruza com o Quadro atual do app
+    if (['unimed', 'uniodonto'].includes(PAC_DE[p.id] || p.id)) { // Unimed e Uniodonto cruzam com o Quadro atual do app
       try { const Q = await window.CRV_QUADRO(); if (Q && Q.mapa) {
         const dig = v => String(v || '').replace(/\D/g, ''), P = [], DL = {};
         Object.entries(Q.mapa).forEach(([m, o]) => {
