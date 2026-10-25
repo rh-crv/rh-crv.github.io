@@ -127,6 +127,7 @@ async function entrarNoApp(){
     E.perfil = perfil;
     await carregarCatalogo();
     window.addEventListener('hashchange', rota);
+    try { const kk = 'crv-ent-' + perfil.user_id; if (!sessionStorage.getItem(kk)) { sessionStorage.setItem(kk, '1'); const mob = /Mobi|Android|iPhone/i.test(navigator.userAgent), inst = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches; logAcesso('entrou', null, (mob ? 'celular' : 'computador') + (inst ? ' · app instalado' : ' · navegador')); } } catch(_){}
     rota();
     if (ehAdmin()) setTimeout(() => GESTOR().gerar(false).catch(() => {}), 8000);
   } catch(e){
@@ -258,7 +259,7 @@ function telaSemAcesso(tipo){
   $('#b-sair').onclick = sair;
 }
 
-async function sair(){ await sb.auth.signOut(); E.sessao=null; E.perfil=null; location.hash=''; telaLogin(); }
+async function sair(){ try { await logAcesso('saiu'); } catch(_){} await sb.auth.signOut(); E.sessao=null; E.perfil=null; location.hash=''; telaLogin(); }
 
 /* =====================================================================
    ESTRUTURA (topo + rotas)
@@ -415,6 +416,7 @@ function rota(){
   if (!E.perfil) return;
   fecharModal();
   const h = location.hash || '#/';
+  logAcesso('abriu', ondeDe(h));
   if (E.perfil.papel === 'gestor') return h === '#/conta' ? telaConta() : GESTOR().tela(h.startsWith('#/eq/') ? h.slice(5) : '');
   if (h.startsWith('#/p/')) { const [id, acao] = h.slice(4).split('/'); return telaPainel(decodeURIComponent(id), acao || ''); }
   if (h === '#/admin' && ehAdmin()) return telaAdmin();
@@ -1239,7 +1241,8 @@ window.CRV_LOG_EXPORT = nome => { const k = String(nome || '') + '|' + Math.floo
   const h = location.hash || ''; const pid = h.startsWith('#/p/') ? decodeURIComponent(h.slice(4).split('/')[0]) : null;
   const onde = pid ? null : h.startsWith('#/ficha') ? 'Ficha do colaborador' : h.startsWith('#/desligamento') ? 'Checklist de desligamento' : h.startsWith('#/relatorio') ? 'Relatório da diretoria' : h.startsWith('#/bases') ? 'Saúde das bases' : h.startsWith('#/envios') ? 'Envios dos gestores' : h.startsWith('#/admin') ? 'Administração' : '';
   const painel = pid ? (PAC_DE[pid] || pid) : null;
-  registrar(painel && E.paineis.some(p => p.id === painel) ? painel : null, 'exportou arquivo', String(nome || '') + (onde ? ' · ' + onde : '')); };
+  registrar(painel && E.paineis.some(p => p.id === painel) ? painel : null, 'exportou arquivo', String(nome || '') + (onde ? ' · ' + onde : ''));
+  logAcesso('exportou', ondeDe(h), String(nome || '')); };
 function baixar(blob, nome){
   try { window.CRV_LOG_EXPORT(nome); } catch(_){}
   const url = URL.createObjectURL(blob);
@@ -1361,6 +1364,16 @@ function prepararEnvio(nomeArquivo, ws, aba){
   });
 }
 
+/* acessos de cada pessoa (Administração → Acessos). Se a tabela ainda não existe (07_acessos.sql), fica quieto. */
+let _acOff = false; const _acUlt = {};
+async function logAcesso(acao, onde, detalhe){
+  if (_acOff || !E.perfil) return; const k = acao + '|' + (onde || ''); if (acao === 'abriu' && _acUlt[k] && Date.now() - _acUlt[k] < 5 * 60e3) return; _acUlt[k] = Date.now();
+  try { const { error } = await sb.from('acessos').insert({ usuario:E.perfil.nome, papel:E.perfil.papel, acao, onde:onde || null, detalhe:detalhe ? String(detalhe).slice(0, 300) : null }); if (error && /acessos|relation|42P01/i.test(error.message + error.code)) _acOff = true; } catch(_){}
+}
+window.CRV_LOG_ACESSO = logAcesso;
+const ondeDe = h => { if (h.startsWith('#/p/')) { const id = decodeURIComponent(h.slice(4).split('/')[0]); return 'Painel: ' + ((E.paineis || []).find(p => p.id === id)?.nome || id); }
+  if (h.startsWith('#/eq/')) { const k = h.slice(5); return 'Minha equipe: ' + ({ eq:'Equipe', mov:'Admissões e saídas', pv:'Quadro x previsto', exp:'Experiência', nov:'Novos colaboradores', fer:'Férias', freq:'Frequência', disc:'Disciplina e RD', cr:'Em treinamento', alo:'Alojamento', env:'Meus envios' }[k] || k); }
+  return ({ '#/':'Início', '#/central':'Central do dia', '#/admin':'Administração', '#/conta':'Minha conta', '#/relatorio':'Relatório da diretoria', '#/bases':'Saúde das bases', '#/envios':'Envios dos gestores' })[h] || (h.startsWith('#/ficha') ? 'Ficha do colaborador' : h.startsWith('#/desligamento') ? 'Checklist de desligamento' : h.replace(/^#\//, '') || 'Início'); };
 async function registrar(painel, acao, detalhe){
   try { await sb.from('historico').insert({ painel, acao, detalhe, usuario: E.perfil?.nome }); } catch(_){}
 }
@@ -1962,6 +1975,7 @@ async function telaAdmin(){
     <div class="abas">
       <button class="aba ${abaAdmin==='usuarios'?'ativa':''}" data-aba="usuarios">Usuários e acessos</button>
       <button class="aba ${abaAdmin==='paineis'?'ativa':''}" data-aba="paineis">Painéis e frentes</button>
+      <button class="aba ${abaAdmin==='acessos'?'ativa':''}" data-aba="acessos">Acessos</button>
       <button class="aba ${abaAdmin==='historico'?'ativa':''}" data-aba="historico">Histórico</button>
       <button class="aba ${abaAdmin==='backup'?'ativa':''}" data-aba="backup">Cópia de segurança</button>
     </div><div id="admin-corpo" class="cartao"><div class="spinner" style="margin:20px auto"></div></div>`);
@@ -1970,6 +1984,7 @@ async function telaAdmin(){
   if (abaAdmin === 'usuarios') return adminUsuarios();
   if (abaAdmin === 'paineis') return adminPaineis();
   if (abaAdmin === 'backup') return adminBackup();
+  if (abaAdmin === 'acessos') return adminAcessos();
   return adminHistorico();
 }
 
@@ -2234,6 +2249,51 @@ function adminPaineis(){
   });
 }
 
+/* ---------- Acessos: quem entrou, quando, o que abriu e exportou ---------- */
+let _acPer = 30;
+async function adminAcessos(){
+  const c = $('#admin-corpo'); c.innerHTML = '<div class="spinner" style="margin:20px auto"></div>';
+  const desde = new Date(Date.now() - _acPer * 864e5).toISOString();
+  const [pf, ac, lg] = await Promise.all([sb.from('perfis').select('user_id,nome,usuario,papel,ativo').order('nome'),
+    lerAcessos(desde), Promise.resolve().then(() => sb.rpc('ultimos_logins')).then(r => r || { data:null }, () => ({ data:null }))]);
+  if (ac.error) { c.innerHTML = `<div class="cartao vazio"><h3>O registro de acessos ainda não foi criado</h3><p>Rode o arquivo <b>07_acessos.sql</b> no SQL Editor do Supabase. Depois disso, cada entrada, tela aberta e exportação passa a ser registrada.</p></div>`; return; }
+  const A = ac.data, LG = {}; (Array.isArray(lg && lg.data) ? lg.data : []).forEach(x => { if (x && x.user_id) LG[x.user_id] = x; });
+  const hoje = Date.now(), dias = iso => Math.floor((hoje - new Date(iso)) / 864e5), dt = iso => iso ? new Date(iso).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
+  const U = (pf.data || []).map(u => { const L = A.filter(a => a.user_id === u.user_id); const ult = [L[0] && L[0].em, LG[u.user_id] && LG[u.user_id].ultimo].filter(Boolean).sort().pop() || '';
+    const top = {}; L.filter(a => a.acao === 'abriu' && a.onde && a.onde !== 'Início').forEach(a => top[a.onde] = (top[a.onde] || 0) + 1);
+    return { u, L, ult, dd:new Set(L.map(a => a.em.slice(0, 10))).size, ab:L.filter(a => a.acao === 'abriu').length, ex:L.filter(a => a.acao === 'exportou').length, en:L.filter(a => a.acao === 'enviou').length,
+      top:Object.entries(top).sort((a, b) => b[1] - a[1]).slice(0, 3).map(x => x[0].replace(/^Painel: /, '') + ' (' + x[1] + ')').join(', '), nunca:!ult, parado:ult && dias(ult) >= 30 }; });
+  const at = U.filter(x => x.u.ativo), ent = at.filter(x => x.dd > 0), nun = at.filter(x => x.nunca), par = at.filter(x => x.parado);
+  const st = x => !x.u.ativo ? '<span class="gs-st can">Desativado</span>' : x.nunca ? '<span class="gs-st dev">Nunca entrou</span>' : x.parado ? '<span class="gs-st pend">Sem acesso há ' + dias(x.ult) + ' dias</span>' : '<span class="gs-st ok">Em uso</span>';
+  let F = window.__acF || '';
+  const des = () => { const V = U.filter(x => !F || (F === 'nun' ? x.u.ativo && x.nunca : F === 'par' ? x.u.ativo && x.parado : F === 'ent' ? x.dd > 0 : true));
+    c.innerHTML = `<div class="cartao-cab"><h3>Acessos dos usuários</h3><div class="vista-seg" style="margin:0;box-shadow:none">${[7, 30, 90].map(n => `<button data-per="${n}" class="${_acPer === n ? 'on' : ''}">${n} dias</button>`).join('')}</div></div>
+      <section class="dk-kpis">${[['', 'Usuários ativos', at.length, '#2f6fa8'], ['ent', 'Entraram no período', ent.length, 'var(--cane)'], ['nun', 'Nunca entraram', nun.length, 'var(--coral)'], ['par', 'Sem acesso há 30+ dias', par.length, 'var(--amber)']].map(([k, t, n, cor]) => `<button class="dk-k ${F === k ? 'on' : ''}" data-fa="${k}" style="--c:${cor}"><span>${t}</span><b>${n}</b></button>`).join('')}</section>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin:8px 0"><button class="btn borda peq" id="ac-xls">Excel</button><button class="btn borda peq" id="ac-pdf">PDF</button></div>
+      <div class="tabela-env"><table class="tab"><thead><tr><th>Usuário</th><th>Papel</th><th>Situação</th><th>Último acesso</th><th>Dias com acesso</th><th>Telas abertas</th><th>Exportações</th><th>Envios ao RH</th><th>Mais usado</th></tr></thead><tbody>
+      ${V.map(x => `<tr data-u="${esc(x.u.user_id)}"><td><b>${esc(x.u.nome)}</b><br><small>@${esc(x.u.usuario || '')}</small></td><td>${esc(nomePapel(x.u.papel))}</td><td>${st(x)}</td><td>${x.ult ? esc(dt(x.ult)) : '—'}</td><td>${x.dd}</td><td>${x.ab}</td><td>${x.ex}</td><td>${x.en || '—'}</td><td><small>${esc(x.top || '—')}</small></td></tr>`).join('') || '<tr><td colspan="9">Ninguém aqui.</td></tr>'}</tbody></table></div>
+      <p class="nr-fonte">Período: últimos ${_acPer} dias. O último acesso considera também o login registrado pelo Supabase. Clique em uma pessoa para ver tudo o que ela fez. Cada pessoa só grava o próprio acesso; só o administrador principal vê esta aba.</p>`;
+    c.querySelectorAll('[data-per]').forEach(b => b.onclick = () => { _acPer = +b.dataset.per; adminAcessos(); });
+    c.querySelectorAll('[data-fa]').forEach(b => b.onclick = () => { F = window.__acF = F === b.dataset.fa ? '' : b.dataset.fa; des(); });
+    c.querySelectorAll('[data-u]').forEach(r => r.onclick = () => verAcessos(U.find(x => x.u.user_id === r.dataset.u)));
+    const linhas = () => V.map(x => [x.u.nome, '@' + (x.u.usuario || ''), nomePapel(x.u.papel), !x.u.ativo ? 'Desativado' : x.nunca ? 'Nunca entrou' : x.parado ? 'Sem acesso há ' + dias(x.ult) + ' dias' : 'Em uso', x.ult ? dt(x.ult) : '', x.dd, x.ab, x.ex, x.en, x.top]);
+    const CAB = ['Usuário', 'Login', 'Papel', 'Situação', 'Último acesso', 'Dias com acesso', 'Telas abertas', 'Exportações', 'Envios ao RH', 'Mais usado'];
+    $('#ac-xls').onclick = () => { const wb = XLSX.utils.book_new(), ws = XLSX.utils.aoa_to_sheet([['Acessos dos usuários · últimos ' + _acPer + ' dias · CRV Industrial'], [], CAB].concat(linhas())); ws['!cols'] = CAB.map((_, i) => ({ wch:i ? 16 : 34 })); XLSX.utils.book_append_sheet(wb, ws, 'Acessos');
+      baixar(new Blob([XLSX.write(wb, { bookType:'xlsx', type:'array' })], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'Acessos dos usuários.xlsx'); };
+    $('#ac-pdf').onclick = () => { const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit:'pt', format:'a4', orientation:'landscape' }); cabecalhoPDF(doc, 'Acessos dos usuários', 'Últimos ' + _acPer + ' dias');
+      doc.autoTable({ startY:104, head:[CAB], body:linhas().map(l => l.map(String)), margin:{ left:30, right:30 }, styles:{ fontSize:8, cellPadding:3 }, headStyles:{ fillColor:[36,66,124] } }); rodapePDF(doc); baixar(doc.output('blob'), 'Acessos dos usuários.pdf'); }; };
+  des();
+  function verAcessos(x){ if (!x) return; let T = '';
+    const NOM = { entrou:'Entrou', abriu:'Abriu', exportou:'Exportou', enviou:'Enviou ao RH', saiu:'Saiu' };
+    const corpo = () => { const L = x.L.filter(a => !T || a.acao === T);
+      return `<div class="vista-seg" style="box-shadow:none;margin:0 0 10px">${[['', 'Tudo'], ['entrou', 'Entradas'], ['abriu', 'Telas'], ['exportou', 'Exportações'], ['enviou', 'Envios']].map(([k, t]) => `<button data-t="${k}" class="${T === k ? 'on' : ''}">${t} (${k ? x.L.filter(a => a.acao === k).length : x.L.length})</button>`).join('')}</div>
+        <div class="tabela-env" style="max-height:420px"><table class="tab"><thead><tr><th>Quando</th><th>Ação</th><th>Onde</th><th>Detalhe</th></tr></thead><tbody>${L.map(a => `<tr style="cursor:default"><td>${esc(dt(a.em))}</td><td>${esc(NOM[a.acao] || a.acao)}</td><td>${esc(a.onde || '—')}</td><td><small>${esc(a.detalhe || '')}</small></td></tr>`).join('') || '<tr><td colspan="4">Nada no período.</td></tr>'}</tbody></table></div>`; };
+    abrirModal({ titulo:x.u.nome + ' · ' + nomePapel(x.u.papel), largo:true, corpo:'<div id="ac-c"></div>', pe:'<button class="btn borda" id="ac-ux">Excel</button><span style="flex:1"></span><button class="btn prim" id="ac-ok">Fechar</button>',
+      aoAbrir: m => { const r = () => { m.querySelector('#ac-c').innerHTML = corpo(); m.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { T = b.dataset.t; r(); }); }; r(); m.querySelector('#ac-ok').onclick = fecharModal;
+        m.querySelector('#ac-ux').onclick = () => { const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Quando', 'Ação', 'Onde', 'Detalhe']].concat(x.L.filter(a => !T || a.acao === T).map(a => [dt(a.em), NOM[a.acao] || a.acao, a.onde || '', a.detalhe || '']))), 'Acessos');
+          baixar(new Blob([XLSX.write(wb, { bookType:'xlsx', type:'array' })], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'Acessos - ' + x.u.nome + '.xlsx'); }; } }); }
+}
+async function lerAcessos(desde){ const out = []; for (let i = 0; i < 20000; i += 1000) { const { data, error } = await sb.from('acessos').select('user_id,acao,onde,detalhe,em').gte('em', desde).order('em', { ascending:false }).range(i, i + 999); if (error) return { error }; out.push(...(data || [])); if (!data || data.length < 1000) break; } return { data:out }; }
 async function adminHistorico(){
   const c = $('#admin-corpo');
   const { data, error } = await sb.from('historico').select('*').order('feito_em', { ascending:false }).limit(200);

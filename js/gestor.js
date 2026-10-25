@@ -286,7 +286,7 @@ async function tela(abaIni){
   }
   const enviar = async (tipo, p, dados, assin) => {
     const row = { id:(crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2)), chave:chaveDe(p.m), tipo, mat:p.m, colaborador:p.n, dados, assinatura:assin, status:'enviado', autor:E.perfil.user_id, autor_nome:E.perfil.nome, criado_em:new Date().toISOString() };
-    const { error } = await sb.from('gestor_envios').insert(row); if (error) throw error; await lerEnv(); return row; };
+    const { error } = await sb.from('gestor_envios').insert(row); if (error) throw error; try { window.CRV_LOG_ACESSO && window.CRV_LOG_ACESSO('enviou', TIPO_ENV[tipo] || tipo, p.n + ' (' + p.m + ')'); } catch(_){} await lerEnv(); return row; };
   const lerAss = (m, pref) => { const nm = m.querySelector('#' + pref + '-nm').value.trim(), ok = m.querySelector('#' + pref + '-dec').checked;
     if (!ok) return [null, 'Marque a declaração de autorização.']; if (!assinaturaOk(nm, E.perfil.nome)) return [null, 'A assinatura precisa ser o seu nome completo, como no seu acesso: ' + E.perfil.nome + '.'];
     return [{ nome:nm, em:new Date().toISOString(), usuario:E.perfil.usuario || '', declaracao:'Declaro que as informações estão corretas e autorizo a Gestão de Pessoas a dar continuidade.' }, '']; };
