@@ -71,7 +71,7 @@ async function dados(dias){
   const L = Object.entries(M).filter(([, c]) => c.situacao !== 'Desligado' && c.admissao && c.admissao >= desde && c.admissao <= h).map(([m, c]) => {
     const casa = fDias(c.admissao, h), conv = (cv[m] || []).sort((a, b) => a.marco - b.marco), ok = (ck[m] && ck[m].ok) || {};
     return { mat:m, nome:c.nome, funcao:c.funcao, setor:c.setor, area:c.area, vinculo:c.vinculo, situacao:c.situacao, adm:c.admissao, casa, conv, ok,
-      falta: itens.filter(i => !ok[i.id]).map(i => i.id), cobra: c.admissao >= addD(ini, -15), mk: MARCOS.map(k => marco(c.admissao, casa, conv, k, ini)) }; }).sort((a, b) => b.adm.localeCompare(a.adm) || a.nome.localeCompare(b.nome, 'pt-BR'));
+      falta: itens.filter(i => !ok[i.id]).map(i => i.id), cobra: c.admissao >= addD(ini, -15), mk: MARCOS.map(k => marco(c.admissao, casa, conv, k, ini)) }; }).sort((a, b) => (+a.mat || 0) - (+b.mat || 0)); // sempre por ordem de matrícula
   let H = {}; try { H = await dicas(L.map(x => x.mat)); } catch(_){}
   let RS = {}; try { const pr = E.paineis.find(x => x.id === 'risco'); if (pr && podeVer(pr)) RS = await RISCO().niveis(); } catch(_){}
   // retenção aos 90 dias por mês de admissão (todas as admissões da CRV no Quadro)
@@ -162,7 +162,7 @@ async function tela(p){
           <td><b class="${!o.fechado ? '' : r < 70 ? 'nr-atr' : r >= 80 ? 'ob-bom' : ''}">${r}%</b></td><td style="width:40%"><div class="ob-bar"><i style="width:${pct(o.adm.length, maxA)}%"><s style="width:${pct(o.sai.length, o.adm.length)}%"></s></i></div></td></tr>`; }).join('')}</tbody></table></div></section>
       <p class="nr-fonte">Admissões e desligamentos da CRV no Quadro de ${esc(brD(D.refQ))}. Barra: admitidos no mês; parte vermelha: saíram com até 90 dias. Quem foi readmitido conta pela admissão mais recente.</p>`;
     c.querySelectorAll('[data-rl]').forEach(b => b.onclick = () => { const [i, k] = b.dataset.rl.split('|'); const o = D.RET[+i];
-      const L = o[k].map(m => { const p = D.M[m] || {}; return [p.nome || m, m, p.funcao || '', p.area || '', brD(p.admissao), p.situacao === 'Desligado' ? brD(p.deslig) + ' (' + fDias(p.admissao, p.deslig) + ' dias)' : p.situacao || '']; }).sort((a, b) => a[0].localeCompare(b[0], 'pt-BR'));
+      const L = o[k].map(m => { const p = D.M[m] || {}; return [p.nome || m, m, p.funcao || '', p.area || '', brD(p.admissao), p.situacao === 'Desligado' ? brD(p.deslig) + ' (' + fDias(p.admissao, p.deslig) + ' dias)' : p.situacao || '']; }).sort((a, b) => (+a[1] || 0) - (+b[1] || 0));
       abrirModal({ titulo:`${k === 'adm' ? 'Admitidos' : 'Saíram com até 90 dias'}: ${mesNome(o.mes)}`, largo:true, corpo:`<div class="fc-tw"><table class="fc-t"><thead><tr><th>Colaborador</th><th>Matrícula</th><th>Função</th><th>Área</th><th>Admissão</th><th>Situação / saída</th></tr></thead><tbody>${L.map(l => `<tr><td><a class="cd-fl" href="#/ficha/${esc(l[1])}">${esc(l[0])}</a></td>${l.slice(1).map(v => `<td>${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`,
         aoAbrir: m => m.querySelectorAll('a.cd-fl').forEach(a => a.onclick = () => fecharModal()) }); });
   }
