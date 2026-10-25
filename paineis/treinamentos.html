@@ -449,6 +449,8 @@ const dnum = s => { const [y, m, d] = s.split("-").map(Number); return Date.UTC(
 if(DATA.ano===2026&&Array.isArray(DATA.metas)&&DATA.metas[3]===235)DATA.metas[3]=220;
 /* meta revisada pela gestão: maio/2026 passa para 180 treinamentos */
 if(DATA.ano===2026&&Array.isArray(DATA.metas)&&DATA.metas.length>4)DATA.metas[4]=180;
+/* meta revisada pela gestão: junho/2026 passa para 250 treinamentos */
+if(DATA.ano===2026&&Array.isArray(DATA.metas)&&DATA.metas.length>5)DATA.metas[5]=250;
 window.CRV_HORAS=v=>{const t=String(v==null?'':v).trim().toLowerCase().replace(/\s+/g,'');if(!t)return NaN;let m;
   if((m=t.match(/^(\d+):(\d{1,2})$/)))return +m[1]+(+m[2])/60;
   if((m=t.match(/^(\d+)h(\d{1,2})?(min)?$/)))return +m[1]+(+(m[2]||0))/60;
