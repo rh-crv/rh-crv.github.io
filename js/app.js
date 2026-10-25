@@ -494,7 +494,7 @@ async function htmlDoPainel(p){
   let novos = [];
   if (PAINEIS_COM_NOVOS.includes(p.id)) {
     const cols = [].concat(COLECAO_NOVOS[p.id] || 'novos');
-    const r = await sb.from('registros').select('doc_id,dados,colecao').eq('painel', p.id).in('colecao', cols).range(0, 4999);
+    const r = await todasLinhas((a, z) => sb.from('registros').select('doc_id,dados,colecao').eq('painel', p.id).in('colecao', cols).order('caminho').range(a, z));
     if (!r.error) novos = (r.data || []).filter(x => x.dados && !x.dados.excluida).map(x => cols.length > 1 ? { _id: x.doc_id, colecao: x.colecao, dados: x.dados } : { _id: x.doc_id, dados: x.dados });
   }
   const ponte = window.CRV_PONTE.criar({ sb, painel: pid, perfil: () => E.perfil, quem: () => E.perfil.nome, podeEditar: () => podeEditar(p), ehAdmin: () => ehRH() });
@@ -517,7 +517,7 @@ async function pendenciasDoPainel(p){
 }
 async function pendenciasQuadro(){
   const q = E.paineis.find(x => x.id === 'quadro'); if (!q || !podeVer(q)) return [];
-  const { data, error } = await sb.from('registros').select('colecao,dados').eq('painel', 'quadro').in('colecao', ['entrevistas', 'entrevistas_resp', 'estabilidade']).range(0, 4999);
+  const { data, error } = await todasLinhas((a, z) => sb.from('registros').select('colecao,dados').eq('painel', 'quadro').in('colecao', ['entrevistas', 'entrevistas_resp', 'estabilidade']).order('caminho').range(a, z));
   if (error || !data) return [];
   const R = [], hoje = new Date(); const iso = d => d.toISOString().slice(0, 10); const br = s => s ? String(s).slice(0, 10).split('-').reverse().join('/') : '';
   const resp = new Set(data.filter(x => x.colecao === 'entrevistas_resp' && x.dados && !x.dados.excluida).map(x => String(x.dados.mat)));
@@ -555,7 +555,7 @@ async function dadosDesligamento(){
     else if (U && U.P) { refs.unimed = d.referencia; U.P.filter(r => r[8] >= 0).forEach(r => add(r[0], r[1], 'unimed', r[11] && r[11].length ? `Titular + ${r[11].length} dependente${r[11].length > 1 ? 's' : ''}` : 'Titular', refs.unimed)); } }
   if (pode('uniodonto')) { const d = await window.CRV_DADOS('uniodonto'); const U = d && d.dados.DATA; if (U && U.T) { refs.odonto = d.referencia; U.T.forEach(t => add(t[5] || t[1], t[2], 'odonto', t[7] && t[7].length ? `Titular + ${t[7].length} dependente${t[7].length > 1 ? 's' : ''}` : 'Titular', refs.odonto)); } }
   if (pode('alojamentos')) { const d = await window.CRV_DADOS('alojamentos'); const A = d && d.dados.DATA; if (A && A.people) { refs.aloj = d.referencia; A.people.filter(x => x.t === 'c' && x.m).forEach(x => { const h = A.houses && A.houses[x.h]; add(x.m, x.n, 'aloj', h ? `${h.n}${x.q ? ', quarto ' + x.q : ''}` : 'Alojado', refs.aloj); }); } }
-  const { data } = await sb.from('registros').select('doc_id,dados').eq('painel', 'quadro').eq('colecao', 'deslig_check').range(0, 4999);
+  const { data } = await todasLinhas((a, z) => sb.from('registros').select('doc_id,dados').eq('painel', 'quadro').eq('colecao', 'deslig_check').order('caminho').range(a, z));
   const OK = {}; (data || []).forEach(r => { OK[r.doc_id] = (r.dados && r.dados.ok) || {}; });
   const L = [...P.values()].map(x => { x.ok = OK[x.mat] || {}; x.pend = Object.keys(x.b).filter(k => !x.ok[k]); return x; })
     .sort((a, b) => String(b.deslig).localeCompare(String(a.deslig)) || a.nome.localeCompare(b.nome));
@@ -700,7 +700,7 @@ async function fichaDados(mat){
         alerta: fora.some(x => x[2] >= new Date(Date.now() - 730 * 864e5).toISOString().slice(0, 10)) ? 'férias gozadas fora do prazo concessivo (CLT art. 137: pagamento em dobro)' : '' }); }
   })());
   // Quadro: estabilidade, entrevista de desligamento, checklist
-  tarefas.push((async () => { const { data } = await sb.from('registros').select('colecao,dados').eq('painel', 'quadro').in('colecao', ['estabilidade', 'entrevistas_resp', 'deslig_check']).range(0, 4999);
+  tarefas.push((async () => { const { data } = await todasLinhas((a, z) => sb.from('registros').select('colecao,dados').eq('painel', 'quadro').in('colecao', ['estabilidade', 'entrevistas_resp', 'deslig_check']).order('caminho').range(a, z));
     (data || []).forEach(x => { const v = x.dados || {}; if (fMat(v.mat) !== mat || v.excluida) return;
       if (x.colecao === 'estabilidade' && !v.encerrada) (F.estab = F.estab || []).push(v);
       if (x.colecao === 'entrevistas_resp') F.entrevista = v;
@@ -795,7 +795,7 @@ async function consultaDetalhe(p){
   sanc.sort((a, b) => b[0].split('/').reverse().join('').localeCompare(a[0].split('/').reverse().join('')));
   let rd = []; if (fPode('rd')) { const d = await window.CRV_DADOS('rd'); const D = d && d.dados.D; const DES = ['Sem tratativa', 'Ausência de culpa', 'Culpa apontada, sem medida', 'Medida disciplinar', 'Desconto', 'Sem informação'];
     if (D) rd = D.rows.filter(r => crv.includes(String(r[2]))).map(r => [String(r[0]), brD(r[1]), DES[r[9]] || '', r[10] || '']); }
-  let ent = null; try { const { data } = await sb.from('registros').select('dados').eq('painel', 'quadro').eq('colecao', 'entrevistas_resp').range(0, 4999); ent = (data || []).map(x => x.dados).find(v => v && !v.excluida && crv.includes(String(v.mat))) || null; } catch(_){}
+  let ent = null; try { const { data } = await todasLinhas((a, z) => sb.from('registros').select('dados').eq('painel', 'quadro').eq('colecao', 'entrevistas_resp').order('caminho').range(a, z)); ent = (data || []).map(x => x.dados).find(v => v && !v.excluida && crv.includes(String(v.mat))) || null; } catch(_){}
   return { bloq, proc, sanc, rd, ent };
 }
 function telaConsulta(){
@@ -1486,7 +1486,7 @@ async function telaModelo(p, cfg, acao){
     let novos = [];
     if (PAINEIS_COM_NOVOS.includes(p.id)) {
       const cols = [].concat(COLECAO_NOVOS[p.id] || 'novos');
-      const r = await sb.from('registros').select('doc_id,dados,colecao').eq('painel', p.id).in('colecao', cols).range(0, 4999);
+      const r = await todasLinhas((a, z) => sb.from('registros').select('doc_id,dados,colecao').eq('painel', p.id).in('colecao', cols).order('caminho').range(a, z));
       if (!r.error) novos = (r.data || []).filter(x => x.dados && !x.dados.excluida).map(x => cols.length > 1 ? { _id: x.doc_id, colecao: x.colecao, dados: x.dados } : { _id: x.doc_id, dados: x.dados });
     }
     window.CRV_RECARREGAR = () => { if (location.hash.startsWith('#/p/' + encodeURIComponent(p.id))) telaPainel(p.id); };
@@ -1671,6 +1671,8 @@ window.CRV_DADOS = async function(painel){
 };
 /* Ocorrências de um grupo de matrículas num período: atestado/falta/suspensão (absenteísmo do Quadro) e advertências/suspensões (Sanções).
    Retorna { abs:'yyyy-mm-dd' (até quando há absenteísmo), P:{ mat:{ at:[iso], fa:[iso], su:[iso], adv:[{data,motivo}], sus:[{data,motivo,dias}] } } } */
+// lê todas as linhas de uma consulta, em páginas de 1000 (o banco devolve no máximo 1000 por vez)
+window.todasLinhas = async function(q){ const out = []; for (let a = 0; a < 200000; a += 1000) { const { data, error } = await q(a, a + 999); if (error) return { data:out, error }; out.push(...(data || [])); if (!data || data.length < 1000) break; } return { data:out, error:null }; };
 window.CRV_OCORR = async function(mats, ini, fim){
   const M = new Set((mats || []).map(m => String(m).replace(/^0+(?=\d)/, '')));
   const P = {}; const pe = m => P[m] || (P[m] = { at:[], fa:[], su:[], adv:[], sus:[] });

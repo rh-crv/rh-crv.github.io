@@ -75,7 +75,7 @@ async function nr1Dados(){
     const r = EX[m]; const tipo = r ? (TIP[r[3]] || '') : '', mot = r ? (r[4] || []).map(i => MOT[i]).filter(Boolean) : [];
     ga(areaDe(c)).sai.push({ mat:m, nome:c.nome, funcao:c.funcao, setor:c.setor, adm:c.admissao, deslig:c.deslig, tipo, mot, casa: c.admissao ? fDias(c.admissao, c.deslig) : null }); });
   // entrevistas de desligamento respondidas
-  try { const { data } = await sb.from('registros').select('dados').eq('painel', 'quadro').eq('colecao', 'entrevistas_resp').range(0, 4999);
+  try { const { data } = await todasLinhas((a, z) => sb.from('registros').select('dados').eq('painel', 'quadro').eq('colecao', 'entrevistas_resp').order('caminho').range(a, z));
     (data || []).map(x => x.dados).filter(v => v && !v.excluida && String(v.ped || v.dataAss || '').slice(0, 4) === ano).forEach(v => { const c = M[fMat(v.mat)];
       const a = c && !NR1_PSEUDO.test(c.area) ? areaDe(c) : (localizar(v.dep) || 'Sem área no Quadro');
       const neg = ['lid', 'amb'].filter(k => /regular|ruim|p[eé]ssim/i.test(v[k] || ''));
