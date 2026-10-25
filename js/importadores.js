@@ -40,6 +40,8 @@ function detectar(wb, nomeArq){
   if (h.includes('Gozo Inicial') && h.includes('Aquisição Inicial')) return { tipo:'hist', h:'ferias', R };
   if (h.includes('Descrição do Curso') && h.includes('Início do Curso')) return { tipo:'hist', h:'curso', R };
   if (h.includes('Nome do Exame') && h.includes('Data do Próximo Exame')) return { tipo:'hist', h:'exame', R };
+  if (h.includes('Data de Afastamento') && h.includes('Data Efetiva de Retorno')) return { tipo:'hist', h:'afast', R };
+  if (h.includes('Data da Aposentadoria') && h.includes('Nome do Benefício')) return { tipo:'hist', h:'apos', R };
   if (h.includes('Causa da Estabilidade') && h.includes('Fim da Estabilidade')) return { tipo:'hist', h:'estab', R };
   // dependentes cadastrados na folha (PFP0658P: "Dados Cadastrais dos Dependentes")
   if (R.slice(0, 4).some(r => (r || []).map(s).some(x => /^Dados Cadastrais dos/i.test(x))) && R.some(r => s((r || [])[0]) === 'DEPENDENTES')) return { tipo:'hist', h:'dep', R };
@@ -243,6 +245,11 @@ function converterHist(h, R, mapa, REF){
     let it = null;
     if (h === 'curso') { it = [iso(get(r, 'Início do Curso')), iso(get(r, 'Final do Curso')), sp(get(r, 'Descrição do Curso')), num(get(r, 'Codigo do Curso'))]; if (!it[0] || !it[2]) continue; (itens[m] = itens[m] || []).push(it); lin++; continue; }
     if (h === 'exame') { const cl = sp(get(r, 'Desc. Classificação')) || sp(get(r, 'Nome do Exame')); it = [iso(get(r, 'Data do Exame')), iso(get(r, 'Data do Próximo Exame')), cl, s(get(r, 'Exame de Demissão')).toUpperCase() === 'S' ? 1 : 0]; if (!it[0]) continue; (itens[m] = itens[m] || []).push(it); lin++; continue; }
+    if (h === 'afast') { // TFP44T: [início, retorno ('' = segue afastado), código, causa, CID]
+      it = [iso(get(r, 'Data de Afastamento')), iso(get(r, 'Data Efetiva de Retorno')) || '', sp(get(r, 'Causa Afast')), sp(get(r, 'Descr. Causa Afastamento')), sp(get(r, 'CID'))]; if (!it[0]) continue; (itens[m] = itens[m] || []).push(it); lin++; continue; }
+    if (h === 'apos') { // TFP43T: [data, término ('' = sem término), benefício, nº do benefício, 1 = nome e número vieram trocados]
+      let bn = sp(get(r, 'Nome do Benefício')), nb = sp(get(r, 'Número do Benefício')); let tr = 0; if (/^[\d.\-\s]+$/.test(bn)) { if (nb && !/^[\d.\-\s]+$/.test(nb)) { const t = nb; nb = bn; bn = t; tr = 1; } else if (!nb) { nb = bn; bn = ''; } }
+      const fim = iso(get(r, 'Data Término da Aposentadoria')); it = [iso(get(r, 'Data da Aposentadoria')), fim && fim < '2900' ? fim : '', bn, nb, tr]; if (!it[0]) continue; (itens[m] = itens[m] || []).push(it); lin++; continue; }
     if (h === 'estab') { it = { mat:m, nome:q.nome, causa:sp(get(r, 'Descrição da Causa')), inicio:iso(get(r, 'Início da Estabilidade')), fim:iso(get(r, 'Fim da Estabilidade')) }; if (!it.fim) continue; (itens[m] = itens[m] || []).push(it); lin++; continue; }
     if (h === 'ferias') { if (s(get(r, 'Anula')).toUpperCase() === 'S') { anul++; continue; }
       it = [iso(get(r, 'Aquisição Inicial')), iso(get(r, 'Aquisição Final')), iso(get(r, 'Gozo Inicial')), iso(get(r, 'Gozo Final')), iso(get(r, 'Data Retorno'))]; if (!it[2]) continue; }
@@ -266,7 +273,7 @@ async function ler(f){
   const out = [];
   if (det.tipo === 'hist') {
     const Q = await window.CRV_QUADRO(); if (!Q || !Q.mapa) throw new Error('carregue o Quadro Geral antes dos históricos');
-    let pac = converterHist(det.h, det.R, Q.mapa, REF); const T = { ferias:'Histórico de férias', depto:'Histórico de departamentos', cargo:'Histórico de funções', dep:'Dependentes da folha', curso:'Treinamentos realizados', exame:'Exames ocupacionais (ASO)', estab:'Estabilidades da folha' }[det.h];
+    let pac = converterHist(det.h, det.R, Q.mapa, REF); const T = { ferias:'Histórico de férias', depto:'Histórico de departamentos', cargo:'Histórico de funções', dep:'Dependentes da folha', curso:'Treinamentos realizados', exame:'Exames ocupacionais (ASO)', afast:'Histórico de afastamentos', apos:'Aposentadorias', estab:'Estabilidades da folha' }[det.h];
     if (det.h === 'estab') { // entra no cadastro de estabilidade que o app já usa (Quadro Geral, Central, checklist de desligamento)
       const TIP = c => /CIP/i.test(c) ? 'CIPA' : /ACIDENTE/i.test(c) ? 'Acidente de trabalho' : /GESTANTE/i.test(c) ? 'Gestante' : /APOSENT/i.test(c) ? 'Pré-aposentadoria' : /SINDIC/i.test(c) ? 'Dirigente sindical' : 'Outro';
       const itens = [].concat(...Object.values(pac.itens)).map(x => ({ mat:String(x.mat), nome:x.nome, tipo:TIP(x.causa), detalhe:x.causa, inicio:x.inicio, fim:x.fim, status:'confirmada', origem:'Relatório de estabilidades da folha (TFP40T)' }));

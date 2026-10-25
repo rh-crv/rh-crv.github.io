@@ -979,7 +979,7 @@ function ficha(){
   $('ficha').innerHTML='<article class="sheet"><div class="shd"><span class="av">'+esc(ini(r[NOME]))+'</span><div class="sid"><div class="eyebrow">Ficha de registro do colaborador</div><h2>'+esc(r[NOME])+'</h2><div class="fs">Matrícula '+r[MAT]+' · '+esc(r[FUN])+'</div><div class="ftags"><span class="stag '+(r[SIT]=='Ativo'?'ok':'aw')+'">'+r[SIT]+'</span><span class="stag">'+esc(r[CON])+'</span><span class="stag">'+esc(r[AREA])+'</span>'+(r.bq?'<span class="stag" style="background:#b3261e;border-color:#b3261e">Bloqueado</span>':'')+(r.gs?'<span class="stag" style="background:#7a2e8e;border-color:#7a2e8e">'+gLab(r)+'</span>':'')+(r.ac?'<span class="stag" style="background:#b86a00;border-color:#b86a00">Acidente de trabalho</span>':'')+(r.as?'<span class="stag" style="background:#b86a00;border-color:#b86a00">Acidente de trabalho em setembro</span>':'')+'</div></div><div class="sact"><button class="sbtn pri pdfb" id="fpdf">Baixar PDF</button><button class="sbtn" id="fcopy">Copiar ficha</button></div></div>'
   +'<div class="strip">'+[['Admissão',dbr(r[ADM])],['Tempo de casa',casa(r.t)],['Setor',r[AREA]],['Seção',r[DEP]||'—'],['Gestão / frente',r[GES]||'Não classificada']].map(k=>'<div><span>'+k[0]+'</span><b>'+esc(k[1])+'</b></div>').join('')+'</div>'
   +fdata(r).filter(s=>s[1].length).map(s=>'<section class="fsec"><h3>'+s[0]+'</h3><div class="cells">'+pack(s[1]).map(row=>row.map(c=>'<div style="grid-column:span '+c.s+'"><span>'+c.l+'</span><b'+(c.w?' class="warn"':c.v=='—'?' class="nil"':'')+'>'+esc(c.v)+'</b></div>').join('')).join('')+'</div></section>').join('')
-  +'<section class="fsec" id="fdeps"></section><section class="fsec" id="faso"></section><section class="fsec" id="fcur"></section><section class="fsec" id="ftraj"></section><section class="fsec" id="fhist"></section>'
+  +'<section class="fsec" id="fdeps"></section><section class="fsec" id="faso"></section><section class="fsec" id="fafa"></section><section class="fsec" id="fcur"></section><section class="fsec" id="ftraj"></section><section class="fsec" id="fhist"></section>'
   +'<div class="sfoot">Base Geral de Colaboradores · posição em __CRV_REFBR__ · uso restrito à Gestão de Pessoas</div></article>';
   if(window.CRV_FICHA_DEPS)window.CRV_FICHA_DEPS(r);
   if(window.CRV_FICHA_HIST)window.CRV_FICHA_HIST(r);
@@ -3084,13 +3084,18 @@ fb.addEventListener('change',()=>setTimeout(resumo,30));resumo();
    A.innerHTML='<h3>Dependentes</h3><p class="fd-n">Buscando o cadastro de dependentes…</p>';T.innerHTML='';
    const D=await db();if(!D){A.innerHTML='';return}
    const get=async c=>{try{const x=await D.collection(c).doc('m'+mat).get();return x.exists?x.data():null}catch(_){return null}};
-   const [dp,hd,hc,he,hu]=await Promise.all([get('hist_dep'),get('hist_depto'),get('hist_cargo'),get('hist_exame'),get('hist_curso')]);
+   const [dp,hd,hc,he,hu,ha,hp]=await Promise.all([get('hist_dep'),get('hist_depto'),get('hist_cargo'),get('hist_exame'),get('hist_curso'),get('hist_afast'),get('hist_apos')]);
    if(!document.getElementById('fdeps')||A!==document.getElementById('fdeps'))return;
    const L=(dp&&dp.l)||[];
    A.innerHTML='<h3>Dependentes ('+L.length+')</h3>'+(L.length?'<div class="fd-w"><table class="fd-t"><thead><tr><th>Nome</th><th>Parentesco</th><th>Nascimento</th><th class="hm">Sexo</th><th>CPF</th></tr></thead><tbody>'+L.map(d=>'<tr><td><b>'+e(d[0])+'</b></td><td>'+e(d[2])+'</td><td>'+b(d[1])+(d[1]?' ('+idade(d[1])+' anos)':'')+'</td><td class="hm">'+e(d[3]==='F'?'Feminino':d[3]==='M'?'Masculino':d[3])+'</td><td>'+cpf(d[4])+'</td></tr>').join('')+'</tbody></table></div>':'<p class="fd-n">'+(dp?'Nenhum dependente cadastrado na folha.':'O cadastro de dependentes ainda não foi carregado no app (relatório PFP0658P).')+'</p>')
      +(dp&&dp.ref?'<p class="fd-n">Cadastro de dependentes da folha de '+b(dp.ref)+'.</p>':'');
    const hj=new Date().toISOString().slice(0,10),EX=((he&&he.l)||[]).slice().sort((a,c)=>c[0].localeCompare(a[0])),ul=EX.find(x=>!x[3]),SA=document.getElementById('faso'),SC=document.getElementById('fcur');
    if(SA)SA.innerHTML=EX.length?'<h3>Exames ocupacionais (ASO)</h3>'+(ul&&ul[1]&&ul[1]<hj?'<p class="fd-n" style="color:#b3261e;font-weight:600">'+(r[8]==='Afastado'?'ASO vencido em '+b(ul[1])+' · afastado: fazer o exame de retorno ao voltar':'ASO periódico vencido desde '+b(ul[1]))+'</p>':'')+'<div class="fd-w"><table class="fd-t"><thead><tr><th>Data</th><th>Exame</th><th>Próximo exame</th></tr></thead><tbody>'+EX.map(x=>'<tr><td>'+b(x[0])+'</td><td>'+e(x[2])+(x[3]?' (demissional)':'')+'</td><td>'+(x[1]?b(x[1]):'—')+'</td></tr>').join('')+'</tbody></table></div>':'';
+   const SF=document.getElementById('fafa'),AF=((ha&&ha.l)||[]).slice().sort((a,c)=>c[0].localeCompare(a[0])),AP=(hp&&hp.l)||[],AB=AF.find(x=>!x[1]),c12=new Date(Date.now()-365*864e5).toISOString().slice(0,10),dA=(a,z)=>Math.max(0,Math.round((new Date((z||hj)+'T12:00:00')-new Date(a+'T12:00:00'))/864e5)),A12=AF.filter(x=>(x[1]||hj)>c12);
+   if(SF)SF.innerHTML=AF.length||AP.length?'<h3>Afastamentos ('+AF.length+')</h3>'+(AB?'<p class="fd-n" style="color:#a3301c;font-weight:600">Afastado desde '+b(AB[0])+' ('+dA(AB[0])+' dias) · '+e(AB[3]||AB[2])+(AB[4]?' · CID '+e(AB[4]):'')+'</p>':'')+AP.map(x=>'<p class="fd-n" style="font-weight:600">Aposentadoria: '+e(x[2]||'benefício não informado')+' desde '+b(x[0])+(x[3]?' · nº '+e(x[3]):'')+'</p>').join('')
+     +'<p class="fd-n">Últimos 12 meses: '+A12.length+(A12.length==1?' afastamento':' afastamentos')+', '+A12.reduce((t,x)=>t+dA(x[0]>c12?x[0]:c12,x[1]),0)+' dias.</p>'
+     +(AF.length?'<div class="fd-w"><table class="fd-t"><thead><tr><th>Início</th><th>Retorno</th><th>Motivo</th><th>CID</th><th>Dias</th></tr></thead><tbody>'+AF.map(x=>'<tr><td>'+b(x[0])+'</td><td>'+(x[1]?b(x[1]):'<b>segue afastado</b>')+'</td><td>'+e(x[3]||x[2])+'</td><td>'+e(x[4]||'—')+'</td><td>'+dA(x[0],x[1])+'</td></tr>').join('')+'</tbody></table></div>':'')
+     +'<p class="fd-n">Relatórios de afastamentos (TFP44T) e de aposentadorias (TFP43T) da folha'+(ha&&ha.ref?' de '+b(ha.ref):'')+'. O CID é dado de saúde: uso restrito do RH.</p>':'';
    const CU=((hu&&hu.l)||[]).slice().sort((a,c)=>c[0].localeCompare(a[0]));
    if(SC)SC.innerHTML=CU.length?'<h3>Treinamentos realizados ('+CU.length+')</h3><div class="fd-w"><table class="fd-t"><thead><tr><th>Data</th><th>Treinamento</th></tr></thead><tbody>'+CU.map(x=>'<tr><td>'+b(x[0])+(x[1]&&x[1]!==x[0]?' a '+b(x[1]):'')+'</td><td>'+e(x[2])+'</td></tr>').join('')+'</tbody></table></div>':'';
    const tr=((hd&&hd.l)||[]).map(x=>[x[0],'Departamento',x[1],x[2]]).concat(((hc&&hc.l)||[]).map(x=>[x[0],'Função',x[1],x[2]])).sort((a,c)=>c[0].localeCompare(a[0]));
@@ -3105,7 +3110,7 @@ fb.addEventListener('change',()=>setTimeout(resumo,30));resumo();
 <script>
 (function(){
  const e=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])),b=s=>s?s.slice(8,10)+'/'+s.slice(5,7)+'/'+s.slice(0,4):'—';
- const hoje=()=>new Date().toISOString().slice(0,10),dd=a=>Math.round((new Date(a+'T12:00:00')-new Date(hoje()+'T12:00:00'))/864e5);
+ const hoje=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')},dd=a=>Math.round((new Date(a+'T12:00:00')-new Date(hoje()+'T12:00:00'))/864e5);
  let DB=null;const db=async()=>{if(DB)return DB;try{DB=window.claude&&window.claude.use?await window.claude.use('db'):null}catch(_){DB=null}return DB};
  const salvar=async(nome,bytes,tipo)=>{try{const DL=window.claude&&window.claude.use?await window.claude.use('downloads'):null;if(DL)return DL.save({filename:nome,data:bytes})}catch(_){}
    const u=URL.createObjectURL(new Blob([bytes],{type:tipo})),a=document.createElement('a');a.href=u;a.download=nome;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},3000)};
@@ -3144,6 +3149,73 @@ fb.addEventListener('change',()=>setTimeout(resumo,30));resumo();
   g('axPdf').onclick=async()=>{const J=(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF),L=linhas();if(!J||!L.length)return;const doc=new J({orientation:'landscape',unit:'mm',format:'a4'});
     doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text(tit()+' · CRV Industrial',12,14);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text(L.length+' colaborador(es) · relatório de exames de '+b(ref)+' · emitido em '+b(hoje()),12,20);
     const cols=['Matrícula','Nome','Função','Setor','Situação','Último exame','Data do último exame','Próximo exame','Prazo'];doc.autoTable({startY:24,head:[cols],body:L.map(r=>cols.map(c=>String(r[c]??''))),styles:{fontSize:7.5,cellPadding:1.5},headStyles:{fillColor:[11,58,71]},margin:{left:10,right:10}});
+    const f=window.parent&&window.parent.CRV_PDF_LOGOS;await salvar(tit().replace(/[\\/:*?"<>|]/g,' ')+' '+b(hoje()).split('/').join('-')+'.pdf',new Uint8Array((await (f?f(doc):doc)).output('arraybuffer')),'application/pdf')};
+  draw()};
+})();
+</script>
+<!-- ===== afastamentos e aposentadorias · relatórios TFP44T e TFP43T carregados no app ===== -->
+<script>
+(function(){
+ const e=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])),b=s=>s?s.slice(8,10)+'/'+s.slice(5,7)+'/'+s.slice(0,4):'—';
+ const hoje=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')},dA=(a,z)=>Math.max(0,Math.round((new Date((z||hoje())+'T12:00:00')-new Date(a+'T12:00:00'))/864e5));
+ const tempo=n=>n<60?n+' dias':n<730?Math.round(n/30.4)+' meses':(n/365.25).toLocaleString('pt-BR',{maximumFractionDigits:1})+' anos';
+ let DB=null;const db=async()=>{if(DB)return DB;try{DB=window.claude&&window.claude.use?await window.claude.use('db'):null}catch(_){DB=null}return DB};
+ const salvar=async(nome,bytes,tipo)=>{try{const DL=window.claude&&window.claude.use?await window.claude.use('downloads'):null;if(DL)return DL.save({filename:nome,data:bytes})}catch(_){}
+   const u=URL.createObjectURL(new Blob([bytes],{type:tipo})),a=document.createElement('a');a.href=u;a.download=nome;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},3000)};
+ // grupo do afastamento pelo código/descrição da folha
+ const grp=x=>{const c=(x[2]||'').toUpperCase(),d=(x[3]||'').toUpperCase();return c==='U3'||/APOSENT/.test(d)?'inv':/ACID/.test(d)?'aci':/MATERN/.test(d)?'mat':c==='P1'||c==='P2'||/SUPERIOR 15|MESMA DOEN/.test(d)?'inss':/DOEN|COVID/.test(d)?'cur':'out'};
+ const GN={inv:'Aposentadoria por invalidez',aci:'Acidente de trabalho',mat:'Licença-maternidade',inss:'Doença acima de 15 dias (INSS)',cur:'Doença até 15 dias',out:'Outros motivos'};
+ const K=[['ab','Afastados agora','#a3301c','afastamento sem retorno'],['inss','Doença · INSS','#b7791f','acima de 15 dias, em aberto'],['aci','Acidente de trabalho','#c2410c','afastamento em aberto'],['mat','Licença-maternidade','#7d4fa6','em aberto'],['inv','Aposentadoria por incapacidade','#5d6a85','afastados aposentados'],['at','Aposentados trabalhando','#2f6fa8','por idade ou tempo'],['r12','Mais afastamentos em 12 meses','#2e8a57','do maior para o menor'],['cf','A conferir','#8a5a00','cadastro da folha']];
+ window.CRV_AFAST=async()=>{
+  const w=document.createElement('div');w.className='es-fundo';const S={k:'ab',q:'',ar:'',sel:new Set(),ab:''};
+  w.innerHTML=`<div class="es-modal" role="dialog" aria-modal="true" style="max-width:1200px"><div class="es-cab"><h3>Afastamentos e aposentadorias<small>Afastamentos de cada colaborador ativo ou afastado (relatório TFP44T da folha) e aposentadorias registradas (TFP43T). O CID é dado de saúde: uso restrito do RH.</small></h3><button class="es-b" id="afXls">Excel</button><button class="es-b" id="afPdf">PDF</button><button class="es-b" id="afX">Fechar</button></div>
+   <div class="ax-k" id="afK" style="grid-template-columns:repeat(auto-fit,minmax(128px,1fr))"><div style="padding:8px;color:#5d6a85">Carregando…</div></div>
+   <p id="afN" style="margin:0 16px 6px;font-size:12.5px;color:#3b4660"></p>
+   <div class="es-tools"><input type="search" id="afQ" placeholder="Buscar nome, matrícula, função ou CID"><select id="afA"><option value="">Todos os setores</option></select><span id="afC" style="margin-left:auto;color:#5d6a85;font-size:12px"></span></div>
+   <div class="es-tab"><table><thead><tr><th><input type="checkbox" id="afAll" aria-label="Selecionar todos"></th><th>Matrícula</th><th>Colaborador</th><th>Setor / seção</th><th>Situação</th><th>Afastamento em aberto</th><th>Tempo</th><th>12 meses</th><th>Aposentadoria</th><th></th></tr></thead><tbody id="afB"></tbody></table></div></div>`;
+  document.body.appendChild(w);const g=id=>w.querySelector('#'+id),fe=()=>w.remove();g('afX').onclick=fe;w.addEventListener('mousedown',ev=>{if(ev.target===w)fe()});
+  const D0=await db();const H={},HP={};let ref='';
+  if(D0){try{const s=await D0.collection('hist_afast').get();s.docs.forEach(d=>{const x=d.data();if(x&&x.mat){H[String(x.mat)]=x.l||[];ref=ref||x.ref||''}})}catch(_){}
+    try{const s=await D0.collection('hist_apos').get();s.docs.forEach(d=>{const x=d.data();if(x&&x.mat)HP[String(x.mat)]=x.l||[]})}catch(_){}}
+  if(!Object.keys(H).length&&!Object.keys(HP).length){g('afK').innerHTML='<div style="padding:10px 4px;color:#5d6a85">Os relatórios de afastamentos ainda não foram carregados no app. Em Administração → Painéis → carregar em lote, escolha as planilhas TFP44T (afastamentos) e TFP43T (aposentadorias) do sistema.</div>';return}
+  const c12=new Date(Date.now()-365*864e5).toISOString().slice(0,10);
+  const P=D.map(r=>{const m=String(r[MAT]),L=(H[m]||[]).slice().sort((a,c)=>c[0].localeCompare(a[0])),ab=L.find(x=>!x[1]),ap=(HP[m]||[])[0]||null,A12=L.filter(x=>(x[1]||hoje())>c12),d12=A12.reduce((t,x)=>t+dA(x[0]>c12?x[0]:c12,x[1]),0);
+    const inc=ap&&/INVALID|INCAPAC/i.test(ap[2]),cf=[];
+    if(inc&&ab&&grp(ab)!=='inv')cf.push('Aposentado por incapacidade desde '+b(ap[0])+', mas o afastamento em aberto está como "'+(ab[3]||ab[2])+'"');
+    if(ap&&ap[4])cf.push('Nome e número do benefício estão trocados no cadastro da aposentadoria');
+    if(ap&&!ap[2])cf.push('Aposentadoria sem o nome do benefício no cadastro'+(ap[3]?' (o campo traz o nº '+ap[3]+')':''));
+    if(ab&&grp(ab)==='inv'&&!ap)cf.push('Afastado por aposentadoria por invalidez, sem registro no relatório de aposentadorias');
+    if(r[SIT]==='Afastado'&&!ab&&Object.keys(H).length)cf.push('Situação "Afastado" no quadro, sem afastamento em aberto no relatório');
+    if(r[SIT]!=='Afastado'&&ab)cf.push('Afastamento em aberto no relatório, mas o quadro mostra "'+r[SIT]+'"');
+    return {r,m,L,ab,ap,inc,A12,d12,cf,g:ab?grp(ab):'',q:(r[NOME]+' '+m+' '+r[FUN]+' '+(r[DEP]||'')+' '+(ab?ab[4]:'')).toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'')}});
+  const em=k=>k==='ab'?x=>!!x.ab:k==='at'?x=>x.ap&&!x.inc&&x.r[SIT]!=='Afastado':k==='inv'?x=>x.g==='inv'||(x.inc&&!!x.ab):k==='r12'?x=>x.A12.length>0:k==='cf'?x=>x.cf.length>0:x=>x.g===k&&!(x.inc);
+  g('afA').innerHTML+=[...new Set(D.map(r=>r[AREA]))].sort().map(a=>'<option>'+e(a)+'</option>').join('');
+  const lista=()=>{const q=S.q.toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,''),f=em(S.k);return P.filter(x=>f(x)&&(!S.ar||x.r[AREA]===S.ar)&&(!q||x.q.includes(q))).sort(S.k==='r12'?(a,c)=>c.A12.length-a.A12.length||c.d12-a.d12:S.k==='at'?(a,c)=>a.ap[0].localeCompare(c.ap[0]):(a,c)=>((a.ab&&a.ab[0])||'9').localeCompare((c.ab&&c.ab[0])||'9')||a.r[NOME].localeCompare(c.r[NOME]))};
+  const nota=()=>{const ab=P.filter(x=>x.ab),gc={};ab.forEach(x=>{const k=x.inc?'inv':x.g;gc[k]=(gc[k]||0)+1});const r12=P.filter(x=>x.A12.length),d=r12.reduce((t,x)=>t+x.d12,0);
+    return '<b>Dado:</b> '+ab.length+' afastados hoje ('+Object.entries(gc).sort((a,c)=>c[1]-a[1]).map(([k,n])=>n+' '+GN[k].toLowerCase().replace('(inss)','(INSS)')).join(', ')+'). Nos últimos 12 meses, '+r12.length+' colaboradores tiveram ao menos um afastamento (atestado ou INSS), somando '+d.toLocaleString('pt-BR')+' dias; '+r12.filter(x=>x.ab).reduce((t,x)=>t+x.d12,0).toLocaleString('pt-BR')+' desses dias são de quem segue afastado. '+(S.k==='cf'?'<b>A conferir</b> são diferenças entre os relatórios da folha e o quadro; corrigir no sistema da folha.':'')};
+  const ab12=x=>x.A12.length?x.A12.length+'× · '+x.d12+' dias':'—';
+  const draw=()=>{const L=lista(),n=k=>P.filter(em(k)).length;
+   g('afK').innerHTML=K.map(([k,t,c,s])=>`<button class="${S.k===k?'on':''}" data-k="${k}" style="--c:${c}"><span>${t}</span><b>${n(k)}</b><small>${s}</small></button>`).join('');g('afN').innerHTML=nota();
+   g('afC').textContent=L.length+' colaborador(es)'+(S.sel.size?' · '+S.sel.size+' selecionado(s)':'')+(ref?' · relatório de '+b(ref):'');
+   g('afB').innerHTML=L.slice(0,400).map(x=>`<tr><td><input type="checkbox" data-s="${x.m}"${S.sel.has(x.m)?' checked':''}></td><td>${x.m}</td><td><button class="ax-nm" data-f="${x.m}">${e(x.r[NOME])}</button><div style="font-size:11.5px;color:#5d6a85">${e(x.r[FUN])}</div></td><td>${e(x.r[AREA])}<div style="font-size:11.5px;color:#5d6a85">${e(x.r[DEP]||'')}</div></td><td>${e(x.r[SIT])}</td>
+     <td>${x.ab?e(x.ab[3]||x.ab[2])+'<div style="font-size:11.5px;color:#5d6a85">desde '+b(x.ab[0])+(x.ab[4]?' · CID '+e(x.ab[4]):'')+'</div>':'—'}${x.cf.length&&S.k==='cf'?'<div style="font-size:11.5px;color:#8a5a00;font-weight:600">'+x.cf.map(e).join('<br>')+'</div>':''}</td>
+     <td>${x.ab?'<span class="ax-st '+(dA(x.ab[0])>365?'v':'p')+'">'+tempo(dA(x.ab[0]))+'</span>':''}</td><td>${ab12(x)}</td><td>${x.ap?e(x.ap[2]||'Benefício não informado')+'<div style="font-size:11.5px;color:#5d6a85">desde '+b(x.ap[0])+'</div>':'—'}</td>
+     <td>${x.L.length?`<button class="ax-mini" data-h="${x.m}">${S.ab===x.m?'fechar':'histórico ('+x.L.length+')'}</button>`:''}</td></tr>`
+     +(S.ab===x.m?`<tr class="ax-h"><td></td><td colspan="9">${x.L.map(y=>b(y[0])+' a '+(y[1]?b(y[1]):'hoje')+' · '+dA(y[0],y[1])+' dias · '+e(y[3]||y[2])+(y[4]?' · CID '+e(y[4]):'')).join('<br>')}</td></tr>`:'')).join('')+(L.length>400?'<tr><td colspan="10" style="padding:10px;color:#5d6a85">Mostrando 400 de '+L.length+'. Use a busca ou o setor para filtrar; o Excel e o PDF levam a lista inteira.</td></tr>':'')||'<tr><td colspan="10" style="padding:10px;color:#5d6a85">Ninguém aqui.</td></tr>';
+   g('afK').querySelectorAll('[data-k]').forEach(x=>x.onclick=()=>{S.k=x.dataset.k;S.sel.clear();draw()});
+   g('afB').querySelectorAll('[data-s]').forEach(x=>x.onchange=()=>{x.checked?S.sel.add(x.dataset.s):S.sel.delete(x.dataset.s);g('afC').textContent=L.length+' colaborador(es)'+(S.sel.size?' · '+S.sel.size+' selecionado(s)':'')});
+   g('afB').querySelectorAll('[data-h]').forEach(x=>x.onclick=()=>{S.ab=S.ab===x.dataset.h?'':x.dataset.h;draw()});
+   g('afB').querySelectorAll('[data-f]').forEach(x=>x.onclick=()=>{fe();st.fi=+x.dataset.f;st.tab='f';render();window.scrollTo(0,0)});
+   g('afAll').checked=L.length&&L.every(x=>S.sel.has(x.m));g('afAll').onchange=()=>{L.forEach(x=>g('afAll').checked?S.sel.add(x.m):S.sel.delete(x.m));draw()}};
+  g('afQ').oninput=ev=>{S.q=ev.target.value.trim();draw()};g('afA').onchange=ev=>{S.ar=ev.target.value;draw()};
+  const linhas=()=>lista().filter(x=>!S.sel.size||S.sel.has(x.m)).map(x=>({'Matrícula':x.m,'Nome':x.r[NOME],'Função':x.r[FUN],'Setor':x.r[AREA],'Seção':x.r[DEP]||'','Situação':x.r[SIT],'Afastamento em aberto':x.ab?(x.ab[3]||x.ab[2]):'','Desde':x.ab?b(x.ab[0]):'','Tempo afastado':x.ab?tempo(dA(x.ab[0])):'','CID':x.ab?x.ab[4]||'':'','Afastamentos 12 meses':x.A12.length,'Dias 12 meses':x.d12,'Aposentadoria':x.ap?(x.ap[2]||'Benefício não informado')+' desde '+b(x.ap[0]):'','A conferir':x.cf.join('; ')}));
+  const tit=()=>'Afastamentos · '+K.find(k=>k[0]===S.k)[1]+(S.ar?' · '+S.ar:'');
+  g('afXls').onclick=async()=>{const X=window.XLSX||(window.parent&&window.parent.XLSX),L=linhas();if(!X||!L.length)return;const ws=X.utils.json_to_sheet(L);ws['!cols']=Object.keys(L[0]).map(k=>({wch:/Nome|Função|Seção|Afastamento|Aposentadoria|conferir/.test(k)?34:14}));const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,'Afastamentos');
+    await salvar(tit().replace(/[\\/:*?"<>|]/g,' ')+' '+b(hoje()).split('/').join('-')+'.xlsx',new Uint8Array(X.write(wb,{bookType:'xlsx',type:'array'})),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')};
+  g('afPdf').onclick=async()=>{const J=(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF),L=linhas();if(!J||!L.length)return;const doc=new J({orientation:'landscape',unit:'mm',format:'a4'});
+    doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text(tit()+' · CRV Industrial',12,14);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text(L.length+' colaborador(es) · relatório de afastamentos de '+b(ref)+' · emitido em '+b(hoje())+' · Gestão de Pessoas · uso restrito (contém CID)',12,20);
+    const cols=S.k==='cf'?['Matrícula','Nome','Setor','Situação','Afastamento em aberto','Desde','Aposentadoria','A conferir']:S.k==='r12'?['Matrícula','Nome','Função','Setor','Situação','Afastamentos 12 meses','Dias 12 meses','Afastamento em aberto']:['Matrícula','Nome','Função','Setor','Afastamento em aberto','Desde','Tempo afastado','CID','Afastamentos 12 meses','Aposentadoria'];
+    doc.autoTable({startY:24,head:[cols],body:L.map(r=>cols.map(c=>String(r[c]??''))),styles:{fontSize:7.3,cellPadding:1.4},headStyles:{fillColor:[11,58,71]},margin:{left:10,right:10}});
     const f=window.parent&&window.parent.CRV_PDF_LOGOS;await salvar(tit().replace(/[\\/:*?"<>|]/g,' ')+' '+b(hoje()).split('/').join('-')+'.pdf',new Uint8Array((await (f?f(doc):doc)).output('arraybuffer')),'application/pdf')};
   draw()};
 })();

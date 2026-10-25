@@ -655,7 +655,7 @@ async function fichaDados(mat){
       alerta: s.niv === 'a' ? 'risco alto (' + s.S.join(', ') + ')' : s.niv === 't' ? 'atenção (' + s.S.join(', ') + ')' : '' }); })()); }
   // Trajetória (departamentos e funções) e histórico de férias, vindos dos relatórios da folha
   if (ehRH()) tarefas.push((async () => {
-    const { data } = await sb.from('registros').select('colecao,dados').eq('painel', 'quadro').in('caminho', ['hist_depto/m' + mat, 'hist_cargo/m' + mat, 'hist_ferias/m' + mat, 'hist_dep/m' + mat, 'hist_curso/m' + mat, 'hist_exame/m' + mat]);
+    const { data } = await sb.from('registros').select('colecao,dados').eq('painel', 'quadro').in('caminho', ['hist_depto/m' + mat, 'hist_cargo/m' + mat, 'hist_ferias/m' + mat, 'hist_dep/m' + mat, 'hist_curso/m' + mat, 'hist_exame/m' + mat, 'hist_afast/m' + mat, 'hist_apos/m' + mat]);
     const H = {}; (data || []).forEach(x => { H[x.colecao] = x.dados || {}; });
     const T = ((H.hist_depto || {}).l || []).map(x => [x[0], 'Departamento', x[1], x[2]]).concat(((H.hist_cargo || {}).l || []).map(x => [x[0], 'Função', x[1], x[2]])).sort((a, b) => b[0].localeCompare(a[0]));
     const DP = (H.hist_dep || {}).l || [], idd = n => { if (!n) return ''; const a = Math.floor((Date.now() - new Date(n + 'T12:00:00')) / 31557600000); return ' (' + a + ' anos)'; };
@@ -663,6 +663,12 @@ async function fichaDados(mat){
     if (EX.length) F.sec.push({ k:'aso', t:'Exames ocupacionais (ASO)', ref:H.hist_exame.ref, cab:['Data do exame', 'Exame', 'Próximo exame'], linhas:EX.map(x => [brD(x[0]), x[2] + (x[3] ? ' (demissional)' : ''), x[1] ? brD(x[1]) + (x === ul && x[1] < hoje ? ' · vencido' : '') : '—']),
       resumo:[['Último exame', ul ? brD(ul[0]) + ' · ' + ul[2] : '—'], ['Próximo exame', ul && ul[1] ? brD(ul[1]) : '—']],
       alerta: ul && ul[1] && ul[1] < hoje ? (c.situacao === 'Afastado' ? 'ASO vencido em ' + brD(ul[1]) + ' (afastado: fazer o exame de retorno ao voltar)' : 'ASO periódico vencido desde ' + brD(ul[1])) : '' });
+    const AF = ((H.hist_afast || {}).l || []).slice().sort((a, b) => b[0].localeCompare(a[0])), AB = AF.find(x => !x[1]), c12 = new Date(Date.now() - 365 * 864e5).toISOString().slice(0, 10);
+    const dAf = (a, b) => Math.max(0, Math.round((new Date((b || hoje) + 'T12:00:00') - new Date(a + 'T12:00:00')) / 864e5)), A12 = AF.filter(x => (x[1] || hoje) > c12);
+    const AP = ((H.hist_apos || {}).l || []).slice().sort((a, b) => b[0].localeCompare(a[0]));
+    if (AF.length || AP.length) F.sec.push({ k:'afast', t:'Afastamentos (' + AF.length + ')', ref:(H.hist_afast || H.hist_apos).ref, cab:['Início', 'Retorno', 'Motivo', 'CID', 'Dias'], linhas:AF.map(x => [brD(x[0]), x[1] ? brD(x[1]) : 'segue afastado', x[3] || x[2], x[4] || '—', dAf(x[0], x[1])]),
+      resumo:[['Situação', AB ? 'Afastado desde ' + brD(AB[0]) + ' · ' + (AB[3] || AB[2]) : 'Sem afastamento em aberto'], ['Últimos 12 meses', A12.length + (A12.length === 1 ? ' afastamento' : ' afastamentos') + ' · ' + A12.reduce((t, x) => t + dAf(x[0] > c12 ? x[0] : c12, x[1]), 0) + ' dias']].concat(AP.map(x => ['Aposentadoria', (x[2] || 'Benefício não informado') + ' desde ' + brD(x[0]) + (x[3] ? ' · nº ' + x[3] : '')])),
+      alerta: AB && /ACID/i.test(AB[3]) ? 'afastado por acidente de trabalho' : '' });
     const CU = ((H.hist_curso || {}).l || []).slice().sort((a, b) => b[0].localeCompare(a[0]));
     if (CU.length) F.sec.push({ k:'cursos', t:'Treinamentos realizados (' + CU.length + ')', ref:H.hist_curso.ref, cab:['Data', 'Treinamento'], linhas:CU.map(x => [brD(x[0]) + (x[1] && x[1] !== x[0] ? ' a ' + brD(x[1]) : ''), x[2]]) });
     if (H.hist_dep) F.sec.push({ k:'deps', t:'Dependentes (' + DP.length + ')', ref:H.hist_dep.ref, cab:['Nome', 'Parentesco', 'Nascimento', 'CPF'], linhas:DP.map(d => [d[0], d[2], brD(d[1]) + idd(d[1]), d[4] ? d[4].replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : '—']) });
@@ -975,7 +981,7 @@ function blocoFrente(f, lista){
    ===================================================================== */
 // opções que aparecem abaixo do painel no menu (seta)
 const SUBACOES = {
-  quadro:   [{ acao:'hcol', nome:'Histórico do colaborador' }, { acao:'ent', nome:'Entrevista de desligamento' }, { acao:'entr', nome:'Respostas das entrevistas' }, { acao:'estab', nome:'Estabilidade' }, { acao:'aso', nome:'Exames (ASO)' }],
+  quadro:   [{ acao:'hcol', nome:'Histórico do colaborador' }, { acao:'ent', nome:'Entrevista de desligamento' }, { acao:'entr', nome:'Respostas das entrevistas' }, { acao:'estab', nome:'Estabilidade' }, { acao:'aso', nome:'Exames (ASO)' }, { acao:'afast', nome:'Afastamentos' }],
   admissoes: [{ acao:'vq', nome:'Todas as empresas e anos' }, { acao:'vp', nome:'Acompanhamento 2026' }],
   rescisoes: [{ acao:'vq', nome:'Todas as empresas e anos' }, { acao:'vp', nome:'Acompanhamento 2026' }],
   rs: [{ acao:'ctr', nome:'Em contratação' }],
@@ -1009,6 +1015,7 @@ function executarAcao(acao){
   if (acao === 'hcol' && w && typeof w.CRV_HISTCOL === 'function') { fecharJanelasAut(w); w.CRV_HISTCOL(); return true; }
   if (acao === 'estab' && w && typeof w.CRV_ESTAB === 'function') { fecharJanelasAut(w); w.CRV_ESTAB(); return true; }
   if (acao === 'aso' && w && typeof w.CRV_EXAMES === 'function') { fecharJanelasAut(w); w.CRV_EXAMES(); return true; }
+  if (acao === 'afast' && w && typeof w.CRV_AFAST === 'function') { fecharJanelasAut(w); w.CRV_AFAST(); return true; }
   if (acao === 'entr' && w && typeof w.CRV_ENT_RESP === 'function') { fecharJanelasAut(w); w.CRV_ENT_RESP(); return true; }
   if (acao === 'ent' && w && typeof w.CRV_ENTREVISTA === 'function') { fecharJanelasAut(w); w.CRV_ENTREVISTA(); return true; }
   if (acao === 'termo' && w && typeof w.CRV_TERMO === 'function') { fecharJanelasAut(w); w.CRV_TERMO(); return true; }
