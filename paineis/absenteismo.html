@@ -115,6 +115,7 @@ tr.det td{background:var(--soft);font-size:13px}
 .heat{border-collapse:separate;border-spacing:3px}
 th[data-k]{cursor:pointer;user-select:none}th[data-k]:hover{color:var(--ink)}
 .ct{display:inline-block;font:600 11.5px var(--body);padding:2px 8px;border-radius:6px;border:1px solid var(--line);white-space:nowrap}
+.hwarn{margin:0 0 14px;padding:12px 14px;border-radius:12px;background:color-mix(in srgb,#e9a23b 14%,var(--surface));border:1px solid color-mix(in srgb,#e9a23b 45%,transparent);font-size:13.5px;line-height:1.45}.hwarn b{color:#9a5b00}
 th.hm,td.hm{padding-left:2px;padding-right:2px;text-align:center}
 td.hm span{display:block;min-width:28px;padding:5px 0;border-radius:5px;font:600 12.5px var(--body)}
 .hmkey{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:12.5px;color:var(--muted);margin:0 0 10px}
@@ -227,6 +228,7 @@ tr.dp{cursor:pointer}tr.dp:hover td{background:var(--soft)}
 
   <section id="view-h" hidden>
     <div class="filters" id="hf"></div>
+    <div id="hwarn" class="hwarn" hidden></div>
     <div class="kpis" id="hk"></div>
     <div class="read"><span class="tag">O que os dados mostram</span><div class="main" id="hread"></div></div>
     <div class="grid">
@@ -632,6 +634,14 @@ body.vh .cf-wrap,body.vh main .wrap>.filters,body.vh .cf-tool{display:none!impor
    +(H.y||H.mo||H.t||H.ar||H.q||H.cap||H.sit!=='at'?'<button class="chip" data-hclr="1">Limpar filtros</button>':'')+'</div>';
   const at=sum('a'),fa=sum('f'),aus=at+fa,K=[['a','Atestados',at,pes('a'),nf(sum('an'))+' atestados'],['f','Faltas',fa,pes('f'),''],['j','Faltas justificadas',sum('j'),pes('j'),''],['s','Suspensão',sum('s'),pes('s'),''],['l','Licenças',sum('l'),pes('l'),'maternidade e paternidade']];
   const KC={a:'var(--s-at)',f:'var(--s-fa)',j:'var(--h-fj)',s:'var(--s-su)',l:'#8a94a8'};
+  { const w=$('hwarn'); let msg='';
+    if(H.y&&H.mo){ const cm={};PS.forEach(x=>x.L.forEach(o=>{if(o[0].slice(0,4)===H.y){const k=o[0].slice(5,7);cm[k]=(cm[k]||0)+1}}));
+      const out=Object.entries(cm).filter(([k])=>k!==H.mo).map(([,v])=>v).sort((a,b)=>a-b),med=out.length?out[Math.floor(out.length/2)]:0,n=cm[H.mo]||0;
+      const fimM=H.y+'-'+H.mo+'-31',soDesl=n>0&&PS.every(x=>!x.L.some(o=>o[0].slice(0,7)===H.y+'-'+H.mo)||(x.si==='Desligado'&&x.dl&&x.dl<=fimM));
+      const ultP=PS.reduce((z,x)=>{const u=x.L.length?x.L.reduce((a,o)=>o[0]>a?o[0]:a,''):'';return u>z?u:z},'');
+      if(med>=30&&n<med*.35) msg='<b>'+['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][+H.mo-1]+' de '+H.y+' ainda não está fechado no ponto.</b> '+(n?'O arquivo de ocorrências só tem '+nf(n)+' lançamentos neste mês'+(soDesl?', todos de quem foi desligado (lançados na rescisão)':'')+', contra cerca de '+nf(med)+' nos outros meses. ':'O arquivo de ocorrências não tem lançamentos neste mês. ')+'Faltas, faltas justificadas e suspensões dos ativos entram quando o ponto do mês for fechado e o RPE0663R for exportado de novo. '+(PS.some(x=>x.A.length)?'Os atestados vêm do sistema e já estão no mês.':'Os atestados aparecem depois que o relatório de atestados do sistema (RFP2186R) for carregado.');
+    }
+    w.innerHTML=msg; w.hidden=!msg; }
   $('hk').innerHTML=K.map(k=>`<div class="kpi${H.t===k[0]?' on':''}" role="button" tabindex="0" data-ht="${k[0]}" style="--kc:${KC[k[0]]}"><div class="l">${k[1]}</div><div class="v">${nf(k[2])}</div><div class="s">dias · ${nf(k[3])} ${k[3]===1?'pessoa':'pessoas'}${k[4]?'<br>'+k[4]:''}</div></div>`).join('')
    +`<div class="kpi" style="--kc:linear-gradient(90deg,var(--s-at),var(--s-fa))"><div class="l">Atestado × falta</div>${aus?`<div class="hsplit"><i style="width:${at/aus*100}%;background:var(--s-at)"></i><i style="width:${fa/aus*100}%;background:var(--s-fa)"></i></div><div class="hsl"><span style="color:var(--s-at)">${nf(at/aus*100,0)}% atestado</span><span style="color:#b7791f">${nf(fa/aus*100,0)}% falta</span></div>`:'<div class="v">—</div>'}<div class="s">dos dias de ausência · ${per}</div></div>`;
   const ag={};base.forEach(r=>{const a=ag[r.x.ar]||(ag[r.x.ar]={a:0,f:0,j:0,s:0,p:0});TK.forEach(k=>a[k]+=r[k]);if(tot(r))a.p++});const AR=Object.entries(ag).filter(a=>tot(a[1])).sort((a,b)=>tot(b[1])-tot(a[1]));
