@@ -1487,6 +1487,9 @@ async function telaModelo(p, cfg, acao){
     window.CRV_RECARREGAR = () => { if (location.hash.startsWith('#/p/' + encodeURIComponent(p.id))) telaPainel(p.id); };
     let tplU = tpl;
     if (p.id === 'ferias' && ehRH()) { try { const HF = await window.CRV_HIST('ferias'); if (Object.keys(HF).length > 1) tplU = tplU.replace(/<head[^>]*>/i, h => h + '<script>window.CRV_HF=' + JSON.stringify(HF).replace(/</g, '\\u003c') + ';<\/script>'); } catch(_) {} }
+    if (p.id === 'absenteismo') { try { const Q = await window.CRV_QUADRO(); if (Q && Q.mapa) { // situação atual de cada um pelo Quadro Geral (a planilha de atestados pode estar mais antiga)
+        const QS = {}; Object.entries(Q.mapa).forEach(([m, o]) => { QS[m] = [o.situacao === 'Desligado' ? 'DEMITIDO' : o.situacao === 'Afastado' ? 'AFASTADO' : 'ATIVO', o.situacao === 'Desligado' ? (o.deslig || '') : ''] });
+        tplU = tplU.replace(/<head[^>]*>/i, h => h + '<script>window.CRV_QSIT=' + JSON.stringify({ ref:Q.referencia || '', S:QS }).replace(/</g, '\\u003c') + ';<\/script>'); } } catch(_) {} }
     if (p.id === 'absenteismo' && ehRH()) { try { const HO = await window.CRV_HIST('ocor'), HA = await window.CRV_HIST('atest'), Q = await window.CRV_QUADRO(); if (Q && Q.mapa && (Object.keys(HO).length > 1 || Object.keys(HA).length > 1)) {
         const CIDD = {}, enx = L => (L || []).map(x => { if (x[2] && x[3] && !CIDD[x[2]]) CIDD[x[2]] = x[3]; return [x[0], x[1], x[2]]; }); // atestados: [início, dias, CID] (o médico fica só na ficha)
         const P = {}, LA = {}; Object.keys(HA).forEach(m => { if (m !== '__ref' && HA[m].length) LA[m] = enx(HA[m]); });

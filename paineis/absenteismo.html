@@ -260,6 +260,10 @@ tr.dp{cursor:pointer}tr.dp:hover td{background:var(--soft)}
 <script>/*__CRV_DADOS_0__*/
 
 
+/* situação de cada pessoa pelo Quadro Geral atual: quem foi desligado depois da planilha aparece como demitido, com a data de saída */
+const QSIT=(()=>{const Q=window.CRV_QSIT;if(!Q||!Q.S||typeof D==='undefined'||!D.P)return null;let n=0;const b0=Date.UTC(2026,0,1);
+  D.P.forEach(p=>{const q=Q.S[String(p[4])];if(!q)return;if(q[0]!==p[7]){p[7]=q[0];n++}if(q[0]==='DEMITIDO'&&q[1]){const [y,mo,d]=q[1].split('-').map(Number),k=Math.round((Date.UTC(y,mo-1,d)-b0)/864e5);if(k<p[2])p[2]=k}});
+  return {n,ref:Q.ref}})();
 const MS=[0,31,59,90,120,151,181,212,243,273], MN=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set'];
 const MF=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro'];
 const F=26/30, PSEUDO=new Set(['DESISTENTES','AFASTADOS']), WD=['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
