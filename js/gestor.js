@@ -155,13 +155,13 @@ async function gerar(forcar){
 async function ultimaGeracao(){ try { const { data } = await sb.from('area_dados').select('dados').eq('chave', '__meta').maybeSingle(); return data && data.dados; } catch(_){ return null; } }
 
 /* tela do gestor: resumo (#/) ou um painel da equipe (#/eq/<painel>) */
-const PAINEL_G = { eq:['Quadro e movimentação', 'Equipe', 'Quem é da sua equipe: função, departamento, contrato e cidade.'], mov:['Quadro e movimentação', 'Admissões e saídas', 'Quem entrou e quem saiu, com tipo e motivo das saídas por período.'],
-  pv:['Quadro e movimentação', 'Quadro x previsto', 'Quantas pessoas a previsão de quadro pede e quantas a equipe tem hoje.'], exp:['Quadro e movimentação', 'Período de experiência', 'Vencimentos e avaliação de experiência: avalie e envie ao RH pelo app.'],
-  nov:['Quadro e movimentação', 'Novos colaboradores', 'Quem entrou nos últimos 120 dias: integração e conversas do RH.'], fer:['Frequência e férias', 'Férias', 'Períodos, data limite e saldo: programe e envie ao RH até o dia 15 do mês anterior.'],
-  freq:['Frequência e férias', 'Frequência', 'Faltas e dias de atestado (só a quantidade) nos últimos 30 e 90 dias.'], disc:['Gestão de Ocorrências', 'Disciplina e RD', 'Advertências, suspensões e registros de dano da equipe.'],
-  cr:['T&D | Pessoas e Desenvolvimento', 'Em treinamento', 'Quem está com crachá de treinamento e até quando.'], alo:['Alojamento e transporte', 'Alojamento', 'Quem da equipe está alojado, onde e de qual cidade veio.'],
-  perfil:['Recrutamento e Seleção', 'Perfil profissional', 'Quem da sua equipe está no levantamento de perfil profissional: veja os números e registre seu parecer e o plano de ação.'],
-  env:['Atendimento e escuta', 'Meus envios ao RH', 'Tudo o que você programou ou avaliou e enviou, com a situação de cada envio.'] };
+const PAINEL_G = { eq:['Gestão de Colaboradores', 'Equipe', 'Quem é da sua equipe: função, departamento, contrato e cidade.'], mov:['Gestão de Colaboradores', 'Admissões e saídas', 'Quem entrou e quem saiu, com tipo e motivo das saídas por período.'],
+  pv:['Gestão de Colaboradores', 'Quadro x previsto', 'Quantas pessoas a previsão de quadro pede e quantas a equipe tem hoje.'], exp:['Gestão de Colaboradores', 'Período de experiência', 'Vencimentos e avaliação de experiência: avalie e envie ao RH pelo app.'],
+  nov:['Gestão de Colaboradores', 'Novos colaboradores', 'Quem entrou nos últimos 120 dias: integração e conversas do RH.'], fer:['Absenteísmo e Férias', 'Férias', 'Períodos, data limite e saldo: programe e envie ao RH até o dia 15 do mês anterior.'],
+  freq:['Absenteísmo e Férias', 'Frequência', 'Faltas e dias de atestado (só a quantidade) nos últimos 30 e 90 dias.'], disc:['Ocorrências e Relações Trabalhistas', 'Disciplina e RD', 'Advertências, suspensões e registros de dano da equipe.'],
+  cr:['T&D | Desenvolvimento de Pessoas', 'Em treinamento', 'Quem está com crachá de treinamento e até quando.'], alo:['Alojamentos e Transporte', 'Alojamento', 'Quem da equipe está alojado, onde e de qual cidade veio.'],
+  perfil:['Seleção e Perfil Profissional', 'Perfil profissional', 'Quem da sua equipe está no levantamento de perfil profissional: veja os números e registre seu parecer e o plano de ação.'],
+  env:['Atendimento e Ouvidoria', 'Meus envios ao RH', 'Tudo o que você programou ou avaliou e enviou, com a situação de cada envio.'] };
 async function tela(abaIni){
   moldura(`<section class="ini-topo"><div><div class="ini-eyebrow" id="gs-eye">Gestão de Pessoas</div><h1 id="gs-h1">Minha equipe</h1><div class="ini-data" id="gs-sub">Carregando…</div></div>
       <div class="dk-acoes"><button class="btn borda" id="gs-xls">Excel</button><button class="btn borda" id="gs-pdf">PDF</button></div></section>

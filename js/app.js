@@ -12,16 +12,16 @@ const sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_KEY, {
 
 /* ---------- identidade visual das frentes ---------- */
 const FRENTES = {
-  'Quadro e movimentação':         { cor:'#24427c', ic:'pessoas',   desc:'Quadro, admissões, rescisões e experiência' },
-  'Recrutamento e Seleção':              { cor:'#1f8a8a', ic:'lupa',      desc:'Recrutamento, seleção e perfil' },
-  'Frequência e férias':           { cor:'#e9a23b', ic:'calendario',desc:'Absenteísmo, férias e sanções' },
-  'Benefícios':                    { cor:'#2e8a57', ic:'presente',  desc:'VA, plano de saúde, odonto e farmácia' },
-  'Jovem Aprendiz':                { cor:'#7a4fb5', ic:'capelo',    desc:'Programa Conexão Aprendiz' },
-  'T&D | Pessoas e Desenvolvimento': { cor:'#d4573f', ic:'trofeu',    desc:'Treinamentos, pesquisas e lideranças' },
-  'Gestão de Ocorrências': { cor:'#a1341f', ic:'alerta',    desc:'RD, fadiga, processos e sanções' },
-  'Atendimento e escuta':          { cor:'#4a6a8a', ic:'balcao',    desc:'Recepção do RH e ouvidorias' },
-  'Alojamento e transporte':       { cor:'#8a7a2e', ic:'onibus',    desc:'Alojamentos e ônibus' },
-  'Remuneração e gratificações':   { cor:'#5d6a85', ic:'pasta',     desc:'Gratificação BPP, horas extras e gratificação' }
+  'Gestão de Colaboradores':         { cor:'#24427c', ic:'pessoas',   desc:'Quadro, admissões, rescisões e experiência' },
+  'Seleção e Perfil Profissional':              { cor:'#1f8a8a', ic:'lupa',      desc:'Recrutamento, seleção e perfil' },
+  'Absenteísmo e Férias':           { cor:'#e9a23b', ic:'calendario',desc:'Absenteísmo, férias e sanções' },
+  'Gestão de Benefícios':                    { cor:'#2e8a57', ic:'presente',  desc:'VA, plano de saúde, odonto e farmácia' },
+  'Programa Jovem Aprendiz':                { cor:'#7a4fb5', ic:'capelo',    desc:'Programa Conexão Aprendiz' },
+  'T&D | Desenvolvimento de Pessoas': { cor:'#d4573f', ic:'trofeu',    desc:'Treinamentos, pesquisas e lideranças' },
+  'Ocorrências e Relações Trabalhistas': { cor:'#a1341f', ic:'alerta',    desc:'RD, fadiga, processos e sanções' },
+  'Atendimento e Ouvidoria':          { cor:'#4a6a8a', ic:'balcao',    desc:'Recepção do RH e ouvidorias' },
+  'Alojamentos e Transporte':       { cor:'#8a7a2e', ic:'onibus',    desc:'Alojamentos e ônibus' },
+  'Horas Extras e Gratificações':   { cor:'#5d6a85', ic:'pasta',     desc:'Gratificação BPP, horas extras e gratificação' }
 };
 const ORDEM_FRENTES = Object.keys(FRENTES);
 const PALETA = ['#24427c','#2e8a57','#e9a23b','#d4573f','#1f8a8a','#7a4fb5','#8a7a2e','#4a6a8a','#c46a9a','#3f7fbf'];
@@ -60,13 +60,13 @@ const ehAdmin = () => E.perfil?.papel === 'admin';   // administradora principal
 const ehRH = () => ['admin', 'rh'].includes(E.perfil?.papel);   // equipe RH: vê tudo e lança tudo, sem importar bases nem mudar estrutura
 /* menu do gestor: mesmas frentes e cores do app, só com o que ele vê da equipe */
 const GESTOR_MENU = [
-  ['Quadro e movimentação', [['eq', 'Equipe'], ['mov', 'Admissões e saídas'], ['pv', 'Quadro x previsto'], ['exp', 'Período de experiência'], ['nov', 'Novos colaboradores']]],
-  ['Frequência e férias', [['fer', 'Férias'], ['freq', 'Frequência']]],
-  ['Gestão de Ocorrências', [['disc', 'Disciplina e RD']]],
-  ['Recrutamento e Seleção', [['perfil', 'Perfil profissional']]],
-  ['T&D | Pessoas e Desenvolvimento', [['cr', 'Em treinamento']]],
-  ['Alojamento e transporte', [['alo', 'Alojamento']]],
-  ['Atendimento e escuta', [['env', 'Meus envios ao RH']]] ];
+  ['Gestão de Colaboradores', [['eq', 'Equipe'], ['mov', 'Admissões e saídas'], ['pv', 'Quadro x previsto'], ['exp', 'Período de experiência'], ['nov', 'Novos colaboradores']]],
+  ['Absenteísmo e Férias', [['fer', 'Férias'], ['freq', 'Frequência']]],
+  ['Ocorrências e Relações Trabalhistas', [['disc', 'Disciplina e RD']]],
+  ['Seleção e Perfil Profissional', [['perfil', 'Perfil profissional']]],
+  ['T&D | Desenvolvimento de Pessoas', [['cr', 'Em treinamento']]],
+  ['Alojamentos e Transporte', [['alo', 'Alojamento']]],
+  ['Atendimento e Ouvidoria', [['env', 'Meus envios ao RH']]] ];
 const nomePapel = p => ({admin:'Administrador principal', rh:'Equipe RH', editor:'Editor', leitor:'Leitor', gestor:'Gestor de área'}[p] || p);
 
 function toast(msg, erro=false){
@@ -149,27 +149,27 @@ async function carregarCatalogo(){
   E.paineis = (p.data || []).filter(x => x.id !== 'absenteismo-gestao' && x.id !== 'nr1'); E.paineis.forEach(x => { if (x.id === 'absenteismo') x.nome = String(x.nome || '').replace(/\s*·\s*Controle RH\s*$/i, ''); }); // NR-1 retirado por enquanto (out/2026); os registros continuam guardados // R&S fica dentro do Banco de Currículos; Absenteísmo Gestão foi retirado (fica só o do RH)
   // Recrutamento e Seleção vira painel próprio (com "Em contratação"); o Banco de Currículos sai do menu
   { const cv = E.paineis.find(x => x.id === 'curriculos'), rs = E.paineis.find(x => x.id === 'rs');
-    if (rs) { const alvo = { nome:'Recrutamento e Seleção', frente: cv ? cv.frente : 'Recrutamento e Seleção', nivel: cv ? cv.nivel : rs.nivel, ordem: cv ? cv.ordem : rs.ordem };
+    if (rs) { const alvo = { nome:'Recrutamento e Seleção', frente: cv ? cv.frente : 'Seleção e Perfil Profissional', nivel: cv ? cv.nivel : rs.nivel, ordem: cv ? cv.ordem : rs.ordem };
       const dif = Object.keys(alvo).some(k => rs[k] !== alvo[k]); Object.assign(rs, alvo);
       if (dif && E.perfil && E.perfil.papel === 'admin') sb.from('paineis').update(alvo).eq('id', 'rs').then(() => {}, () => {}); }
     else if (cv && E.perfil && E.perfil.papel === 'admin') { const n = { id:'rs', frente:cv.frente, nome:'Recrutamento e Seleção', nivel:cv.nivel, ordem:cv.ordem };
       sb.from('paineis').insert(n).then(() => {}, () => {}); E.paineis.push(n); } }
   // Onboarding (integração de novos): painel do app, a partir das admissões do Quadro
-  if (!E.paineis.some(x => x.id === 'onboarding') && E.perfil && E.perfil.papel === 'admin') { const n = { id:'onboarding', frente:'Quadro e movimentação', nome:'Onboarding', nivel:'controlado', ordem:12 };
+  if (!E.paineis.some(x => x.id === 'onboarding') && E.perfil && E.perfil.papel === 'admin') { const n = { id:'onboarding', frente:'Gestão de Colaboradores', nome:'Onboarding', nivel:'controlado', ordem:12 };
     sb.from('paineis').insert(n).then(() => {}, () => {}); E.paineis.push(n); }
   // Risco de saída: painel do app, calculado a partir do Quadro; restrito
-  if (!E.paineis.some(x => x.id === 'risco') && E.perfil && E.perfil.papel === 'admin') { const n = { id:'risco', frente:'Quadro e movimentação', nome:'Risco de saída', nivel:'restrito', ordem:16 };
+  if (!E.paineis.some(x => x.id === 'risco') && E.perfil && E.perfil.papel === 'admin') { const n = { id:'risco', frente:'Gestão de Colaboradores', nome:'Risco de saída', nivel:'restrito', ordem:16 };
     sb.from('paineis').insert(n).then(() => {}, () => {}); E.paineis.push(n); }
   // organização do menu (out/2026): frentes renomeadas e painéis que mudaram de lugar; o administrador grava no banco
-  { const REN = { 'Outros controles':'Remuneração e gratificações', 'RH externo':'Alojamento e transporte', 'Atendimento':'Atendimento e escuta', 'Treinamento e liderança':'T&D | Pessoas e Desenvolvimento', 'Ocorrências, risco e jurídico':'Gestão de Ocorrências', 'Atração e perfil':'Recrutamento e Seleção' };
-    const MOV = { sancoes:'Gestão de Ocorrências', ouvidorias:'Atendimento e escuta' };
+  { const REN = { 'Outros controles':'Horas Extras e Gratificações', 'RH externo':'Alojamentos e Transporte', 'Atendimento':'Atendimento e Ouvidoria', 'Treinamento e liderança':'T&D | Desenvolvimento de Pessoas', 'Ocorrências, risco e jurídico':'Ocorrências e Relações Trabalhistas', 'Atração e perfil':'Seleção e Perfil Profissional', 'Quadro e movimentação':'Gestão de Colaboradores', 'Recrutamento e Seleção':'Seleção e Perfil Profissional', 'Frequência e férias':'Absenteísmo e Férias', 'Benefícios':'Gestão de Benefícios', 'Jovem Aprendiz':'Programa Jovem Aprendiz', 'T&D | Pessoas e Desenvolvimento':'T&D | Desenvolvimento de Pessoas', 'Gestão de Ocorrências':'Ocorrências e Relações Trabalhistas', 'Atendimento e escuta':'Atendimento e Ouvidoria', 'Alojamento e transporte':'Alojamentos e Transporte', 'Remuneração e gratificações':'Horas Extras e Gratificações' };
+    const MOV = { sancoes:'Ocorrências e Relações Trabalhistas', ouvidorias:'Atendimento e Ouvidoria' };
     const mud = [];
     E.paineis.forEach(x => { const nf = MOV[x.id] || REN[x.frente]; if (nf && nf !== x.frente) { x.frente = nf; mud.push(x); } });
     if (mud.length && E.perfil && E.perfil.papel === 'admin') mud.forEach(x => sb.from('paineis').update({ frente: x.frente }).eq('id', x.id).then(() => {}, () => {}));
     // quem tinha acesso a uma frente renomeada continua com acesso (Sanções e Ouvidorias são restritas: só administradores)
     const ajF = L => { if (!Array.isArray(L)) return L; const o = new Set(L.map(f => REN[f] || f)); return [...o]; };
     if (E.perfil && Array.isArray(E.perfil.frentes)) E.perfil.frentes = ajF(E.perfil.frentes);
-    if (E.perfil && E.perfil.papel === 'admin') { try { if (!localStorage.getItem('crv-mig-frentes-2510d')) sb.from('perfis').select('user_id,frentes').then(({ data }) => { (data || []).forEach(u => { const n = ajF(u.frentes || []); if (JSON.stringify(n) !== JSON.stringify(u.frentes || [])) sb.from('perfis').update({ frentes:n }).eq('user_id', u.user_id).then(() => {}, () => {}); }); try { localStorage.setItem('crv-mig-frentes-2510d', '1'); } catch(_){} }, () => {}); } catch(_){} } }
+    if (E.perfil && E.perfil.papel === 'admin') { try { if (!localStorage.getItem('crv-mig-frentes-2510e')) sb.from('perfis').select('user_id,frentes').then(({ data }) => { (data || []).forEach(u => { const n = ajF(u.frentes || []); if (JSON.stringify(n) !== JSON.stringify(u.frentes || [])) sb.from('perfis').update({ frentes:n }).eq('user_id', u.user_id).then(() => {}, () => {}); }); try { localStorage.setItem('crv-mig-frentes-2510e', '1'); } catch(_){} }, () => {}); } catch(_){} } }
   // nome padrão do Jovem Aprendiz (Instituto João Bittar), separado do RENAPSI
   const jv = E.paineis.find(x => x.id === 'jovem');
   if (jv && jv.nome === 'Jovem Aprendiz') {
@@ -179,12 +179,12 @@ async function carregarCatalogo(){
   // painéis novos que ainda não existem no banco: o administrador cria na hora
   const sp = E.paineis.find(x => x.id === 'sysprocard');
   const NOVOS = [
-    { id:'sysprocard-credito', frente:'Benefícios', nome:'Crédito manual Sysprocard', nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.05 },
-    { id:'cartao-alimentacao', frente:'Benefícios', nome:'Cartão Alimentação', nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.1 },
-    { id:'cartao-convenio',    frente:'Benefícios', nome:'Cartão Convênio',    nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.2 },
-    { id:'cartao-premium',     frente:'Benefícios', nome:'Cartão Premium',     nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.3 },
-    { id:'cartao-adm',         frente:'Benefícios', nome:'Cartão Convênio ADM', nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.4 },
-    { id:'servicos-gerais',    frente:'Remuneração e gratificações', nome:'Serviços Gerais · Horas extras e gratificação', nivel:'controlado', ordem:90 }
+    { id:'sysprocard-credito', frente:'Gestão de Benefícios', nome:'Crédito manual Sysprocard', nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.05 },
+    { id:'cartao-alimentacao', frente:'Gestão de Benefícios', nome:'Cartão Alimentação', nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.1 },
+    { id:'cartao-convenio',    frente:'Gestão de Benefícios', nome:'Cartão Convênio',    nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.2 },
+    { id:'cartao-premium',     frente:'Gestão de Benefícios', nome:'Cartão Premium',     nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.3 },
+    { id:'cartao-adm',         frente:'Gestão de Benefícios', nome:'Cartão Convênio ADM', nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.4 },
+    { id:'servicos-gerais',    frente:'Horas Extras e Gratificações', nome:'Serviços Gerais · Horas extras e gratificação', nivel:'controlado', ordem:90 }
   ].filter(n => !E.paineis.some(x => x.id === n.id));
   if (NOVOS.length && E.perfil && E.perfil.papel === 'admin') {
     await sb.from('paineis').insert(NOVOS.map((n, i) => ({ ...n, ordem: (n.id.startsWith('cartao-') || n.id === 'sysprocard-credito') ? (sp ? sp.ordem : 40) + 1 + i : n.ordem })));
@@ -341,7 +341,7 @@ function moldura(conteudo){
         <div class="lat-busca"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="lat-q" type="search" placeholder="Buscar painel ou ação" autocomplete="off" aria-label="Buscar painel"></div>
         <div class="lat-sec">Frentes</div>
         <div class="lat-vazio" id="lat-vazio" hidden>Nenhum painel com esse nome.</div>
-        ${frentes.map(f => { const cfg = FRENTES[f] || FRENTES['Remuneração e gratificações']; return `
+        ${frentes.map(f => { const cfg = FRENTES[f] || FRENTES['Horas Extras e Gratificações']; return `
           <div class="lat-grupo ${abertas[f]?'aberto':''}" data-frente="${esc(f)}">
             <button class="lat-frente ${f===frenteAtual?'atual':''}" aria-expanded="${abertas[f]?'true':'false'}"><span class="lat-ic" style="background:${cfg.cor}">${svg(cfg.ic,'#fff')}</span><span class="lat-nome">${esc(f)}</span><span class="lat-seta">${CHEV}</span></button>
             <div class="lat-sub">${grupos[f].map(x => itemPainel(x, cfg)).join('')}</div>
@@ -795,7 +795,7 @@ async function consultaDetalhe(p){
   return { bloq, proc, sanc, rd, ent };
 }
 function telaConsulta(){
-  moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Recrutamento e Seleção</div><h1>Consulta de candidato</h1><div class="ini-data">Pelo CPF ou pelo nome: se já trabalhou em alguma das empresas, se tem bloqueio e o histórico, para a área analisar junto com o currículo</div></div></section>
+  moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Seleção e Perfil Profissional</div><h1>Consulta de candidato</h1><div class="ini-data">Pelo CPF ou pelo nome: se já trabalhou em alguma das empresas, se tem bloqueio e o histórico, para a área analisar junto com o currículo</div></div></section>
     <div class="fc-busca cartao"><input id="cs-q" type="search" placeholder="CPF (só números ou com pontos) ou nome completo" autocomplete="off" aria-label="CPF ou nome"><div class="fc-sug" id="cs-sug" hidden></div></div>
     <div id="cs-corpo"><div class="cartao vazio"><p>Digite o CPF ou o nome do candidato.</p></div></div>`);
   const q = $('#cs-q'), sug = $('#cs-sug'); let B = null;
@@ -976,7 +976,7 @@ function desenharCentral(c, carregando){
 }
 
 function blocoFrente(f, lista){
-  const cfg = FRENTES[f] || FRENTES['Remuneração e gratificações'];
+  const cfg = FRENTES[f] || FRENTES['Horas Extras e Gratificações'];
   return `<section class="ini-frente" style="--cor:${cfg.cor}">
     <header class="if-cab"><span class="if-ic">${svg(cfg.ic,'#fff')}</span><h2>${esc(f)}</h2><span class="if-n">${lista.length}</span><span class="if-desc">${esc(cfg.desc)}</span></header>
     <div class="tiles">${lista.map(p => {
@@ -1044,7 +1044,7 @@ async function telaPainel(id, acao){
   E.painelAberto = null;
   const p = E.paineis.find(x => x.id === id);
   if (!p || !podeVer(p)) { toast('Painel não encontrado ou sem acesso.', true); location.hash = '#/'; return; }
-  const cfg = FRENTES[p.frente] || FRENTES['Remuneração e gratificações'];
+  const cfg = FRENTES[p.frente] || FRENTES['Horas Extras e Gratificações'];
   if (VISTA_QUADRO[id] && (acao === 'vq' || acao === 'vp')) { try { localStorage.setItem('crv-vista-' + id, acao.slice(1)); } catch(_){} try { history.replaceState(null, '', '#/p/' + encodeURIComponent(id)); } catch(_){} acao = ''; }
   if (id === 'risco') return RISCO().tela(p, cfg);
   if (id === 'onboarding') return ONB().tela(p, cfg);
@@ -1764,15 +1764,15 @@ function jsValor(v){
 
 // cores da capa por frente (tons escuros, para o texto branco continuar legível)
 const CAPA = {
-  'Quadro e movimentação':         ['#08394a','#137089'],
-  'Recrutamento e Seleção':              ['#0a4440','#16807a'],
-  'Frequência e férias':           ['#4a2608','#a0581b'],
-  'Jovem Aprendiz':                ['#2a1a57','#5a3fa0'],
-  'T&D | Pessoas e Desenvolvimento': ['#561d12','#a3462a'],
-  'Gestão de Ocorrências': ['#46111d','#8a2a3d'],
-  'Atendimento e escuta':          ['#1f3346','#3f6688'],
-  'Alojamento e transporte':       ['#1f3d17','#3f7a2c'],
-  'Remuneração e gratificações':   ['#3d300a','#86691a']
+  'Gestão de Colaboradores':         ['#08394a','#137089'],
+  'Seleção e Perfil Profissional':              ['#0a4440','#16807a'],
+  'Absenteísmo e Férias':           ['#4a2608','#a0581b'],
+  'Programa Jovem Aprendiz':                ['#2a1a57','#5a3fa0'],
+  'T&D | Desenvolvimento de Pessoas': ['#561d12','#a3462a'],
+  'Ocorrências e Relações Trabalhistas': ['#46111d','#8a2a3d'],
+  'Atendimento e Ouvidoria':          ['#1f3346','#3f6688'],
+  'Alojamentos e Transporte':       ['#1f3d17','#3f7a2c'],
+  'Horas Extras e Gratificações':   ['#3d300a','#86691a']
 };
 window.CRV_CAPA = CAPA;
 window.CRV_GESTOR_GERAR = () => { clearTimeout(window._gerT); window._gerT = setTimeout(() => { try { GESTOR().gerar(true).catch(() => {}); } catch(_){} }, 4000); }; // usado também nas telas próprias do app (Onboarding, Risco de saída)
