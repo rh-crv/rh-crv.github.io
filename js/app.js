@@ -18,7 +18,7 @@ const FRENTES = {
   'Benefícios':                    { cor:'#2e8a57', ic:'presente',  desc:'VA, plano de saúde, odonto e farmácia' },
   'Jovem Aprendiz':                { cor:'#7a4fb5', ic:'capelo',    desc:'Programa Conexão Aprendiz' },
   'T&D | Pessoas e Desenvolvimento': { cor:'#d4573f', ic:'trofeu',    desc:'Treinamentos, pesquisas e lideranças' },
-  'Ocorrências, risco e jurídico': { cor:'#a1341f', ic:'alerta',    desc:'RD, fadiga, processos e sanções' },
+  'Gestão de Ocorrências': { cor:'#a1341f', ic:'alerta',    desc:'RD, fadiga, processos e sanções' },
   'Atendimento e escuta':          { cor:'#4a6a8a', ic:'balcao',    desc:'Recepção do RH e ouvidorias' },
   'Alojamento e transporte':       { cor:'#8a7a2e', ic:'onibus',    desc:'Alojamentos e ônibus' },
   'Remuneração e gratificações':   { cor:'#5d6a85', ic:'pasta',     desc:'Gratificação BPP, horas extras e gratificação' }
@@ -62,7 +62,7 @@ const ehRH = () => ['admin', 'rh'].includes(E.perfil?.papel);   // equipe RH: v�
 const GESTOR_MENU = [
   ['Quadro e movimentação', [['eq', 'Equipe'], ['mov', 'Admissões e saídas'], ['pv', 'Quadro x previsto'], ['exp', 'Período de experiência'], ['nov', 'Novos colaboradores']]],
   ['Frequência e férias', [['fer', 'Férias'], ['freq', 'Frequência']]],
-  ['Ocorrências, risco e jurídico', [['disc', 'Disciplina e RD']]],
+  ['Gestão de Ocorrências', [['disc', 'Disciplina e RD']]],
   ['Atração e perfil', [['perfil', 'Perfil profissional']]],
   ['T&D | Pessoas e Desenvolvimento', [['cr', 'Em treinamento']]],
   ['Alojamento e transporte', [['alo', 'Alojamento']]],
@@ -161,15 +161,15 @@ async function carregarCatalogo(){
   if (!E.paineis.some(x => x.id === 'risco') && E.perfil && E.perfil.papel === 'admin') { const n = { id:'risco', frente:'Quadro e movimentação', nome:'Risco de saída', nivel:'restrito', ordem:16 };
     sb.from('paineis').insert(n).then(() => {}, () => {}); E.paineis.push(n); }
   // organização do menu (out/2026): frentes renomeadas e painéis que mudaram de lugar; o administrador grava no banco
-  { const REN = { 'Outros controles':'Remuneração e gratificações', 'RH externo':'Alojamento e transporte', 'Atendimento':'Atendimento e escuta', 'Treinamento e liderança':'T&D | Pessoas e Desenvolvimento' };
-    const MOV = { sancoes:'Ocorrências, risco e jurídico', ouvidorias:'Atendimento e escuta' };
+  { const REN = { 'Outros controles':'Remuneração e gratificações', 'RH externo':'Alojamento e transporte', 'Atendimento':'Atendimento e escuta', 'Treinamento e liderança':'T&D | Pessoas e Desenvolvimento', 'Ocorrências, risco e jurídico':'Gestão de Ocorrências' };
+    const MOV = { sancoes:'Gestão de Ocorrências', ouvidorias:'Atendimento e escuta' };
     const mud = [];
     E.paineis.forEach(x => { const nf = MOV[x.id] || REN[x.frente]; if (nf && nf !== x.frente) { x.frente = nf; mud.push(x); } });
     if (mud.length && E.perfil && E.perfil.papel === 'admin') mud.forEach(x => sb.from('paineis').update({ frente: x.frente }).eq('id', x.id).then(() => {}, () => {}));
     // quem tinha acesso a uma frente renomeada continua com acesso (Sanções e Ouvidorias são restritas: só administradores)
     const ajF = L => { if (!Array.isArray(L)) return L; const o = new Set(L.map(f => REN[f] || f)); return [...o]; };
     if (E.perfil && Array.isArray(E.perfil.frentes)) E.perfil.frentes = ajF(E.perfil.frentes);
-    if (E.perfil && E.perfil.papel === 'admin') { try { if (!localStorage.getItem('crv-mig-frentes-2510b')) sb.from('perfis').select('user_id,frentes').then(({ data }) => { (data || []).forEach(u => { const n = ajF(u.frentes || []); if (JSON.stringify(n) !== JSON.stringify(u.frentes || [])) sb.from('perfis').update({ frentes:n }).eq('user_id', u.user_id).then(() => {}, () => {}); }); try { localStorage.setItem('crv-mig-frentes-2510b', '1'); } catch(_){} }, () => {}); } catch(_){} } }
+    if (E.perfil && E.perfil.papel === 'admin') { try { if (!localStorage.getItem('crv-mig-frentes-2510c')) sb.from('perfis').select('user_id,frentes').then(({ data }) => { (data || []).forEach(u => { const n = ajF(u.frentes || []); if (JSON.stringify(n) !== JSON.stringify(u.frentes || [])) sb.from('perfis').update({ frentes:n }).eq('user_id', u.user_id).then(() => {}, () => {}); }); try { localStorage.setItem('crv-mig-frentes-2510c', '1'); } catch(_){} }, () => {}); } catch(_){} } }
   // nome padrão do Jovem Aprendiz (Instituto João Bittar), separado do RENAPSI
   const jv = E.paineis.find(x => x.id === 'jovem');
   if (jv && jv.nome === 'Jovem Aprendiz') {
@@ -1769,7 +1769,7 @@ const CAPA = {
   'Frequência e férias':           ['#4a2608','#a0581b'],
   'Jovem Aprendiz':                ['#2a1a57','#5a3fa0'],
   'T&D | Pessoas e Desenvolvimento': ['#561d12','#a3462a'],
-  'Ocorrências, risco e jurídico': ['#46111d','#8a2a3d'],
+  'Gestão de Ocorrências': ['#46111d','#8a2a3d'],
   'Atendimento e escuta':          ['#1f3346','#3f6688'],
   'Alojamento e transporte':       ['#1f3d17','#3f7a2c'],
   'Remuneração e gratificações':   ['#3d300a','#86691a']
