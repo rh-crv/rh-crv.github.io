@@ -159,7 +159,7 @@ const PAINEL_G = { eq:['Quadro e movimentação', 'Equipe', 'Quem é da sua equi
   pv:['Quadro e movimentação', 'Quadro x previsto', 'Quantas pessoas a previsão de quadro pede e quantas a equipe tem hoje.'], exp:['Quadro e movimentação', 'Período de experiência', 'Vencimentos e avaliação de experiência: avalie e envie ao RH pelo app.'],
   nov:['Quadro e movimentação', 'Novos colaboradores', 'Quem entrou nos últimos 120 dias: integração e conversas do RH.'], fer:['Frequência e férias', 'Férias', 'Períodos, data limite e saldo: programe e envie ao RH até o dia 15 do mês anterior.'],
   freq:['Frequência e férias', 'Frequência', 'Faltas e dias de atestado (só a quantidade) nos últimos 30 e 90 dias.'], disc:['Ocorrências, risco e jurídico', 'Disciplina e RD', 'Advertências, suspensões e registros de dano da equipe.'],
-  cr:['Treinamento e liderança', 'Em treinamento', 'Quem está com crachá de treinamento e até quando.'], alo:['Alojamento e transporte', 'Alojamento', 'Quem da equipe está alojado, onde e de qual cidade veio.'],
+  cr:['T&D | Pessoas e Desenvolvimento', 'Em treinamento', 'Quem está com crachá de treinamento e até quando.'], alo:['Alojamento e transporte', 'Alojamento', 'Quem da equipe está alojado, onde e de qual cidade veio.'],
   perfil:['Atração e perfil', 'Perfil profissional', 'Quem da sua equipe está no levantamento de perfil profissional: veja os números e registre seu parecer e o plano de ação.'],
   env:['Atendimento e escuta', 'Meus envios ao RH', 'Tudo o que você programou ou avaliou e enviou, com a situação de cada envio.'] };
 async function tela(abaIni){

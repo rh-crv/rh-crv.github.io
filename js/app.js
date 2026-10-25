@@ -17,7 +17,7 @@ const FRENTES = {
   'Frequência e férias':           { cor:'#e9a23b', ic:'calendario',desc:'Absenteísmo, férias e sanções' },
   'Benefícios':                    { cor:'#2e8a57', ic:'presente',  desc:'VA, plano de saúde, odonto e farmácia' },
   'Jovem Aprendiz':                { cor:'#7a4fb5', ic:'capelo',    desc:'Programa Conexão Aprendiz' },
-  'Treinamento e liderança':       { cor:'#d4573f', ic:'trofeu',    desc:'T&D, pesquisas e lideranças' },
+  'T&D | Pessoas e Desenvolvimento': { cor:'#d4573f', ic:'trofeu',    desc:'Treinamentos, pesquisas e lideranças' },
   'Ocorrências, risco e jurídico': { cor:'#a1341f', ic:'alerta',    desc:'RD, fadiga, processos e sanções' },
   'Atendimento e escuta':          { cor:'#4a6a8a', ic:'balcao',    desc:'Recepção do RH e ouvidorias' },
   'Alojamento e transporte':       { cor:'#8a7a2e', ic:'onibus',    desc:'Alojamentos e ônibus' },
@@ -64,7 +64,7 @@ const GESTOR_MENU = [
   ['Frequência e férias', [['fer', 'Férias'], ['freq', 'Frequência']]],
   ['Ocorrências, risco e jurídico', [['disc', 'Disciplina e RD']]],
   ['Atração e perfil', [['perfil', 'Perfil profissional']]],
-  ['Treinamento e liderança', [['cr', 'Em treinamento']]],
+  ['T&D | Pessoas e Desenvolvimento', [['cr', 'Em treinamento']]],
   ['Alojamento e transporte', [['alo', 'Alojamento']]],
   ['Atendimento e escuta', [['env', 'Meus envios ao RH']]] ];
 const nomePapel = p => ({admin:'Administrador principal', rh:'Equipe RH', editor:'Editor', leitor:'Leitor', gestor:'Gestor de área'}[p] || p);
@@ -161,7 +161,7 @@ async function carregarCatalogo(){
   if (!E.paineis.some(x => x.id === 'risco') && E.perfil && E.perfil.papel === 'admin') { const n = { id:'risco', frente:'Quadro e movimentação', nome:'Risco de saída', nivel:'restrito', ordem:16 };
     sb.from('paineis').insert(n).then(() => {}, () => {}); E.paineis.push(n); }
   // organização do menu (out/2026): frentes renomeadas e painéis que mudaram de lugar; o administrador grava no banco
-  { const REN = { 'Outros controles':'Remuneração e gratificações', 'RH externo':'Alojamento e transporte', 'Atendimento':'Atendimento e escuta' };
+  { const REN = { 'Outros controles':'Remuneração e gratificações', 'RH externo':'Alojamento e transporte', 'Atendimento':'Atendimento e escuta', 'Treinamento e liderança':'T&D | Pessoas e Desenvolvimento' };
     const MOV = { sancoes:'Ocorrências, risco e jurídico', ouvidorias:'Atendimento e escuta' };
     const mud = [];
     E.paineis.forEach(x => { const nf = MOV[x.id] || REN[x.frente]; if (nf && nf !== x.frente) { x.frente = nf; mud.push(x); } });
@@ -169,7 +169,7 @@ async function carregarCatalogo(){
     // quem tinha acesso a uma frente renomeada continua com acesso (Sanções e Ouvidorias são restritas: só administradores)
     const ajF = L => { if (!Array.isArray(L)) return L; const o = new Set(L.map(f => REN[f] || f)); return [...o]; };
     if (E.perfil && Array.isArray(E.perfil.frentes)) E.perfil.frentes = ajF(E.perfil.frentes);
-    if (E.perfil && E.perfil.papel === 'admin') { try { if (!localStorage.getItem('crv-mig-frentes-2610')) sb.from('perfis').select('user_id,frentes').then(({ data }) => { (data || []).forEach(u => { const n = ajF(u.frentes || []); if (JSON.stringify(n) !== JSON.stringify(u.frentes || [])) sb.from('perfis').update({ frentes:n }).eq('user_id', u.user_id).then(() => {}, () => {}); }); try { localStorage.setItem('crv-mig-frentes-2610', '1'); } catch(_){} }, () => {}); } catch(_){} } }
+    if (E.perfil && E.perfil.papel === 'admin') { try { if (!localStorage.getItem('crv-mig-frentes-2510b')) sb.from('perfis').select('user_id,frentes').then(({ data }) => { (data || []).forEach(u => { const n = ajF(u.frentes || []); if (JSON.stringify(n) !== JSON.stringify(u.frentes || [])) sb.from('perfis').update({ frentes:n }).eq('user_id', u.user_id).then(() => {}, () => {}); }); try { localStorage.setItem('crv-mig-frentes-2510b', '1'); } catch(_){} }, () => {}); } catch(_){} } }
   // nome padrão do Jovem Aprendiz (Instituto João Bittar), separado do RENAPSI
   const jv = E.paineis.find(x => x.id === 'jovem');
   if (jv && jv.nome === 'Jovem Aprendiz') {
@@ -1768,7 +1768,7 @@ const CAPA = {
   'Atração e perfil':              ['#0a4440','#16807a'],
   'Frequência e férias':           ['#4a2608','#a0581b'],
   'Jovem Aprendiz':                ['#2a1a57','#5a3fa0'],
-  'Treinamento e liderança':       ['#561d12','#a3462a'],
+  'T&D | Pessoas e Desenvolvimento': ['#561d12','#a3462a'],
   'Ocorrências, risco e jurídico': ['#46111d','#8a2a3d'],
   'Atendimento e escuta':          ['#1f3346','#3f6688'],
   'Alojamento e transporte':       ['#1f3d17','#3f7a2c'],
