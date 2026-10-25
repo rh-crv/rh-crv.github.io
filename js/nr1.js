@@ -141,7 +141,7 @@ function nr1Fatores(D, ACO){
   return F;
 }
 
-/* ---------- pendências para a Central do dia ---------- */
+/* ---------- pendências para a Agenda e Pendências ---------- */
 const nr1Pendencias = async function(){
   const p = E.paineis.find(x => x.id === 'nr1'); if (!p || !podeVer(p)) return [];
   const A = (await nr1Regs('acoes')).filter(a => a.status !== 'ok' && a.prazo);
@@ -158,7 +158,7 @@ async function telaNR1(p, cfg, acao){
   const pode = podeEditar(p);
   const ABAS = [['geral', 'Visão geral'], ['areas', 'Indícios por área'], ['fatores', 'Os 13 fatores'], ['plano', 'Plano de ação'], ['com', 'Comunicações e evidências']];
   let aba = ABAS.some(a => a[0] === acao) ? acao : 'geral';
-  moldura(`<div class="trilha"><button data-ir="#/">Início</button> › <span>${esc(p.frente)}</span> › <b>${esc(p.nome)}</b></div>
+  moldura(`<div class="trilha"><button data-ir="#/">Visão Geral</button> › <span>${esc(p.frente)}</span> › <b>${esc(p.nome)}</b></div>
     <section class="ini-topo"><div><div class="ini-eyebrow">${esc(p.frente)}</div><h1>Riscos Psicossociais (NR-1)</h1><div class="ini-data">O que o RH já tem de indício por área, o plano de ação e as evidências para o PGR</div></div>
       <div class="dk-acoes"><button class="btn borda" id="nr-xls">Excel</button><button class="btn borda" id="nr-pdf">PDF</button></div></section>
     <nav class="vista-seg" id="nr-abas">${ABAS.map(a => `<button data-a="${a[0]}" class="${a[0] === aba ? 'on' : ''}">${a[1]}</button>`).join('')}</nav>

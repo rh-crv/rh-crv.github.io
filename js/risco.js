@@ -72,7 +72,7 @@ async function daPessoa(mat){
   return Object.assign(s, { conv:conv[0] || null, ref:E2.last });
 }
 
-/* Central do dia: risco alto sem conversa nos últimos 30 dias */
+/* Agenda e Pendências: risco alto sem conversa nos últimos 30 dias */
 async function pendencias(){
   const p = E.paineis.find(x => x.id === 'risco'); if (!p || !podeVer(p)) return [];
   const D = await dados(); if (!D || !D.L) return [];
@@ -85,7 +85,7 @@ async function pendencias(){
 
 async function tela(p, cfg){
   const pode = podeEditar(p);
-  moldura(`<div class="trilha"><button data-ir="#/">Início</button> › <span>${esc(p.frente)}</span> › <b>${esc(p.nome)}</b></div>
+  moldura(`<div class="trilha"><button data-ir="#/">Visão Geral</button> › <span>${esc(p.frente)}</span> › <b>${esc(p.nome)}</b></div>
     <section class="ini-topo capa" style="${(c => c ? '--c1:' + c[0] + ';--c2:' + c[1] : '')((window.CRV_CAPA || {})[p.frente])}"><div><div class="ini-eyebrow">${esc(p.frente)}</div><h1>Risco de saída</h1><div class="ini-data">Quem tem os sinais que mais apareceram antes das saídas na CRV, para conversar antes que a pessoa peça para sair</div></div>
       <div class="dk-acoes"><button class="btn borda" id="rs-xls">Excel</button><button class="btn borda" id="rs-pdf">PDF</button></div></section>
     <div id="rs-corpo"><div class="cartao vazio"><div class="spinner" style="margin:0 auto"></div><p>Calculando…</p></div></div>`);

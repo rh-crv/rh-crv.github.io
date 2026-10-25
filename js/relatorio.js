@@ -108,7 +108,7 @@ async function tela(){
   const h = new Date().toISOString().slice(0, 10), atual = h.slice(0, 7);
   const opc = []; for (let k = atual; k >= '2026-01'; k = mesAnt(k)) opc.push(k);
   let mes = mesAnt(atual), R = null, T = {}, FECH = {};
-  moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Gestão de Pessoas</div><h1>Relatório da diretoria</h1><div class="ini-data">Onde estamos, o principal ponto de atenção, o que fazer e o que acompanhar</div></div>
+  moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Gestão de Pessoas</div><h1>Relatórios Gerenciais</h1><div class="ini-data">Onde estamos, o principal ponto de atenção, o que fazer e o que acompanhar</div></div>
       <div class="dk-acoes"><label class="rl-mes">Mês <select id="rl-mes">${opc.map(k => `<option value="${k}" ${k === mes ? 'selected' : ''}>${mesTxt(k)}</option>`).join('')}</select></label><button class="btn borda" id="rl-xls">Excel</button><button class="btn prim" id="rl-pdf">PDF</button></div></section>
     <div id="rl-corpo"><div class="cartao vazio"><div class="spinner" style="margin:0 auto"></div><p>Calculando o mês…</p></div></div>`);
   const lerFechados = async () => { FECH = {}; try { const { data } = await sb.from('registros').select('doc_id,dados').eq('painel', 'quadro').eq('colecao', 'relatorio_fechado').range(0, 999); (data || []).forEach(x => { if (x.dados && !x.dados.reaberto) FECH[x.doc_id] = x.dados; }); } catch(_){} 
@@ -203,7 +203,7 @@ async function tela(){
   const tendL = () => Object.keys(FECH).sort().filter(k => k <= mes).slice(-12);
   const tendTab = (n) => { const TL = tendL().slice(-n); return { cab:['Indicador', ...TL.map(k => mesTxt(k).slice(0, 3) + '/' + k.slice(2, 4))], lin: TEND.map(t => [t, ...TL.map(k => { const x = FECH[k].ind.find(z => z.t === t); return x ? fmt(x, x.a) : '—'; })]) }; };
   const nomeArq = () => 'Relatorio diretoria ' + mesTxt(mes).replace('/', ' ');
-  $('#rl-xls').onclick = () => { if (!R) return; escolher('Excel', sel => { const tx = textoAtual(); const aoa = [['Relatório da diretoria · Gestão de Pessoas CRV · ' + mesTxt(mes)], []];
+  $('#rl-xls').onclick = () => { if (!R) return; escolher('Excel', sel => { const tx = textoAtual(); const aoa = [['Relatórios Gerenciais · Gestão de Pessoas CRV · ' + mesTxt(mes)], []];
     SEC.filter(([k]) => sel.includes(k)).forEach(([k, t]) => { aoa.push([t], ['Indicador', mesTxt(mes), mesTxt(mesAnt(mes)), 'Variação', 'Observação'], ...linhasSec(k), []); });
     if (sel.includes('tend')) { const T2 = tendTab(12); aoa.push(['Tendência dos meses fechados'], T2.cab, ...T2.lin, []); }
     if (sel.includes('txt')) aoa.push(['Principal ponto de atenção', tx.ponto], ['O que fazer', tx.fazer], ['O que acompanhar', tx.acomp]);
@@ -211,7 +211,7 @@ async function tela(){
     const ws = XLSX.utils.aoa_to_sheet(aoa); ws['!cols'] = [{ wch:44 }, { wch:18 }, { wch:18 }, { wch:12 }, { wch:30 }]; const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Relatório');
     baixar(new Blob([XLSX.write(wb, { bookType:'xlsx', type:'array' })], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), nomeArq() + '.xlsx'); }); };
   $('#rl-pdf').onclick = () => { if (!R) return; escolher('PDF', sel => { const tx = textoAtual(); const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit:'pt', format:'a4' });
-    cabecalhoPDF(doc, 'Relatório da diretoria', 'Gestão de Pessoas · ' + mesTxt(mes)); let y = 104; const W = doc.internal.pageSize.getWidth();
+    cabecalhoPDF(doc, 'Relatórios Gerenciais', 'Gestão de Pessoas · ' + mesTxt(mes)); let y = 104; const W = doc.internal.pageSize.getWidth();
     const bloco = (t, txt, cor) => { if (!txt) return; const L = doc.splitTextToSize(txt, W - 76); const hh = 22 + L.length * 12; if (y + hh > 790) { doc.addPage(); y = 40; }
       doc.setFillColor(...cor); doc.rect(30, y, 4, hh - 6, 'F'); doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(20, 33, 61); doc.text(t, 42, y + 11);
       doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(40, 48, 66); doc.text(L, 42, y + 25); y += hh + 8; };

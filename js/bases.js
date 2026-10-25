@@ -1,7 +1,7 @@
 /* =====================================================================
    SAÚDE DAS BASES
-   Data de cada base carregada × prazo combinado para atualizar. Avisa na Central do dia,
-   dentro do painel e antes de fechar o mês no Relatório da diretoria.
+   Data de cada base carregada × prazo combinado para atualizar. Avisa na Agenda e Pendências,
+   dentro do painel e antes de fechar o mês no Relatórios Gerenciais.
    Prazos ficam em registros do Quadro: caminho 'sistema/prazos_bases'.
    ===================================================================== */
 window.CRV_BASES_INIT = function(X){
@@ -65,18 +65,18 @@ async function pendencias(){
   if (!ehAdmin()) return [];   // só quem importa as bases recebe o aviso
   const L = (await linhas()).filter(x => x.pode && x.s.k === 'atr');
   if (!L.length) return [];
-  return [{ id:'bases', sev:'warn', t:'Bases desatualizadas', painel:'', rota:'#/bases', pnome:'Saúde das bases', d:'Os números destes painéis podem estar defasados. Carregue a planilha nova.',
+  return [{ id:'bases', sev:'warn', t:'Bases desatualizadas', painel:'', rota:'#/bases', pnome:'Qualidade dos Dados', d:'Os números destes painéis podem estar defasados. Carregue a planilha nova.',
     itens:L.sort((a, b) => a.s.falta - b.s.falta).map(x => ({ nome:x.nome, mat:'', det:`${x.frente} · base de ${brD(x.ate)} · ${x.s.t.toLowerCase()} (prazo ${x.prazo} dias)` })) }];
 }
 /* aviso no topo do painel */
 async function aviso(id){
   try { const L = (await situacaoDe(id)).filter(x => x.s.k === 'atr' || x.s.k === 'vence'); if (!L.length) return '';
-    return `<div class="sb-av ${L.some(x => x.s.k === 'atr') ? 'atr' : ''}">${L.map(x => `<span><b>${esc(x.interna ? x.nome : 'Base')}</b> de ${esc(brD(x.ate))} · ${esc(x.s.t.toLowerCase())}</span>`).join('')}${ehAdmin() ? '<button class="link" data-ir="#/bases">Saúde das bases ›</button>' : ''}</div>`;
+    return `<div class="sb-av ${L.some(x => x.s.k === 'atr') ? 'atr' : ''}">${L.map(x => `<span><b>${esc(x.interna ? x.nome : 'Base')}</b> de ${esc(brD(x.ate))} · ${esc(x.s.t.toLowerCase())}</span>`).join('')}${ehAdmin() ? '<button class="link" data-ir="#/bases">Qualidade dos Dados ›</button>' : ''}</div>`;
   } catch(_){ return ''; }
 }
 
 async function tela(){
-  moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Central do dia</div><h1>Saúde das bases</h1><div class="ini-data">Até quando vai cada base carregada no app e quando precisa ser atualizada</div></div></section>
+  moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Agenda e Pendências</div><h1>Qualidade dos Dados</h1><div class="ini-data">Até quando vai cada base carregada no app e quando precisa ser atualizada</div></div></section>
     <div id="sb-corpo"><div class="cartao vazio"><div class="spinner" style="margin:0 auto"></div></div></div>`);
   let L = await linhas(); const F = { k:'' }, adm = ehAdmin();
   // base principal pela situação; as linhas internas (↳) logo abaixo da base de onde vêm

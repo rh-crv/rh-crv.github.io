@@ -329,19 +329,19 @@ function moldura(conteudo){
         <div class="lat-tit"><b>Gestão de Pessoas</b><span>Unidade Capinópolis</span></div>
       </div>
       <nav class="lat-nav">
-        ${p.papel === 'gestor' ? '' : `<button class="lat-item ${h==='#/'||h===''?'ativo':''}" data-ir="#/">${svg('casa')}<span>Início</span></button>`}
+        ${p.papel === 'gestor' ? '' : `<button class="lat-item ${h==='#/'||h===''?'ativo':''}" data-ir="#/">${svg('casa')}<span>Visão Geral</span></button>`}
         ${p.papel === 'gestor' ? `<button class="lat-item ${h==='#/'||h===''?'ativo':''}" data-ir="#/">${svg('casa')}<span>Minha equipe</span></button>
         <div class="lat-sec">Painéis da equipe</div>
         ${GESTOR_MENU.map(([f, itens]) => { const cfg = FRENTES[f] || { cor:'#24427c', ic:'pessoas' }; const aqui = itens.some(([k]) => h === '#/eq/' + k); const ab = aqui || abertas['g:' + f];
           return `<div class="lat-grupo ${ab ? 'aberto' : ''}" data-frente="${esc('g:' + f)}"><button class="lat-frente ${aqui ? 'atual' : ''}" aria-expanded="${ab ? 'true' : 'false'}"><span class="lat-ic" style="background:${cfg.cor}">${svg(cfg.ic, '#fff')}</span><span class="lat-nome">${esc(f)}</span><span class="lat-seta">${CHEV}</span></button>
             <div class="lat-sub">${itens.map(([k, n]) => `<button class="lat-painel ${h === '#/eq/' + k ? 'ativo atual' : ''}" data-ir="#/eq/${k}" data-busca="${esc(n.toLowerCase())}" style="--cor:${cfg.cor}"><span class="lat-pn">${esc(n)}</span></button>`).join('')}</div></div>`; }).join('')}` : `
         <div class="lat-pgrupo lat-cgrupo ${h==='#/central'||h==='#/desligamento'||h==='#/bases'||h==='#/envios'||subAbertos.__central?'aberto':''}" data-pid="__central">
-          <div class="lat-plinha"><button class="lat-item ${h==='#/central'?'ativo':''}" data-ir="#/central"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg><span>Central do dia</span></button><button class="lat-pseta" aria-label="Mostrar opções da Central do dia" aria-expanded="${h==='#/desligamento'||h==='#/bases'||h==='#/envios'?'true':'false'}">${CHEV}</button></div>
-          <div class="lat-psub"><button class="lat-acao ${h==='#/desligamento'?'ativo':''}" data-ir="#/desligamento" style="--cor:var(--coral)"><i>${IA('<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>')}</i><span>Checklist de desligamento</span></button><button class="lat-acao ${h==='#/bases'?'ativo':''}" data-ir="#/bases" style="--cor:var(--cane)"><i>${IA('<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>')}</i><span>Saúde das bases</span></button>${ehRH() ? `<button class="lat-acao ${h==='#/envios'?'ativo':''}" data-ir="#/envios" style="--cor:#24427c"><i>${IA('<path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/>')}</i><span>Envios dos gestores</span></button>` : ''}</div>
+          <div class="lat-plinha"><button class="lat-item ${h==='#/central'?'ativo':''}" data-ir="#/central"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg><span>Agenda e Pendências</span></button><button class="lat-pseta" aria-label="Mostrar opções da Agenda e Pendências" aria-expanded="${h==='#/desligamento'||h==='#/bases'||h==='#/envios'?'true':'false'}">${CHEV}</button></div>
+          <div class="lat-psub"><button class="lat-acao ${h==='#/desligamento'?'ativo':''}" data-ir="#/desligamento" style="--cor:var(--coral)"><i>${IA('<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>')}</i><span>Conferência de Desligamentos</span></button><button class="lat-acao ${h==='#/bases'?'ativo':''}" data-ir="#/bases" style="--cor:var(--cane)"><i>${IA('<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>')}</i><span>Qualidade dos Dados</span></button>${ehRH() ? `<button class="lat-acao ${h==='#/envios'?'ativo':''}" data-ir="#/envios" style="--cor:#24427c"><i>${IA('<path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/>')}</i><span>Envios dos Gestores</span></button>` : ''}</div>
         </div>
-        ${temQuadro ? `<button class="lat-item ${h.startsWith('#/ficha')?'ativo':''}" data-ir="#/ficha"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2.5"/><path d="M5.5 17c.6-1.8 2-2.7 3.5-2.7s2.9.9 3.5 2.7M14 9h4M14 13h4"/></svg><span>Ficha do colaborador</span></button>` : ''}
-        ${temQuadro ? `<button class="lat-item ${h==='#/consulta'?'ativo':''}" data-ir="#/consulta"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="6"/><path d="M20 20l-5.6-5.6M8 10h4M10 8v4"/></svg><span>Consulta de candidato</span></button>` : ''}
-        ${ehRH() ? `<button class="lat-item ${h==='#/relatorio'?'ativo':''}" data-ir="#/relatorio"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 17v-3M12 17v-6M15 17v-2"/></svg><span>Relatório da diretoria</span></button>` : ''}
+        ${temQuadro ? `<button class="lat-item ${h.startsWith('#/ficha')?'ativo':''}" data-ir="#/ficha"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2.5"/><path d="M5.5 17c.6-1.8 2-2.7 3.5-2.7s2.9.9 3.5 2.7M14 9h4M14 13h4"/></svg><span>Perfil do Colaborador</span></button>` : ''}
+        ${temQuadro ? `<button class="lat-item ${h==='#/consulta'?'ativo':''}" data-ir="#/consulta"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="6"/><path d="M20 20l-5.6-5.6M8 10h4M10 8v4"/></svg><span>Consulta de Candidatos</span></button>` : ''}
+        ${ehRH() ? `<button class="lat-item ${h==='#/relatorio'?'ativo':''}" data-ir="#/relatorio"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 17v-3M12 17v-6M15 17v-2"/></svg><span>Relatórios Gerenciais</span></button>` : ''}
         <div class="lat-busca"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="lat-q" type="search" placeholder="Buscar painel ou ação" autocomplete="off" aria-label="Buscar painel"></div>
         <div class="lat-sec">Frentes</div>
         <div class="lat-vazio" id="lat-vazio" hidden>Nenhum painel com esse nome.</div>
@@ -465,7 +465,7 @@ function telaInicio(){
       <h1>Gestão de Pessoas</h1>
       <p>CRV Industrial · Unidade Capinópolis</p>
       <div class="ini-capa-saud">${saud}, ${esc(nomeBonito(E.perfil.nome).split(' ')[0])} · ${esc(hoje.charAt(0).toUpperCase() + hoje.slice(1))}</div>
-      <button class="ini-capa-bt" data-ir="#/central">Abrir a Central do dia</button>
+      <button class="ini-capa-bt" data-ir="#/central">Abrir Agenda e Pendências</button>
     </div>
   </section>`);
   document.querySelectorAll('.ini-capa [data-ir]').forEach(b => b.onclick = () => location.hash = b.dataset.ir);
@@ -531,7 +531,7 @@ async function pendenciasQuadro(){
     itens: es.sort((a, b) => a.dados.fim.localeCompare(b.dados.fim)).map(x => ({ nome:x.dados.nome, mat:x.dados.mat, det:`${x.dados.tipo || ''} · até ${br(x.dados.fim)}` })) });
   return R;
 }
-/* Checklist de desligamento: desligados (Quadro) que ainda aparecem com Cartão Convênio ativo, Unimed, Uniodonto ou alojamento.
+/* Conferência de Desligamentos: desligados (Quadro) que ainda aparecem com Cartão Convênio ativo, Unimed, Uniodonto ou alojamento.
    Cartão Alimentação e Premium não entram: o colaborador pode usar o saldo depois da saída.
    O que o RH marca como feito fica salvo (registros do Quadro, coleção deslig_check). */
 const DCK = [
@@ -584,7 +584,7 @@ async function pendenciasDesligamento(){
   const L = D.L.filter(x => x.pend.length);
   if (!L.length) return [];
   const nomes = Object.keys(D.refs).map(k => DCK.find(d => d.k === k).n);
-  return [{ id:'desl-check', sev:'crit', t:'Desligados com benefício ou alojamento ainda ativo', painel:'', rota:'#/desligamento', pnome:'Checklist de desligamento',
+  return [{ id:'desl-check', sev:'crit', t:'Desligados com benefício ou alojamento ainda ativo', painel:'', rota:'#/desligamento', pnome:'Conferência de Desligamentos',
     d:`Cruzamento do Quadro com ${nomes.join(', ')}. Cartão Alimentação e Premium não entram: o saldo pode ser usado depois da saída.`,
     itens: L.map(x => ({ nome:x.nome, mat:x.mat, det:`${x.deslig ? 'desligado em ' + brD(x.deslig) + ' · ' : ''}${x.pend.map(k => { const d = DCK.find(q => q.k === k); return `${d.n}: ${d.acao.toLowerCase()}`; }).join(' · ')}` })) }];
 }
@@ -711,7 +711,7 @@ async function fichaDados(mat){
   return F;
 }
 function telaFicha(matIni){
-  moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Gestão de Pessoas · CRV Industrial</div><h1>Ficha do colaborador</h1><div class="ini-data">Tudo da pessoa em um lugar só, a partir de todos os painéis</div></div></section>
+  moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Gestão de Pessoas · CRV Industrial</div><h1>Perfil do Colaborador</h1><div class="ini-data">Tudo da pessoa em um lugar só, a partir de todos os painéis</div></div></section>
     <div class="fc-busca cartao"><input id="fc-q" type="search" placeholder="Digite o nome ou a matrícula" autocomplete="off" aria-label="Buscar colaborador"><div class="fc-sug" id="fc-sug" hidden></div></div>
     <div id="fc-corpo"></div>`);
   const q = $('#fc-q'), sug = $('#fc-sug'); let Q = null;
@@ -749,7 +749,7 @@ function telaFicha(matIni){
       </div>`;
     corpo.querySelectorAll('[data-ir]').forEach(b => b.onclick = () => location.hash = b.dataset.ir);
     $('#fc-pdf').onclick = () => { const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit:'pt', format:'a4' });
-      cabecalhoPDF(doc, 'Ficha do colaborador', `${c.nome} · matrícula ${mat}`);
+      cabecalhoPDF(doc, 'Perfil do Colaborador', `${c.nome} · matrícula ${mat}`);
       doc.autoTable({ startY:100, head:[['Campo', 'Informação']], body:[['Nome', c.nome], ['Matrícula', mat], ['Situação', c.situacao + (des ? ' em ' + brD(c.deslig) : '')], ['Função', c.funcao], ['Setor / seção', [c.area, c.setor].filter(Boolean).join(' · ')], ['Gerência', c.gerencia || ''], ['Contrato', c.vinculo || ''], ['Admissão', brD(c.admissao) + ' · ' + fCasa(c.admissao, des ? c.deslig : '')]].concat(al.map(a => ['Atenção', a[1]])),
         styles:{ fontSize:8.5, cellPadding:3 }, headStyles:{ fillColor:[36,66,124] }, columnStyles:{ 0:{ cellWidth:120, fontStyle:'bold' } } });
       F.sec.forEach(x => { const y = doc.lastAutoTable.finalY + 18; doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.text(x.t, 40, y);
@@ -799,7 +799,7 @@ async function consultaDetalhe(p){
   return { bloq, proc, sanc, rd, ent };
 }
 function telaConsulta(){
-  moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Seleção e Perfil Profissional</div><h1>Consulta de candidato</h1><div class="ini-data">Pelo CPF ou pelo nome: se já trabalhou em alguma das empresas, se tem bloqueio e o histórico, para a área analisar junto com o currículo</div></div></section>
+  moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Seleção e Perfil Profissional</div><h1>Consulta de Candidatos</h1><div class="ini-data">Pelo CPF ou pelo nome: se já trabalhou em alguma das empresas, se tem bloqueio e o histórico, para a área analisar junto com o currículo</div></div></section>
     <div class="fc-busca cartao"><input id="cs-q" type="search" placeholder="CPF (só números ou com pontos) ou nome completo" autocomplete="off" aria-label="CPF ou nome"><div class="fc-sug" id="cs-sug" hidden></div></div>
     <div id="cs-corpo"><div class="cartao vazio"><p>Digite o CPF ou o nome do candidato.</p></div></div>`);
   const q = $('#cs-q'), sug = $('#cs-sug'); let B = null;
@@ -859,13 +859,13 @@ function telaConsulta(){
   }
 }
 
-/* ---------- telas: Central do dia e Checklist de desligamento ---------- */
+/* ---------- telas: Agenda e Pendências e Conferência de Desligamentos ---------- */
 function telaCentral(){
-  moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Gestão de Pessoas · CRV Industrial</div><h1>Central do dia</h1><div class="ini-data">Pendências de todos os painéis, das mais urgentes para as menos urgentes</div></div></section><section class="central" id="central"></section>`);
+  moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Gestão de Pessoas · CRV Industrial</div><h1>Agenda e Pendências</h1><div class="ini-data">Pendências de todos os painéis, das mais urgentes para as menos urgentes</div></div></section><section class="central" id="central"></section>`);
   iniciarCentral();
 }
 async function telaDesligamento(){
-  moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Central do dia</div><h1>Checklist de desligamento</h1><div class="ini-data" id="dk-sub">Cruzando os desligados do Quadro com as bases de benefícios…</div></div>
+  moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Agenda e Pendências</div><h1>Conferência de Desligamentos</h1><div class="ini-data" id="dk-sub">Cruzando os desligados do Quadro com as bases de benefícios…</div></div>
     <div class="dk-acoes"><button class="btn borda" id="dk-xls">Excel</button><button class="btn borda" id="dk-pdf">PDF</button></div></section>
     <div id="dk-corpo"><div class="cartao vazio"><div class="spinner" style="margin:0 auto"></div></div></div>`);
   let D;
@@ -909,10 +909,10 @@ async function telaDesligamento(){
   desenhar();
   const linhas = () => (D._vis || []).map(x => [x.nome, x.mat, x.funcao, x.setor, brD(x.deslig)].concat(fontes.map(d => !x.b[d.k] ? '' : x.ok[d.k] ? 'Feito ' + new Date(x.ok[d.k].em).toLocaleDateString('pt-BR') : 'Pendente: ' + d.acao.toLowerCase() + ' (' + x.b[d.k].det + ')')));
   const cab = ['Colaborador', 'Matrícula', 'Função', 'Setor', 'Desligado em'].concat(fontes.map(d => d.n));
-  const nome = 'Checklist de desligamento ' + new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
+  const nome = 'Conferência de Desligamentos ' + new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
   $('#dk-xls').onclick = () => { const ws = XLSX.utils.aoa_to_sheet([cab, ...linhas()]); ws['!cols'] = cab.map((c, i) => ({ wch: i === 0 ? 34 : i > 4 ? 30 : 16 })); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Checklist'); baixar(new Blob([XLSX.write(wb, { bookType:'xlsx', type:'array' })], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), nome + '.xlsx'); };
   $('#dk-pdf').onclick = () => { const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit:'pt', format:'a4', orientation:'landscape' });
-    cabecalhoPDF(doc, 'Checklist de desligamento', `${(D._vis || []).length} colaboradores · Alimentação e Premium não entram`);
+    cabecalhoPDF(doc, 'Conferência de Desligamentos', `${(D._vis || []).length} colaboradores · Alimentação e Premium não entram`);
     doc.autoTable({ startY:110, head:[cab], body:linhas(), styles:{ fontSize:7.5, cellPadding:3, overflow:'linebreak' }, headStyles:{ fillColor:[36,66,124] }, alternateRowStyles:{ fillColor:[242,244,249] } });
     rodapePDF(doc); baixar(doc.output('blob'), nome + '.pdf'); };
 }
@@ -967,7 +967,7 @@ function desenharCentral(c, carregando){
   const L = ((c && c.itens) || []).filter(x => x.itens && x.itens.length).sort((a, b) => SEV[a.sev] - SEV[b.sev]);
   const hora = c ? new Date(c.em).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '';
   const nCrit = L.filter(x => x.sev === 'crit').length;
-  el.innerHTML = `<header class="cd-cab"><div><h2>Central do dia</h2><span>${carregando ? 'Atualizando as pendências dos painéis…' : c ? `${L.length ? `${L.length} ${L.length === 1 ? 'pendência' : 'pendências'}${nCrit ? ` · <b>${nCrit} urgente${nCrit > 1 ? 's' : ''}</b>` : ''}` : 'Nenhuma pendência'} · atualizado em ${esc(hora)}` : ''}</span></div>
+  el.innerHTML = `<header class="cd-cab"><div><h2>Agenda e Pendências</h2><span>${carregando ? 'Atualizando as pendências dos painéis…' : c ? `${L.length ? `${L.length} ${L.length === 1 ? 'pendência' : 'pendências'}${nCrit ? ` · <b>${nCrit} urgente${nCrit > 1 ? 's' : ''}</b>` : ''}` : 'Nenhuma pendência'} · atualizado em ${esc(hora)}` : ''}</span></div>
       <button class="btn borda cd-at" id="cd-at" ${carregando ? 'disabled' : ''}>${carregando ? '<span class="spinner pq"></span>' : 'Atualizar'}</button></header>
     ${L.length ? `<div class="cd-lista">${L.map(x => { const n = x.n || x.itens.length, ab = centralAbertos.has(x.id); return `<article class="cd-it ${ab ? 'aberto' : ''}" style="--c:${COR[x.sev]}" data-cid="${esc(x.id)}">
         <button class="cd-l" data-tog="${esc(x.id)}" aria-expanded="${ab}"><b class="cd-n">${n}</b><span class="cd-tx"><strong>${esc(x.t)}</strong><small>${esc(x.pnome)}${x.d ? ' · ' + esc(x.d) : ''}</small></span><span class="cd-seta">›</span></button>
@@ -1053,7 +1053,7 @@ async function telaPainel(id, acao){
   if (id === 'risco') return RISCO().tela(p, cfg);
   if (id === 'onboarding') return ONB().tela(p, cfg);
   if (MODELOS[id]) return telaModelo(p, cfg, acao);
-  moldura(`<div class="trilha"><button data-ir="#/">Início</button> › <span>${esc(p.frente)}</span> › <b>${esc(p.nome)}</b></div>
+  moldura(`<div class="trilha"><button data-ir="#/">Visão Geral</button> › <span>${esc(p.frente)}</span> › <b>${esc(p.nome)}</b></div>
     <div class="cartao vazio"><div class="spinner" style="margin:0 auto"></div><p>Carregando dados...</p></div>`);
   document.querySelector('.trilha [data-ir]').onclick = () => location.hash = '#/';
 
@@ -1070,7 +1070,7 @@ async function telaPainel(id, acao){
 function desenharPainel(){
   const v = E.view, p = v.p, b = v.base;
   const editar = podeEditar(p) && ehAdmin();   // importar planilha: só a administradora principal
-  const cab = `<div class="trilha"><button data-ir="#/">Início</button> › <span>${esc(p.frente)}</span> › <b>${esc(p.nome)}</b></div>
+  const cab = `<div class="trilha"><button data-ir="#/">Visão Geral</button> › <span>${esc(p.frente)}</span> › <b>${esc(p.nome)}</b></div>
   <div class="painel-cab">
     <div class="barra-cor" style="background:${v.cfg.cor}"></div>
     <div><h2>${esc(p.nome)}</h2>
@@ -1285,7 +1285,7 @@ function abrirExportar(){
 let _logUlt = '';
 window.CRV_LOG_EXPORT = nome => { const k = String(nome || '') + '|' + Math.floor(Date.now() / 3000); if (k === _logUlt) return; _logUlt = k;
   const h = location.hash || ''; const pid = h.startsWith('#/p/') ? decodeURIComponent(h.slice(4).split('/')[0]) : null;
-  const onde = pid ? null : h.startsWith('#/ficha') ? 'Ficha do colaborador' : h.startsWith('#/desligamento') ? 'Checklist de desligamento' : h.startsWith('#/relatorio') ? 'Relatório da diretoria' : h.startsWith('#/bases') ? 'Saúde das bases' : h.startsWith('#/envios') ? 'Envios dos gestores' : h.startsWith('#/admin') ? 'Administração' : '';
+  const onde = pid ? null : h.startsWith('#/ficha') ? 'Perfil do Colaborador' : h.startsWith('#/desligamento') ? 'Conferência de Desligamentos' : h.startsWith('#/relatorio') ? 'Relatórios Gerenciais' : h.startsWith('#/bases') ? 'Qualidade dos Dados' : h.startsWith('#/envios') ? 'Envios dos Gestores' : h.startsWith('#/admin') ? 'Administração' : '';
   const painel = pid ? (PAC_DE[pid] || pid) : null;
   registrar(painel && E.paineis.some(p => p.id === painel) ? painel : null, 'exportou arquivo', String(nome || '') + (onde ? ' · ' + onde : ''));
   logAcesso('exportou', ondeDe(h), String(nome || '')); };
@@ -1419,7 +1419,7 @@ async function logAcesso(acao, onde, detalhe){
 window.CRV_LOG_ACESSO = logAcesso;
 const ondeDe = h => { if (h.startsWith('#/p/')) { const id = decodeURIComponent(h.slice(4).split('/')[0]); return 'Painel: ' + ((E.paineis || []).find(p => p.id === id)?.nome || id); }
   if (h.startsWith('#/eq/')) { const k = h.slice(5); return 'Minha equipe: ' + ({ eq:'Equipe', mov:'Admissões e saídas', pv:'Quadro x previsto', exp:'Experiência', nov:'Novos colaboradores', perfil:'Perfil profissional', fer:'Férias', freq:'Frequência', disc:'Disciplina e RD', cr:'Em treinamento', alo:'Alojamento', env:'Meus envios' }[k] || k); }
-  return ({ '#/':'Início', '#/central':'Central do dia', '#/admin':'Administração', '#/conta':'Minha conta', '#/relatorio':'Relatório da diretoria', '#/bases':'Saúde das bases', '#/envios':'Envios dos gestores' })[h] || (h.startsWith('#/ficha') ? 'Ficha do colaborador' : h.startsWith('#/desligamento') ? 'Checklist de desligamento' : h.replace(/^#\//, '') || 'Início'); };
+  return ({ '#/':'Visão Geral', '#/central':'Agenda e Pendências', '#/admin':'Administração', '#/conta':'Minha conta', '#/relatorio':'Relatórios Gerenciais', '#/bases':'Qualidade dos Dados', '#/envios':'Envios dos Gestores' })[h] || (h.startsWith('#/ficha') ? 'Perfil do Colaborador' : h.startsWith('#/desligamento') ? 'Conferência de Desligamentos' : h.replace(/^#\//, '') || 'Início'); };
 async function registrar(painel, acao, detalhe){
   try { await sb.from('historico').insert({ painel, acao, detalhe, usuario: E.perfil?.nome }); } catch(_){}
 }
@@ -2049,7 +2049,7 @@ async function enviarZip(f, painel, progresso){
    ===================================================================== */
 let abaAdmin = 'usuarios';
 async function telaAdmin(){
-  moldura(`<div class="trilha"><button data-ir="#/">Início</button> › <b>Administração</b></div>
+  moldura(`<div class="trilha"><button data-ir="#/">Visão Geral</button> › <b>Administração</b></div>
     <div class="abas">
       <button class="aba ${abaAdmin==='usuarios'?'ativa':''}" data-aba="usuarios">Usuários e acessos</button>
       <button class="aba ${abaAdmin==='paineis'?'ativa':''}" data-aba="paineis">Painéis e frentes</button>
@@ -2338,7 +2338,7 @@ async function adminAcessos(){
   const A = ac.data, LG = {}; (Array.isArray(lg && lg.data) ? lg.data : []).forEach(x => { if (x && x.user_id) LG[x.user_id] = x; });
   const hoje = Date.now(), dias = iso => Math.floor((hoje - new Date(iso)) / 864e5), dt = iso => iso ? new Date(iso).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
   const U = (pf.data || []).map(u => { const L = A.filter(a => a.user_id === u.user_id); const ult = [L[0] && L[0].em, LG[u.user_id] && LG[u.user_id].ultimo].filter(Boolean).sort().pop() || '';
-    const top = {}; L.filter(a => a.acao === 'abriu' && a.onde && a.onde !== 'Início').forEach(a => top[a.onde] = (top[a.onde] || 0) + 1);
+    const top = {}; L.filter(a => a.acao === 'abriu' && a.onde && a.onde !== 'Início' && a.onde !== 'Visão Geral').forEach(a => top[a.onde] = (top[a.onde] || 0) + 1);
     return { u, L, ult, dd:new Set(L.map(a => a.em.slice(0, 10))).size, ab:L.filter(a => a.acao === 'abriu').length, ex:L.filter(a => a.acao === 'exportou').length, en:L.filter(a => a.acao === 'enviou').length,
       top:Object.entries(top).sort((a, b) => b[1] - a[1]).slice(0, 3).map(x => x[0].replace(/^Painel: /, '') + ' (' + x[1] + ')').join(', '), nunca:!ult, parado:ult && dias(ult) >= 30 }; });
   const at = U.filter(x => x.u.ativo), ent = at.filter(x => x.dd > 0), nun = at.filter(x => x.nunca), par = at.filter(x => x.parado);
@@ -2390,7 +2390,7 @@ async function adminHistorico(){
    ===================================================================== */
 function telaConta(){
   const p = E.perfil;
-  moldura(`<div class="trilha"><button data-ir="#/">Início</button> › <b>Minha conta</b></div>
+  moldura(`<div class="trilha"><button data-ir="#/">Visão Geral</button> › <b>Minha conta</b></div>
     <div class="cartao" style="max-width:520px">
       <div class="cartao-cab"><h3>${esc(p.nome)}</h3><span class="chip-papel">${esc(nomePapel(p.papel))}</span></div>
       <p style="color:var(--mut);margin-top:0">Usuário: <b>@${esc(p.usuario)}</b><br>Frentes: ${p.papel==='admin' ? 'todas' : (p.frentes?.length ? esc(p.frentes.join(', ')) : 'nenhuma')}</p>
