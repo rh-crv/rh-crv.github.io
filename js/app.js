@@ -653,9 +653,11 @@ async function fichaDados(mat){
       alerta: s.niv === 'a' ? 'risco alto (' + s.S.join(', ') + ')' : s.niv === 't' ? 'atenção (' + s.S.join(', ') + ')' : '' }); })()); }
   // Trajetória (departamentos e funções) e histórico de férias, vindos dos relatórios da folha
   if (ehRH()) tarefas.push((async () => {
-    const { data } = await sb.from('registros').select('colecao,dados').eq('painel', 'quadro').in('caminho', ['hist_depto/m' + mat, 'hist_cargo/m' + mat, 'hist_ferias/m' + mat]);
+    const { data } = await sb.from('registros').select('colecao,dados').eq('painel', 'quadro').in('caminho', ['hist_depto/m' + mat, 'hist_cargo/m' + mat, 'hist_ferias/m' + mat, 'hist_dep/m' + mat]);
     const H = {}; (data || []).forEach(x => { H[x.colecao] = x.dados || {}; });
     const T = ((H.hist_depto || {}).l || []).map(x => [x[0], 'Departamento', x[1], x[2]]).concat(((H.hist_cargo || {}).l || []).map(x => [x[0], 'Função', x[1], x[2]])).sort((a, b) => b[0].localeCompare(a[0]));
+    const DP = (H.hist_dep || {}).l || [], idd = n => { if (!n) return ''; const a = Math.floor((Date.now() - new Date(n + 'T12:00:00')) / 31557600000); return ' (' + a + ' anos)'; };
+    if (H.hist_dep) F.sec.push({ k:'deps', t:'Dependentes (' + DP.length + ')', ref:H.hist_dep.ref, cab:['Nome', 'Parentesco', 'Nascimento', 'CPF'], linhas:DP.map(d => [d[0], d[2], brD(d[1]) + idd(d[1]), d[4] ? d[4].replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : '—']) });
     if (T.length) F.sec.push({ k:'traj', t:'Trajetória na empresa', ref:(H.hist_depto || H.hist_cargo || {}).ref, cab:['Data', 'Mudança', 'De', 'Para'], linhas:T.map(x => [brD(x[0]) + (x[0] > hoje ? ' (programada)' : ''), x[1], x[2], x[3]]),
       resumo:[['Trocas de departamento', T.filter(x => x[1] === 'Departamento').length], ['Mudanças de função', T.filter(x => x[1] === 'Função').length], ['Última mudança de função', (T.find(x => x[1] === 'Função') || [''])[0] ? brD(T.find(x => x[1] === 'Função')[0]) : 'nenhuma no histórico']] });
     const FE = ((H.hist_ferias || {}).l || []).slice().sort((a, b) => b[2].localeCompare(a[2]));
