@@ -257,7 +257,7 @@ button.tile,button.act{font:inherit;color:inherit;text-align:left;cursor:pointer
       </div>
       <div class="tile">
         <h2>Saídas por setor</h2>
-        <p class="sub">Com o quadro em 06/10 e a proporção. Em âmbar, até 90 dias. Clique para ver as seções.</p>
+        <p class="sub">Com o quadro em <span class="qb">06/10</span> e a proporção. Em âmbar, até 90 dias. Clique para ver as seções.</p>
         <div id="bDepV"></div>
       </div>
       <div class="tile">
@@ -346,7 +346,7 @@ button.tile,button.act{font:inherit;color:inherit;text-align:left;cursor:pointer
         <div class="thead"><div><h2 id="tdTitle"></h2><p class="sub" id="subTD"></p></div>
         <div class="fsel"><span class="seg2"><button data-g="dg">Setor</button><button data-g="dep">Seção</button><button data-g="f">Função</button></span>
         <select id="tdMin" aria-label="Tamanho mínimo"><option value="10">Quadro a partir de 10</option><option value="5">Quadro a partir de 5</option><option value="0">Todos</option></select></div></div>
-        <div class="scroll"><table class="nom tdt"><thead><tr><th id="tdH"></th><th class="r">Saídas</th><th class="r">% das saídas</th><th class="r">Quadro em 06/10</th><th style="width:32%">Proporção</th></tr></thead><tbody id="tbTD"></tbody></table></div>
+        <div class="scroll"><table class="nom tdt"><thead><tr><th id="tdH"></th><th class="r">Saídas</th><th class="r">% das saídas</th><th class="r">Quadro em <span class="qb">06/10</span></th><th style="width:32%">Proporção</th></tr></thead><tbody id="tbTD"></tbody></table></div>
         <button class="btn2" id="tdMore" style="margin-top:12px"></button>
       </div>
     </div>
@@ -369,6 +369,7 @@ button.tile,button.act{font:inherit;color:inherit;text-align:left;cursor:pointer
 const MES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 const MESL=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 const SC=['var(--s1)','var(--s2)','var(--s3)','var(--s4)','var(--s5)'];
+const QB=D.base?D.base.slice(8,10)+'/'+D.base.slice(5,7):'06/10';document.querySelectorAll('.qb').forEach(e=>e.textContent=QB);
 const R=D.rows.map(r=>{const d=new Date(r[0]+'T00:00'),a=new Date(r[6]+'T00:00');return{d,ds:r[0],t:r[1],mat:r[2],n:r[3],fi:r[4],di:r[5],gi:D.sd[r[5]],f:D.funcs[r[4]],dep:D.deps[r[5]],dg:D.dgs[D.sd[r[5]]],a,as:r[6],m:r[7],tx:r[8],mes:d.getMonth(),dias:Math.round((d-a)/864e5)}});
 R.forEach(r=>r.bq=BLQ[r.mat]||null);
 const bqTag=r=>r.bq?'<div><span class="tag blq">Bloqueado · '+esc(r.bq[0])+'</span><div class="blqo">'+esc(r.bq[1])+'</div></div>':'';
@@ -393,7 +394,7 @@ const ALLM=[...Array(NM).keys()];
 const months=()=>S.mes===null?ALLM:[S.mes];
 const count=(arr,key)=>{const m=new Map();arr.forEach(r=>{[].concat(key(r)).forEach(k=>m.set(k,(m.get(k)||0)+1))});return[...m].sort((a,b)=>b[1]-a[1])};
 const ORDS=[['sd','Mais saídas primeiro'],['sa','Menos saídas primeiro'],['pd','Maior proporção primeiro'],['pa','Menor proporção primeiro']];
-// agrupa saídas por departamento ('dep') ou função ('f'), com quadro em 06/10 e proporção
+// agrupa saídas por departamento ('dep') ou função ('f'), com quadro em '+QB+' e proporção
 function groups(rows,g,all){
   const m=new Map();rows.forEach(r=>{const k=GK[g](r);if(!m.has(k))m.set(k,[]);m.get(k).push(r)});
   const qf=k=>g==='dg'?qNow(k,S.dep,S.fun):g==='dep'?qNow(S.dg,k,S.fun):qNow(S.dg,S.dep,k);
@@ -402,7 +403,7 @@ function groups(rows,g,all){
   return sortG(out)}
 function sortG(a){const by=S.ord[0],dir=S.ord[1]==='d'?-1:1;
   return a.sort((x,y)=>{if(by==='p'){if(x.p===null&&y.p===null)return y.s-x.s;if(x.p===null)return 1;if(y.p===null)return -1;return(x.p-y.p)*dir||(y.s-x.s)}return(x.s-y.s)*dir||((y.p||0)-(x.p||0))})}
-const propTxt=g=>g.q?'quadro '+g.q+' · '+pc(g.s,g.q):'sem quadro em 06/10';
+const propTxt=g=>g.q?'quadro '+g.q+' · '+pc(g.s,g.q):'sem quadro em '+QB+'';
 // registro de cliques: cada item clicável guarda as saídas que estão por trás dele
 let DR=[];
 const dr=(title,rows,view)=>{DR.push({title,rows,view});return ' data-dr="'+(DR.length-1)+'"'};
@@ -439,7 +440,7 @@ function renderV(){
   $('xMes').innerHTML=tot.map((a,i)=>'<span><b>'+MES[i]+'</b>'+pc(a.length,hcMed([i]),1)+'</span>').join('');
   // departamentos (classificação da Base Geral)
   const gd=groups(all,'dg').filter(g=>g.s>0),mxd=Math.max(1,...gd.map(g=>g.s));
-  bars('bDepV',gd.map(g=>{const e=g.rows.filter(r=>r.dias<=90).length;return{n:g.n,segs:[[e,'var(--amber)'],[g.s-e,'var(--navy)']],txt:g.s+'<i'+(g.q?'':' class="nq"')+'>'+propTxt(g)+'</i>',dr:dr(g.n+' · saídas '+per,g.rows,'dep'),tip:g.n+'\nSaídas: '+g.s+' ('+pc(g.s,n)+' das saídas)\nCom até 90 dias: '+e+'\nQuadro em 06/10: '+g.q+'\nProporção: '+(g.q?pc(g.s,g.q,1):'sem quadro')}}),mxd);
+  bars('bDepV',gd.map(g=>{const e=g.rows.filter(r=>r.dias<=90).length;return{n:g.n,segs:[[e,'var(--amber)'],[g.s-e,'var(--navy)']],txt:g.s+'<i'+(g.q?'':' class="nq"')+'>'+propTxt(g)+'</i>',dr:dr(g.n+' · saídas '+per,g.rows,'dep'),tip:g.n+'\nSaídas: '+g.s+' ('+pc(g.s,n)+' das saídas)\nCom até 90 dias: '+e+'\nQuadro em '+QB+': '+g.q+'\nProporção: '+(g.q?pc(g.s,g.q,1):'sem quadro')}}),mxd);
   // motivos de quem pede
   const mot=(el,g,c,lab)=>{const cs=count(g,r=>r.m).slice(0,6);bars(el,cs.map(x=>({n:D.motivos[x[0]],v:x[1],c,txt:nf(x[1])+'<i>'+pc(x[1],g.length)+'</i>',dr:dr(lab+': '+D.motivos[x[0]].toLowerCase()+' · '+per,g.filter(r=>r.m.includes(x[0])))})),cs.length?cs[0][1]:1)};
   mot('bMotP',ped,'var(--s1)','Pedidos de demissão');mot('bMotE',emp,'var(--navy)','Iniciativa da empresa');
@@ -455,7 +456,7 @@ function renderV(){
   const A=[];
   if(n){A.push([pc(e90.length,n),'das saídas acontecem em até 90 dias',nf(e90.length)+' pessoas saíram ainda na experiência; '+pc(e365,n)+' com até 1 ano de casa.',dr('Saídas com até 90 dias de casa '+per+rec,e90)]);
     if(ped.length)A.push([pc(ped.length,n),'das saídas são pedidos de demissão','Principais motivos: '+mp.map(x=>D.motivos[x[0]].toLowerCase()+' ('+x[1]+')').join(', ')+'.',dr('Pedidos de demissão '+per+rec,ped)]);
-    if(gp&&S.dg===null&&S.dep===null)A.push([pc(gp.s,gp.q),'do quadro em '+gp.n+', a maior proporção',gp.s+' saídas para um quadro de '+gp.q+' pessoas em 06/10. Clique para ver as seções.',dr(gp.n+' · saídas '+per,gp.rows,'dep')])}
+    if(gp&&S.dg===null&&S.dep===null)A.push([pc(gp.s,gp.q),'do quadro em '+gp.n+', a maior proporção',gp.s+' saídas para um quadro de '+gp.q+' pessoas em '+QB+'. Clique para ver as seções.',dr(gp.n+' · saídas '+per,gp.rows,'dep')])}
   {const bq=all.filter(r=>r.bq),jc=all.filter(r=>D.tipos[r.t]==='Justa causa'),jf=jc.filter(r=>!r.bq);
    if(bq.length)A.push([nf(bq.length),'das saídas estão na lista de bloqueados','Pessoas que saíram '+per+' e estão no semáforo vermelho. Clique para ver nome, motivo e a observação registrada.',dr('Saídas na lista de bloqueados '+per+rec,bq,'p')]);
    if(jf.length)A.push([nf(jf.length)+' de '+nf(jc.length),'justas causas não estão na lista de bloqueados','Se a regra é bloquear toda justa causa, estes nomes faltam no semáforo. Conferir e incluir.',dr('Justas causas fora da lista de bloqueados '+per+rec,jf,'p')])}
@@ -465,17 +466,17 @@ function renderV(){
   bars('bTipo',D.tipos.map((t,i)=>({n:t,v:ct[i].length,c:SC[i],txt:nf(ct[i].length)+'<i>'+pc(ct[i].length,ct.reduce((s,a)=>s+a.length,0))+'</i>',dr:dr(t+' · '+per,ct[i]),tip:i===4?count(ct[4],r=>r.tx).map(x=>x[0]+': '+x[1]).join('\n'):''})),Math.max(1,...ct.map(a=>a.length)));
   // departamento x mês
   const ht=groups(bm,'dg').filter(g=>g.s>0),mxh=Math.max(1,...ht.flatMap(g=>ALLM.map(i=>g.rows.filter(r=>r.mes===i).length)));
-  $('subHeat').textContent='Saídas de cada setor em cada mês, com o quadro em 06/10 e a proporção. Quanto mais escuro, mais saídas. Clique em um número para ver de quais seções e quem saiu.';
-  $('heat').innerHTML=ht.length?'<tr><th></th>'+ALLM.map(i=>'<th>'+MES[i]+'</th>').join('')+'<th>Total</th><th>Quadro 06/10</th><th>Proporção</th></tr>'+ht.map(g=>'<tr><th class="a"><button'+dr(g.n+' · saídas no ano',g.rows,'dep')+'>'+esc(g.n)+'</button></th>'+ALLM.map(i=>{const a=g.rows.filter(r=>r.mes===i),p=Math.round(100*Math.sqrt(a.length/mxh));
+  $('subHeat').textContent='Saídas de cada setor em cada mês, com o quadro em '+QB+' e a proporção. Quanto mais escuro, mais saídas. Clique em um número para ver de quais seções e quem saiu.';
+  $('heat').innerHTML=ht.length?'<tr><th></th>'+ALLM.map(i=>'<th>'+MES[i]+'</th>').join('')+'<th>Total</th><th>Quadro '+QB+'</th><th>Proporção</th></tr>'+ht.map(g=>'<tr><th class="a"><button'+dr(g.n+' · saídas no ano',g.rows,'dep')+'>'+esc(g.n)+'</button></th>'+ALLM.map(i=>{const a=g.rows.filter(r=>r.mes===i),p=Math.round(100*Math.sqrt(a.length/mxh));
     return a.length?'<td class="c"'+dr(g.n+' · '+MESL[i],a,'dep')+' style="background:color-mix(in srgb,var(--navy) '+p+'%,var(--trk));color:'+(p>50?'var(--card)':'var(--ink)')+(S.mes!==null&&S.mes!==i?';opacity:.35':'')+'">'+a.length+'</td>':'<td style="color:var(--mut)">·</td>'}).join('')+'<td class="tot">'+g.s+'</td><td class="tot">'+(g.q||'–')+'</td><td class="tot">'+(g.q?pc(g.s,g.q):'sem quadro')+'</td></tr>').join(''):'<tr><td class="empty">Sem saídas neste recorte.</td></tr>';
   // seções
   const gs2=groups(all,'dep').filter(g=>g.s>0),ts=gs2.slice(0,14),mxs=Math.max(1,...ts.map(g=>g.s));
-  $('subSec').textContent=(gs2.length>14?'As 14 primeiras de '+gs2.length+' seções':gs2.length+' seções')+' com saídas, na ordem escolhida. Ao lado, o quadro da seção em 06/10 e a proporção. Em âmbar, saídas com até 90 dias.';
-  bars('bSec',ts.map(g=>{const e=g.rows.filter(r=>r.dias<=90).length;return{n:g.n,segs:[[e,'var(--amber)'],[g.s-e,'var(--navy)']],txt:g.s+'<i'+(g.q?'':' class="nq"')+'>'+propTxt(g)+'</i>',dr:dr(g.n+' · saídas '+per,g.rows,'f'),tip:g.n+' ('+g.rows[0].dg+')\nSaídas: '+g.s+'\nCom até 90 dias: '+e+'\nQuadro em 06/10: '+g.q}}),mxs);
+  $('subSec').textContent=(gs2.length>14?'As 14 primeiras de '+gs2.length+' seções':gs2.length+' seções')+' com saídas, na ordem escolhida. Ao lado, o quadro da seção em '+QB+' e a proporção. Em âmbar, saídas com até 90 dias.';
+  bars('bSec',ts.map(g=>{const e=g.rows.filter(r=>r.dias<=90).length;return{n:g.n,segs:[[e,'var(--amber)'],[g.s-e,'var(--navy)']],txt:g.s+'<i'+(g.q?'':' class="nq"')+'>'+propTxt(g)+'</i>',dr:dr(g.n+' · saídas '+per,g.rows,'f'),tip:g.n+' ('+g.rows[0].dg+')\nSaídas: '+g.s+'\nCom até 90 dias: '+e+'\nQuadro em '+QB+': '+g.q}}),mxs);
   // funções
   const gf=groups(all,'f').filter(g=>g.s>0),tf=gf.slice(0,14),mxf=Math.max(1,...tf.map(g=>g.s));
-  $('subFun').textContent=(gf.length>14?'As 14 primeiras de '+gf.length+' funções':gf.length+' funções')+' com saídas, na ordem escolhida. Ao lado, o quadro da função em 06/10 e a proporção de saídas sobre ele. Clique para ver de quais setores.';
-  bars('bFunc',tf.map(g=>({n:g.n,v:g.s,txt:g.s+'<i'+(g.q?'':' class="nq"')+'>'+propTxt(g)+'</i>',dr:dr(g.n+' · saídas '+per,g.rows),tip:g.n+'\nSaídas: '+g.s+' ('+pc(g.s,n)+' das saídas)\nQuadro em 06/10: '+g.q+'\nProporção: '+(g.q?pc(g.s,g.q,1):'sem quadro')})),mxf);
+  $('subFun').textContent=(gf.length>14?'As 14 primeiras de '+gf.length+' funções':gf.length+' funções')+' com saídas, na ordem escolhida. Ao lado, o quadro da função em '+QB+' e a proporção de saídas sobre ele. Clique para ver de quais setores.';
+  bars('bFunc',tf.map(g=>({n:g.n,v:g.s,txt:g.s+'<i'+(g.q?'':' class="nq"')+'>'+propTxt(g)+'</i>',dr:dr(g.n+' · saídas '+per,g.rows),tip:g.n+'\nSaídas: '+g.s+' ('+pc(g.s,n)+' das saídas)\nQuadro em '+QB+': '+g.q+'\nProporção: '+(g.q?pc(g.s,g.q,1):'sem quadro')})),mxf);
 }
 
 let tdAll=false;
@@ -501,8 +502,8 @@ function renderT(){
   document.querySelectorAll('[data-g]').forEach(b=>b.classList.toggle('on',b.dataset.g===g));$('tdMin').hidden=g==='dg';
   $('tdTitle').textContent='Proporção por '+lab;$('tdH').textContent=GL[g][0];
   const ds=groups(all,g,true).filter(x=>x.q>=Math.max(min,1)||(min===0&&x.s>0)),mxp=Math.max(.0001,...ds.map(d=>d.p||0)),show=tdAll?ds:ds.slice(0,15);
-  $('subTD').textContent='Saídas '+per+' ÷ quadro em 06/10 de cada '+lab+'. '+ds.length+' '+GL[g][1]+' na lista, na ordem escolhida. Clique na linha para ver quem saiu.';
-  $('tbTD').innerHTML=show.length?show.map(d=>'<tr'+dr(d.n+' · saídas '+per,d.rows)+'><td><div class="nm">'+esc(d.n)+'</div></td><td class="r" data-l="Saídas">'+d.s+'</td><td class="r" data-l="% das saídas">'+pc(d.s,n)+'</td><td class="r" data-l="Quadro em 06/10">'+(d.q||'–')+'</td><td data-l="Proporção"><div class="tdbar"><span class="trk"><span class="fill" style="width:'+(100*(d.p||0)/mxp)+'%"></span></span><b>'+(d.q?pc(d.s,d.q):'sem quadro')+'</b></div></td></tr>').join(''):'<tr><td colspan="5" class="empty">Nada neste recorte.</td></tr>';
+  $('subTD').textContent='Saídas '+per+' ÷ quadro em '+QB+' de cada '+lab+'. '+ds.length+' '+GL[g][1]+' na lista, na ordem escolhida. Clique na linha para ver quem saiu.';
+  $('tbTD').innerHTML=show.length?show.map(d=>'<tr'+dr(d.n+' · saídas '+per,d.rows)+'><td><div class="nm">'+esc(d.n)+'</div></td><td class="r" data-l="Saídas">'+d.s+'</td><td class="r" data-l="% das saídas">'+pc(d.s,n)+'</td><td class="r" data-l="Quadro em '+QB+'">'+(d.q||'–')+'</td><td data-l="Proporção"><div class="tdbar"><span class="trk"><span class="fill" style="width:'+(100*(d.p||0)/mxp)+'%"></span></span><b>'+(d.q?pc(d.s,d.q):'sem quadro')+'</b></div></td></tr>').join(''):'<tr><td colspan="5" class="empty">Nada neste recorte.</td></tr>';
   $('tdMore').hidden=ds.length<=15;$('tdMore').textContent=tdAll?'Mostrar só os 15 primeiros':'Mostrar todos os '+ds.length;
 }
 
@@ -524,7 +525,7 @@ function renderM(){
   const V=M.view,m=new Map();M.rows.forEach(r=>{const k=GK[V](r);if(!m.has(k))m.set(k,[]);m.get(k).push(r)});
   const uq=f=>{const s=new Set(M.rows.map(f));return s.size===1?[...s][0]:null},g1=uq(r=>r.gi),d1=uq(r=>r.di),f1=uq(r=>r.fi);
   const gs=sortG([...m].map(([k,rs])=>{const q=V==='dg'?qNow(k,null,f1):V==='dep'?qNow(null,k,f1):qNow(g1,d1,k);return{k,n:GN[V](k),rows:rs,s:rs.length,q,p:q?rs.length/q:null}})),mx=Math.max(1,...gs.map(g=>g.s));
-  $('mB').innerHTML='<table class="mt"><thead><tr><th>'+GL[V][0]+'</th><th class="r">Saídas</th><th class="r">% deste grupo</th><th class="r">Quadro em 06/10</th><th style="width:30%">Proporção do quadro</th></tr></thead><tbody>'+gs.map(g=>'<tr class="g'+(M.open.has(g.k)?' open':'')+'" data-k="'+g.k+'"><td>'+esc(g.n)+'</td><td class="r"><b>'+g.s+'</b></td><td class="r">'+pc(g.s,n)+'</td><td class="r">'+(g.q||'–')+'</td><td><div class="tdbar"><span class="trk"><span class="fill" style="width:'+(100*g.s/mx)+'%"></span></span><b style="text-align:right">'+(g.q?pc(g.s,g.q):'sem quadro')+'</b></div></td></tr>'+(M.open.has(g.k)?'<tr class="sub"><td colspan="5">'+pList(g.rows)+'</td></tr>':'')).join('')+'</tbody></table>';
+  $('mB').innerHTML='<table class="mt"><thead><tr><th>'+GL[V][0]+'</th><th class="r">Saídas</th><th class="r">% deste grupo</th><th class="r">Quadro em '+QB+'</th><th style="width:30%">Proporção do quadro</th></tr></thead><tbody>'+gs.map(g=>'<tr class="g'+(M.open.has(g.k)?' open':'')+'" data-k="'+g.k+'"><td>'+esc(g.n)+'</td><td class="r"><b>'+g.s+'</b></td><td class="r">'+pc(g.s,n)+'</td><td class="r">'+(g.q||'–')+'</td><td><div class="tdbar"><span class="trk"><span class="fill" style="width:'+(100*g.s/mx)+'%"></span></span><b style="text-align:right">'+(g.q?pc(g.s,g.q):'sem quadro')+'</b></div></td></tr>'+(M.open.has(g.k)?'<tr class="sub"><td colspan="5">'+pList(g.rows)+'</td></tr>':'')).join('')+'</tbody></table>';
   $('mB').querySelectorAll('tr.g').forEach(tr=>tr.onclick=()=>{const k=+tr.dataset.k;M.open.has(k)?M.open.delete(k):M.open.add(k);renderM()});
 }
 
@@ -540,7 +541,8 @@ function staticBlocks(){
   $('fG').innerHTML='<option value="">Todos os setores</option>'+D.dgs.map((x,i)=>'<option value="'+i+'">'+esc(x)+'</option>').join('');$('fF').innerHTML=opt(D.funcs,'Todas as funções');
   $('fT').innerHTML='<option value="">Todos os tipos</option>'+D.tipos.map((a,i)=>'<option value="'+i+'">'+a+'</option>').join('');
   $('fO').innerHTML=$('mO').innerHTML=ORDS.map(o=>'<option value="'+o[0]+'">'+o[1]+'</option>').join('');
-  $('foot').textContent='Fonte: planilha "Acompanhamento Rescisões 2026" (abas de janeiro a '+MESL[NM-1]+') e Base Geral de Colaboradores. Setor é a classificação da coluna SETOR da base de 06/10/2026; o quadro é a posição de 06/10/2026, já descontadas as saídas de outubro lançadas na planilha (até '+(D.ate||'')+'), mesmo as que ainda constam como ativas na base; outubro é mês parcial; seção é a coluna Desc-Departamento. Proporção = saídas do período ÷ quadro do setor, da seção ou da função em 06/10; "sem quadro" indica que não há ninguém nessa data. Turnover = saídas ÷ quadro médio do período, reconstruído pela base. Tempo de casa = data da rescisão − data de admissão. Bloqueados: lista "Bloqueados em nosso sistema 2026" (semáforo vermelho, 629 pessoas), cruzada pelo CPF; a categoria é uma leitura do texto da observação. Contém dados nominais de colaboradores: uso restrito ao RH e à gestão.';
+  const BB=D.base?D.base.slice(8,10)+'/'+D.base.slice(5,7)+'/'+D.base.slice(0,4):'06/10/2026';
+  $('foot').textContent='Fonte: planilha "Acompanhamento Rescisões 2026" (abas de janeiro a '+MESL[NM-1]+') e Base Geral de Colaboradores. Setor é a classificação da coluna SETOR da base de '+BB+'; o quadro é a posição de '+BB+', já descontadas as saídas de outubro lançadas na planilha (até '+(D.ate||'')+'), mesmo as que ainda constam como ativas na base; outubro é mês parcial; seção é a coluna Desc-Departamento. Proporção = saídas do período ÷ quadro do setor, da seção ou da função em '+BB.slice(0,5)+'; "sem quadro" indica que não há ninguém nessa data. Turnover = saídas ÷ quadro médio do período, reconstruído pela base. Tempo de casa = data da rescisão − data de admissão. Bloqueados: lista "Bloqueados em nosso sistema 2026" (semáforo vermelho, 629 pessoas), cruzada pelo CPF; a categoria é uma leitura do texto da observação. Contém dados nominais de colaboradores: uso restrito ao RH e à gestão.';
   $('hsub').textContent='CRV Industrial · Unidade Capinópolis · janeiro a '+MESL[NM-1]+' de 2026 (outubro parcial, saídas até '+(D.ate||'')+')';
 }
 function listRows(){

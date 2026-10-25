@@ -1454,7 +1454,7 @@ async function telaModelo(p, cfg, acao){
   const editar = podeEditar(p);
   const vq = VISTA_QUADRO[p.id];
   const sel = vq ? vistaDe(p.id) : '';
-  const nomeV = p.id === 'admissoes' ? 'Admissões' : 'Rescisões';
+  const nomeV = p.id === 'admissoes' ? 'Admissões' : 'Desligamentos';
   moldura((vq ? `<div class="vista-seg" role="tablist"><button data-vq="q" class="${sel === 'q' ? 'on' : ''}">Todas as empresas e anos</button><button data-vq="p" class="${sel === 'p' ? 'on' : ''}">${nomeV} 2026 · acompanhamento</button></div>` : '') +
     `<div id="modelo-area" class="cartao vazio"><div class="spinner" style="margin:0 auto"></div><p>Abrindo o painel…</p></div>`);
   if (vq) document.querySelectorAll('.vista-seg [data-vq]').forEach(b => b.onclick = () => { try { localStorage.setItem('crv-vista-' + p.id, b.dataset.vq); } catch(_){} telaModelo(p, cfg); });
