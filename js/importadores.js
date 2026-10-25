@@ -44,6 +44,8 @@ function detectar(wb, nomeArq){
   if (/^Relatório de Afastamento/i.test(s((R[0] || [])[0]))) return { tipo:'hist', h:'atest', R, emp:s((R[1] || [])[0]) };
   // ocorrências do ponto (RPE0663R: "Relatório das Ocorrências dos Funcionários"), um arquivo por período
   if (R.slice(0, 4).some(r => (r || []).map(s).some(x => /^Relatório das Ocorrências dos Funcionários/i.test(x)))) return { tipo:'hist', h:'ocor', R };
+  // ocorrências do ponto, outro formato (RPE0026R: "Relatório de Ocorrências", uma linha por dia: matrícula, nome, data, ocorrência)
+  if (R.slice(0, 3).some(r => (r || []).map(s).some(x => /^Relatório de Ocorrências$/i.test(x))) && R.slice(0, 10).some(r => { const v = (r || []).map(s).filter(Boolean); return v[0] === 'Matrícula' && v[2] === 'Data' && /^Ocorr/i.test(v[3] || ''); })) return { tipo:'hist', h:'ocor', R };
   if (h.includes('Data de Afastamento') && h.includes('Data Efetiva de Retorno')) return { tipo:'hist', h:'afast', R };
   if (h.includes('Data da Aposentadoria') && h.includes('Nome do Benefício')) return { tipo:'hist', h:'apos', R };
   if (h.includes('Causa da Estabilidade') && h.includes('Fim da Estabilidade')) return { tipo:'hist', h:'estab', R };
@@ -253,6 +255,21 @@ function converterHist(h, R, mapa, REF){
   }
   if (h === 'ocor') { // [data, tipo, quantidade]; atestados ficam de fora (vêm da planilha de atestados do RH)
     const TP = d => /ATEST/.test(d) ? '' : /FALTA JUST/.test(d) ? 'j' : /FALTA/.test(d) ? 'f' : /SUSPENS/.test(d) ? 's' : /MATERN/.test(d) ? 'm' : /PATERN/.test(d) ? 'p' : 'o';
+    const cp = r => (r || []).filter(x => x != null && s(x) !== '');
+    if (R.slice(0, 10).some(r => { const v = cp(r).map(s); return v[0] === 'Matrícula' && v[2] === 'Data'; })) { // RPE0026R: uma linha por dia, sem quantidade
+      let ini = '', fim = '', at = 0, emp = s((R[0] || [])[0]); const vist = {};
+      for (const r of R) { const v = cp(r);
+        if (/^Per[ií]odo/i.test(s(v[0])) && v[1] instanceof Date) { ini = iso(v[1]); const f = v.find((x, i) => i > 1 && x instanceof Date); if (f) fim = iso(f); continue; }
+        if (/^Empresa/i.test(s(v[0])) && /^\d+$/.test(s(v[1]))) { emp = s(v[1]); continue; }
+        if (v.length < 4 || !(v[2] instanceof Date) || !/^\d+$/.test(s(v[0]))) continue;
+        const m = parseInt(s(v[0]), 10), d = iso(v[2]), ds = s(v[3]).toUpperCase(), t = TP(ds); if (!d) continue;
+        if (!t) { at++; continue; }
+        if (!(m in vist)) { let q = mapa[String(m)]; if (!q && mapa.__aberto) { q = mapa[String(m)] = { nome:sp(v[1]), funcao:'', setor:'', area:'', gerencia:'', admissao:'', deslig:'', nasc:'', soArq:1 }; fora++; } vist[m] = !!q && mesmoNome(v[1], q.nome); if (!q) fora++; else if (!vist[m]) ign++; }
+        if (!vist[m]) continue; const it = [d, t, 1]; if (t === 'o') it.push(sp(v[3])); (itens[m] = itens[m] || []).push(it); lin++; }
+      Object.keys(itens).forEach(k => itens[k].sort((a, b) => a[0].localeCompare(b[0])));
+      return { tipo:'crv-hist', painel:'quadro', hist:h, referencia:REF, itens, faixa: ini ? [ini, fim || ini] : null, tipos:[...new Set([].concat(...Object.values(itens)).map(x => x[1]))], empresa:emp, n:{ linhas:lin, pessoas:Object.keys(itens).length, nomeDiferente:ign, foraDoQuadro:fora, anuladas:0, atestados:at, ini, fim } };
+    }
+    const TP_ = d => /ATEST/.test(d) ? '' : /FALTA JUST/.test(d) ? 'j' : /FALTA/.test(d) ? 'f' : /SUSPENS/.test(d) ? 's' : /MATERN/.test(d) ? 'm' : /PATERN/.test(d) ? 'p' : 'o';
     let m = 0, ok = false, ini = '', fim = '', at = 0; const emp = s((R[0] || [])[0]);
     for (const r of R) { const c0 = (r || [])[0];
       if (c0 instanceof Date) { const d = iso(c0); if (!d) continue; if (!ini || d < ini) ini = d; if (!fim || d > fim) fim = d; if (!ok) continue;
@@ -323,7 +340,7 @@ async function ler(f){
     if (det.h === 'ocor') { const T = pac.hist !== 'ocor' ? 'Ocorrências do ponto da ' + pac.empNome + ' (empresa ' + pac.empresa + ')' : 'Ocorrências do ponto', br = d => d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : '';
       if (!pac.faixa) { out.push({ pac, rotulo:`${T}: arquivo sem lançamentos (nada a salvar)` }); return out; }
       
-      out.push({ pac, rotulo:`${T} de ${br(pac.faixa[0])} a ${br(pac.faixa[1])}: ${pac.n.linhas} lançamentos de ${pac.n.pessoas} pessoas (faltas, faltas justificadas, suspensões e licenças; ${pac.n.atestados} atestados ficam de fora)` + (pac.n.nomeDiferente ? ` · ${pac.n.nomeDiferente} com nome diferente do Quadro (fora)` : '') + (pac.n.foraDoQuadro ? ` · ${pac.n.foraDoQuadro} ${pac.hist === 'ocor' ? 'matrículas fora do Quadro' : 'sem cadastro no Quadro nem nome igual na CRV'}` : '') + (pac.n.ligados != null ? ` · ${pac.n.ligados} estão hoje na CRV (aparecem na ficha deles)` : '') }); return out; }
+      out.push({ pac, rotulo:`${T} de ${br(pac.faixa[0])} a ${br(pac.faixa[1])}: ${pac.n.linhas} lançamentos de ${pac.n.pessoas} pessoas (${pac.tipos ? (l => l.length > 1 ? l.slice(0, -1).join(', ') + ' e ' + l[l.length - 1] : l[0] || 'nenhuma ocorrência')(['f', 'j', 's', 'm', 'p', 'o'].filter(t => pac.tipos.includes(t)).map(t => ({ f:'faltas', j:'faltas justificadas', s:'suspensões', m:'licença-maternidade', p:'licença-paternidade', o:'outras' })[t])) + ' do período; os outros tipos já carregados ficam como estão' : 'faltas, faltas justificadas, suspensões e licenças'}; ${pac.n.atestados} atestados ficam de fora)` + (pac.n.nomeDiferente ? ` · ${pac.n.nomeDiferente} com nome diferente do Quadro (fora)` : '') + (pac.n.foraDoQuadro ? ` · ${pac.n.foraDoQuadro} ${pac.hist === 'ocor' ? 'matrículas fora do Quadro' : 'sem cadastro no Quadro nem nome igual na CRV'}` : '') + (pac.n.ligados != null ? ` · ${pac.n.ligados} estão hoje na CRV (aparecem na ficha deles)` : '') }); return out; }
     out.push({ pac, rotulo:`${T}: ${pac.n.linhas} ${det.h === 'dep' ? 'dependentes' : 'registros'} de ${pac.n.pessoas} ${det.h === 'dep' ? 'colaboradores' : 'pessoas'}` + (pac.n.anuladas ? ` · ${pac.n.anuladas} anuladas fora` : '') + (pac.n.nomeDiferente ? ` · ${pac.n.nomeDiferente} com nome diferente do Quadro (fora)` : '') });
     return out;
   }

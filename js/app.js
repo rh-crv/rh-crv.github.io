@@ -1885,8 +1885,9 @@ async function salvarHistorico(pac){
     if (!pac.faixa) return 0; const [a, z] = pac.faixa, pre = pac.docPre || 'm', X = pac.extra || {};
     if (!_ocorMem[col]) { const M = {}; (await window.CRV_REGS('quadro', col)).forEach(x => { if (x.mat && String(x._id || '').startsWith(pre)) M[String(x.mat)] = { l:x.l || [], p:x.p, crv:x.crv }; }); _ocorMem[col] = M; }
     const MEM = _ocorMem[col], mud = {};
-    Object.keys(MEM).forEach(m => { if (MEM[m].l.some(x => x[0] >= a && x[0] <= z)) mud[m] = 1; }); Object.keys(pac.itens).forEach(m => mud[m] = 1);
-    Object.keys(mud).forEach(m => { const o = MEM[m] || (MEM[m] = { l:[] }); o.l = o.l.filter(x => x[0] < a || x[0] > z).concat(pac.itens[m] || []).sort((x, y) => x[0].localeCompare(y[0])); if (X[m]) { o.p = X[m].p; o.crv = X[m].crv; } });
+    const TPS = Array.isArray(pac.tipos) ? new Set(pac.tipos) : null, sai = x => x[0] >= a && x[0] <= z && (!TPS || TPS.has(x[1])); // RPE0026R não traz todos os tipos: só troca os que vieram no arquivo
+    Object.keys(MEM).forEach(m => { if (MEM[m].l.some(sai)) mud[m] = 1; }); Object.keys(pac.itens).forEach(m => mud[m] = 1);
+    Object.keys(mud).forEach(m => { const o = MEM[m] || (MEM[m] = { l:[] }); o.l = o.l.filter(x => !sai(x)).concat(pac.itens[m] || []).sort((x, y) => x[0].localeCompare(y[0])); if (X[m]) { o.p = X[m].p; o.crv = X[m].crv; } });
     const doc = (id, dados) => ({ painel:'quadro', caminho:col + '/' + id, colecao:col, doc_id:id, dados:Object.assign({ ref:pac.referencia }, pac.empNome ? { emp:pac.empNome } : {}, dados), atualizado_por:quem });
     const linhas = Object.keys(mud).map(m => doc(pre + m, { mat:m, l:MEM[m].l, p:MEM[m].p, crv:MEM[m].crv }));
     // APFO: cópia na matrícula atual da CRV, para aparecer na ficha de quem foi transferido
