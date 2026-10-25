@@ -212,6 +212,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
       <span class="pill gold">🔒 Confidencial · uso restrito à gestão</span>
       <span class="pill" id="refDate">Ref.: —</span>
       <span class="pill" id="saveState" hidden>Salvo</span>
+      <button class="btn w" id="topBtn" type="button" title="Busca no app os colaboradores ativos com mais faltas, atestados e sanções nos últimos 12 meses">⚡ Trazer os 30 em atenção</button>
       <button class="btn w" id="addBtn" type="button">＋ Novo colaborador</button>
       <label class="btn w" for="fileIn">⬆ Carregar planilha</label>
       <input type="file" id="fileIn" accept=".xlsx,.xls" hidden>
@@ -275,7 +276,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
   </div>
 
   <div class="note">
-    <b>Como ler este painel.</b> Os nomes foram indicados pela gestão da área; a Gestão de Pessoas (RH) consolidou os registros funcionais (atestados, faltas, suspensões e advertências) e as informações que possui sobre cada colaborador.
+    <b>Como ler este painel.</b> Os nomes foram indicados pela gestão da área ou trazidos do app pelo botão “Trazer os 30 em atenção” (ativos com mais suspensões, advertências, faltas e atestados nos últimos 12 meses); a Gestão de Pessoas (RH) consolidou os registros funcionais (atestados, faltas, suspensões e advertências) e as informações que possui sobre cada colaborador.
     A <b>prioridade</b> é um critério de organização, não um parecer: <b>Alta</b> = possui suspensão, ou mais de 10 faltas, ou 3+ advertências; <b>Média</b> = 1 ou 2 advertências; <b>Acompanhar</b> = sem registros disciplinares.
     A análise e as decisões sobre cada caso cabem à <b>gestão direta</b> do colaborador. Informações de saúde e conduta pessoal devem ser tratadas de forma reservada, conforme a LGPD.
   </div>
@@ -479,7 +480,7 @@ function countUp(el,to){ if(!firstPaint||matchMedia('(prefers-reduced-motion: re
 const grow=sel=>requestAnimationFrame(()=>requestAnimationFrame(()=>$$(sel).forEach(e=>e.style.width=e.dataset.w+'%')));
 
 function renderKPIs(){
-  const lid=DATA.filter(p=>p.grp!=='Operação').length;
+  const lid=DATA.filter(p=>p.grp==='Liderança'||p.grp==='Fiscalização').length;
   const avgT=DATA.length?DATA.reduce((a,p)=>a+monthsOf(p.admD),0)/DATA.length:0;
   const k=[
     {lb:'Colaboradores',v:DATA.length,ft:`${lid} em liderança/fiscalização`,c:'var(--brand2)'},
@@ -496,7 +497,7 @@ function renderInsights(){
   const ins=[], tf=S('falta')+S('atest');
   const top=[...DATA].sort((a,b)=>(b.falta+b.atest)-(a.falta+a.atest))[0];
   if(top && tf) ins.push(['Assiduidade',`<strong>${esc(shortName(top.nome))}</strong> concentra <strong>${Math.round((top.falta+top.atest)/tf*100)}%</strong> das faltas e atestados do grupo (${top.falta} faltas e ${top.atest} atestados).`]);
-  const lid=DATA.filter(p=>p.grp!=='Operação'), lidAdv=lid.reduce((a,p)=>a+p.adv,0);
+  const lid=DATA.filter(p=>p.grp==='Liderança'||p.grp==='Fiscalização'), lidAdv=lid.reduce((a,p)=>a+p.adv,0);
   if(lid.length) ins.push(['Liderança',`<strong>${lid.length} de ${DATA.length}</strong> avaliados estão em liderança/fiscalização e somam <strong>${lidAdv} de ${S('adv')}</strong> advertências.`+(lid.every(p=>p.admD&&monthsOf(p.admD)<12)?' Todos com menos de 1 ano de casa.':'')]);
   const tc={}; DATA.forEach(p=>p.tm.forEach(t=>tc[t]=(tc[t]||0)+1));
   const tt=Object.entries(tc).sort((a,b)=>b[1]-a[1]).slice(0,2).map(x=>x[0].toLowerCase());
@@ -662,6 +663,31 @@ function renderAll(){
 }
 
 // ===== importar planilha no mesmo padrão =====
+// ===== trazer do app os colaboradores ativos mais em atenção (faltas e suspensões do ponto, atestados do sistema e sanções) =====
+$('#topBtn').onclick=async()=>{
+  const P=window.parent||{};if(typeof P.CRV_QUADRO!=='function')return toast('Abra este painel pelo app para buscar os dados.',true);
+  const b=$('#topBtn');b.disabled=true;b.textContent='Buscando…';
+  try{
+    const hj=new Date(),ini=iso(new Date(hj.getTime()-365*864e5)),fim=iso(hj),br=d=>d?d.slice(8,10)+'/'+d.slice(5,7)+'/'+d.slice(0,4):'';
+    const Q=await P.CRV_QUADRO();const M=(Q&&Q.mapa)||{};
+    const at=Object.entries(M).filter(([m,o])=>o.situacao==='Ativo'&&!/^(AFASTADOS|DESISTENTES)$/i.test(String(o.area||'')));
+    if(!at.length)throw new Error('O Quadro Geral ainda não foi carregado no app.');
+    const mats=at.map(([m])=>m),O=typeof P.CRV_OCORR==='function'?await P.CRV_OCORR(mats,ini,fim):{P:{}};
+    let HO={},HA={};try{HO=await P.CRV_HIST('ocor')}catch(_){}try{HA=await P.CRV_HIST('atest')}catch(_){}
+    const temO=Object.keys(HO).length>1,temA=Object.keys(HA).length>1,dentro=d=>d>=ini&&d<=fim;
+    const L=at.map(([m,o])=>{const x=O.P[m]||{at:[],fa:[],adv:[],sus:[]},oc=(HO[m]||[]).filter(r=>dentro(r[0])),aa=(HA[m]||[]).filter(r=>dentro(r[0]));
+      const falta=temO?oc.filter(r=>r[1]==='f').length:x.fa.length,fj=temO?oc.filter(r=>r[1]==='j').length:0,atest=temA?aa.length:x.at.length,adv=x.adv.length,susp=x.sus.length;
+      const p={mat:m,nome:String(o.nome||'').toUpperCase(),funcao:o.funcao||'',depto:o.setor||o.area||'',gerencia:o.gerencia||'',adm:o.admissao||'',atest,falta,fj,susp,adv};p.pr=prio(p);p.sc=score(p)+atest;return p})
+      .filter(p=>p.sc>0).sort((a,b)=>PRIO_ORD[a.pr]-PRIO_ORD[b.pr]||b.sc-a.sc).slice(0,30);
+    if(!L.length)throw new Error('Nenhum colaborador ativo com ocorrências no período.');
+    const old=Object.fromEntries(ALL.map(p=>[p._id,p])),novos=L.filter(p=>!old[cleanId(p.mat)]).length;
+    b.disabled=false;b.textContent='⚡ Trazer os 30 em atenção';
+    if(!await ask('Trazer os 30 em atenção',`Encontrei os ${L.length} colaboradores ativos mais em atenção de ${br(ini)} a ${br(fim)} (${novos} novos e ${L.length-novos} já no levantamento, que terão os números atualizados). Critério: suspensões, advertências, faltas e atestados, na ordem de prioridade do painel. Os pareceres já feitos são mantidos.`,'Trazer'))return;
+    const obs=`Números de ${br(ini)} a ${br(fim)}: faltas e faltas justificadas do ponto${temO?'':' (planilha de ocorrências)'}, atestados ${temA?'do sistema':'da planilha'} e advertências e suspensões do painel de Sanções. Trazido do app em ${br(fim)}.`;
+    await Promise.all(L.map(p=>{const id=cleanId(p.mat),b0=old[id],o={...p,_id:id,obs:b0&&b0.obs&&!/^Números de/.test(b0.obs)?b0.obs:'',parecer:b0&&b0.parecer,aviso:b0&&b0.aviso,gerencia:p.gerencia||(b0&&b0.gerencia)||''};delete o.pr;delete o.sc;return write(id,()=>col.doc(id).set(body(o)))}));
+    toast(L.length+' colaboradores trazidos para o levantamento.');gGer='';gDep='';renderAll();show('geral');
+  }catch(err){toast(err.message||'Não consegui buscar os dados.',true)}finally{b.disabled=false;b.textContent='⚡ Trazer os 30 em atenção'}
+};
 const norm=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/[^A-Z]/g,'');
 
 $('#fileIn').onchange=async e=>{
