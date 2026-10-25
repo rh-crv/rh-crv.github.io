@@ -55,6 +55,7 @@ function converterQuadro(R, antigo, REF){
   const H = R[0].map(x => s(x));
   const C = {}; H.forEach((h, i) => { if (h && !(h in C)) C[h] = i; });
   const col = (r, nome) => { for (const h of H) if (h && h.startsWith(nome)) return r[C[h]]; throw new Error('coluna "' + nome + '" não encontrada na planilha'); };
+  const hSal = H.find(h => /^sal[aá]rio/i.test(h) && /mensal|base|contrat|atual|nominal/i.test(h)) || H.find(h => /^sal[aá]rio/i.test(h));
   const recs = [], semArea = {};
   for (const r of R.slice(1)) {
     if (r[C['Matricula do Funcionário']] == null || s(r[C['Matricula do Funcionário']]) === '') continue;
@@ -69,7 +70,7 @@ function converterQuadro(R, antigo, REF){
       adm: iso(col(r, 'Data de Admissão')), resc: iso(col(r, 'Data Rescisão')), idade: parseInt(num(col(r, 'Idade')) || '0', 10) || 0,
       sexo: sexo.startsWith('F') ? 'F' : 'M', sexoL: sexo.startsWith('F') ? 'Feminino' : 'Masculino', cid: tc(col(r, 'Cidade Residente')),
       ccd: s(col(r, 'Descrição do Centro')), ccc: num(col(r, 'Código do Centro')), cnhv: iso(col(r, 'Vencimento')), cnhc: s(col(r, 'Categoria do CNH')),
-      depto: num(col(r, 'Depto')), codf: num(col(r, 'Código da Função')), nasc: iso(col(r, 'Data Nascimento')), cpf: cpf(col(r, 'CPF')) };
+      depto: num(col(r, 'Depto')), codf: num(col(r, 'Código da Função')), nasc: iso(col(r, 'Data Nascimento')), cpf: cpf(col(r, 'CPF')), sal: hSal ? r[C[hSal]] : undefined };
     o.X = [iso(col(r, 'Data Nascimento')), tc(col(r, 'Descrição do Estado Civil')), num(col(r, 'Numero do PIS')), num(col(r, 'Numero do CNH')), s(col(r, 'Categoria do CNH')),
       iso(col(r, 'Vencimento')), s(col(r, 'UF da CNH')), num(col(r, 'RG')), s(col(r, 'Orgão do RG')), iso(col(r, 'Data de Emissão do RG')), s(col(r, 'UF do RG')),
       cpf(col(r, 'CPF')), num(col(r, 'Carteira Profissional')), num(col(r, 'Serie Carteira')), num(col(r, 'Código do C.B.O')), tc(col(r, 'Cidade Nascimento')),
@@ -134,7 +135,13 @@ function converterQuadro(R, antigo, REF){
   // CPF de cada pessoa (todas as empresas), na mesma ordem do identificador de pessoa: permite buscar ex-colaboradores pelo CPF
   const CPFP = []; pid.forEach((i, k) => { CPFP[i] = /^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(k) ? k : ''; });
   Object.assign(dados, { D, X, DM, PID, CPFM, CPFP });
-  const resumo = { ativos: D.filter(d => d[8] === 'Ativo').length, afastados: D.filter(d => d[8] === 'Afastado').length, desligados: DM.length, linhas: recs.length, areaMantida: ovr, refPerdidas: perdidos, semRegra: Object.keys(semArea) };
+  // faixa de desconto do plano de saúde: só a faixa (1, 2 ou 3) fica guardada, não o salário
+  let nFx = 0;
+  if (hSal) { const FX = {};
+    for (const o of ativos) { const raw = o.sal; const v = typeof raw === 'number' ? raw : parseFloat(String(raw == null ? '' : raw).replace(/[^\d,.-]/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.'));
+      if (!(v > 0)) continue; FX[String(o.mat)] = v <= 1665 ? 1 : v <= 2220 ? 2 : 3; nFx++; }
+    dados.FX = FX; dados.FXREF = REF; }
+  const resumo = { faixas: nFx, colunaSalario: hSal || '', ativos: D.filter(d => d[8] === 'Ativo').length, afastados: D.filter(d => d[8] === 'Afastado').length, desligados: DM.length, linhas: recs.length, areaMantida: ovr, refPerdidas: perdidos, semRegra: Object.keys(semArea) };
   return { pac: { tipo:'crv-pacote', painel:'quadro', referencia: REF, dados }, resumo };
 }
 

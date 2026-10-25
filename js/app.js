@@ -543,7 +543,9 @@ async function dadosDesligamento(){
     P.get(key).b[k] = { det, ref, depois: !!(ref && c.deslig && c.deslig > ref) }; };
   const pode = id => { const p = E.paineis.find(x => x.id === id); return p && podeVer(p) && E.metas[id]; };
   if (pode('cartao-convenio')) { const d = await window.CRV_DADOS('cartao-convenio'); const C = d && d.dados.CARTAO; if (C && C.rows) { refs.conv = C.refPlanilha || d.referencia; C.rows.filter(r => String(r.card || '').toLowerCase() === 'ativo').forEach(r => add(r.mat, r.nome, 'conv', 'Cartão ativo na planilha', refs.conv)); } }
-  if (pode('unimed')) { const d = await window.CRV_DADOS('unimed'); const U = d && d.dados.DATA; if (U && U.P) { refs.unimed = d.referencia; U.P.filter(r => r[8] >= 0).forEach(r => add(r[0], r[1], 'unimed', r[11] && r[11].length ? `Titular + ${r[11].length} dependente${r[11].length > 1 ? 's' : ''}` : 'Titular', refs.unimed)); } }
+  if (pode('unimed')) { const d = await window.CRV_DADOS('unimed'); const U = d && d.dados.DATA; const T3 = U ? await unimedPorMat(U) : null;
+    if (T3) { refs.unimed = U.BREF ? U.BREF.split('/').reverse().join('-') : d.referencia; Object.entries(T3).forEach(([m, t]) => add(m, t.nome, 'unimed', t.deps.length ? `Titular + ${t.deps.length} dependente${t.deps.length > 1 ? 's' : ''}` : 'Titular', refs.unimed)); }
+    else if (U && U.P) { refs.unimed = d.referencia; U.P.filter(r => r[8] >= 0).forEach(r => add(r[0], r[1], 'unimed', r[11] && r[11].length ? `Titular + ${r[11].length} dependente${r[11].length > 1 ? 's' : ''}` : 'Titular', refs.unimed)); } }
   if (pode('uniodonto')) { const d = await window.CRV_DADOS('uniodonto'); const U = d && d.dados.DATA; if (U && U.T) { refs.odonto = d.referencia; U.T.forEach(t => add(t[5] || t[1], t[2], 'odonto', t[7] && t[7].length ? `Titular + ${t[7].length} dependente${t[7].length > 1 ? 's' : ''}` : 'Titular', refs.odonto)); } }
   if (pode('alojamentos')) { const d = await window.CRV_DADOS('alojamentos'); const A = d && d.dados.DATA; if (A && A.people) { refs.aloj = d.referencia; A.people.filter(x => x.t === 'c' && x.m).forEach(x => { const h = A.houses && A.houses[x.h]; add(x.m, x.n, 'aloj', h ? `${h.n}${x.q ? ', quarto ' + x.q : ''}` : 'Alojado', refs.aloj); }); } }
   const { data } = await sb.from('registros').select('doc_id,dados').eq('painel', 'quadro').eq('colecao', 'deslig_check').range(0, 4999);
@@ -619,7 +621,10 @@ async function fichaDados(mat){
   tarefas.push((async () => { const B = [];
     for (const t of ['alimentacao', 'convenio', 'premium']) { if (!fPode('cartao-' + t)) continue; const d = await window.CRV_DADOS('cartao-' + t); const C = d && d.dados.CARTAO; if (!C) continue;
       const r = (C.rows || []).find(x => fMat(x.mat) === mat); B.push([C.titulo, r && r.card ? r.card : 'Sem cartão', r && r.idc ? 'ID ' + r.idc : '', brD(C.refPlanilha)]); }
-    if (fPode('unimed')) { const d = await window.CRV_DADOS('unimed'); const U = d && d.dados.DATA; if (U) { const r = (U.P || []).find(x => fMat(x[0]) === mat);
+    if (fPode('unimed')) { const d = await window.CRV_DADOS('unimed'); const U = d && d.dados.DATA; const T3 = U ? await unimedPorMat(U) : null;
+      if (T3) { const t = Object.entries(T3).find(([m]) => fMat(m) === mat); const PLN = ['Local', 'Nacional Enfermaria', 'Nacional Apartamento'];
+        B.push(['Unimed', t ? 'Titular · ' + PLN[t[1].pl] : 'Sem plano', t && t[1].deps.length ? t[1].deps.length + ' dependente' + (t[1].deps.length > 1 ? 's' : '') + ': ' + t[1].deps.join(', ') : '', U.BREF || brD(d.referencia)]); }
+      else if (U) { const r = (U.P || []).find(x => fMat(x[0]) === mat);
       const PLN = ['Local', 'Nacional Enfermaria', 'Nacional Apartamento']; B.push(['Unimed', r && r[8] >= 0 ? 'Titular · ' + (PLN[r[8]] || 'plano') : 'Sem plano', r && r[11] && r[11].length ? r[11].length + ' dependente' + (r[11].length > 1 ? 's' : '') + ': ' + r[11].map(x => x[0]).join(', ') : '', brD(d.referencia)]); } }
     if (fPode('uniodonto')) { const d = await window.CRV_DADOS('uniodonto'); const U = d && d.dados.DATA; if (U) { const t = (U.T || []).find(x => fMat(x[5] || x[1]) === mat);
       B.push(['Uniodonto', t ? 'Titular' : 'Sem plano', t && t[7] && t[7].length ? t[7].length + ' dependente' + (t[7].length > 1 ? 's' : '') + ': ' + t[7].map(x => x[1]).join(', ') : '', brD(d.referencia)]); } }
@@ -1410,7 +1415,18 @@ async function telaModelo(p, cfg, acao){
       if (!r.error) novos = (r.data || []).filter(x => x.dados && !x.dados.excluida).map(x => cols.length > 1 ? { _id: x.doc_id, colecao: x.colecao, dados: x.dados } : { _id: x.doc_id, dados: x.dados });
     }
     window.CRV_RECARREGAR = () => { if (location.hash.startsWith('#/p/' + encodeURIComponent(p.id))) telaPainel(p.id); };
-    const html = montarModelo(tpl, d.conteudo, d.referencia, p, novos);
+    let tplU = tpl;
+    if ((PAC_DE[p.id] || p.id) === 'unimed') { // o painel da Unimed cruza com o Quadro atual do app
+      try { const Q = await window.CRV_QUADRO(); if (Q && Q.mapa) {
+        const dig = v => String(v || '').replace(/\D/g, ''), P = [], DL = {};
+        Object.entries(Q.mapa).forEach(([m, o]) => {
+          if (o.situacao === 'Desligado') { const c = dig(o.cpf); if (c && (!DL[c] || (o.deslig || '') > DL[c][0])) DL[c] = [o.deslig || '', o.cc || '', o.ccd || '', o.setor || '', o.nome || '']; return; }
+          P.push([+m, o.nome, o.funcao, o.area, o.vinculo, o.situacao, o.admissao, dig(o.cpf), o.setor, o.gerencia, o.idade || '', o.nasc || '', o.cid || '', o.ccd || '', o.cc || '', o.fx === '' || o.fx == null ? '' : o.fx, o.cel || '']); });
+        const rf = String(Q.referencia || ''), ref = /^\d{4}-\d{2}-\d{2}/.test(rf) ? rf.slice(8, 10) + '/' + rf.slice(5, 7) + '/' + rf.slice(0, 4) : rf;
+        const js = JSON.stringify({ P, DL, ref }).replace(/</g, '\\u003c');
+        tplU = tpl.replace(/<head[^>]*>/i, h => h + '<script>window.CRV_QB=' + js + ';<\/script>'); } } catch(_) {}
+    }
+    const html = montarModelo(tplU, d.conteudo, d.referencia, p, novos);
     const url = URL.createObjectURL(new Blob([html], { type:'text/html' }));
     area.className = 'modelo-area';
     area.innerHTML = `<iframe id="modelo-frame" title="${esc(p.nome)}" src="${url}"></iframe>`;
@@ -1504,6 +1520,17 @@ window.CRV_PDF_LOGOS = async function(doc, op){
   } catch (_) {}
   return doc;
 };
+/* Unimed (pacote V3): titulares ativos na Unimed cruzados pelo CPF do Quadro atual → { matrícula: { pl, deps, nome } } */
+async function unimedPorMat(U){
+  if (!U || U.V !== 3 || !Array.isArray(U.BEN)) return null;
+  const Q = await window.CRV_QUADRO(); if (!Q || !Q.mapa) return null;
+  const T = {}, D = {}; U.BEN.forEach(b => { if (b[1] === b[2]) T[b[1]] = b; else (D[b[1]] = D[b[1]] || []).push(b[3]); });
+  const dg = o => String(o.cpf || '').replace(/\D/g, '').padStart(11, '0'), ativo = new Set();
+  Object.values(Q.mapa).forEach(o => { if (o.situacao !== 'Desligado') ativo.add(dg(o)); });
+  // quem foi readmitido: a matrícula antiga (desligada) não conta, o plano é da matrícula atual
+  const out = {}; Object.entries(Q.mapa).forEach(([m, o]) => { const c = dg(o), t = T[c]; if (t && !(o.situacao === 'Desligado' && ativo.has(c))) out[m] = { pl:t[0], deps:D[c] || [], nome:o.nome }; });
+  return out;
+}
 window.CRV_QUADRO = async function(){
   try {
     const { data: d, error } = await sb.from('pacotes').select('referencia,conteudo,atualizado_em').eq('painel', 'quadro').maybeSingle();
@@ -1523,7 +1550,8 @@ window.CRV_QUADRO = async function(){
     const CPFM = dados.CPFM || {};
     DM.forEach(r => { M[txt(r[0])] = { nasc: txt(r[27] || ''), cpf: txt(CPFM[txt(r[0])] || ''), cc: (txt(r[23]) && txt(r[23]) !== '0') ? txt(r[23]) : '', ccd: txt(r[13]), nome:txt(r[1]), funcao:txt(r[2]), setor:txt(r[3]), situacao:'Desligado', vinculo:txt(r[7]), gerencia:txt(r[6]), area:txt(r[5]), cnh:txt(r[17]), admissao:txt(r[9]), deslig:txt(r[20]), empresa:txt(r[21]).replace(/\s*\(\d+\)$/, '') }; });
     const XX = Array.isArray(dados.X) && dados.X.length === dados.D.length ? dados.X : null;
-    dados.D.forEach((r, i) => { M[txt(r[0])] = { nasc: XX ? txt(XX[i][0]) : '', cpf: XX ? txt(XX[i][11]) : '', cc: XX ? txt(XX[i][33]) : '', ccd: txt(r[13]), nome:txt(r[1]), funcao:txt(r[2]), setor:txt(r[3]), situacao:txt(r[8]) || 'Ativo', vinculo:txt(r[7]), gerencia:txt(r[6]), area:txt(r[5]), cnh:txt(r[17]), admissao:txt(r[9]), deslig:'', empresa:'CRV' }; });
+    const FXQ = dados.FX || {};
+    dados.D.forEach((r, i) => { M[txt(r[0])] = { idade: r[10], cid: txt(r[12]), cel: XX ? txt(XX[i][25]) : '', fx: FXQ[txt(r[0])] != null ? FXQ[txt(r[0])] : '', nasc: XX ? txt(XX[i][0]) : '', cpf: XX ? txt(XX[i][11]) : '', cc: XX ? txt(XX[i][33]) : '', ccd: txt(r[13]), nome:txt(r[1]), funcao:txt(r[2]), setor:txt(r[3]), situacao:txt(r[8]) || 'Ativo', vinculo:txt(r[7]), gerencia:txt(r[6]), area:txt(r[5]), cnh:txt(r[17]), admissao:txt(r[9]), deslig:'', empresa:'CRV' }; });
     // departamentos (código Depto/Seção → nome), a partir dos ativos e afastados
     const DP = {};
     if (XX) dados.D.forEach((r, i) => { const cod = txt(XX[i][23]), nome = txt(r[3]); if (!cod || !nome) return;
