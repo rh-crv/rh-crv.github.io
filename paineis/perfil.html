@@ -561,6 +561,12 @@ function formHTML(p,isNew){
 function renderSheet(){
   if(editing){ const isNew=editing==='new'; const p=isNew?{nome:'',mat:'',funcao:'',depto:gDep,gerencia:gGer,adm:'',obs:''}:cur(); if(!p&&!isNew){ editing=null; return renderSheet(); }
     $('#sheet').innerHTML=formHTML(p,isNew);
+    if(isNew){ const mi=$('#ed-mat'); const aviso=document.createElement('div'); aviso.className='hint'; aviso.style.cssText='grid-column:1/-1;margin-top:-4px'; aviso.textContent='Digite a matrícula: nome, função, departamento, admissão e os registros dos últimos 12 meses vêm do app.'; mi.closest('.fgrid').appendChild(aviso);
+      let tm=null; const puxar=async()=>{ const m=mi.value.replace(/\D/g,'').replace(/^0+(?=\d)/,''); if(!m) return; aviso.textContent='Buscando a matrícula '+m+'…';
+        try{ const r=await pessoaDoApp(m); if(!r){ aviso.textContent='Matrícula '+m+' não encontrada no Quadro Geral ativo. Confira o número ou preencha à mão.'; return; }
+          [['nome',r.nome],['funcao',r.funcao],['depto',r.depto],['gerencia',r.gerencia],['adm',r.adm],['atest',r.atest],['falta',r.falta],['fj',r.fj],['susp',r.susp],['adv',r.adv]].forEach(([k,v])=>{ const e=$('#ed-'+k); if(e) e.value=v; });
+          aviso.textContent='Dados de '+title(r.nome)+' preenchidos pelo app ('+r.per+'). Confira e salve.'+(ALL.some(x=>x._id===cleanId(m))?' Atenção: esta matrícula já está no levantamento.':''); }catch(er){ aviso.textContent='Não consegui buscar: '+(er.message||er); } };
+      mi.addEventListener('input',()=>{ clearTimeout(tm); tm=setTimeout(()=>{ if(mi.value.replace(/\D/g,'').length>=3) puxar(); },700); }); mi.addEventListener('change',puxar); setTimeout(()=>mi.focus(),50); }
     $('#edCancel').onclick=()=>{ editing=null; renderNominal(); };
     $('#edSave').onclick=()=>saveForm(isNew,p);
     if(!isNew) $('#edDel').onclick=()=>delPerson(p);
@@ -615,7 +621,7 @@ function saveForm(isNew,old){
   if(isNew && ALL.some(x=>x._id===id)) return toast('Já existe um colaborador com essa matrícula.',true);
   if(!isNew) p.mat=old.mat;
   editing=null; curId=id;
-  write(id,()=>col.doc(id).set(body(p))).then(()=>toast(isNew?'Colaborador adicionado.':'Alterações salvas.'));
+  write(id,()=>col.doc(id).set(body(p))).then(()=>{toast(isNew?'Colaborador adicionado.':'Alterações salvas.');try{window.parent.CRV_GESTOR_GERAR&&window.parent.CRV_GESTOR_GERAR()}catch(_){}});
   setState('');
 }
 async function delPerson(p){
@@ -664,6 +670,13 @@ function renderAll(){
 
 // ===== importar planilha no mesmo padrão =====
 // ===== trazer do app os colaboradores ativos mais em atenção (faltas e suspensões do ponto, atestados do sistema e sanções) =====
+async function pessoaDoApp(m){ const P=window.parent||{}; if(typeof P.CRV_QUADRO!=='function') throw new Error('abra este painel pelo app');
+  const Q=await P.CRV_QUADRO(), o=Q&&Q.mapa&&Q.mapa[m]; if(!o||o.situacao==='Desligado') return null;
+  const hj=new Date(),ini=iso(new Date(hj.getTime()-365*864e5)),fim=iso(hj),br=d=>d.slice(8,10)+'/'+d.slice(5,7)+'/'+d.slice(0,4),dentro=d=>d>=ini&&d<=fim;
+  const O=typeof P.CRV_OCORR==='function'?await P.CRV_OCORR([m],ini,fim):{P:{}},x=O.P[m]||{at:[],fa:[],adv:[],sus:[]};
+  let HO={},HA={};try{HO=await P.CRV_HIST('ocor')}catch(_){}try{HA=await P.CRV_HIST('atest')}catch(_){}
+  const oc=(HO[m]||[]).filter(r=>dentro(r[0])),aa=(HA[m]||[]).filter(r=>dentro(r[0])),temO=Object.keys(HO).length>1,temA=Object.keys(HA).length>1;
+  return {nome:String(o.nome||'').toUpperCase(),funcao:o.funcao||'',depto:o.setor||o.area||'',gerencia:o.gerencia||'',adm:o.admissao||'',falta:temO?oc.filter(r=>r[1]==='f').length:x.fa.length,fj:temO?oc.filter(r=>r[1]==='j').length:0,atest:temA?aa.length:x.at.length,adv:x.adv.length,susp:x.sus.length,per:'últimos 12 meses, de '+br(ini)+' a '+br(fim)}; }
 $('#topBtn').onclick=async()=>{
   const P=window.parent||{};if(typeof P.CRV_QUADRO!=='function')return toast('Abra este painel pelo app para buscar os dados.',true);
   const b=$('#topBtn');b.disabled=true;b.textContent='Buscando…';
@@ -685,7 +698,7 @@ $('#topBtn').onclick=async()=>{
     if(!await ask('Trazer os 30 em atenção',`Encontrei os ${L.length} colaboradores ativos mais em atenção de ${br(ini)} a ${br(fim)} (${novos} novos e ${L.length-novos} já no levantamento, que terão os números atualizados). Critério: suspensões, advertências, faltas e atestados, na ordem de prioridade do painel. Os pareceres já feitos são mantidos.`,'Trazer'))return;
     const obs=`Números de ${br(ini)} a ${br(fim)}: faltas e faltas justificadas do ponto${temO?'':' (planilha de ocorrências)'}, atestados ${temA?'do sistema':'da planilha'} e advertências e suspensões do painel de Sanções. Trazido do app em ${br(fim)}.`;
     await Promise.all(L.map(p=>{const id=cleanId(p.mat),b0=old[id],o={...p,_id:id,obs:b0&&b0.obs&&!/^Números de/.test(b0.obs)?b0.obs:'',parecer:b0&&b0.parecer,aviso:b0&&b0.aviso,gerencia:p.gerencia||(b0&&b0.gerencia)||''};delete o.pr;delete o.sc;return write(id,()=>col.doc(id).set(body(o)))}));
-    toast(L.length+' colaboradores trazidos para o levantamento.');gGer='';gDep='';renderAll();show('geral');
+    toast(L.length+' colaboradores trazidos para o levantamento.');try{window.parent.CRV_GESTOR_GERAR&&window.parent.CRV_GESTOR_GERAR()}catch(_){}gGer='';gDep='';renderAll();show('geral');
   }catch(err){toast(err.message||'Não consegui buscar os dados.',true)}finally{b.disabled=false;b.textContent='⚡ Trazer os 30 em atenção'}
 };
 const norm=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/[^A-Z]/g,'');

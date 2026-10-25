@@ -63,6 +63,7 @@ const GESTOR_MENU = [
   ['Quadro e movimentação', [['eq', 'Equipe'], ['mov', 'Admissões e saídas'], ['pv', 'Quadro x previsto'], ['exp', 'Período de experiência'], ['nov', 'Novos colaboradores']]],
   ['Frequência e férias', [['fer', 'Férias'], ['freq', 'Frequência']]],
   ['Ocorrências, risco e jurídico', [['disc', 'Disciplina e RD']]],
+  ['Atração e perfil', [['perfil', 'Perfil profissional']]],
   ['Treinamento e liderança', [['cr', 'Em treinamento']]],
   ['Alojamento e transporte', [['alo', 'Alojamento']]],
   ['Atendimento e escuta', [['env', 'Meus envios ao RH']]] ];
@@ -86,7 +87,7 @@ function traduzErro(e){
   if (m.includes('rate limit')) return 'Muitas tentativas seguidas. Aguarde alguns minutos e tente de novo.';
   if (m.includes('failed to fetch') || m.includes('network')) return 'Sem conexão com o servidor. Verifique a internet.';
   if (m.includes('row-level security') || m.includes('permission denied')) return 'Você não tem permissão para essa ação.';
-  if (m.includes('gestor_envios_tipo_check')) return 'O pedido de sanção ainda não foi liberado no banco: peça ao RH para rodar o arquivo 06_pedido_sancao.sql no Supabase.';
+  if (m.includes('gestor_envios_tipo_check')) return 'Este tipo de envio ainda não foi liberado no banco: peça ao RH para rodar o arquivo 08_parecer_perfil.sql no Supabase.';
   if ((m.includes('areas') && m.includes('column')) || m.includes('area_dados') || m.includes('gestor_envios') || m.includes('perfis_papel_check')) return 'Falta preparar o banco para o perfil de gestor: rode o arquivo 04_gestor.sql no Supabase (SQL Editor).';
   if (m.includes('paineis_ver') || m.includes('paineis_editar')) return 'Falta preparar o banco para liberar painéis um a um: rode o arquivo 05_equipe_rh.sql atualizado no Supabase.';
   if (m.includes('perfis_papel_check') && m.includes('rh')) return 'Falta preparar o banco para a Equipe RH: rode o arquivo 05_equipe_rh.sql no Supabase.';
@@ -1413,7 +1414,7 @@ async function logAcesso(acao, onde, detalhe){
 }
 window.CRV_LOG_ACESSO = logAcesso;
 const ondeDe = h => { if (h.startsWith('#/p/')) { const id = decodeURIComponent(h.slice(4).split('/')[0]); return 'Painel: ' + ((E.paineis || []).find(p => p.id === id)?.nome || id); }
-  if (h.startsWith('#/eq/')) { const k = h.slice(5); return 'Minha equipe: ' + ({ eq:'Equipe', mov:'Admissões e saídas', pv:'Quadro x previsto', exp:'Experiência', nov:'Novos colaboradores', fer:'Férias', freq:'Frequência', disc:'Disciplina e RD', cr:'Em treinamento', alo:'Alojamento', env:'Meus envios' }[k] || k); }
+  if (h.startsWith('#/eq/')) { const k = h.slice(5); return 'Minha equipe: ' + ({ eq:'Equipe', mov:'Admissões e saídas', pv:'Quadro x previsto', exp:'Experiência', nov:'Novos colaboradores', perfil:'Perfil profissional', fer:'Férias', freq:'Frequência', disc:'Disciplina e RD', cr:'Em treinamento', alo:'Alojamento', env:'Meus envios' }[k] || k); }
   return ({ '#/':'Início', '#/central':'Central do dia', '#/admin':'Administração', '#/conta':'Minha conta', '#/relatorio':'Relatório da diretoria', '#/bases':'Saúde das bases', '#/envios':'Envios dos gestores' })[h] || (h.startsWith('#/ficha') ? 'Ficha do colaborador' : h.startsWith('#/desligamento') ? 'Checklist de desligamento' : h.replace(/^#\//, '') || 'Início'); };
 async function registrar(painel, acao, detalhe){
   try { await sb.from('historico').insert({ painel, acao, detalhe, usuario: E.perfil?.nome }); } catch(_){}
@@ -1773,7 +1774,8 @@ const CAPA = {
   'Alojamento e transporte':       ['#1f3d17','#3f7a2c'],
   'Remuneração e gratificações':   ['#3d300a','#86691a']
 };
-window.CRV_CAPA = CAPA; // usado também nas telas próprias do app (Onboarding, Risco de saída)
+window.CRV_CAPA = CAPA;
+window.CRV_GESTOR_GERAR = () => { clearTimeout(window._gerT); window._gerT = setTimeout(() => { try { GESTOR().gerar(true).catch(() => {}); } catch(_){} }, 4000); }; // usado também nas telas próprias do app (Onboarding, Risco de saída)
 // como cada painel azul pinta a capa (os demais já têm cor própria: Unimed, Uniodonto, Sanções, Sysprocard…)
 const CAPA_MODO = {
   vars:  ['absenteismo','absenteismo-gestao','admissoes','jovem','processos','quadro','rd','rescisoes','gratificacao','pesquisas'],
