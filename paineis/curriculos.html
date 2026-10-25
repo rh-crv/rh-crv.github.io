@@ -1977,6 +1977,8 @@ function abrirQuem(titulo, sub, html){
   $('#quem').hidden = false; document.body.style.overflow = 'hidden';
 }
 function fecharQuem(){ $('#quem').hidden = true; document.body.style.overflow = ''; }
+const qCt = c => `<div class="qrow"><button type="button" class="lk" data-ctid="${esc(c._id)}">${esc(c.nome || 'Sem nome')}</button><span class="q2">${esc(c.func || '')}${c.dep ? ' · ' + esc(c.dep) : ''}</span><span>${c.status === 'contratado' ? 'Contratado' + (c.mat ? ' · mat. ' + esc(c.mat) : '') + (c.admissao ? ' · ' + esc(String(c.admissao).split('-').reverse().join('/')) : '') : c.assinado ? 'Contrato assinado' : 'Em contratação'}</span></div>`;
+document.addEventListener('click', e => { const b = e.target.closest('[data-ctid]'); if (!b) return; fecharQuem(); if (window.CRV_CT_ABRIR) window.CRV_CT_ABRIR(b.dataset.ctid); });
 const qCdt = x => { const v = vagaDe(x.vagaId), c = candDe(x); return `<div class="qrow">${RSO ? '<b>' + esc(x.nome || 'Sem nome') + '</b>' : `<button type="button" class="lk" data-irc="${esc(x.candId)}">${esc((c && c.nome) || x.nome || 'Sem nome')}</button>`}<span class="q2">${esc(v ? v.titulo : 'Vaga excluída')}</span><span>${x.resultado ? esc(RESULT[x.resultado] || '') : esc(ETAPA[x.etapa] || '') + ' · ' + diasEntre(x.etapaEm) + ' d'}</span></div>`; };
 const qVaga = v => { const i = vagaInfo(v); return `<div class="qrow"><button type="button" class="lk" data-irv="${esc(v.id)}">${esc(v.titulo)}</button><span class="q2">${esc(frenteDe(v))}${v.secao ? ' · ' + esc(v.secao) : ''}</span><span>${i.adm} de ${i.q} · ${i.proc} em processo</span></div>`; };
 function irCand(id){
@@ -2003,21 +2005,27 @@ function renderRs(force){
   RS.pend = false;
   renderRsKpis(); renderRsFunil(); renderRsPrev(); renderRsForm(); renderRsVagas();
 }
+window.renderRsKpis = () => { try { renderRsKpis(); } catch(_){} };
 function renderRsKpis(){
   const ab = S.vagas.filter(emAberto), infos = ab.map(v => ({v, i:vagaInfo(v)}));
   const pos = infos.reduce((t, x) => t + x.i.rest, 0);
   const proc = S.cdts.filter(x => ativa(x) && vagaDe(x.vagaId) && emAberto(vagaDe(x.vagaId)));
   const dec = proc.filter(x => x.etapa === 'decisao');
   const adm = S.cdts.filter(x => x.resultado === 'admitido');
+  // fichas de contratação: em processo contam como candidatos em processo; contratadas (ou que já entraram no Quadro) contam como admitidas
+  const CT = (window.CRV_CT_LISTA ? window.CRV_CT_LISTA() : []) || [], nmK = v => String(v || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+  const jaC = new Set(proc.concat(adm).map(x => nmK((candDe(x) || {}).nome || x.nome)));
+  const ctP = CT.filter(c => (c.status || 'proc') === 'proc' && !jaC.has(nmK(c.nome))), ctA = CT.filter(c => c.status === 'contratado' && !jaC.has(nmK(c.nome)));
+  window.__rsCT = { ctP, ctA };
   const fech = S.vagas.filter(v => v.status === 'fechada' && v.abertaEm && v.fechadaEm);
   const tm = fech.length ? Math.round(fech.reduce((t, v) => t + diasEntre(v.abertaEm, v.fechadaEm), 0) / fech.length) : null;
   const v = n => S.rsLoaded ? n : '—';
   const ic = p => `<span class="ki"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg></span>`;
   $('#rsKpis').innerHTML = `
     <button type="button" class="kpi btnk" data-kq="vagas" style="--kc:var(--k2);--ks:var(--k2s)"><span class="v">${v(ab.length)}</span><span class="l">Vagas em aberto</span>${ic('<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M3 13h18"/>')}<span class="d">${S.rsLoaded ? pos + (pos === 1 ? ' posição a preencher' : ' posições a preencher') : ''}</span></button>
-    <button type="button" class="kpi btnk" data-kq="proc" style="--kc:var(--k1);--ks:var(--k1s)"><span class="v">${v(proc.length)}</span><span class="l">Candidatos em processo</span>${ic('<circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/><path d="M15.5 14.2A5 5 0 0 1 21 19"/>')}<span class="d">${S.rsLoaded ? 'em ' + new Set(proc.map(x => x.vagaId)).size + ' vagas' : ''}</span></button>
+    <button type="button" class="kpi btnk" data-kq="proc" style="--kc:var(--k1);--ks:var(--k1s)"><span class="v">${v(proc.length + ctP.length)}</span><span class="l">Candidatos em processo</span>${ic('<circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/><path d="M15.5 14.2A5 5 0 0 1 21 19"/>')}<span class="d">${S.rsLoaded ? (proc.length ? proc.length + ' nas vagas' : '') + (proc.length && ctP.length ? ' · ' : '') + (ctP.length ? ctP.length + ' em contratação' : '') || 'nenhum no momento' : ''}</span></button>
     <button type="button" class="kpi btnk" data-kq="dec" style="--kc:var(--k4);--ks:var(--k4s)"><span class="v">${v(dec.length)}</span><span class="l">Aguardando decisão da área</span>${ic('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>')}<span class="d">a escolha final é do gestor</span></button>
-    <button type="button" class="kpi btnk" data-kq="adm" style="--kc:var(--k3);--ks:var(--k3s)"><span class="v">${v(adm.length)}</span><span class="l">Admitidos pelo painel</span>${ic('<path d="m5 12 5 5 9-10"/>')}<span class="d">${!S.rsLoaded ? '' : tm === null ? 'nenhuma vaga fechada ainda' : 'vaga fecha em ' + tm + ' dias, em média'}</span></button>`;
+    <button type="button" class="kpi btnk" data-kq="adm" style="--kc:var(--k3);--ks:var(--k3s)"><span class="v">${v(adm.length + ctA.length)}</span><span class="l">Admitidos pelo painel</span>${ic('<path d="m5 12 5 5 9-10"/>')}<span class="d">${!S.rsLoaded ? '' : tm === null ? 'nenhuma vaga fechada ainda' : 'vaga fecha em ' + tm + ' dias, em média'}</span></button>`;
   const semCand = infos.filter(x => x.v.status === 'aberta' && !x.i.proc && x.i.rest > 0), atras = infos.filter(x => x.i.atras);
   const prev = prevCalc(), falta = prev.reduce((t, g) => t + g.falta, 0), abrir = prev.reduce((t, g) => t + g.abrir, 0);
   $('#rsBrief').innerHTML = !S.rsLoaded ? 'Carregando as vagas…'
@@ -2284,9 +2292,9 @@ $('#rsKpis').addEventListener('click', e => {
   const proc = S.cdts.filter(x => ativa(x) && vagaDe(x.vagaId) && emAberto(vagaDe(x.vagaId)));
   const k = b.dataset.kq;
   if(k === 'vagas'){ const xs = S.vagas.filter(emAberto); abrirQuem('Vagas em aberto', xs.length + ' vagas · clique para abrir', xs.map(qVaga).join('')); }
-  else if(k === 'proc') abrirQuem('Candidatos em processo', proc.length + ' candidatos · clique no nome para abrir no banco', proc.map(qCdt).join(''));
+  else if(k === 'proc'){ const C = (window.__rsCT || {}).ctP || []; abrirQuem('Candidatos em processo', (proc.length + C.length) + ' candidatos · clique no nome para abrir', proc.map(qCdt).join('') + C.map(qCt).join('')); }
   else if(k === 'dec'){ const xs = proc.filter(x => x.etapa === 'decisao'); abrirQuem('Aguardando decisão da área', xs.length + ' candidatos', xs.map(qCdt).join('')); }
-  else { const xs = S.cdts.filter(x => x.resultado === 'admitido'); abrirQuem('Admitidos pelo painel', xs.length + ' candidatos', xs.map(qCdt).join('')); }
+  else { const xs = S.cdts.filter(x => x.resultado === 'admitido'), C = (window.__rsCT || {}).ctA || []; abrirQuem('Admitidos pelo painel', (xs.length + C.length) + ' candidatos', xs.map(qCdt).join('') + C.map(qCt).join('')); }
 });
 $('#rsFunil').addEventListener('click', e => { const b = e.target.closest('[data-qe]'); if(!b) return;
   const xs = S.cdts.filter(x => ativa(x) && x.etapa === b.dataset.qe && vagaDe(x.vagaId) && emAberto(vagaDe(x.vagaId)));
@@ -2498,6 +2506,7 @@ render(); renderJobs(); setView(location.hash === '#rs' ? 'rs' : 'banco', true);
 .ct-lista{display:grid;gap:8px}
 .ct-gh{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--k1,#2756A0);margin:8px 0 0;padding:0 2px 4px;border-bottom:2px solid var(--k1s,#E1E9F6)}.ct-gh:first-child{margin-top:0}.ct-gh span{font-size:11.5px;background:var(--k1s,#E1E9F6);border-radius:10px;padding:1px 8px;letter-spacing:0}
 .ct-sets{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:0 0 12px}.ct-sets>span{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-2,#45506A);margin-right:2px}.ct-sets button{font:inherit;font-size:12.5px;border:1px solid var(--line,#D3DBE7);background:var(--surface,#fff);color:inherit;border-radius:20px;padding:5px 11px;cursor:pointer}.ct-sets button b{margin-left:3px}.ct-sets button.on{background:var(--k1,#2756A0);border-color:var(--k1,#2756A0);color:#fff}
+.ct-ac{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;margin-top:2px;padding-top:8px;border-top:1px dashed #e1e5ec}.ct-ac button{border:1px solid #d5dbe6;background:#fff;border-radius:8px;padding:5px 10px;font:600 12.5px inherit;font-family:inherit;cursor:pointer;color:#14213d}.ct-ac button[data-ac=ass]{background:#1d7349;border-color:#1d7349;color:#fff}.ct-ac button[data-ok]{background:#a3301c;border-color:#a3301c;color:#fff}.ct-ac .ct-mot{flex:1;min-width:220px;border:1px solid #d5dbe6;border-radius:8px;padding:6px 9px;font:inherit}
 .ct-card{display:grid;grid-template-columns:minmax(0,2.2fr) 90px minmax(0,3fr) auto;gap:12px;align-items:center;border:1px solid var(--line,#D3DBE7);border-radius:12px;padding:10px 13px;cursor:pointer;background:var(--surface,#fff)}
 .ct-card:hover{border-color:var(--k1,#2756A0)}
 .ct-card .nm{font-weight:700;font-size:14px}
@@ -2586,7 +2595,7 @@ function situacao(c){
   if(!toxOk)bloq.push(toxPos?'exame toxicológico positivo':'exame toxicológico pendente');
   const totObr=DOCS.filter(d=>obrig(d,c)).length;
   return{docsF,totObr,medOk,medIn,toxNa,toxOk,toxPos,integOk:!!integ.data,bloq,pronto:!bloq.length}}
-const STL={proc:['Em processo','#eef3fb','#2756A0'],contratado:['Contratado','#dcefe3','#1d5c3a'],desistiu:['Desistiu','#f3f4f6','#5d6a85'],nao_aprovado:['Não aprovado','#fdecea','#a3301c']};
+const STL={ass:['Contrato assinado','#e6f4ec','#1d5c3a'],proc:['Em processo','#eef3fb','#2756A0'],contratado:['Contratado','#dcefe3','#1d5c3a'],desistiu:['Desistiu','#f3f4f6','#5d6a85'],nao_aprovado:['Não aprovado','#fdecea','#a3301c']};
 const ALERTA=15; // dias em processo para destacar
 
 let L=[],F={st:'proc',q:'',k:''};
@@ -2595,7 +2604,20 @@ async function carregarSets(){if(SETS)return SETS;SETS={c:{},n:{}};try{const f=w
 const setorDe=c=>c.setor||(SETS&&(SETS.c[String(c.setorCod||'').replace(/\D/g,'')]||SETS.n[String(c.dep||'').toUpperCase().trim()]))||'Setor não identificado';
 const porSetor=(a,b)=>setorDe(a).localeCompare(setorDe(b),'pt-BR')||String(a.nome||'').localeCompare(String(b.nome||''),'pt-BR');
 const grupos=(R,card)=>{let h='',ult=null;R.forEach(c=>{const st=setorDe(c);if(st!==ult){ult=st;const n=R.filter(x=>setorDe(x)===st).length;h+='<div class="ct-gh">'+esc(st)+'<span>'+n+'</span></div>'}h+=card(c)});return h};
-async function carregar(){await carregarSets();const D=await db();if(!D){L=[];return}try{const s=await D.collection('contratacoes').get();L=s.docs.map(d=>Object.assign({_id:d.id},d.data())).filter(x=>!x.excluido)}catch(_){L=[]}}
+async function carregar(){await carregarSets();const D=await db();if(!D){L=[];return}try{const s=await D.collection('contratacoes').get();L=s.docs.map(d=>Object.assign({_id:d.id},d.data())).filter(x=>!x.excluido)}catch(_){L=[]}
+  try{await autoAdmitir()}catch(_){}
+  try{if(typeof window.renderRsKpis==='function')window.renderRsKpis()}catch(_){}}
+/* quem está em contratação e já aparece no Quadro Geral (mesmo nome, admitido depois da ficha) passa sozinho para Contratado */
+const nN=v=>String(v||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z ]/g,' ').replace(/\s+/g,' ').trim();
+async function autoAdmitir(){const f=window.parent&&window.parent.CRV_QUADRO;const q=typeof f==='function'?await f():null;const M=q&&q.mapa;if(!M)return;
+  const idx={};Object.entries(M).forEach(([m,o])=>{if(o.situacao==='Desligado'||!o.admissao)return;const k=nN(o.nome);(idx[k]=idx[k]||[]).push([m,o])});
+  const ref=q.referencia?br(String(q.referencia).slice(0,10)):'';
+  for(const c of L){if((c.status||'proc')!=='proc'||!c.nome)continue;const lim=c.recebida?(d=>{d.setDate(d.getDate()-30);return d.toISOString().slice(0,10)})(new Date(c.recebida+'T12:00:00')):'';
+    const A=(idx[nN(c.nome)]||[]).filter(([,o])=>(!lim||o.admissao>=lim)&&(!c.nasc||!o.nasc||o.nasc===c.nasc));if(A.length!==1)continue;
+    const [m,o]=A[0],s=situacao(c);c.status='contratado';c.admissao=o.admissao;c.mat=m;c.auto='quadro';c.encerradoEm=new Date().toISOString();
+    try{await salvar(c,'Admitido: apareceu no Quadro Geral'+(ref?' de '+ref:'')+' com a matrícula '+m+', admissão em '+br(o.admissao)+(s.pronto?'':' · pendências na ficha quando entrou: '+s.bloq.join('; ')))}catch(_){}}}
+window.CRV_CT_LISTA=()=>L;window.CRV_CT_ABRIR=id=>abrir(id);
+async function marcar(c,o,txt){Object.assign(c,o);if(c.status!=='proc'&&!c.encerradoEm)c.encerradoEm=new Date().toISOString();await salvar(c,txt);await carregar();if(W)lista();bloco()}
 async function salvar(c,txt){const D=await db();if(!D)throw new Error('O registro não está disponível nesta visualização.');
   const h=(c.hist||[]).concat(txt?[{em:new Date().toISOString(),por:quem(),txt}]:[]).slice(-60);c.hist=h;c.atualizadoEm=new Date().toISOString();
   const o=Object.assign({},c);delete o._id;
@@ -2608,6 +2630,15 @@ async function abrir(id){fechar();W=document.createElement('div');W.className='c
   document.body.appendChild(W);W.addEventListener('mousedown',e=>{if(e.target===W)fechar()});
   W.querySelector('#ctX').onclick=fechar;W.querySelector('#ctNovo').onclick=()=>form({});W.querySelector('#ctCfg').onclick=cfg;
   await carregarCfg();await carregar();lista();bloco();const c=id&&L.find(x=>x._id===id);if(c)form(JSON.parse(JSON.stringify(c)))}
+/* ações rápidas em cada ficha: assinou o contrato, desistiu, não aprovado */
+function acoes(c){if((c.status||'proc')!=='proc')return '';return '<div class="ct-ac">'+(c.assinado?'':'<button data-ac="ass" data-cid="'+esc(c._id)+'">✍ Assinou o contrato</button>')+'<button data-ac="des" data-cid="'+esc(c._id)+'">Desistiu</button><button data-ac="nao" data-cid="'+esc(c._id)+'">Não aprovado</button></div>'}
+document.addEventListener('click',async e=>{const b=e.target.closest('[data-ac][data-cid]');if(!b)return;e.stopPropagation();e.preventDefault();const c=L.find(x=>x._id===b.dataset.cid);if(!c)return;const k=b.dataset.ac;
+  if(k==='ass'){b.disabled=true;b.textContent='Salvando…';try{await marcar(c,{assinado:hoje()},'Assinou o contrato em '+br(hoje()))}catch(er){b.textContent='Não consegui salvar'}return}
+  const box=b.closest('.ct-ac');box.innerHTML='<input class="ct-mot" placeholder="'+(k==='des'?'Motivo da desistência (ex.: não compareceu ao exame)':'Motivo (ex.: exame médico inapto)')+'"><button data-ok="1">Confirmar '+(k==='des'?'desistência':'não aprovado')+'</button><button data-no="1">Cancelar</button>';
+  const i=box.querySelector('input');i.focus();box.onclick=ev=>ev.stopPropagation();
+  box.querySelector('[data-no]').onclick=ev=>{ev.stopPropagation();W?lista():bloco()};
+  box.querySelector('[data-ok]').onclick=async ev=>{ev.stopPropagation();const mot=i.value.trim();if(!mot){i.focus();i.style.borderColor='#a3301c';return}
+    try{await marcar(c,{status:k==='des'?'desistiu':'nao_aprovado',motivo:mot},'Situação: '+(k==='des'?'Desistiu':'Não aprovado')+' ('+mot+')')}catch(er){i.value='';i.placeholder='Não consegui salvar: '+er.message}}},true);
 function lista(){if(!W)return;const C=W.querySelector('#ctCorpo');
   const proc=L.filter(c=>(c.status||'proc')==='proc'),pr=proc.filter(c=>situacao(c).pronto),at=proc.filter(c=>dias(c.recebida)>ALERTA),
     med=proc.length?Math.round(proc.reduce((a,c)=>a+dias(c.recebida),0)/proc.length):0,
@@ -2627,7 +2658,7 @@ function lista(){if(!W)return;const C=W.querySelector('#ctCorpo');
      return '<div class="ct-card" data-id="'+esc(c._id)+'"><div><div class="nm">'+esc(c.nome)+'</div><div class="sm">'+esc(c.func||'—')+' · '+esc(c.dep||'—')+(c.contrato?' · '+esc(c.contrato):'')+'</div><div class="sm">Ficha recebida em '+br(c.recebida)+(c.entrada?' · entrada prevista '+br(c.entrada):'')+(c.tel?' · '+esc(c.tel):'')+'</div></div>'
       +'<div class="ct-dias'+((c.status||'proc')==='proc'&&d>ALERTA?' al':'')+'"><b>'+d+'</b><small>'+(d===1?'dia':'dias')+((c.status||'proc')==='proc'?' em processo':' até encerrar')+'</small></div>'
       +'<div><div class="ct-et"><span class="ct-chip '+(s.docsF.length?'pe':'ok')+'">Documentos '+ok+'/'+s.totObr+'</span><span class="ct-chip '+(s.medOk?'ok':s.medIn?'er':'pe')+'">Médico'+(s.medOk?' ✓':s.medIn?' inapto':'')+'</span>'+(s.toxNa?'':'<span class="ct-chip '+(s.toxOk?'ok':s.toxPos?'er':'pe')+'">Toxicológico'+(s.toxOk?' ✓':s.toxPos?' positivo':'')+'</span>')+'<span class="ct-chip '+(s.integOk?'ok':'pe')+'">Integração'+(s.integOk?' ✓':'')+'</span>'+(c.fora==='sim'?'<span class="ct-chip" style="background:#f1edf9;color:#4b3486">De fora'+(c.origem?': '+esc(c.origem):'')+'</span>':'')+(c.aloj==='sim'?'<span class="ct-chip" style="background:#e7f0fb;color:#2756A0">Alojamento'+(c.alojAte?' até '+br(c.alojAte):'')+'</span>':'')+(c.ref==='sim'?'<span class="ct-chip" style="background:#fff4dc;color:#8a5a00">Refeição'+(c.refAte?' até '+br(c.refAte):'')+'</span>':'')+'</div><div class="ct-bar"><i style="width:'+(s.totObr?Math.round(ok/s.totObr*100):100)+'%"></i></div></div>'
-      +'<div class="ct-st" style="background:'+stt[1]+';color:'+stt[2]+'">'+((c.status||'proc')==='proc'&&s.pronto?'Pronto para contratar':stt[0])+'</div></div>'}):'<div class="ct-vazio">Nenhuma ficha '+(st==='proc'?'em processo':'neste filtro')+'. Use "+ Cadastrar ficha" quando chegar uma ficha de informe de contratação.</div>')+'</div>';
+      +'<div class="ct-st" style="background:'+stt[1]+';color:'+stt[2]+'">'+((c.status||'proc')==='proc'&&c.assinado?'Contrato assinado · aguardando entrar no Quadro':(c.status||'proc')==='proc'&&s.pronto?'Pronto para contratar':stt[0]+(c.status==='contratado'&&c.auto==='quadro'?' · entrou no Quadro (mat. '+esc(c.mat||'')+')':''))+'</div>'+acoes(c)+'</div>'}):'<div class="ct-vazio">Nenhuma ficha '+(st==='proc'?'em processo':'neste filtro')+'. Use "+ Cadastrar ficha" quando chegar uma ficha de informe de contratação.</div>')+'</div>';
   C.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{F.k=F.k===b.dataset.k?'':b.dataset.k;lista()});
   C.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{F.k='';F.st=b.dataset.s;lista()});
   C.querySelectorAll('[data-set]').forEach(b=>b.onclick=()=>{F.set=b.dataset.set;lista()});
@@ -2687,6 +2718,7 @@ async function form(c){if(!W)return;c.docs=c.docs||{};c.deps=c.deps||[];c.medico
    +'<div style="grid-column:1/-1"><button class="ct-b" id="ctAddDep">+ Adicionar dependente</button></div>'
    +'<div class="ct-sec">Situação</div><div class="ct-aviso" id="ctSit"></div>'
    +'<div class="ct-c w3"><label>Situação do processo</label><select data-f="status">'+sel('status',[['proc','Em processo'],['contratado','Contratado'],['desistiu','Desistiu'],['nao_aprovado','Não aprovado']])+'</select></div>'
+   +'<div class="ct-c w3"><label>Contrato assinado em</label><input type="date" data-f="assinado" value="'+v('assinado')+'"></div>'
    +'<div class="ct-c w3" id="ctAdm"><label>Data de admissão</label><input type="date" data-f="admissao" value="'+v('admissao')+'"></div>'
    +'<div class="ct-c w2" id="ctMat"><label>Matrícula</label><input data-f="mat" value="'+v('mat')+'" inputmode="numeric"></div>'
    +'<div class="ct-c w4" id="ctMot"><label>Motivo</label><input data-f="motivo" value="'+v('motivo')+'" placeholder="Ex.: desistiu antes do exame"></div>'
@@ -2745,7 +2777,7 @@ async function form(c){if(!W)return;c.docs=c.docs||{};c.deps=c.deps||[];c.medico
     if(!ant)mud.push('Ficha cadastrada');else{if((ant.status||'proc')!==c.status)mud.push('Situação: '+STL[c.status][0]+(c.motivo&&c.status!=='contratado'?' ('+c.motivo+')':''));
       const novos=DOCS.filter(d=>(c.docs[d.k]||{}).ok&&!((ant.docs||{})[d.k]||{}).ok).map(d=>d.n);if(novos.length)mud.push('Entregou: '+novos.join(', '));
       if((ant.medico||{}).res!==c.medico.res&&c.medico.res)mud.push('Exame médico: '+c.medico.res);if((ant.toxico||{}).res!==c.toxico.res&&c.toxico.res)mud.push('Toxicológico: '+c.toxico.res);
-      if(!(ant.integ||{}).data&&c.integ.data)mud.push('Integração em '+br(c.integ.data));if(ant.aloj!==c.aloj&&c.aloj)mud.push('Alojamento: '+(c.aloj==='sim'?'sim'+(c.alojAte?' até '+br(c.alojAte):''):'não'));if(ant.ref!==c.ref&&c.ref)mud.push('Refeição: '+(c.ref==='sim'?'sim'+(c.refAte?' até '+br(c.refAte):''):'não'));if(!mud.length)mud.push('Dados atualizados')}
+      if(!(ant.integ||{}).data&&c.integ.data)mud.push('Integração em '+br(c.integ.data));if(!ant.assinado&&c.assinado)mud.push('Assinou o contrato em '+br(c.assinado));if(ant.aloj!==c.aloj&&c.aloj)mud.push('Alojamento: '+(c.aloj==='sim'?'sim'+(c.alojAte?' até '+br(c.alojAte):''):'não'));if(ant.ref!==c.ref&&c.ref)mud.push('Refeição: '+(c.ref==='sim'?'sim'+(c.refAte?' até '+br(c.refAte):''):'não'));if(!mud.length)mud.push('Dados atualizados')}
     if(c.status!=='proc'&&!c.encerradoEm)c.encerradoEm=new Date().toISOString();if(c.status==='proc')delete c.encerradoEm;
     try{await salvar(c,mud.join(' · '));msg('Salvo.','#1d5c3a');await carregar();form(JSON.parse(JSON.stringify(L.find(x=>x._id===c._id)||c)));setTimeout(()=>{const m=W&&W.querySelector('#ctMsg');if(m){m.style.color='#1d5c3a';m.textContent='Salvo.'}},50)}catch(er){msg(er.message||'Não consegui salvar.','#a3301c')}};
 }
@@ -2796,7 +2828,7 @@ async function bloco(){const B=document.getElementById('rsContratB');if(!B)retur
   const P=L.filter(c=>(c.status||'proc')==='proc').sort(porSetor);
   const pr=P.filter(c=>situacao(c).pronto).length,at=P.filter(c=>dias(c.recebida)>ALERTA).length;
   B.innerHTML='<div class="ct-tools" style="margin:4px 0 10px"><span style="font-size:13.5px"><b>'+pl(P.length,'candidato','candidatos')+'</b> em processo'+(P.length?' · '+pr+' pronto'+(pr===1?'':'s')+' para contratar · '+at+' há mais de '+ALERTA+' dias':'')+'</span><span style="flex:1"></span><button class="ct-b" id="rsCtVer">Ver todas</button><button class="ct-b pri" id="rsCtNovo">+ Cadastrar ficha</button></div>'
-   +'<div class="ct-lista">'+(P.length?grupos(P,c=>{const s=situacao(c),d=dias(c.recebida),ok=s.totObr-s.docsF.length;return '<div class="ct-card" data-id="'+esc(c._id)+'"><div><div class="nm">'+esc(c.nome)+'</div><div class="sm">'+esc(c.func||'—')+' · '+esc(c.dep||'—')+'</div><div class="sm">Ficha recebida em '+br(c.recebida)+'</div></div><div class="ct-dias'+(d>ALERTA?' al':'')+'"><b>'+d+'</b><small>'+(d===1?'dia':'dias')+'</small></div><div><div class="ct-et"><span class="ct-chip '+(s.docsF.length?'pe':'ok')+'">Documentos '+ok+'/'+s.totObr+'</span><span class="ct-chip '+(s.medOk?'ok':s.medIn?'er':'pe')+'">Médico'+(s.medOk?' ✓':'')+'</span>'+(s.toxNa?'':'<span class="ct-chip '+(s.toxOk?'ok':s.toxPos?'er':'pe')+'">Toxicológico'+(s.toxOk?' ✓':'')+'</span>')+'<span class="ct-chip '+(s.integOk?'ok':'pe')+'">Integração'+(s.integOk?' ✓':'')+'</span>'+(c.fora==='sim'?'<span class="ct-chip" style="background:#f1edf9;color:#4b3486">De fora'+(c.origem?': '+esc(c.origem):'')+'</span>':'')+(c.aloj==='sim'?'<span class="ct-chip" style="background:#e7f0fb;color:#2756A0">Alojamento'+(c.alojAte?' até '+br(c.alojAte):'')+'</span>':'')+(c.ref==='sim'?'<span class="ct-chip" style="background:#fff4dc;color:#8a5a00">Refeição'+(c.refAte?' até '+br(c.refAte):'')+'</span>':'')+'</div><div class="ct-bar"><i style="width:'+(s.totObr?Math.round(ok/s.totObr*100):100)+'%"></i></div></div><div class="ct-st" style="background:'+(s.pronto?'#dcefe3':'#eef3fb')+';color:'+(s.pronto?'#1d5c3a':'#2756A0')+'">'+(s.pronto?'Pronto para contratar':'Em processo')+'</div></div>'}):'<div class="ct-vazio">Ninguém em contratação agora. Quando chegar uma ficha da área, mesmo sem currículo, cadastre em "+ Cadastrar ficha".</div>')+'</div>';
+   +'<div class="ct-lista">'+(P.length?grupos(P,c=>{const s=situacao(c),d=dias(c.recebida),ok=s.totObr-s.docsF.length;return '<div class="ct-card" data-id="'+esc(c._id)+'"><div><div class="nm">'+esc(c.nome)+'</div><div class="sm">'+esc(c.func||'—')+' · '+esc(c.dep||'—')+'</div><div class="sm">Ficha recebida em '+br(c.recebida)+'</div></div><div class="ct-dias'+(d>ALERTA?' al':'')+'"><b>'+d+'</b><small>'+(d===1?'dia':'dias')+'</small></div><div><div class="ct-et"><span class="ct-chip '+(s.docsF.length?'pe':'ok')+'">Documentos '+ok+'/'+s.totObr+'</span><span class="ct-chip '+(s.medOk?'ok':s.medIn?'er':'pe')+'">Médico'+(s.medOk?' ✓':'')+'</span>'+(s.toxNa?'':'<span class="ct-chip '+(s.toxOk?'ok':s.toxPos?'er':'pe')+'">Toxicológico'+(s.toxOk?' ✓':'')+'</span>')+'<span class="ct-chip '+(s.integOk?'ok':'pe')+'">Integração'+(s.integOk?' ✓':'')+'</span>'+(c.fora==='sim'?'<span class="ct-chip" style="background:#f1edf9;color:#4b3486">De fora'+(c.origem?': '+esc(c.origem):'')+'</span>':'')+(c.aloj==='sim'?'<span class="ct-chip" style="background:#e7f0fb;color:#2756A0">Alojamento'+(c.alojAte?' até '+br(c.alojAte):'')+'</span>':'')+(c.ref==='sim'?'<span class="ct-chip" style="background:#fff4dc;color:#8a5a00">Refeição'+(c.refAte?' até '+br(c.refAte):'')+'</span>':'')+'</div><div class="ct-bar"><i style="width:'+(s.totObr?Math.round(ok/s.totObr*100):100)+'%"></i></div></div><div class="ct-st" style="background:'+(s.pronto||c.assinado?'#dcefe3':'#eef3fb')+';color:'+(s.pronto||c.assinado?'#1d5c3a':'#2756A0')+'">'+(c.assinado?'Contrato assinado em '+br(c.assinado)+' · aguardando entrar no Quadro':s.pronto?'Pronto para contratar':'Em processo')+'</div>'+acoes(c)+'</div>'}):'<div class="ct-vazio">Ninguém em contratação agora. Quando chegar uma ficha da área, mesmo sem currículo, cadastre em "+ Cadastrar ficha".</div>')+'</div>';
   B.querySelector('#rsCtVer').onclick=()=>abrir();B.querySelector('#rsCtNovo').onclick=async()=>{await abrir();form({})};
   B.querySelectorAll('.ct-card').forEach(el=>el.onclick=()=>abrir(el.dataset.id))}
 setTimeout(bloco,400);
