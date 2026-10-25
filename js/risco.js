@@ -72,7 +72,7 @@ async function daPessoa(mat){
   return Object.assign(s, { conv:conv[0] || null, ref:E2.last });
 }
 
-/* Agenda e Pendências: risco alto sem conversa nos últimos 30 dias */
+/* Central de Rotinas do RH: risco alto sem conversa nos últimos 30 dias */
 async function pendencias(){
   const p = E.paineis.find(x => x.id === 'risco'); if (!p || !podeVer(p)) return [];
   const D = await dados(); if (!D || !D.L) return [];

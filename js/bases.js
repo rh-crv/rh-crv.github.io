@@ -1,6 +1,6 @@
 /* =====================================================================
    SAÚDE DAS BASES
-   Data de cada base carregada × prazo combinado para atualizar. Avisa na Agenda e Pendências,
+   Data de cada base carregada × prazo combinado para atualizar. Avisa na Central de Rotinas do RH,
    dentro do painel e antes de fechar o mês no Relatórios Gerenciais.
    Prazos ficam em registros do Quadro: caminho 'sistema/prazos_bases'.
    ===================================================================== */
@@ -76,7 +76,7 @@ async function aviso(id){
 }
 
 async function tela(){
-  moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Agenda e Pendências</div><h1>Qualidade dos Dados</h1><div class="ini-data">Até quando vai cada base carregada no app e quando precisa ser atualizada</div></div></section>
+  moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Central de Rotinas do RH</div><h1>Qualidade dos Dados</h1><div class="ini-data">Até quando vai cada base carregada no app e quando precisa ser atualizada</div></div></section>
     <div id="sb-corpo"><div class="cartao vazio"><div class="spinner" style="margin:0 auto"></div></div></div>`);
   let L = await linhas(); const F = { k:'' }, adm = ehAdmin();
   // base principal pela situação; as linhas internas (↳) logo abaixo da base de onde vêm

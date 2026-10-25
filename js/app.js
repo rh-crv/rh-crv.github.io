@@ -336,7 +336,7 @@ function moldura(conteudo){
           return `<div class="lat-grupo ${ab ? 'aberto' : ''}" data-frente="${esc('g:' + f)}"><button class="lat-frente ${aqui ? 'atual' : ''}" aria-expanded="${ab ? 'true' : 'false'}"><span class="lat-ic" style="background:${cfg.cor}">${svg(cfg.ic, '#fff')}</span><span class="lat-nome">${esc(f)}</span><span class="lat-seta">${CHEV}</span></button>
             <div class="lat-sub">${itens.map(([k, n]) => `<button class="lat-painel ${h === '#/eq/' + k ? 'ativo atual' : ''}" data-ir="#/eq/${k}" data-busca="${esc(n.toLowerCase())}" style="--cor:${cfg.cor}"><span class="lat-pn">${esc(n)}</span></button>`).join('')}</div></div>`; }).join('')}` : `
         <div class="lat-pgrupo lat-cgrupo ${h==='#/central'||h==='#/desligamento'||h==='#/bases'||h==='#/envios'||subAbertos.__central?'aberto':''}" data-pid="__central">
-          <div class="lat-plinha"><button class="lat-item ${h==='#/central'?'ativo':''}" data-ir="#/central"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg><span>Agenda e Pendências</span></button><button class="lat-pseta" aria-label="Mostrar opções da Agenda e Pendências" aria-expanded="${h==='#/desligamento'||h==='#/bases'||h==='#/envios'?'true':'false'}">${CHEV}</button></div>
+          <div class="lat-plinha"><button class="lat-item ${h==='#/central'?'ativo':''}" data-ir="#/central"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg><span>Central de Rotinas do RH</span></button><button class="lat-pseta" aria-label="Mostrar opções da Central de Rotinas do RH" aria-expanded="${h==='#/desligamento'||h==='#/bases'||h==='#/envios'?'true':'false'}">${CHEV}</button></div>
           <div class="lat-psub"><button class="lat-acao ${h==='#/desligamento'?'ativo':''}" data-ir="#/desligamento" style="--cor:var(--coral)"><i>${IA('<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>')}</i><span>Conferência de Desligamentos</span></button><button class="lat-acao ${h==='#/bases'?'ativo':''}" data-ir="#/bases" style="--cor:var(--cane)"><i>${IA('<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>')}</i><span>Qualidade dos Dados</span></button>${ehRH() ? `<button class="lat-acao ${h==='#/envios'?'ativo':''}" data-ir="#/envios" style="--cor:#24427c"><i>${IA('<path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/>')}</i><span>Envios dos Gestores</span></button>` : ''}</div>
         </div>
         ${temQuadro ? `<button class="lat-item ${h.startsWith('#/ficha')?'ativo':''}" data-ir="#/ficha"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2.5"/><path d="M5.5 17c.6-1.8 2-2.7 3.5-2.7s2.9.9 3.5 2.7M14 9h4M14 13h4"/></svg><span>Perfil do Colaborador</span></button>` : ''}
@@ -465,7 +465,7 @@ function telaInicio(){
       <h1>Gestão de Pessoas</h1>
       <p>CRV Industrial · Unidade Capinópolis</p>
       <div class="ini-capa-saud">${saud}, ${esc(nomeBonito(E.perfil.nome).split(' ')[0])} · ${esc(hoje.charAt(0).toUpperCase() + hoje.slice(1))}</div>
-      <button class="ini-capa-bt" data-ir="#/central">Abrir Agenda e Pendências</button>
+      <button class="ini-capa-bt" data-ir="#/central">Abrir a Central de Rotinas do RH</button>
     </div>
   </section>`);
   document.querySelectorAll('.ini-capa [data-ir]').forEach(b => b.onclick = () => location.hash = b.dataset.ir);
@@ -859,13 +859,13 @@ function telaConsulta(){
   }
 }
 
-/* ---------- telas: Agenda e Pendências e Conferência de Desligamentos ---------- */
+/* ---------- telas: Central de Rotinas do RH e Conferência de Desligamentos ---------- */
 function telaCentral(){
-  moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Gestão de Pessoas · CRV Industrial</div><h1>Agenda e Pendências</h1><div class="ini-data">Pendências de todos os painéis, das mais urgentes para as menos urgentes</div></div></section><section class="central" id="central"></section>`);
+  moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Gestão de Pessoas · CRV Industrial</div><h1>Central de Rotinas do RH</h1><div class="ini-data">Pendências de todos os painéis, das mais urgentes para as menos urgentes</div></div></section><section class="central" id="central"></section>`);
   iniciarCentral();
 }
 async function telaDesligamento(){
-  moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Agenda e Pendências</div><h1>Conferência de Desligamentos</h1><div class="ini-data" id="dk-sub">Cruzando os desligados do Quadro com as bases de benefícios…</div></div>
+  moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Central de Rotinas do RH</div><h1>Conferência de Desligamentos</h1><div class="ini-data" id="dk-sub">Cruzando os desligados do Quadro com as bases de benefícios…</div></div>
     <div class="dk-acoes"><button class="btn borda" id="dk-xls">Excel</button><button class="btn borda" id="dk-pdf">PDF</button></div></section>
     <div id="dk-corpo"><div class="cartao vazio"><div class="spinner" style="margin:0 auto"></div></div></div>`);
   let D;
@@ -967,7 +967,7 @@ function desenharCentral(c, carregando){
   const L = ((c && c.itens) || []).filter(x => x.itens && x.itens.length).sort((a, b) => SEV[a.sev] - SEV[b.sev]);
   const hora = c ? new Date(c.em).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '';
   const nCrit = L.filter(x => x.sev === 'crit').length;
-  el.innerHTML = `<header class="cd-cab"><div><h2>Agenda e Pendências</h2><span>${carregando ? 'Atualizando as pendências dos painéis…' : c ? `${L.length ? `${L.length} ${L.length === 1 ? 'pendência' : 'pendências'}${nCrit ? ` · <b>${nCrit} urgente${nCrit > 1 ? 's' : ''}</b>` : ''}` : 'Nenhuma pendência'} · atualizado em ${esc(hora)}` : ''}</span></div>
+  el.innerHTML = `<header class="cd-cab"><div><h2>Central de Rotinas do RH</h2><span>${carregando ? 'Atualizando as pendências dos painéis…' : c ? `${L.length ? `${L.length} ${L.length === 1 ? 'pendência' : 'pendências'}${nCrit ? ` · <b>${nCrit} urgente${nCrit > 1 ? 's' : ''}</b>` : ''}` : 'Nenhuma pendência'} · atualizado em ${esc(hora)}` : ''}</span></div>
       <button class="btn borda cd-at" id="cd-at" ${carregando ? 'disabled' : ''}>${carregando ? '<span class="spinner pq"></span>' : 'Atualizar'}</button></header>
     ${L.length ? `<div class="cd-lista">${L.map(x => { const n = x.n || x.itens.length, ab = centralAbertos.has(x.id); return `<article class="cd-it ${ab ? 'aberto' : ''}" style="--c:${COR[x.sev]}" data-cid="${esc(x.id)}">
         <button class="cd-l" data-tog="${esc(x.id)}" aria-expanded="${ab}"><b class="cd-n">${n}</b><span class="cd-tx"><strong>${esc(x.t)}</strong><small>${esc(x.pnome)}${x.d ? ' · ' + esc(x.d) : ''}</small></span><span class="cd-seta">›</span></button>
@@ -1419,7 +1419,7 @@ async function logAcesso(acao, onde, detalhe){
 window.CRV_LOG_ACESSO = logAcesso;
 const ondeDe = h => { if (h.startsWith('#/p/')) { const id = decodeURIComponent(h.slice(4).split('/')[0]); return 'Painel: ' + ((E.paineis || []).find(p => p.id === id)?.nome || id); }
   if (h.startsWith('#/eq/')) { const k = h.slice(5); return 'Minha equipe: ' + ({ eq:'Equipe', mov:'Admissões e saídas', pv:'Quadro x previsto', exp:'Experiência', nov:'Novos colaboradores', perfil:'Perfil profissional', fer:'Férias', freq:'Frequência', disc:'Disciplina e RD', cr:'Em treinamento', alo:'Alojamento', env:'Meus envios' }[k] || k); }
-  return ({ '#/':'Visão Geral', '#/central':'Agenda e Pendências', '#/admin':'Administração', '#/conta':'Minha conta', '#/relatorio':'Relatórios Gerenciais', '#/bases':'Qualidade dos Dados', '#/envios':'Envios dos Gestores' })[h] || (h.startsWith('#/ficha') ? 'Perfil do Colaborador' : h.startsWith('#/desligamento') ? 'Conferência de Desligamentos' : h.replace(/^#\//, '') || 'Início'); };
+  return ({ '#/':'Visão Geral', '#/central':'Central de Rotinas do RH', '#/admin':'Administração', '#/conta':'Minha conta', '#/relatorio':'Relatórios Gerenciais', '#/bases':'Qualidade dos Dados', '#/envios':'Envios dos Gestores' })[h] || (h.startsWith('#/ficha') ? 'Perfil do Colaborador' : h.startsWith('#/desligamento') ? 'Conferência de Desligamentos' : h.replace(/^#\//, '') || 'Início'); };
 async function registrar(painel, acao, detalhe){
   try { await sb.from('historico').insert({ painel, acao, detalhe, usuario: E.perfil?.nome }); } catch(_){}
 }

@@ -141,7 +141,7 @@ function nr1Fatores(D, ACO){
   return F;
 }
 
-/* ---------- pendências para a Agenda e Pendências ---------- */
+/* ---------- pendências para a Central de Rotinas do RH ---------- */
 const nr1Pendencias = async function(){
   const p = E.paineis.find(x => x.id === 'nr1'); if (!p || !podeVer(p)) return [];
   const A = (await nr1Regs('acoes')).filter(a => a.status !== 'ok' && a.prazo);

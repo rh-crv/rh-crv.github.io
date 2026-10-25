@@ -81,7 +81,7 @@ async function dados(dias){
   return { L, itens, H, RS, RET, M, refQ:Q.referencia, dias, ini };
 }
 
-/* Agenda e Pendências */
+/* Central de Rotinas do RH */
 async function pendencias(){
   const p = E.paineis.find(x => x.id === 'onboarding'); if (!p || !podeVer(p)) return [];
   const D = await dados(100); if (!D) return [];
@@ -139,7 +139,7 @@ async function tela(p){
             <div class="ob-mk">${MARCOS.map((k, j) => { const s = x.mk[j], cv = x.conv.find(v => +v.marco === k);
               return `<button class="ob-m ${s}" data-mk="${esc(x.mat)}|${k}" ${s === 'fut' && !cv ? 'disabled' : ''} title="${s === 'ok' ? esc(COMO[cv.como] || '') + ' · ' + esc(brD(cv.data)) : s === 'fut' ? 'Ainda não chegou' : s === 'na' ? 'O prazo passou antes de o acompanhamento começar; dá para registrar mesmo assim' : s === 'atr' ? 'Atrasada' : 'Fazer a conversa'}"><b>${k} dias</b><small>${s === 'ok' ? esc(COMO[cv.como] || 'feita') : s === 'atr' ? 'atrasada' : s === 'pend' ? 'fazer agora' : s === 'na' ? 'antes do início' : 'a partir de ' + esc(brD(addD(x.adm, k)))}</small></button>`; }).join('')}</div>
           </div></article>`; }).join('') : '<div class="cartao vazio"><h3>Ninguém com esses filtros</h3></div>'}</section>
-      <p class="nr-fonte">Admissões do Quadro de ${esc(brD(D.refQ))}. Acompanhamento iniciado em ${esc(brD(D.ini))}: prazos que já tinham passado antes dessa data aparecem como "antes do início" e não são cobrados na Agenda e Pendências; o checklist é cobrado para quem entrou a partir de 15 dias antes do início. O ponto (•) num item indica que há informação em outra base para conferir (passe o mouse). As conversas do RH não substituem a avaliação de experiência feita pela área.</p>`;
+      <p class="nr-fonte">Admissões do Quadro de ${esc(brD(D.refQ))}. Acompanhamento iniciado em ${esc(brD(D.ini))}: prazos que já tinham passado antes dessa data aparecem como "antes do início" e não são cobrados na Central de Rotinas do RH; o checklist é cobrado para quem entrou a partir de 15 dias antes do início. O ponto (•) num item indica que há informação em outra base para conferir (passe o mouse). As conversas do RH não substituem a avaliação de experiência feita pela área.</p>`;
     c.querySelectorAll('[data-so]').forEach(b => b.onclick = () => { F.so = F.so === b.dataset.so && b.dataset.so ? '' : b.dataset.so; desenhar(); });
     c.querySelectorAll('[data-ab]').forEach(b => b.onclick = () => $('#ob-abas [data-a="' + b.dataset.ab + '"]').click());
     const q = $('#ob-q'); q.oninput = () => { F.q = q.value; clearTimeout(q._t); q._t = setTimeout(() => { desenhar(); const e = $('#ob-q'); if (e) { e.focus(); e.setSelectionRange(F.q.length, F.q.length); } }, 250); };
