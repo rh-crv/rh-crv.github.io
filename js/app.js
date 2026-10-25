@@ -1767,11 +1767,13 @@ const CAPA = {
   'Treinamento e liderança':       ['#561d12','#a3462a'],
   'Ocorrências, risco e jurídico': ['#46111d','#8a2a3d'],
   'Atendimento e escuta':          ['#1f3346','#3f6688'],
-  'Alojamento e transporte':       ['#1f3d17','#3f7a2c']
+  'Alojamento e transporte':       ['#1f3d17','#3f7a2c'],
+  'Remuneração e gratificações':   ['#3d300a','#86691a']
 };
+window.CRV_CAPA = CAPA; // usado também nas telas próprias do app (Onboarding, Risco de saída)
 // como cada painel azul pinta a capa (os demais já têm cor própria: Unimed, Uniodonto, Sanções, Sysprocard…)
 const CAPA_MODO = {
-  vars:  ['absenteismo','absenteismo-gestao','admissoes','jovem','processos','quadro','rd','rescisoes'],
+  vars:  ['absenteismo','absenteismo-gestao','admissoes','jovem','processos','quadro','rd','rescisoes','gratificacao','pesquisas'],
   band:  ['alojamentos','ferias','recepcao'],
   hd:    ['experiencia'],
   hero:  ['curriculos','rs'],

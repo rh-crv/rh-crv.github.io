@@ -86,7 +86,7 @@ async function pendencias(){
 async function tela(p, cfg){
   const pode = podeEditar(p);
   moldura(`<div class="trilha"><button data-ir="#/">Início</button> › <span>${esc(p.frente)}</span> › <b>${esc(p.nome)}</b></div>
-    <section class="ini-topo"><div><div class="ini-eyebrow">${esc(p.frente)}</div><h1>Risco de saída</h1><div class="ini-data">Quem tem os sinais que mais apareceram antes das saídas na CRV, para conversar antes que a pessoa peça para sair</div></div>
+    <section class="ini-topo capa" style="${(c => c ? '--c1:' + c[0] + ';--c2:' + c[1] : '')((window.CRV_CAPA || {})[p.frente])}"><div><div class="ini-eyebrow">${esc(p.frente)}</div><h1>Risco de saída</h1><div class="ini-data">Quem tem os sinais que mais apareceram antes das saídas na CRV, para conversar antes que a pessoa peça para sair</div></div>
       <div class="dk-acoes"><button class="btn borda" id="rs-xls">Excel</button><button class="btn borda" id="rs-pdf">PDF</button></div></section>
     <div id="rs-corpo"><div class="cartao vazio"><div class="spinner" style="margin:0 auto"></div><p>Calculando…</p></div></div>`);
   document.querySelector('.trilha [data-ir]').onclick = () => location.hash = '#/';

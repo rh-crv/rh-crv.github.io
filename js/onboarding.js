@@ -100,7 +100,7 @@ async function tela(p){
   let aba = 'lista', D = null;
   const F = { q:'', area:'', dias:120, so:'' };
   moldura(`<div class="trilha"><button data-ir="#/">Início</button> › <span>${esc(p.frente)}</span> › <b>${esc(p.nome)}</b></div>
-    <section class="ini-topo"><div><div class="ini-eyebrow">${esc(p.frente)}</div><h1>Onboarding</h1><div class="ini-data">Quem acabou de entrar: checklist de admissão, conversas do RH aos 30, 60 e 90 dias e retenção</div></div>
+    <section class="ini-topo capa" style="${(c => c ? '--c1:' + c[0] + ';--c2:' + c[1] : '')((window.CRV_CAPA || {})[p.frente])}"><div><div class="ini-eyebrow">${esc(p.frente)}</div><h1>Onboarding</h1><div class="ini-data">Quem acabou de entrar: checklist de admissão, conversas do RH aos 30, 60 e 90 dias e retenção</div></div>
       <div class="dk-acoes"><button class="btn borda" id="ob-xls">Excel</button><button class="btn borda" id="ob-pdf">PDF</button></div></section>
     <nav class="vista-seg" id="ob-abas"><button data-a="lista" class="on">Acompanhamento</button><button data-a="ret">Retenção aos 90 dias</button>${E.perfil.papel === 'admin' ? '<button data-a="itens">Itens do checklist</button>' : ''}</nav>
     <div id="ob-corpo"><div class="cartao vazio"><div class="spinner" style="margin:0 auto"></div></div></div>`);
