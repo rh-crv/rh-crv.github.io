@@ -40,6 +40,8 @@ function detectar(wb, nomeArq){
   if (h.includes('Gozo Inicial') && h.includes('Aquisição Inicial')) return { tipo:'hist', h:'ferias', R };
   if (h.includes('Descrição do Curso') && h.includes('Início do Curso')) return { tipo:'hist', h:'curso', R };
   if (h.includes('Nome do Exame') && h.includes('Data do Próximo Exame')) return { tipo:'hist', h:'exame', R };
+  // atestados do sistema (RFP2186R: "Relatório de Afastamento", com CID e médico), um arquivo por empresa
+  if (/^Relatório de Afastamento/i.test(s((R[0] || [])[0]))) return { tipo:'hist', h:'atest', R, emp:s((R[1] || [])[0]) };
   // ocorrências do ponto (RPE0663R: "Relatório das Ocorrências dos Funcionários"), um arquivo por período
   if (R.slice(0, 4).some(r => (r || []).map(s).some(x => /^Relatório das Ocorrências dos Funcionários/i.test(x)))) return { tipo:'hist', h:'ocor', R };
   if (h.includes('Data de Afastamento') && h.includes('Data Efetiva de Retorno')) return { tipo:'hist', h:'afast', R };
@@ -239,6 +241,16 @@ function converterHist(h, R, mapa, REF){
     Object.keys(itens).forEach(k => { if (!itens[k].length) delete itens[k]; });
     return { tipo:'crv-hist', painel:'quadro', hist:h, referencia:REF, itens, n:{ linhas:lin, pessoas:Object.keys(itens).length, nomeDiferente:ign, foraDoQuadro:fora, anuladas:0 } };
   }
+  if (h === 'atest') { // [início, dias, CID, descrição do CID, CRM/UF, médico]
+    let ini = '', fim = '';
+    for (const r of R) { if (!(r && /^\d+$/.test(s(r[0])) && r[3] instanceof Date)) continue; const m = parseInt(s(r[0]), 10); let q = mapa[String(m)];
+      if (!q && mapa.__aberto) { q = mapa[String(m)] = { nome:sp(r[1]), funcao:sp(r[2]), setor:'', area:'', gerencia:'', admissao:'', deslig:'', nasc:'', soArq:1 }; }
+      if (!q) { fora++; continue; } if (!mesmoNome(r[1], q.nome)) { ign++; continue; }
+      const d = iso(r[3]); if (!d) continue; if (!ini || d < ini) ini = d; if (!fim || d > fim) fim = d;
+      (itens[m] = itens[m] || []).push([d, Math.max(0, parseInt(num(r[4]), 10) || 0), s(r[5]).toUpperCase(), sp(r[6]), s(r[7]), sp(r[8])]); lin++; }
+    Object.values(itens).forEach(L => L.sort((a, b) => a[0].localeCompare(b[0])));
+    return { tipo:'crv-hist', painel:'quadro', hist:h, referencia:REF, itens, faixa: ini ? ['0000-01-01', '9999-12-31'] : null, periodo:[ini, fim], empresa:'', n:{ linhas:lin, pessoas:Object.keys(itens).length, nomeDiferente:ign, foraDoQuadro:fora, anuladas:0, ini, fim } };
+  }
   if (h === 'ocor') { // [data, tipo, quantidade]; atestados ficam de fora (vêm da planilha de atestados do RH)
     const TP = d => /ATEST/.test(d) ? '' : /FALTA JUST/.test(d) ? 'j' : /FALTA/.test(d) ? 'f' : /SUSPENS/.test(d) ? 's' : /MATERN/.test(d) ? 'm' : /PATERN/.test(d) ? 'p' : 'o';
     let m = 0, ok = false, ini = '', fim = '', at = 0; const emp = s((R[0] || [])[0]);
@@ -286,8 +298,8 @@ async function ler(f){
   if (det.tipo === 'hist') {
     const Q = await window.CRV_QUADRO(); if (!Q || !Q.mapa) throw new Error('carregue o Quadro Geral antes dos históricos');
     let mapaH = Q.mapa, ligaCRV = null;
-    const EMP = s((det.R[0] || [])[0]); let EMPN = '';
-    if (det.h === 'ocor' && EMP && EMP !== '5') { // outra empresa do grupo (APFO 6, CAPFO 16…): confere com os desligados dela no Quadro e liga a quem hoje está na CRV
+    const EMP = det.h === 'atest' ? det.emp : s((det.R[0] || [])[0]); let EMPN = '';
+    if (['ocor', 'atest'].includes(det.h) && EMP && EMP !== '5') { // outra empresa do grupo (APFO 6, CAPFO 16…): confere com os desligados dela no Quadro e liga a quem hoje está na CRV
       const QD = await window.CRV_DADOS('quadro'), DM = (QD && QD.dados && QD.dados.DM) || []; mapaH = {};
       const reE = new RegExp('\\(' + EMP + '\\)\\s*$'); DM.forEach(r => { if (!reE.test(s(r[21]))) return; if (!EMPN) EMPN = s(r[21]).replace(/\s*\(\d+\)\s*$/, ''); const m = s(r[0]); if (!mapaH[m] || s(r[20]) > (mapaH[m].deslig || '')) mapaH[m] = { nome:s(r[1]), funcao:s(r[2]), setor:s(r[3]), area:s(r[5]), gerencia:s(r[6]), admissao:s(r[9]), deslig:s(r[20]), nasc:s(r[27]) }; });
       if (!Object.keys(mapaH).length) throw new Error('o Quadro carregado não tem os desligados da empresa ' + EMP + ' para conferir as matrículas');
@@ -296,14 +308,18 @@ async function ler(f){
       ligaCRV = m => { const a = mapaH[m]; if (!a) return ''; let L = (porNome[nomeN(a.nome)] || []).filter(([, o]) => !a.nasc || !o.nasc || o.nasc === a.nasc); if (L.length > 1) L = L.filter(([, o]) => o.situacao !== 'Desligado'); return L.length === 1 ? L[0][0] : ''; };
     }
     let pac = converterHist(det.h, det.R, mapaH, REF);
-    if (ligaCRV) { pac.hist = 'ocor' + EMP; pac.docPre = 'a'; pac.empNome = EMPN || 'Empresa ' + EMP; pac.extra = {}; let lig = 0;
-      Object.keys(pac.itens).forEach(m => { const a = mapaH[m], c = ligaCRV(m); if (c) lig++; const qc = c ? Q.mapa[c] : null; pac.extra[m] = { p:[a.nome, a.funcao, a.area || (qc ? qc.area : '') || (a.soArq ? 'Transferidos (sem cadastro na ' + (EMPN || 'empresa') + ')' : ''), a.setor || (qc ? qc.setor : ''), a.gerencia, a.soArq ? (c ? 'Transferido para a CRV' : 'Sem cadastro no Quadro') : 'Desligado', a.admissao, a.deslig], crv:c }; }); pac.n.ligados = lig; pac.n.foraDoQuadro = Object.keys(pac.itens).filter(m => mapaH[m] && mapaH[m].soArq && !ligaCRV(m)).length; } const T = { ferias:'Histórico de férias', depto:'Histórico de departamentos', cargo:'Histórico de funções', dep:'Dependentes da folha', curso:'Treinamentos realizados', exame:'Exames ocupacionais (ASO)', afast:'Histórico de afastamentos', ocor:'Ocorrências do ponto', ocor6:'Ocorrências do ponto da APFO (empresa 6)', apos:'Aposentadorias', estab:'Estabilidades da folha' }[det.h];
+    if (det.h === 'atest') pac.empresa = EMP;
+    if (ligaCRV) { pac.hist = det.h + EMP; pac.docPre = 'a'; pac.empNome = EMPN || 'Empresa ' + EMP; pac.extra = {}; let lig = 0;
+      Object.keys(pac.itens).forEach(m => { const a = mapaH[m], c = ligaCRV(m); if (c) lig++; const qc = c ? Q.mapa[c] : null; pac.extra[m] = { p:[a.nome, a.funcao, a.area || (qc ? qc.area : '') || (a.soArq ? 'Transferidos (sem cadastro na ' + (EMPN || 'empresa') + ')' : ''), a.setor || (qc ? qc.setor : ''), a.gerencia, a.soArq ? (c ? 'Transferido para a CRV' : 'Sem cadastro no Quadro') : 'Desligado', a.admissao, a.deslig], crv:c }; }); pac.n.ligados = lig; pac.n.foraDoQuadro = Object.keys(pac.itens).filter(m => mapaH[m] && mapaH[m].soArq && !ligaCRV(m)).length; } const T = { ferias:'Histórico de férias', depto:'Histórico de departamentos', cargo:'Histórico de funções', dep:'Dependentes da folha', curso:'Treinamentos realizados', exame:'Exames ocupacionais (ASO)', afast:'Histórico de afastamentos', ocor:'Ocorrências do ponto', atest:'Atestados do sistema', ocor6:'Ocorrências do ponto da APFO (empresa 6)', apos:'Aposentadorias', estab:'Estabilidades da folha' }[det.h];
     if (det.h === 'estab') { // entra no cadastro de estabilidade que o app já usa (Quadro Geral, Central, checklist de desligamento)
       const TIP = c => /CIP/i.test(c) ? 'CIPA' : /ACIDENTE/i.test(c) ? 'Acidente de trabalho' : /GESTANTE/i.test(c) ? 'Gestante' : /APOSENT/i.test(c) ? 'Pré-aposentadoria' : /SINDIC/i.test(c) ? 'Dirigente sindical' : 'Outro';
       const itens = [].concat(...Object.values(pac.itens)).map(x => ({ mat:String(x.mat), nome:x.nome, tipo:TIP(x.causa), detalhe:x.causa, inicio:x.inicio, fim:x.fim, status:'confirmada', origem:'Relatório de estabilidades da folha (TFP40T)' }));
       const hoje = new Date().toISOString().slice(0, 10);
       out.push({ pac:{ estab:true, painel:'quadro', referencia:REF, itens }, rotulo:`${T}: ${itens.length} registros, ${itens.filter(x => x.fim >= hoje).length} vigentes` + (pac.n.nomeDiferente ? ` · ${pac.n.nomeDiferente} com nome diferente do Quadro (fora)` : '') });
       return out; }
+    if (det.h === 'atest') { const br = d => d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : '', T = 'Atestados do sistema' + (pac.empNome ? ' da ' + pac.empNome : ' da CRV') + ' (empresa ' + EMP + ')';
+      if (!pac.faixa) { out.push({ pac, rotulo:`${T}: arquivo sem lançamentos (nada a salvar)` }); return out; }
+      out.push({ pac, rotulo:`${T} de ${br(pac.periodo[0])} a ${br(pac.periodo[1])}: ${pac.n.linhas} atestados de ${pac.n.pessoas} pessoas (substitui os atestados desta empresa já carregados)` + (pac.n.nomeDiferente ? ` · ${pac.n.nomeDiferente} com nome diferente do Quadro (fora)` : '') + (pac.n.foraDoQuadro ? ` · ${pac.n.foraDoQuadro} ${pac.hist === 'atest' ? 'fora do Quadro' : 'sem cadastro no Quadro nem nome igual na CRV'}` : '') + (pac.n.ligados != null ? ` · ${pac.n.ligados} estão hoje na CRV (aparecem na ficha deles)` : '') }); return out; }
     if (det.h === 'ocor') { const T = pac.hist !== 'ocor' ? 'Ocorrências do ponto da ' + pac.empNome + ' (empresa ' + pac.empresa + ')' : 'Ocorrências do ponto', br = d => d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : '';
       if (!pac.faixa) { out.push({ pac, rotulo:`${T}: arquivo sem lançamentos (nada a salvar)` }); return out; }
       

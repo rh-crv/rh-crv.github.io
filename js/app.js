@@ -655,7 +655,7 @@ async function fichaDados(mat){
       alerta: s.niv === 'a' ? 'risco alto (' + s.S.join(', ') + ')' : s.niv === 't' ? 'atenção (' + s.S.join(', ') + ')' : '' }); })()); }
   // Trajetória (departamentos e funções) e histórico de férias, vindos dos relatórios da folha
   if (ehRH()) tarefas.push((async () => {
-    const { data } = await sb.from('registros').select('colecao,dados').eq('painel', 'quadro').in('caminho', ['hist_depto/m' + mat, 'hist_cargo/m' + mat, 'hist_ferias/m' + mat, 'hist_dep/m' + mat, 'hist_curso/m' + mat, 'hist_exame/m' + mat, 'hist_afast/m' + mat, 'hist_apos/m' + mat, 'hist_ocor/m' + mat].concat(EMPRESAS_GRUPO.map(e => 'hist_ocor' + e[0] + '/c' + mat)));
+    const { data } = await sb.from('registros').select('colecao,dados').eq('painel', 'quadro').in('caminho', ['hist_depto/m' + mat, 'hist_cargo/m' + mat, 'hist_ferias/m' + mat, 'hist_dep/m' + mat, 'hist_curso/m' + mat, 'hist_exame/m' + mat, 'hist_afast/m' + mat, 'hist_apos/m' + mat, 'hist_ocor/m' + mat, 'hist_atest/m' + mat].concat(...EMPRESAS_GRUPO.map(e => ['hist_ocor' + e[0] + '/c' + mat, 'hist_atest' + e[0] + '/c' + mat])));
     const H = {}; (data || []).forEach(x => { H[x.colecao] = x.dados || {}; });
     const T = ((H.hist_depto || {}).l || []).map(x => [x[0], 'Departamento', x[1], x[2]]).concat(((H.hist_cargo || {}).l || []).map(x => [x[0], 'Função', x[1], x[2]])).sort((a, b) => b[0].localeCompare(a[0]));
     const DP = (H.hist_dep || {}).l || [], idd = n => { if (!n) return ''; const a = Math.floor((Date.now() - new Date(n + 'T12:00:00')) / 31557600000); return ' (' + a + ' anos)'; };
@@ -674,6 +674,12 @@ async function fichaDados(mat){
       const ano = {}; OC.forEach(x => { const y = x[0].slice(0, 4); (ano[y] = ano[y] || { f:0, j:0, s:0 })[x[1]] != null && ano[y][x[1]]++; });
       F.sec.push({ k, t:tit, ref, nota, cab:['Período', 'Ocorrência', 'Dias'], linhas:EP.reverse().map(e => [brD(e.a) + (e.z !== e.a ? ' a ' + brD(e.z) : ''), e.d || TN[e.t] || e.t, e.n]),
         resumo:(nota ? [['Origem', nota]] : []).concat(Object.keys(ano).sort().reverse().map(y => [y, ano[y].f + (ano[y].f === 1 ? ' falta' : ' faltas') + ' · ' + ano[y].j + ' justificada' + (ano[y].j === 1 ? '' : 's') + ' · ' + ano[y].s + (ano[y].s === 1 ? ' dia' : ' dias') + ' de suspensão'])) }); }
+    const atSec = (L, tit, k, ref, nota) => { if (!L.length) return; const A = L.slice().sort((a, b) => b[0].localeCompare(a[0])), ano = {};
+      A.forEach(x => { const y = x[0].slice(0, 4); const o = ano[y] = ano[y] || { n:0, d:0 }; o.n++; o.d += x[1]; });
+      F.sec.push({ k, t:tit + ' (' + A.length + ')', ref, cab:['Início', 'Dias', 'CID', 'Médico'], linhas:A.map(x => [brD(x[0]), x[1], x[2] ? x[2] + (x[3] ? ' · ' + x[3] : '') : '—', x[5] ? x[5] + (x[4] ? ' (' + x[4] + ')' : '') : '—']),
+        resumo:(nota ? [['Origem', nota]] : []).concat(Object.keys(ano).sort().reverse().slice(0, 6).map(y => [y, ano[y].n + (ano[y].n === 1 ? ' atestado' : ' atestados') + ' · ' + ano[y].d + ' dias'])) }); };
+    atSec((H.hist_atest || {}).l || [], 'Atestados (sistema)', 'atest', (H.hist_atest || {}).ref);
+    EMPRESAS_GRUPO.forEach(e => { const X = H['hist_atest' + e[0]] || {}, n = X.emp || e[1]; atSec(X.l || [], 'Atestados na ' + n + ' (empresa ' + e[0] + ')', 'atest' + e[0], X.ref, 'Época da ' + n + '. Não entra nos números da CRV.'); });
     ocSec((H.hist_ocor || {}).l || [], 'Faltas e suspensões (ponto)', 'ocor', (H.hist_ocor || {}).ref);
     EMPRESAS_GRUPO.forEach(e => { const X = H['hist_ocor' + e[0]] || {}, n = X.emp || e[1]; ocSec(X.l || [], 'Faltas e suspensões na ' + n + ' (empresa ' + e[0] + ')', 'ocor' + e[0], X.ref, 'Histórico da época da ' + n + (X.de ? ', matrícula ' + X.de.join(', ') + ' na ' + n : '') + '. Não entra nos números da CRV.'); });
     const CU = ((H.hist_curso || {}).l || []).slice().sort((a, b) => b[0].localeCompare(a[0]));
@@ -1481,10 +1487,14 @@ async function telaModelo(p, cfg, acao){
     window.CRV_RECARREGAR = () => { if (location.hash.startsWith('#/p/' + encodeURIComponent(p.id))) telaPainel(p.id); };
     let tplU = tpl;
     if (p.id === 'ferias' && ehRH()) { try { const HF = await window.CRV_HIST('ferias'); if (Object.keys(HF).length > 1) tplU = tplU.replace(/<head[^>]*>/i, h => h + '<script>window.CRV_HF=' + JSON.stringify(HF).replace(/</g, '\\u003c') + ';<\/script>'); } catch(_) {} }
-    if (p.id === 'absenteismo' && ehRH()) { try { const HO = await window.CRV_HIST('ocor'), Q = await window.CRV_QUADRO(); if (Q && Q.mapa && Object.keys(HO).length > 1) {
-        const P = {}; Object.keys(HO).forEach(m => { if (m === '__ref') return; const o = Q.mapa[m] || {}; P[m] = [o.nome || '', o.funcao || '', o.area || '', o.setor || '', o.gerencia || '', o.situacao || '', o.admissao || '', o.deslig || '']; });
-        const EMP = {}; for (const e of EMPRESAS_GRUPO) { const A = { n:e[1], P:{}, L:{}, C:{} }; try { (await window.CRV_REGS('quadro', 'hist_ocor' + e[0])).forEach(x => { if (!String(x._id || '').startsWith('a') || !x.mat) return; A.L[x.mat] = x.l || []; A.P[x.mat] = x.p || []; if (x.crv) A.C[x.mat] = x.crv; if (x.emp) A.n = x.emp; }); } catch(_) {} if (Object.keys(A.L).length) EMP[e[0]] = A; }
-        tplU = tplU.replace(/<head[^>]*>/i, h => h + '<script>window.CRV_OC=' + JSON.stringify({ ref:HO.__ref, P, L:HO, EMP }).replace(/</g, '\\u003c') + ';<\/script>'); } } catch(_) {} }
+    if (p.id === 'absenteismo' && ehRH()) { try { const HO = await window.CRV_HIST('ocor'), HA = await window.CRV_HIST('atest'), Q = await window.CRV_QUADRO(); if (Q && Q.mapa && (Object.keys(HO).length > 1 || Object.keys(HA).length > 1)) {
+        const CIDD = {}, enx = L => (L || []).map(x => { if (x[2] && x[3] && !CIDD[x[2]]) CIDD[x[2]] = x[3]; return [x[0], x[1], x[2]]; }); // atestados: [início, dias, CID] (o médico fica só na ficha)
+        const P = {}, LA = {}; Object.keys(HA).forEach(m => { if (m !== '__ref' && HA[m].length) LA[m] = enx(HA[m]); });
+        new Set(Object.keys(HO).concat(Object.keys(LA))).forEach(m => { if (m === '__ref') return; const o = Q.mapa[m] || {}; P[m] = [o.nome || '', o.funcao || '', o.area || '', o.setor || '', o.gerencia || '', o.situacao || '', o.admissao || '', o.deslig || '']; });
+        const EMP = {}; for (const e of EMPRESAS_GRUPO) { const A = { n:e[1], P:{}, L:{}, AT:{}, C:{} };
+          for (const [col, k] of [['hist_ocor', 'L'], ['hist_atest', 'AT']]) { try { (await window.CRV_REGS('quadro', col + e[0])).forEach(x => { if (!String(x._id || '').startsWith('a') || !x.mat || !(x.l || []).length) return; A[k][x.mat] = k === 'AT' ? enx(x.l) : x.l; if (x.p && (!A.P[x.mat] || !A.P[x.mat][2])) A.P[x.mat] = x.p; if (x.crv) A.C[x.mat] = x.crv; if (x.emp) A.n = x.emp; }); } catch(_) {} }
+          if (Object.keys(A.L).length || Object.keys(A.AT).length) EMP[e[0]] = A; }
+        tplU = tplU.replace(/<head[^>]*>/i, h => h + '<script>window.CRV_OC=' + JSON.stringify({ ref:HO.__ref || HA.__ref, P, L:HO, AT:LA, EMP, CIDD }).replace(/</g, '\\u003c') + ';<\/script>'); } } catch(e) { console.warn('absenteísmo', e); } }
     if (['unimed', 'uniodonto'].includes(PAC_DE[p.id] || p.id)) { // Unimed e Uniodonto cruzam com o Quadro atual do app
       try { const Q = await window.CRV_QUADRO(); if (Q && Q.mapa) {
         const dig = v => String(v || '').replace(/\D/g, ''), P = [], DL = {};
@@ -1946,7 +1956,7 @@ async function carregarPacotes(arquivos, esperado){
           st.textContent = 'enviando…';
           try {
             if (i.zip) { const q = await enviarZip(i.f, i.painel, t => st.textContent = t); st.innerHTML = `<span style="color:var(--cane)">✓ ${q} arquivos</span>`; ok++; continue; }
-            if (i.pac.hist) { const n2 = await salvarHistorico(i.pac); st.innerHTML = `<span style="color:var(--cane)">✓ ${n2} pessoas</span>`; ok++; if (['depto', 'cargo'].includes(i.pac.hist) || /^ocor/.test(i.pac.hist)) { clearTimeout(window._gerT); window._gerT = setTimeout(() => GESTOR().gerar(true).catch(() => {}), 4000); } continue; }
+            if (i.pac.hist) { const n2 = await salvarHistorico(i.pac); st.innerHTML = `<span style="color:var(--cane)">✓ ${n2} pessoas</span>`; ok++; if (['depto', 'cargo'].includes(i.pac.hist) || /^(ocor|atest)/.test(i.pac.hist)) { clearTimeout(window._gerT); window._gerT = setTimeout(() => GESTOR().gerar(true).catch(() => {}), 4000); } continue; }
             if (i.pac.entr) { const n2 = await salvarEntrevistas(i.pac.itens); st.innerHTML = `<span style="color:var(--cane)">✓ ${n2} entrevistas</span>`; ok++; continue; }
             if (i.pac.estab) { const n2 = await salvarEstabilidade(i.pac.itens); st.innerHTML = `<span style="color:var(--cane)">✓ ${n2} de estabilidade</span>`; ok++; continue; }
             await salvarPacote(i.pac, i.f, t => st.textContent = t);
