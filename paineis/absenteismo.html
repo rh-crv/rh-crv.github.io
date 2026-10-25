@@ -163,6 +163,7 @@ tr.dp{cursor:pointer}tr.dp:hover td{background:var(--soft)}
     <button class="tab" role="tab" aria-selected="false" data-v="t1">Faltas</button>
     <button class="tab" role="tab" aria-selected="false" data-v="t2">Suspensões</button>
     <button class="tab" role="tab" id="tab-r" aria-selected="false" data-v="r">Nominal · Histórico</button>
+    <button class="tab" role="tab" id="tab-h" aria-selected="false" data-v="h" hidden>Histórico da folha</button>
   </div>
 </div></header>
 
@@ -222,6 +223,23 @@ tr.dp{cursor:pointer}tr.dp:hover td{background:var(--soft)}
         <button class="more" id="tmore" hidden>Mostrar mais</button><p class="note" id="ttc"></p></div>
     </div>
     <p class="note" id="tfoot"></p>
+  </section>
+
+  <section id="view-h" hidden>
+    <div class="filters" id="hf"></div>
+    <div class="kpis" id="hk"></div>
+    <div class="read"><span class="tag">O que os dados mostram</span><div class="main" id="hread"></div></div>
+    <div class="grid">
+      <div class="card full"><h2 id="hch">Por ano</h2><p class="sub" id="hcs"></p>
+        <div class="legend"><span><i style="background:var(--s-fa)"></i>Falta</span><span><i style="background:var(--h-fj)"></i>Falta justificada</span><span><i style="background:var(--s-su)"></i>Suspensão</span></div>
+        <div class="hcols" id="hc"></div><div class="hxl" id="hcx"></div></div>
+      <div class="card full"><h2>Por setor</h2><p class="sub">Dias de cada tipo no filtro. Clique em um setor para ver as pessoas na lista abaixo.</p><div class="tw"><table><thead><tr><th>Setor</th><th class="num">Faltas</th><th class="num">Justificadas</th><th class="num">Suspensão</th><th class="num">Pessoas</th></tr></thead><tbody id="hsb"></tbody></table></div></div>
+      <div class="card full" id="hnom"><h2>Nominal</h2><p class="sub" id="hns"></p>
+        <div class="filters" style="margin-bottom:10px"><input type="search" id="hq" placeholder="Buscar nome, matrícula ou função"><span class="hsel" id="hsel"></span><button class="more" id="hxls" style="margin:0">Exportar Excel</button><button class="more" id="hpdf" style="margin:0">Exportar PDF</button></div>
+        <div class="tw"><table><thead><tr><th><input type="checkbox" id="hall" aria-label="Selecionar todos"></th><th>Colaborador</th><th>Setor / seção</th><th>Situação</th><th class="num">Faltas</th><th class="num">Justificadas</th><th class="num">Suspensão</th><th class="num">Licenças</th><th>Último registro</th></tr></thead><tbody id="hnb"></tbody></table></div>
+        <button class="more" id="hmore" hidden>Mostrar mais</button></div>
+    </div>
+    <p class="note" id="hfoot"></p>
   </section>
 
   <section id="view-r" hidden>
@@ -553,4 +571,82 @@ const tip=$('tip'); document.addEventListener('mousemove',e=>{ const t=e.target.
 render();
 </script>
 
+<style>
+:root{--h-fj:#2e8a57}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--h-fj:#4fb37e}}:root[data-theme="dark"]{--h-fj:#4fb37e}
+.hcols{display:grid;gap:8px;align-items:end;height:200px;border-bottom:1px solid var(--line);padding-top:22px}
+.hcol{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;border:0;background:none;padding:0;cursor:pointer;min-width:0;font:inherit;color:inherit}
+.hcol .bx{width:100%;max-width:54px;display:flex;flex-direction:column;justify-content:flex-end;border-radius:5px 5px 0 0;overflow:hidden}.hcol:hover .bx{filter:brightness(1.1)}
+.hcol.on .bx{box-shadow:0 0 0 2px var(--cane)}.hcol .tv{font:700 11px var(--body);margin-bottom:3px;white-space:nowrap}
+.hxl{display:grid;gap:8px;font-size:12px;color:var(--muted);text-align:center;margin-top:5px}.hxl b{display:block;color:var(--ink)}
+#hk .kpi[data-ht]{cursor:pointer}#hk .kpi[data-ht]:hover,#hk .kpi.on{border-color:var(--bar);box-shadow:inset 0 0 0 1px var(--bar)}
+#hsb tr,#hnb tr.hp{cursor:pointer}#hsb tr:hover td,#hnb tr.hp:hover td{background:var(--soft)}#hsb tr.on td{background:var(--brand-soft)}
+.hep td{background:var(--soft);font-size:12.5px;line-height:1.6}.hsel{font-size:12.5px;color:var(--muted);margin-left:auto}
+.hpill{display:inline-block;padding:1px 7px;border-radius:99px;font-size:11.5px;font-weight:700;margin-right:4px}.hpill.f{background:#fdf1da;color:#8a5a00}.hpill.j{background:#e6f4ec;color:#1d5c3a}.hpill.s{background:#f1eafa;color:#6a3a8e}.hpill.m,.hpill.p,.hpill.o{background:var(--soft);color:var(--muted)}
+@media (max-width:760px){.hcols{gap:3px}.hcol .tv{font-size:9px}.hxl{font-size:10px;gap:3px}}
+</style>
+<script>
+/* Histórico da folha: ocorrências do ponto (RPE0663R) carregadas no app. Atestados ficam de fora: vêm da planilha de atestados do RH. */
+(function(){ const OC=window.CRV_OC; if(!OC||!OC.L||!D.rh)return; $('tab-h').hidden=false;
+ const TN={f:'Falta',j:'Falta justificada',s:'Suspensão',m:'Licença-maternidade',p:'Licença-paternidade',o:'Outra ocorrência'},TC={f:'var(--s-fa)',j:'var(--h-fj)',s:'var(--s-su)'};
+ const MN2=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'],br=d=>d?d.slice(8,10)+'/'+d.slice(5,7)+'/'+d.slice(0,4):'—';
+ const nrm=x=>String(x||'').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+ const PS=Object.keys(OC.L).filter(m=>m!=='__ref').map(m=>{const p=OC.P[m]||[],L=OC.L[m]||[];return {m,L,n:p[0]||'Matrícula '+m,fu:p[1]||'',ar:p[2]||'Sem setor no Quadro',se:p[3]||'',ge:p[4]||'',si:p[5]||'',ad:p[6]||'',dl:p[7]||'',q:nrm((p[0]||'')+' '+m+' '+(p[1]||''))}});
+ const ANOS=[...new Set(PS.flatMap(x=>x.L.map(o=>o[0].slice(0,4))))].sort(),ULT=PS.reduce((z,x)=>x.L.length&&x.L[x.L.length-1][0]>z?x.L[x.L.length-1][0]:z,'');
+ const H={y:'',mo:'',t:'',sit:'at',ar:'',q:'',lim:40,open:'',sel:new Set()};
+ const PSD=x=>/^(AFASTADOS|DESISTENTES)$/i.test(x.ar),okP=x=>(H.sit==='tt'||(H.sit==='at'?x.si!=='Desligado'&&!PSD(x):H.sit==='ad'?x.si!=='Desligado'&&PSD(x):x.si==='Desligado'))&&(!H.ar||x.ar===H.ar)&&(!H.q||x.q.includes(nrm(H.q)));
+ const okO=o=>(!H.y||o[0].slice(0,4)===H.y)&&(!H.mo||o[0].slice(5,7)===H.mo);
+ const cnt=x=>{const c={f:0,j:0,s:0,l:0,u:''};for(const o of x.L){if(!okO(o))continue;if(o[1]==='f'||o[1]==='j'||o[1]==='s')c[o[1]]++;else c.l++;if(o[0]>c.u)c.u=o[0]}return c};
+ const epis=L=>{const E=[];L.forEach(x=>{const u=E[E.length-1];if(u&&u.t===x[1]&&Math.round((new Date(x[0]+'T12:00:00')-new Date(u.z+'T12:00:00'))/864e5)===1){u.z=x[0];u.n++}else E.push({a:x[0],z:x[0],t:x[1],n:1,d:x[3]||''})});return E.reverse()};
+ let ROWS=[];
+ const calc=()=>{const base=PS.filter(okP).map(x=>Object.assign({x},cnt(x)));ROWS=base.filter(r=>(H.t?(H.t==='l'?r.l:r[H.t]):r.f+r.j+r.s+r.l)>0).sort((a,b)=>H.t&&H.t!=='l'?b[H.t]-a[H.t]||(b.f+b.j+b.s)-(a.f+a.j+a.s):(b.f+b.j+b.s)-(a.f+a.j+a.s)||b.l-a.l);return base};
+ function draw(){const base=calc(),sum=k=>base.reduce((t,r)=>t+r[k],0),pes=k=>base.filter(r=>r[k]>0).length,per=(H.y?H.y+(H.mo?' · '+MN2[+H.mo-1]:''):ANOS[0]+' a '+ANOS[ANOS.length-1]);
+  $('hf').innerHTML='<div class="chips">'+[['','Todos os anos']].concat(ANOS.map(a=>[a,a])).map(a=>`<button class="chip" aria-pressed="${H.y===a[0]}" data-hy="${a[0]}">${a[1]}</button>`).join('')+'</div>'
+   +'<div class="seg" style="margin:0"><button data-hs="at" aria-pressed="'+(H.sit==='at')+'" title="Sem os cadastros Afastados e Desistentes">Ativos</button><button data-hs="ad" aria-pressed="'+(H.sit==='ad')+'">Afastados e desistentes</button><button data-hs="dl" aria-pressed="'+(H.sit==='dl')+'">Desligados</button><button data-hs="tt" aria-pressed="'+(H.sit==='tt')+'">Todos</button></div>'
+   +'<select id="har" aria-label="Setor"><option value="">Todos os setores</option>'+[...new Set(PS.map(x=>x.ar))].sort().map(a=>`<option${a===H.ar?' selected':''}>${esc(a)}</option>`).join('')+'</select>'
+   +(H.y||H.mo||H.t||H.ar||H.q||H.sit!=='at'?'<button class="chip" data-hclr="1">Limpar filtros</button>':'');
+  const K=[['f','Faltas',sum('f'),pes('f')],['j','Faltas justificadas',sum('j'),pes('j')],['s','Suspensão',sum('s'),pes('s')],['l','Licenças',sum('l'),pes('l')]];
+  $('hk').innerHTML=K.map(k=>`<div class="kpi${H.t===k[0]?' on':''}" role="button" tabindex="0" data-ht="${k[0]}"><div class="l">${k[1]}</div><div class="v">${nf(k[2])}</div><div class="s">${k[1]==='Licenças'?'dias de maternidade e paternidade':'dias'} · ${nf(k[3])} ${k[3]===1?'pessoa':'pessoas'}</div></div>`).join('')
+   +`<div class="kpi"><div class="l">Pessoas com registro</div><div class="v">${nf(base.filter(r=>r.f+r.j+r.s+r.l).length)}</div><div class="s">${per}</div></div>`;
+  // leitura: maior setor em faltas e quem concentra
+  const ag={};base.forEach(r=>{const a=ag[r.x.ar]||(ag[r.x.ar]={f:0,j:0,s:0,p:0});a.f+=r.f;a.j+=r.j;a.s+=r.s;if(r.f+r.j+r.s)a.p++});const AR=Object.entries(ag).filter(a=>a[1].f+a[1].j+a[1].s).sort((a,b)=>(b[1].f+b[1].j+b[1].s)-(a[1].f+a[1].j+a[1].s));
+  const tf=sum('f'),top=ROWS.filter(r=>r.f).slice(0,Math.max(1,Math.round(pes('f')*0.1))),tt=top.reduce((t,r)=>t+r.f,0);
+  $('hread').innerHTML=tf?`Em ${per}, <b>${nf(tf)} dias de falta</b> de ${nf(pes('f'))} pessoas${H.sit==='at'?' ativas hoje (sem Afastados e Desistentes)':H.sit==='ad'?' hoje em Afastados ou Desistentes':H.sit==='dl'?' já desligadas':''}, mais ${nf(sum('j'))} de falta justificada e ${nf(sum('s'))} de suspensão. `+(AR.length?`O setor com mais dias é <b>${esc(AR[0][0])}</b> (${nf(AR[0][1].f+AR[0][1].j+AR[0][1].s)} dias). `:'')+(pes('f')>=10?`Os ${nf(top.length)} colaboradores com mais faltas (10% de quem faltou) somam ${nf(tt)} dias, ${nf(tt/tf*100,0)}% do total.`:''):'Nenhuma falta ou suspensão no filtro.';
+  // gráfico: por ano ou por mês
+  const B=H.y?MN2.map((n,i)=>[String(i+1).padStart(2,'0'),n]):ANOS.map(a=>[a,a]),vs=B.map(b=>{const c={f:0,j:0,s:0};PS.forEach(x=>{if(!okP(x))return;for(const o of x.L){if(!(o[1] in c))continue;if(H.y?(o[0].slice(0,4)===H.y&&o[0].slice(5,7)===b[0]):o[0].slice(0,4)===b[0])c[o[1]]++}});return c}),mx=Math.max(1,...vs.map(c=>c.f+c.j+c.s));
+  $('hch').textContent=H.y?'Por mês · '+H.y:'Por ano';$('hcs').textContent=H.y?'Clique em um mês para filtrar a lista; clique de novo para tirar o filtro.':'Clique em um ano para ver os meses dele.';
+  $('hc').style.gridTemplateColumns=$('hcx').style.gridTemplateColumns='repeat('+B.length+',minmax(0,1fr))';
+  $('hc').innerHTML=B.map((b,i)=>{const c=vs[i],t=c.f+c.j+c.s;return `<button class="hcol${H.y&&H.mo===b[0]?' on':''}" data-hb="${b[0]}" aria-label="${b[1]}: ${t} dias"><span class="tv">${t?nf(t):''}</span><span class="bx" style="height:${t/mx*100}%">${['s','j','f'].map(k=>c[k]?`<span style="height:${c[k]/t*100}%;background:${TC[k]};display:block"></span>`:'').join('')}</span></button>`}).join('');
+  $('hcx').innerHTML=B.map((b,i)=>`<span><b>${b[1]}</b>${nf(vs[i].f)} F</span>`).join('');
+  $('hsb').innerHTML=AR.map(a=>`<tr data-ha="${esc(a[0])}" class="${H.ar===a[0]?'on':''}"><td>${esc(a[0])}</td><td class="num">${nf(a[1].f)}</td><td class="num">${nf(a[1].j)}</td><td class="num">${nf(a[1].s)}</td><td class="num">${nf(a[1].p)}</td></tr>`).join('')||'<tr><td colspan="5" class="note">Nenhum registro.</td></tr>';
+  $('hns').innerHTML=nf(ROWS.length)+' '+(ROWS.length===1?'colaborador':'colaboradores')+(H.t?' com '+(H.t==='l'?'licença':TN[H.t].toLowerCase()):'')+' · '+per+(H.ar?' · '+esc(H.ar):'')+'. Clique em uma linha para ver as datas.';
+  const L=ROWS.slice(0,H.lim);
+  $('hnb').innerHTML=L.map(r=>{const x=r.x;return `<tr class="hp" data-hp="${x.m}"><td onclick="event.stopPropagation()"><input type="checkbox" data-hk="${x.m}"${H.sel.has(x.m)?' checked':''}></td><td><b>${esc(x.n)}</b><small style="display:block;color:var(--muted)">${x.m} · ${esc(x.fu)}</small></td><td>${esc(x.ar)}<small style="display:block;color:var(--muted)">${esc(x.se)}</small></td><td>${esc(x.si||'—')}${x.dl?'<small style="display:block;color:var(--muted)">saiu em '+br(x.dl)+'</small>':''}</td><td class="num">${r.f||''}</td><td class="num">${r.j||''}</td><td class="num">${r.s||''}</td><td class="num">${r.l||''}</td><td>${br(r.u)}</td></tr>`
+    +(H.open===x.m?`<tr class="hep"><td></td><td colspan="8">${epis(x.L.filter(okO)).map(e=>`<span class="hpill ${e.t}">${esc(e.d||TN[e.t])}</span>${br(e.a)}${e.z!==e.a?' a '+br(e.z):''} · ${e.n} ${e.n===1?'dia':'dias'}`).join('<br>')||'Nenhum registro no filtro.'}</td></tr>`:'')}).join('')||'<tr><td colspan="9" class="note">Ninguém no filtro.</td></tr>';
+  $('hmore').hidden=ROWS.length<=H.lim;$('hsel').textContent=H.sel.size?H.sel.size+' selecionado(s) para exportar':'Nada marcado: exporta a lista inteira';
+  $('hall').checked=L.length>0&&L.every(r=>H.sel.has(r.x.m));
+  $('hfoot').innerHTML='<b>Fonte:</b> relatório de Ocorrências dos Funcionários do ponto (RPE0663R, empresa 5), de '+br(PS.reduce((z,x)=>x.L.length&&(!z||x.L[0][0]<z)?x.L[0][0]:z,''))+' a '+br(ULT)+'. Os <b>atestados não entram aqui</b>: vêm da planilha de atestados do RH (abas Visão Gestão e Atestados). Os números são dias com lançamento no ponto. Desligados aparecem no último setor que tiveram. De 2021 a 2024 o relatório traz cerca de 450 pessoas com ocorrência por ano e, a partir de 2025, cerca de 1.500: antes de comparar os anos, confirme com o DP se mudou a forma de lançar no ponto.'}
+ function exp(tipo){const R=ROWS.filter(r=>!H.sel.size||H.sel.has(r.x.m));if(!R.length)return;const per=H.y?H.y+(H.mo?'-'+H.mo:''):'2021 a '+ULT.slice(0,4);
+  const L=R.map(r=>({'Matrícula':r.x.m,'Nome':r.x.n,'Função':r.x.fu,'Setor':r.x.ar,'Seção':r.x.se,'Situação':r.x.si,'Desligamento':r.x.dl?br(r.x.dl):'','Faltas (dias)':r.f,'Faltas justificadas (dias)':r.j,'Suspensão (dias)':r.s,'Licenças (dias)':r.l,'Último registro':br(r.u)}));
+  const tit='Faltas e suspensões · '+per+(H.ar?' · '+H.ar:''),nome=(tit.replace(/[\\/:*?"<>|]/g,' ')+' '+br(new Date().toLocaleDateString('sv')).split('/').join('-'));
+  const salvar=async(n,bytes,mime)=>{try{const DL=window.claude&&window.claude.use?await window.claude.use('downloads'):null;if(DL)return DL.save({filename:n,data:bytes})}catch(_){}const u=URL.createObjectURL(new Blob([bytes],{type:mime})),a=document.createElement('a');a.href=u;a.download=n;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},3000)};
+  if(tipo==='x'){const X=window.XLSX||(window.parent&&window.parent.XLSX);if(!X)return;const ws=X.utils.json_to_sheet(L);ws['!cols']=Object.keys(L[0]).map(k=>({wch:/Nome|Função|Seção|Setor/.test(k)?32:14}));const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,'Ocorrências');return salvar(nome+'.xlsx',new Uint8Array(X.write(wb,{bookType:'xlsx',type:'array'})),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}
+  const J=(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF);if(!J)return;const doc=new J({orientation:'landscape',unit:'mm',format:'a4'});
+  doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text(tit+' · CRV Industrial',12,14);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text(L.length+' colaborador(es) · ocorrências do ponto (sem atestados) · emitido em '+new Date().toLocaleDateString('pt-BR')+' · Gestão de Pessoas',12,20);
+  const cols=['Matrícula','Nome','Função','Setor','Situação','Faltas (dias)','Faltas justificadas (dias)','Suspensão (dias)','Licenças (dias)','Último registro'];
+  doc.autoTable({startY:24,head:[cols],body:L.map(r=>cols.map(c=>String(r[c]??''))),styles:{fontSize:7.5,cellPadding:1.4},headStyles:{fillColor:[29,52,97]},margin:{left:10,right:10}});
+  const f=window.parent&&window.parent.CRV_PDF_LOGOS;Promise.resolve(f?f(doc):doc).then(d=>salvar(nome+'.pdf',new Uint8Array(d.output('arraybuffer')),'application/pdf'))}
+ const V=$('view-h');
+ V.addEventListener('click',e=>{const t=e.target;let b;
+  if(b=t.closest('[data-hy]')){H.y=b.dataset.hy;H.mo='';}else if(b=t.closest('[data-hs]'))H.sit=b.dataset.hs;else if(b=t.closest('[data-hclr]')){Object.assign(H,{y:'',mo:'',t:'',sit:'at',ar:'',q:''});$('hq').value='';}
+  else if(b=t.closest('[data-ht]'))H.t=H.t===b.dataset.ht?'':b.dataset.ht;else if(b=t.closest('[data-hb]')){if(H.y)H.mo=H.mo===b.dataset.hb?'':b.dataset.hb;else H.y=b.dataset.hb;}
+  else if(b=t.closest('[data-ha]')){H.ar=H.ar===b.dataset.ha?'':b.dataset.ha;draw();$('hnom').scrollIntoView({behavior:'smooth'});return}
+  else if(b=t.closest('[data-hp]')){H.open=H.open===b.dataset.hp?'':b.dataset.hp;}else if(t.id==='hmore')H.lim+=60;else if(t.id==='hxls')return exp('x');else if(t.id==='hpdf')return exp('p');else return;
+  if(t.closest('[data-ht]')||(t.closest('[data-hb]')&&H.y&&H.mo))H.lim=40;draw();if(t.closest('[data-ht]'))$('hnom').scrollIntoView({behavior:'smooth'})});
+ V.addEventListener('change',e=>{const t=e.target;if(t.id==='har'){H.ar=t.value;draw()}else if(t.dataset.hk){t.checked?H.sel.add(t.dataset.hk):H.sel.delete(t.dataset.hk);$('hsel').textContent=H.sel.size?H.sel.size+' selecionado(s) para exportar':'Nada marcado: exporta a lista inteira'}else if(t.id==='hall'){ROWS.slice(0,H.lim).forEach(r=>t.checked?H.sel.add(r.x.m):H.sel.delete(r.x.m));draw()}});
+ $('hq').addEventListener('input',e=>{H.q=e.target.value.trim();H.lim=40;draw()});
+ const R0=render,HS0=$('hsub').textContent;render=function(){const f0=document.querySelector('main .filters'),f=f0&&(f0.closest('.cf-wrap')||f0);if(S.view==='h'){['view-g','view-t','view-r'].forEach(i=>$(i).hidden=true);V.hidden=false;if(f)f.hidden=true;document.querySelectorAll('.tab').forEach(x=>x.setAttribute('aria-selected',x.dataset.v==='h'));$('hsub').textContent='Faltas, faltas justificadas e suspensões do ponto · '+ANOS[0]+' a '+ANOS[ANOS.length-1];draw();return}
+  V.hidden=true;if(f)f.hidden=false;$('hsub').textContent=HS0;R0()};
+})();
+</script>
 </body></html>

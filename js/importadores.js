@@ -40,6 +40,8 @@ function detectar(wb, nomeArq){
   if (h.includes('Gozo Inicial') && h.includes('Aquisição Inicial')) return { tipo:'hist', h:'ferias', R };
   if (h.includes('Descrição do Curso') && h.includes('Início do Curso')) return { tipo:'hist', h:'curso', R };
   if (h.includes('Nome do Exame') && h.includes('Data do Próximo Exame')) return { tipo:'hist', h:'exame', R };
+  // ocorrências do ponto (RPE0663R: "Relatório das Ocorrências dos Funcionários"), um arquivo por período
+  if (R.slice(0, 4).some(r => (r || []).map(s).some(x => /^Relatório das Ocorrências dos Funcionários/i.test(x)))) return { tipo:'hist', h:'ocor', R };
   if (h.includes('Data de Afastamento') && h.includes('Data Efetiva de Retorno')) return { tipo:'hist', h:'afast', R };
   if (h.includes('Data da Aposentadoria') && h.includes('Nome do Benefício')) return { tipo:'hist', h:'apos', R };
   if (h.includes('Causa da Estabilidade') && h.includes('Fim da Estabilidade')) return { tipo:'hist', h:'estab', R };
@@ -237,6 +239,16 @@ function converterHist(h, R, mapa, REF){
     Object.keys(itens).forEach(k => { if (!itens[k].length) delete itens[k]; });
     return { tipo:'crv-hist', painel:'quadro', hist:h, referencia:REF, itens, n:{ linhas:lin, pessoas:Object.keys(itens).length, nomeDiferente:ign, foraDoQuadro:fora, anuladas:0 } };
   }
+  if (h === 'ocor') { // [data, tipo, quantidade]; atestados ficam de fora (vêm da planilha de atestados do RH)
+    const TP = d => /ATESTADO/.test(d) ? '' : /FALTA JUST/.test(d) ? 'j' : /FALTA/.test(d) ? 'f' : /SUSPENS/.test(d) ? 's' : /MATERN/.test(d) ? 'm' : /PATERN/.test(d) ? 'p' : 'o';
+    let m = 0, ok = false, ini = '', fim = '', at = 0; const emp = s((R[0] || [])[0]);
+    for (const r of R) { const c0 = (r || [])[0];
+      if (c0 instanceof Date) { const d = iso(c0); if (!d) continue; if (!ini || d < ini) ini = d; if (!fim || d > fim) fim = d; if (!ok) continue;
+        const ds = s(r[2]).toUpperCase(), t = TP(ds); if (!t) { at++; continue; } const it = [d, t, Math.round((+num(r[3]) || 0) * 100) / 100]; if (t === 'o') it.push(sp(r[2])); itens[m].push(it); lin++; continue; }
+      if (/^\d+$/.test(s(c0)) && typeof (r || [])[1] === 'string' && !/LTDA|S\/?A\b/i.test(r[1]) && s(r[1]) !== 'Nome do Funcionário') { m = parseInt(s(c0), 10); const q = mapa[String(m)]; ok = !!q && mesmoNome(r[1], q.nome); if (!q) fora++; else if (!ok) ign++; if (ok) itens[m] = itens[m] || []; } }
+    Object.keys(itens).forEach(k => { if (!itens[k].length) delete itens[k]; else itens[k].sort((a, b) => a[0].localeCompare(b[0])); });
+    return { tipo:'crv-hist', painel:'quadro', hist:h, referencia:REF, itens, faixa: ini ? [ini, fim] : null, empresa:emp, n:{ linhas:lin, pessoas:Object.keys(itens).length, nomeDiferente:ign, foraDoQuadro:fora, anuladas:0, atestados:at, ini, fim } };
+  }
   for (const r of R.slice(1)) {
     const m = parseInt(num(get(r, 'Funcionário')), 10); if (!m) continue;
     const q = mapa[String(m)];
@@ -273,13 +285,17 @@ async function ler(f){
   const out = [];
   if (det.tipo === 'hist') {
     const Q = await window.CRV_QUADRO(); if (!Q || !Q.mapa) throw new Error('carregue o Quadro Geral antes dos históricos');
-    let pac = converterHist(det.h, det.R, Q.mapa, REF); const T = { ferias:'Histórico de férias', depto:'Histórico de departamentos', cargo:'Histórico de funções', dep:'Dependentes da folha', curso:'Treinamentos realizados', exame:'Exames ocupacionais (ASO)', afast:'Histórico de afastamentos', apos:'Aposentadorias', estab:'Estabilidades da folha' }[det.h];
+    let pac = converterHist(det.h, det.R, Q.mapa, REF); const T = { ferias:'Histórico de férias', depto:'Histórico de departamentos', cargo:'Histórico de funções', dep:'Dependentes da folha', curso:'Treinamentos realizados', exame:'Exames ocupacionais (ASO)', afast:'Histórico de afastamentos', ocor:'Ocorrências do ponto', apos:'Aposentadorias', estab:'Estabilidades da folha' }[det.h];
     if (det.h === 'estab') { // entra no cadastro de estabilidade que o app já usa (Quadro Geral, Central, checklist de desligamento)
       const TIP = c => /CIP/i.test(c) ? 'CIPA' : /ACIDENTE/i.test(c) ? 'Acidente de trabalho' : /GESTANTE/i.test(c) ? 'Gestante' : /APOSENT/i.test(c) ? 'Pré-aposentadoria' : /SINDIC/i.test(c) ? 'Dirigente sindical' : 'Outro';
       const itens = [].concat(...Object.values(pac.itens)).map(x => ({ mat:String(x.mat), nome:x.nome, tipo:TIP(x.causa), detalhe:x.causa, inicio:x.inicio, fim:x.fim, status:'confirmada', origem:'Relatório de estabilidades da folha (TFP40T)' }));
       const hoje = new Date().toISOString().slice(0, 10);
       out.push({ pac:{ estab:true, painel:'quadro', referencia:REF, itens }, rotulo:`${T}: ${itens.length} registros, ${itens.filter(x => x.fim >= hoje).length} vigentes` + (pac.n.nomeDiferente ? ` · ${pac.n.nomeDiferente} com nome diferente do Quadro (fora)` : '') });
       return out; }
+    if (det.h === 'ocor') { const br = d => d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : '';
+      if (!pac.faixa) { out.push({ pac, rotulo:`${T}: arquivo sem lançamentos (nada a salvar)` }); return out; }
+      if (pac.empresa && pac.empresa !== '5') throw new Error('o relatório é da empresa ' + pac.empresa + '; o app usa só a empresa 5 (CRV)');
+      out.push({ pac, rotulo:`${T} de ${br(pac.faixa[0])} a ${br(pac.faixa[1])}: ${pac.n.linhas} lançamentos de ${pac.n.pessoas} pessoas (faltas, faltas justificadas, suspensões e licenças; ${pac.n.atestados} atestados ficam de fora)` + (pac.n.nomeDiferente ? ` · ${pac.n.nomeDiferente} com nome diferente do Quadro (fora)` : '') + (pac.n.foraDoQuadro ? ` · ${pac.n.foraDoQuadro} matrículas fora do Quadro` : '') }); return out; }
     out.push({ pac, rotulo:`${T}: ${pac.n.linhas} ${det.h === 'dep' ? 'dependentes' : 'registros'} de ${pac.n.pessoas} ${det.h === 'dep' ? 'colaboradores' : 'pessoas'}` + (pac.n.anuladas ? ` · ${pac.n.anuladas} anuladas fora` : '') + (pac.n.nomeDiferente ? ` · ${pac.n.nomeDiferente} com nome diferente do Quadro (fora)` : '') });
     return out;
   }

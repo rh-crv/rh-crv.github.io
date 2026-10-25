@@ -655,7 +655,7 @@ async function fichaDados(mat){
       alerta: s.niv === 'a' ? 'risco alto (' + s.S.join(', ') + ')' : s.niv === 't' ? 'atenção (' + s.S.join(', ') + ')' : '' }); })()); }
   // Trajetória (departamentos e funções) e histórico de férias, vindos dos relatórios da folha
   if (ehRH()) tarefas.push((async () => {
-    const { data } = await sb.from('registros').select('colecao,dados').eq('painel', 'quadro').in('caminho', ['hist_depto/m' + mat, 'hist_cargo/m' + mat, 'hist_ferias/m' + mat, 'hist_dep/m' + mat, 'hist_curso/m' + mat, 'hist_exame/m' + mat, 'hist_afast/m' + mat, 'hist_apos/m' + mat]);
+    const { data } = await sb.from('registros').select('colecao,dados').eq('painel', 'quadro').in('caminho', ['hist_depto/m' + mat, 'hist_cargo/m' + mat, 'hist_ferias/m' + mat, 'hist_dep/m' + mat, 'hist_curso/m' + mat, 'hist_exame/m' + mat, 'hist_afast/m' + mat, 'hist_apos/m' + mat, 'hist_ocor/m' + mat]);
     const H = {}; (data || []).forEach(x => { H[x.colecao] = x.dados || {}; });
     const T = ((H.hist_depto || {}).l || []).map(x => [x[0], 'Departamento', x[1], x[2]]).concat(((H.hist_cargo || {}).l || []).map(x => [x[0], 'Função', x[1], x[2]])).sort((a, b) => b[0].localeCompare(a[0]));
     const DP = (H.hist_dep || {}).l || [], idd = n => { if (!n) return ''; const a = Math.floor((Date.now() - new Date(n + 'T12:00:00')) / 31557600000); return ' (' + a + ' anos)'; };
@@ -669,6 +669,12 @@ async function fichaDados(mat){
     if (AF.length || AP.length) F.sec.push({ k:'afast', t:'Afastamentos (' + AF.length + ')', ref:(H.hist_afast || H.hist_apos).ref, cab:['Início', 'Retorno', 'Motivo', 'CID', 'Dias'], linhas:AF.map(x => [brD(x[0]), x[1] ? brD(x[1]) : 'segue afastado', x[3] || x[2], x[4] || '—', dAf(x[0], x[1])]),
       resumo:[['Situação', AB ? 'Afastado desde ' + brD(AB[0]) + ' · ' + (AB[3] || AB[2]) : 'Sem afastamento em aberto'], ['Últimos 12 meses', A12.length + (A12.length === 1 ? ' afastamento' : ' afastamentos') + ' · ' + A12.reduce((t, x) => t + dAf(x[0] > c12 ? x[0] : c12, x[1]), 0) + ' dias']].concat(AP.map(x => ['Aposentadoria', (x[2] || 'Benefício não informado') + ' desde ' + brD(x[0]) + (x[3] ? ' · nº ' + x[3] : '')])),
       alerta: AB && /ACID/i.test(AB[3]) ? 'afastado por acidente de trabalho' : '' });
+    const OC = (H.hist_ocor || {}).l || [];
+    if (OC.length) { const TN = { f:'Falta', j:'Falta justificada', s:'Suspensão', m:'Licença-maternidade', p:'Licença-paternidade', o:'Outra ocorrência' }, EP = [];
+      OC.forEach(x => { const u = EP[EP.length - 1], prox = u && u.t === x[1] && Math.round((new Date(x[0] + 'T12:00:00') - new Date(u.z + 'T12:00:00')) / 864e5) === 1; if (prox) { u.z = x[0]; u.n++; } else EP.push({ a:x[0], z:x[0], t:x[1], n:1, d:x[3] || '' }); });
+      const ano = {}; OC.forEach(x => { const y = x[0].slice(0, 4); (ano[y] = ano[y] || { f:0, j:0, s:0 })[x[1]] != null && ano[y][x[1]]++; });
+      F.sec.push({ k:'ocor', t:'Faltas e suspensões (ponto)', ref:H.hist_ocor.ref, cab:['Período', 'Ocorrência', 'Dias'], linhas:EP.reverse().map(e => [brD(e.a) + (e.z !== e.a ? ' a ' + brD(e.z) : ''), e.d || TN[e.t] || e.t, e.n]),
+        resumo:Object.keys(ano).sort().reverse().map(y => [y, ano[y].f + (ano[y].f === 1 ? ' falta' : ' faltas') + ' · ' + ano[y].j + ' justificada' + (ano[y].j === 1 ? '' : 's') + ' · ' + ano[y].s + (ano[y].s === 1 ? ' dia' : ' dias') + ' de suspensão']) }); }
     const CU = ((H.hist_curso || {}).l || []).slice().sort((a, b) => b[0].localeCompare(a[0]));
     if (CU.length) F.sec.push({ k:'cursos', t:'Treinamentos realizados (' + CU.length + ')', ref:H.hist_curso.ref, cab:['Data', 'Treinamento'], linhas:CU.map(x => [brD(x[0]) + (x[1] && x[1] !== x[0] ? ' a ' + brD(x[1]) : ''), x[2]]) });
     if (H.hist_dep) F.sec.push({ k:'deps', t:'Dependentes (' + DP.length + ')', ref:H.hist_dep.ref, cab:['Nome', 'Parentesco', 'Nascimento', 'CPF'], linhas:DP.map(d => [d[0], d[2], brD(d[1]) + idd(d[1]), d[4] ? d[4].replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : '—']) });
@@ -1474,6 +1480,9 @@ async function telaModelo(p, cfg, acao){
     window.CRV_RECARREGAR = () => { if (location.hash.startsWith('#/p/' + encodeURIComponent(p.id))) telaPainel(p.id); };
     let tplU = tpl;
     if (p.id === 'ferias' && ehRH()) { try { const HF = await window.CRV_HIST('ferias'); if (Object.keys(HF).length > 1) tplU = tplU.replace(/<head[^>]*>/i, h => h + '<script>window.CRV_HF=' + JSON.stringify(HF).replace(/</g, '\\u003c') + ';<\/script>'); } catch(_) {} }
+    if (p.id === 'absenteismo' && ehRH()) { try { const HO = await window.CRV_HIST('ocor'), Q = await window.CRV_QUADRO(); if (Q && Q.mapa && Object.keys(HO).length > 1) {
+        const P = {}; Object.keys(HO).forEach(m => { if (m === '__ref') return; const o = Q.mapa[m] || {}; P[m] = [o.nome || '', o.funcao || '', o.area || '', o.setor || '', o.gerencia || '', o.situacao || '', o.admissao || '', o.deslig || '']; });
+        tplU = tplU.replace(/<head[^>]*>/i, h => h + '<script>window.CRV_OC=' + JSON.stringify({ ref:HO.__ref, P, L:HO }).replace(/</g, '\\u003c') + ';<\/script>'); } } catch(_) {} }
     if (['unimed', 'uniodonto'].includes(PAC_DE[p.id] || p.id)) { // Unimed e Uniodonto cruzam com o Quadro atual do app
       try { const Q = await window.CRV_QUADRO(); if (Q && Q.mapa) {
         const dig = v => String(v || '').replace(/\D/g, ''), P = [], DL = {};
@@ -1483,7 +1492,7 @@ async function telaModelo(p, cfg, acao){
         const rf = String(Q.referencia || ''), ref = /^\d{4}-\d{2}-\d{2}/.test(rf) ? rf.slice(8, 10) + '/' + rf.slice(5, 7) + '/' + rf.slice(0, 4) : rf;
         let DF = null; try { const H = await window.CRV_HIST('dep'); if (Object.keys(H).length > 1) { DF = { ref:H.__ref, c:{} }; Object.entries(H).forEach(([m, L]) => { if (m !== '__ref') L.forEach(d => { if (d[4]) DF.c[d[4]] = [d[0], d[2], +m]; }); }); } } catch(_) {}
         const js = JSON.stringify({ P, DL, ref, DF }).replace(/</g, '\\u003c');
-        tplU = tpl.replace(/<head[^>]*>/i, h => h + '<script>window.CRV_QB=' + js + ';<\/script>'); } } catch(_) {}
+        tplU = tplU.replace(/<head[^>]*>/i, h => h + '<script>window.CRV_QB=' + js + ';<\/script>'); } } catch(_) {}
     }
     const html = montarModelo(tplU, d.conteudo, d.referencia, p, novos);
     const url = URL.createObjectURL(new Blob([html], { type:'text/html' }));
@@ -1687,8 +1696,10 @@ window.CRV_FERIAS = async function(mats, ini, fim){
 };
 window.CRV_REGS = async function(painel, colecao){
   try {
-    const r = await sb.from('registros').select('doc_id,dados').eq('painel', painel).eq('colecao', colecao).range(0, 4999);
-    return r.error ? [] : (r.data || []).map(x => Object.assign({ _id:x.doc_id }, x.dados || {}));
+    const out = []; // o Supabase devolve no máximo 1000 linhas por consulta: lê em páginas
+    for (let i = 0; i < 20000; i += 1000) { const r = await sb.from('registros').select('doc_id,dados').eq('painel', painel).eq('colecao', colecao).order('doc_id').range(i, i + 999);
+      if (r.error) break; (r.data || []).forEach(x => out.push(Object.assign({ _id:x.doc_id }, x.dados || {}))); if ((r.data || []).length < 1000) break; }
+    return out;
   } catch(_) { return []; }
 };
 /* banco de registros de outro painel (ex.: a fadiga grava a advertência também nas Sanções) */
@@ -1843,8 +1854,19 @@ async function lerPacote(f){
 
 // respostas das entrevistas de desligamento (tabuladas): entram como registros do Quadro; não substituem o que já foi lançado ou corrigido no app
 /* históricos da folha (férias, departamentos, funções): um registro por pessoa, substitui o anterior */
+let _ocorMem = null;
 async function salvarHistorico(pac){
   const quem = E.perfil ? E.perfil.nome : '', col = 'hist_' + pac.hist;
+  if (pac.faixa !== undefined) { // ocorrências do ponto: cada arquivo cobre um período; troca só os lançamentos desse período e mantém os outros
+    if (!pac.faixa) return 0; const [a, z] = pac.faixa;
+    if (!_ocorMem) { _ocorMem = {}; (await window.CRV_REGS('quadro', col)).forEach(x => { if (x.mat) _ocorMem[String(x.mat)] = x.l || []; }); }
+    const mud = {};
+    Object.keys(_ocorMem).forEach(m => { if (_ocorMem[m].some(x => x[0] >= a && x[0] <= z) || pac.itens[m]) mud[m] = 1; }); Object.keys(pac.itens).forEach(m => mud[m] = 1);
+    Object.keys(mud).forEach(m => { _ocorMem[m] = (_ocorMem[m] || []).filter(x => x[0] < a || x[0] > z).concat(pac.itens[m] || []).sort((x, y) => x[0].localeCompare(y[0])); });
+    const linhas = Object.keys(mud).map(m => ({ painel:'quadro', caminho:col + '/m' + m, colecao:col, doc_id:'m' + m, dados:{ mat:m, l:_ocorMem[m], ref:pac.referencia }, atualizado_por:quem }));
+    for (let i = 0; i < linhas.length; i += 200) { const { error } = await sb.from('registros').upsert(linhas.slice(i, i + 200), { onConflict:'painel,caminho' }); if (error) { _ocorMem = null; throw error; } }
+    _histCache = {}; return Object.keys(pac.itens).length;
+  }
   const linhas = Object.entries(pac.itens).map(([m, l]) => ({ painel:'quadro', caminho:col + '/m' + m, colecao:col, doc_id:'m' + m, dados:{ mat:m, l, ref:pac.referencia }, atualizado_por:quem }));
   for (let i = 0; i < linhas.length; i += 200) { const { error } = await sb.from('registros').upsert(linhas.slice(i, i + 200), { onConflict:'painel,caminho' }); if (error) throw error; }
   _histCache = {}; return linhas.length;
