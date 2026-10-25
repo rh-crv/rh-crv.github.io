@@ -345,6 +345,15 @@ dialog#dd::backdrop,dialog#fd::backdrop{background:rgba(30,8,16,.55)}
 .host{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;min-width:0}
 .blk .host{border:0;border-radius:0;box-shadow:none;border-top:1px solid var(--line)}
 dialog .host{border:0;border-radius:0;box-shadow:none}
+.ecols{display:grid;gap:8px;align-items:end;height:230px;padding-top:30px;border-bottom:1px solid var(--line);background:repeating-linear-gradient(to top,transparent 0 45px,var(--trk) 45px 46px)}
+.ecol{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;min-width:0;border:0;background:none;padding:0;cursor:pointer;position:relative;font:inherit;color:inherit}
+.ecol .bx{width:100%;max-width:46px;display:flex;flex-direction:column;justify-content:flex-end}
+.ecol .bx span{display:block;width:100%}.ecol .ms{background:var(--navy);border-radius:0 0 0 0}.ecol .ac{background:var(--amber)}
+.ecol .bx span:first-child{border-radius:5px 5px 0 0}
+.ecol:hover .bx{filter:brightness(1.12)}
+.ecol .vd{position:absolute;left:50%;transform:translate(-50%,50%);width:9px;height:9px;border-radius:50%;background:var(--teal);border:2px solid var(--card)}
+.ecol .tv{font:700 11px var(--f-body);color:var(--ink);white-space:nowrap;margin-bottom:4px}
+@media (max-width:760px){.ecols{gap:3px}.ecol .tv{font-size:9px}}
 .mcols{display:grid;gap:6px;align-items:end;height:220px;padding-top:24px;border-bottom:1px solid var(--line);background:repeating-linear-gradient(to top,transparent 0 43px,var(--trk) 43px 44px)}
 .mcol{display:flex;gap:3px;align-items:flex-end;justify-content:center;height:100%;min-width:0}
 .mcol button{flex:1;max-width:26px;border:0;border-radius:5px 5px 0 0;cursor:pointer;min-height:2px;padding:0;position:relative}
@@ -375,6 +384,7 @@ dialog .host{border:0;border-radius:0;box-shadow:none}
     <div><h1>Benefícios · Plano Odontológico Uniodonto</h1><small>CRV Industrial · Unidade Capinópolis · contrato 0454792 · relatório de beneficiários de 07/10/2026 e baixas das tabelas até <span class="bref">07/10/2026</span> × quadro de <span class="qref">06/10/2026</span></small></div></div>
   <div class="seg">
     <button id="tb-g" data-tab="g">Visão geral</button>
+    <button id="tb-e" data-tab="e">Evolução</button>
     <button id="tb-n" data-tab="n">Colaboradores</button>
     <button id="tb-d" data-tab="d">Dependentes</button>
     <button id="tb-h" data-tab="h">Desconto em folha</button>
@@ -398,6 +408,18 @@ dialog .host{border:0;border-radius:0;box-shadow:none}
       <div class="tile wide"><h2>Adesão por área</h2><p class="sub">Colaboradores com plano sobre o total da área. Clique para abrir a lista da área.</p><div id="bArea"></div></div>
     </div>
     <p class="foot">Fontes: Relatório de Beneficiários da Uniodonto (contrato 0454792, plano 9 - Plano R Coletivo Empresarial), emitido em 07/10/2026, e a Base Geral de Colaboradores de <span class="qref">06/10/2026</span> (ativos e afastados). Quem tem data de baixa no relatório fica fora das vidas ativas. O vínculo com o quadro é feito pelo Cód. Externo (matrícula); quando ele não bate, o painel usa nome completo e data de nascimento e avisa na aba A conferir. O valor é de R$ 24,90 por pessoa, informado pelo RH e confirmado pela tabela de cobrança de setembro de 2026, que também trouxe o CPF e o parentesco de quem foi cobrado.</p>
+  </section>
+
+  <section id="tab-e" hidden>
+    <p class="tip" style="margin-top:14px"><b>Dica:</b> clique em uma barra ou no mês para abrir o centro de custo daquela nota; clique nas vidas, inclusões e baixas para ver as pessoas.</p>
+    <div class="hero"><div class="big" id="eBig"></div><div class="hbody"><p id="eBrief"></p></div></div>
+    <div class="kpis" id="eKpis"></div>
+    <div class="tile wide" style="margin-top:0"><h2>Valor das notas por mês</h2><p class="sub">Total de cada boleto: mensalidades (vidas × R$ 24,90) e acréscimos cobrados na própria fatura. Abaixo de cada mês, as vidas cobradas.</p>
+      <div class="legend"><span><i style="background:var(--navy)"></i>Mensalidades</span><span><i style="background:var(--amber)"></i>Acréscimo (juros)</span></div>
+      <div class="ecols" id="eCols"></div><div class="xl" id="eXl"></div></div>
+    <h2 class="sech">Notas e valores mês a mês</h2>
+    <div class="host" data-list="e"></div>
+    <p class="foot">Dados: faturas e tabelas de desconto da Uniodonto de janeiro a outubro de 2026 (número da fatura, cobertura, vidas e valor do boleto). Titulares, dependentes, inclusões e baixas vêm das datas do Relatório de Beneficiários, pela regra da nota: entra quem estava ativo no dia 15. A coluna Conferência compara essa contagem com a fatura. As inclusões e baixas do último mês vão só até a data do relatório e das tabelas, e por isso ainda podem crescer.</p>
   </section>
 
   <section id="tab-n" hidden>
@@ -804,8 +826,45 @@ function exportar(k,tipo){const L=pick(k);
   setTimeout(()=>{let buf;try{buf=tipo=='x'?xlsx(L):pdf(L)}catch(e){return toast('Não foi possível montar o arquivo.')}
     const d=new Date(),nome=L.f.replace(/[\\/:*?"<>|]/g,' ').replace(/\s+/g,' ').slice(0,90)+(L.sel?' (seleção)':'')+' - '+d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+(tipo=='x'?'.xlsx':'.pdf');
     DLH.save({filename:nome,data:buf}).then(()=>toast('Arquivo salvo.'),e=>toast(e&&e.code=='declined'?'Download cancelado.':e&&e.code=='rate_limited'?'Já existe um download aguardando confirmação.':'Não foi possível salvar o arquivo aqui.'))},60)}
-const TABS=['g','n','d','h','k','m','c'];
-function tab(t){const d=$('dd');if(d.open&&d.close)d.close();st.tab=t;TABS.forEach(k=>{$('tab-'+k).hidden=k!=t;$('tb-'+k).classList.toggle('on',k==t)});if(t=='n')nominal();if(t=='d')deps();if(t=='h')folha();if(t=='k')ccTab();if(t=='m')mov();if(t=='c')csub();window.scrollTo(0,0)}
+/* Evolução das notas: uma linha por fatura importada */
+const EVM=Object.keys(NOTAS).sort();
+const evRow=m=>{const N=NOTAS[m],R=ALL.filter(a=>inM(a,m,'c')),t=R.filter(a=>!a.tp).length,v=R.length,ms=money(v),ac=N.ex||0,bol=N.bol!=null?N.bol:+(ms+ac).toFixed(2);
+  return {m:m,N:N,t:t,d:v-t,v:v,ms:ms,ac:ac,bol:bol,inc:ALL.filter(a=>a.i.slice(0,7)==m).length,bx:ALL.filter(a=>a.b.slice(0,7)==m).length,okv:N.v==null||N.v==v,okb:Math.abs(ms+ac-bol)<0.01}};
+const EVR=EVM.map(evRow);EVR.forEach((r,i)=>{r.pv=i?EVR[i-1]:null});
+const mlab=m=>MESN[+m.slice(5)-1]+'/'+m.slice(0,4);
+const evVar=r=>{if(!r.pv)return '';const d=+(r.bol-r.pv.bol).toFixed(2);return (d>0?'+':d<0?'-':'')+brl(Math.abs(d))+' ('+(d>0?'+':d<0?'-':'')+(Math.abs(d)/r.pv.bol*100).toLocaleString('pt-BR',{maximumFractionDigits:1})+'%)'};
+const evOk=r=>r.okv&&r.okb?'Confere com a fatura':(!r.okv?'Fatura com '+nf(r.N.v)+' vidas; relatório dá '+nf(r.v):'Boleto difere em '+brl(Math.abs(r.ms+r.ac-r.bol)));
+LISTS.e={t:'Uniodonto · notas e valores mês a mês',f:'Uniodonto - Evolucao das notas',rows:()=>EVR,id:r=>r.m,
+  tot:R=>['Total ('+R.length+(R.length==1?' nota)':' notas)'),'','','','','',+R.reduce((s,r)=>s+r.ms,0).toFixed(2),+R.reduce((s,r)=>s+r.ac,0).toFixed(2),+R.reduce((s,r)=>s+r.bol,0).toFixed(2),'',R.reduce((s,r)=>s+r.inc,0),R.reduce((s,r)=>s+r.bx,0),''],
+  cols:[{h:'Mês',w:16,v:r=>mlab(r.m),c:r=>'<button class="nmb" data-dr="em:'+r.m+'">'+MESL[+r.m.slice(5)-1].replace(/^./,x=>x.toUpperCase())+' de '+r.m.slice(0,4)+'</button>'},
+    {h:'Fatura',w:16,v:r=>(r.N.fat||'').replace(/^FAT\s*/,'')||'Não consta'},
+    {h:'Cobertura',w:30,v:r=>r.N.cob||'Não consta'},
+    {h:'Titulares',w:12,n:1,v:r=>r.t,c:r=>'<button class="nmb" data-dr="ev:'+r.m+':t">'+nf(r.t)+'</button>'},
+    {h:'Dependentes',w:14,n:1,v:r=>r.d,c:r=>'<button class="nmb" data-dr="ev:'+r.m+':d">'+nf(r.d)+'</button>'},
+    {h:'Vidas',w:10,n:1,v:r=>r.v,c:r=>'<button class="nmb" data-dr="ev:'+r.m+'">'+nf(r.v)+'</button>'},
+    {h:'Mensalidades',w:18,m:1,v:r=>r.ms},
+    {h:'Acréscimo',w:16,m:1,v:r=>r.ac,c:r=>r.ac?brl(r.ac)+sm(esc(r.N.acr||'')):'<span class="sm">—</span>'},
+    {h:'Total do boleto',w:18,m:1,v:r=>r.bol,c:r=>'<b>'+brl(r.bol)+'</b>'},
+    {h:'Variação',w:24,v:evVar,c:r=>r.pv?'<span class="'+(r.bol>r.pv.bol?'warn':'')+'">'+evVar(r)+'</span>':'<span class="sm">primeira nota</span>'},
+    {h:'Inclusões',w:11,n:1,v:r=>r.inc,c:r=>r.inc?'<button class="nmb" data-dr="mi:'+r.m+'">'+nf(r.inc)+'</button>':'0'},
+    {h:'Baixas',w:10,n:1,v:r=>r.bx,c:r=>r.bx?'<button class="nmb" data-dr="mb:'+r.m+'">'+nf(r.bx)+'</button>':'0'},
+    {h:'Conferência',w:30,v:evOk,c:r=>r.okv&&r.okb?'<span style="color:var(--teal);font-weight:700">✓ Confere</span>'+sm(nf(r.v)+' vidas e '+brl(r.bol)):'<span class="warn">'+esc(evOk(r))+'</span>'}]};
+SEL.e=new Set();LIM.e=60;
+DRILL.em=a=>{st.km=a;st.kcr='c';tab('k')};
+DRILL.ev=a=>{const g=a.split(':'),m=g[0],R=ALL.filter(x=>inM(x,m,'c')&&(!g[1]||(g[1]=='t'?!x.tp:x.tp)));drM((g[1]=='t'?'Titulares cobrados':g[1]=='d'?'Dependentes cobrados':'Vidas cobradas')+' na nota de '+MESL[+m.slice(5)-1]+' de '+m.slice(0,4),'ativos no dia 15 · '+brl(money(R.length)),R)};
+function evo(){if(!EVR.length){$('eBig').innerHTML='—';$('eBrief').textContent='Nenhuma fatura importada ainda.';return}
+  const tot=+EVR.reduce((s,r)=>s+r.bol,0).toFixed(2),ac=+EVR.reduce((s,r)=>s+r.ac,0).toFixed(2),a=EVR[0],z=EVR[EVR.length-1],mx=EVR.reduce((x,r)=>r.bol>x.bol?r:x),mn=EVR.reduce((x,r)=>r.bol<x.bol?r:x),dv=z.v-a.v,ok=EVR.filter(r=>r.okv&&r.okb).length,AC=EVR.filter(r=>r.ac);
+  $('eBig').innerHTML=brl(tot).replace(/,\d\d$/,'')+'<small>pagos de '+mlab(a.m)+' a '+mlab(z.m)+'</small>';
+  $('eBrief').innerHTML='<b>'+EVR.length+' notas</b> da Uniodonto somam <b>'+brl(tot)+'</b>. As vidas cobradas passaram de <b>'+nf(a.v)+'</b> em '+MESL[+a.m.slice(5)-1]+' para <b>'+nf(z.v)+'</b> em '+MESL[+z.m.slice(5)-1]+' ('+(dv>0?'+':'')+nf(dv)+', '+(dv>0?'+':'')+(dv/a.v*100).toLocaleString('pt-BR',{maximumFractionDigits:1})+'%), e o boleto de '+brl(a.bol)+' para '+brl(z.bol)+'.'+(AC.length?' Houve <b>'+brl(ac)+'</b> de acréscimo em '+AC.map(r=>MESL[+r.m.slice(5)-1]+' ('+esc(r.N.acr||'acréscimo')+')').join('; ')+'.':'')+' '+(ok==EVR.length?'Em todos os meses a contagem pelo relatório bate com a fatura.':(EVR.length-ok)+' mês(es) com diferença entre o relatório e a fatura, marcados na tabela.');
+  $('eKpis').innerHTML=[['Mensalidades',brl(EVR.reduce((s,r)=>s+r.ms,0)).replace(/,\d\d$/,''),'vidas × R$ 24,90 em '+EVR.length+' notas',''],['Média por nota',brl(tot/EVR.length).replace(/,\d\d$/,''),'por mês no período',''],['Maior nota',brl(mx.bol).replace(/,\d\d$/,''),mlab(mx.m)+' · '+nf(mx.v)+' vidas','em:'+mx.m],['Vidas na última nota',nf(z.v),(dv>0?'+':'')+nf(dv)+' desde '+MESN[+a.m.slice(5)-1],'ev:'+z.m],['Acréscimos e juros',brl(ac),AC.length?AC.length+(AC.length==1?' nota com acréscimo':' notas com acréscimo'):'nenhum no período',AC.length?'em:'+AC[0].m:'']]
+    .map(k=>k[3]?'<button class="tile kpi" data-dr="'+k[3]+'"><div class="l">'+k[0]+'</div><div class="v">'+k[1]+'</div><div class="s">'+k[2]+'</div></button>':'<div class="tile kpi"><div class="l">'+k[0]+'</div><div class="v">'+k[1]+'</div><div class="s">'+k[2]+'</div></div>').join('');
+  const top=Math.max(...EVR.map(r=>r.bol))*1.05,vmx=Math.max(...EVR.map(r=>r.v))*1.05,k=v=>(v/1000).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mil';
+  $('eCols').style.gridTemplateColumns=$('eXl').style.gridTemplateColumns='repeat('+EVR.length+',minmax(0,1fr))';
+  $('eCols').innerHTML=EVR.map(r=>'<button class="ecol" data-dr="em:'+r.m+'" aria-label="Nota de '+mlab(r.m)+': '+brl(r.bol)+', '+r.v+' vidas"><span class="tv">'+k(r.bol)+'</span><span class="bx" style="height:'+(r.bol/top*100)+'%">'+(r.ac?'<span class="ac" style="height:'+(r.ac/r.bol*100)+'%"></span>':'')+'<span class="ms" style="flex:1"></span></span></button>').join('');
+  $('eXl').innerHTML=EVR.map(r=>'<span><b>'+MESN[+r.m.slice(5)-1]+'</b>'+nf(r.v)+' vidas</span>').join('');
+  draw('e')}
+const TABS=['g','e','n','d','h','k','m','c'];
+function tab(t){const d=$('dd');if(d.open&&d.close)d.close();st.tab=t;TABS.forEach(k=>{$('tab-'+k).hidden=k!=t;$('tb-'+k).classList.toggle('on',k==t)});if(t=='e')evo();if(t=='n')nominal();if(t=='d')deps();if(t=='h')folha();if(t=='k')ccTab();if(t=='m')mov();if(t=='c')csub();window.scrollTo(0,0)}
 function toast(m){const t=$('toast');($('fd').open?$('fd'):$('dd').open?$('dd'):document.body).appendChild(t);t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,2600)}
 const KM=[];for(let y=2024;y<=2026;y++)for(let m=1;m<=12;m++){const k=y+'-'+String(m).padStart(2,'0');if(k>='2024-07'&&k<='2026-10')KM.push(k)}
 $('kMes').innerHTML=KM.reverse().map(k=>'<option value="'+k+'"'+(k==st.km?' selected':'')+'>'+MESN[+k.slice(5)-1]+'/'+k.slice(0,4)+'</option>').join('');
