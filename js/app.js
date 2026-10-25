@@ -655,10 +655,16 @@ async function fichaDados(mat){
       alerta: s.niv === 'a' ? 'risco alto (' + s.S.join(', ') + ')' : s.niv === 't' ? 'atenção (' + s.S.join(', ') + ')' : '' }); })()); }
   // Trajetória (departamentos e funções) e histórico de férias, vindos dos relatórios da folha
   if (ehRH()) tarefas.push((async () => {
-    const { data } = await sb.from('registros').select('colecao,dados').eq('painel', 'quadro').in('caminho', ['hist_depto/m' + mat, 'hist_cargo/m' + mat, 'hist_ferias/m' + mat, 'hist_dep/m' + mat]);
+    const { data } = await sb.from('registros').select('colecao,dados').eq('painel', 'quadro').in('caminho', ['hist_depto/m' + mat, 'hist_cargo/m' + mat, 'hist_ferias/m' + mat, 'hist_dep/m' + mat, 'hist_curso/m' + mat, 'hist_exame/m' + mat]);
     const H = {}; (data || []).forEach(x => { H[x.colecao] = x.dados || {}; });
     const T = ((H.hist_depto || {}).l || []).map(x => [x[0], 'Departamento', x[1], x[2]]).concat(((H.hist_cargo || {}).l || []).map(x => [x[0], 'Função', x[1], x[2]])).sort((a, b) => b[0].localeCompare(a[0]));
     const DP = (H.hist_dep || {}).l || [], idd = n => { if (!n) return ''; const a = Math.floor((Date.now() - new Date(n + 'T12:00:00')) / 31557600000); return ' (' + a + ' anos)'; };
+    const EX = ((H.hist_exame || {}).l || []).slice().sort((a, b) => b[0].localeCompare(a[0])), ul = EX.find(x => !x[3]);
+    if (EX.length) F.sec.push({ k:'aso', t:'Exames ocupacionais (ASO)', ref:H.hist_exame.ref, cab:['Data do exame', 'Exame', 'Próximo exame'], linhas:EX.map(x => [brD(x[0]), x[2] + (x[3] ? ' (demissional)' : ''), x[1] ? brD(x[1]) + (x === ul && x[1] < hoje ? ' · vencido' : '') : '—']),
+      resumo:[['Último exame', ul ? brD(ul[0]) + ' · ' + ul[2] : '—'], ['Próximo exame', ul && ul[1] ? brD(ul[1]) : '—']],
+      alerta: ul && ul[1] && ul[1] < hoje ? (c.situacao === 'Afastado' ? 'ASO vencido em ' + brD(ul[1]) + ' (afastado: fazer o exame de retorno ao voltar)' : 'ASO periódico vencido desde ' + brD(ul[1])) : '' });
+    const CU = ((H.hist_curso || {}).l || []).slice().sort((a, b) => b[0].localeCompare(a[0]));
+    if (CU.length) F.sec.push({ k:'cursos', t:'Treinamentos realizados (' + CU.length + ')', ref:H.hist_curso.ref, cab:['Data', 'Treinamento'], linhas:CU.map(x => [brD(x[0]) + (x[1] && x[1] !== x[0] ? ' a ' + brD(x[1]) : ''), x[2]]) });
     if (H.hist_dep) F.sec.push({ k:'deps', t:'Dependentes (' + DP.length + ')', ref:H.hist_dep.ref, cab:['Nome', 'Parentesco', 'Nascimento', 'CPF'], linhas:DP.map(d => [d[0], d[2], brD(d[1]) + idd(d[1]), d[4] ? d[4].replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : '—']) });
     if (T.length) F.sec.push({ k:'traj', t:'Trajetória na empresa', ref:(H.hist_depto || H.hist_cargo || {}).ref, cab:['Data', 'Mudança', 'De', 'Para'], linhas:T.map(x => [brD(x[0]) + (x[0] > hoje ? ' (programada)' : ''), x[1], x[2], x[3]]),
       resumo:[['Trocas de departamento', T.filter(x => x[1] === 'Departamento').length], ['Mudanças de função', T.filter(x => x[1] === 'Função').length], ['Última mudança de função', (T.find(x => x[1] === 'Função') || [''])[0] ? brD(T.find(x => x[1] === 'Função')[0]) : 'nenhuma no histórico']] });
@@ -886,6 +892,19 @@ async function telaDesligamento(){
     doc.autoTable({ startY:110, head:[cab], body:linhas(), styles:{ fontSize:7.5, cellPadding:3, overflow:'linebreak' }, headStyles:{ fillColor:[36,66,124] }, alternateRowStyles:{ fillColor:[242,244,249] } });
     rodapePDF(doc); baixar(doc.output('blob'), nome + '.pdf'); };
 }
+/* exames ocupacionais (relatório TFP39T): periódico vencido de quem está trabalhando e o que vence em 30 dias */
+async function pendenciasASO(){
+  if (!ehRH()) return []; const H = await window.CRV_HIST('exame'); if (!H || Object.keys(H).length < 2) return [];
+  const Q = await window.CRV_QUADRO(); if (!Q) return []; const hj = new Date().toISOString().slice(0, 10), ate = new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10);
+  const V = [], P30 = [];
+  Object.entries(Q.mapa).forEach(([m, c]) => { if (c.situacao !== 'Ativo') return; const L = (H[m] || []).filter(x => !x[3]).sort((a, b) => b[0].localeCompare(a[0])); const u = L[0]; if (!u || !u[1]) return;
+    const it = { nome:c.nome, mat:m, det:`${u[2]} em ${brD(u[0])} · próximo ${brD(u[1])} · ${c.setor || ''}` };
+    if (u[1] < hj) V.push(Object.assign(it, { ord:u[1] })); else if (u[1] <= ate) P30.push(Object.assign(it, { ord:u[1] })); });
+  const out = [];
+  if (V.length) out.push({ id:'aso-venc', sev:'warn', t:'ASO periódico vencido (quem está trabalhando)', d:'Pelo relatório de exames da folha. Afastados não entram aqui: fazem o exame de retorno ao voltar. Pode ser exame feito e não lançado no sistema: confira com o SESMT.', painel:'quadro', pnome:'Quadro Geral', itens:V.sort((a, b) => a.ord.localeCompare(b.ord)) });
+  if (P30.length) out.push({ id:'aso-30', sev:'info', t:'ASO vence nos próximos 30 dias', d:'Agendar o periódico com o SESMT.', painel:'quadro', pnome:'Quadro Geral', itens:P30.sort((a, b) => a.ord.localeCompare(b.ord)) });
+  return out;
+}
 async function coletarCentral(){
   if (centralRodando) return; centralRodando = true;
   desenharCentral(centralCache(), true);
@@ -893,6 +912,7 @@ async function coletarCentral(){
   try {
     try { out.push(...await pendenciasQuadro()); } catch(e){ console.warn('central quadro', e); }
     try { out.push(...await pendenciasDesligamento()); } catch(e){ console.warn('central desligamento', e); }
+    try { out.push(...await pendenciasASO()); } catch(e){ console.warn('central aso', e); }
     try { out.push(...await RISCO().pendencias()); } catch(e){ console.warn('central risco', e); }
     try { out.push(...await ONB().pendencias()); } catch(e){ console.warn('central onboarding', e); }
     try { out.push(...await BASES().pendencias()); } catch(e){ console.warn('central bases', e); }
