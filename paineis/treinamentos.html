@@ -994,7 +994,7 @@ window.CRV_NOVOS_CFG={
     {k:'tinfo',tipo:'info',rot:''}
   ],
   soNovo:['qtd'],
-  continuar:{limpar:['titulo','n','qtd']},
+  continuar:{},
   copias:d=>d.tipo==='1'&&d.sit==='real'?(parseInt(d.qtd,10)||1):1,
   aoMudar:c=>{
     const d=c.ler(),real=d.sit==='real';['data','n','h','efic'].forEach(k=>c.mostrar(k,real));const ind=real&&d.tipo==='1'&&!c.editando;c.mostrar('qtd',ind);if(ind&&!d.n){const e=c.el('n');if(e)e.value='1';d.n='1'}
@@ -1162,7 +1162,7 @@ function abrir(reg){
       if(ed){(CFG.soNovo||[]).forEach(k=>delete d[k]);await D.collection('novos').doc(ed._id).update(Object.assign({},d,{alteradoPor:quem,alteradoEm:new Date().toISOString()}))}
       else{const N=Math.max(1,Math.min(200,CFG.copias?(+CFG.copias(d)||1):1));const lote=N>1?'L'+Date.now().toString(36):'';const dd=Object.assign({},d);(CFG.soNovo||[]).forEach(k=>delete dd[k]);const agora=new Date().toISOString();
         for(let k=0;k<N;k++){msg.textContent=N>1?'Salvando '+(k+1)+' de '+N+'…':'Salvando…';await D.collection('novos').add(Object.assign({},dd,{cadastradoPor:quem,cadastradoEm:agora},(conf||N>1)?{repetidoConfirmado:true}:{},lote?{lote,loteN:N}:{}))}
-        if(CFG.continuar){salvos+=N;confirmaDup='';(CFG.continuar.limpar||[]).forEach(k=>{const i=el(k);if(i)i.value=''});if(CFG.aoMudar)CFG.aoMudar(ctx);
+        if(CFG.continuar){salvos+=N;confirmaDup='';CFG.campos.forEach(c=>{if(!c.k||c.tipo==='sec'||c.tipo==='info')return;const i=el(c.k);if(!i)return;if(c.padrao!=null)i.value=c.padrao;else if(i.tagName==='SELECT')i.selectedIndex=0;else i.value=''});ctx._dataAnt=null;if(CFG.aoMudar)CFG.aoMudar(ctx);
           msg.style.color='#1d5c3a';msg.innerHTML='✓ '+(N>1?N+' lançamentos cadastrados':'Treinamento cadastrado')+' ('+salvos+' nesta caixa). Digite o próximo; quando terminar, clique em <b>Fechar</b> para atualizar o painel.';
           el('cancel').textContent='Fechar';listar();salvando=false;el('salvar').disabled=false;el('salvar').style.opacity='';const fo=CFG.campos.find(c=>c.foco);if(fo&&el(fo.k))el(fo.k).focus();return}
         if(N>1){recarregar(N+' lançamentos cadastrados (um por linha).');return}}
