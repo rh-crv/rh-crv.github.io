@@ -50,12 +50,15 @@ async function opcoes(){
     const o = S[p.area] || (S[p.area] = { k:'a:' + p.area, nome:p.area, n:0, deps:{} }); o.n++; const d = p.setor || '(sem departamento)'; o.deps[d] = (o.deps[d] || 0) + 1; });
   return Object.values(S).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')).map(o => ({ k:o.k, nome:o.nome, n:o.n, deps:Object.entries(o.deps).sort((a, b) => a[0].localeCompare(b[0], 'pt-BR')).map(([d, n]) => ({ k:'d:' + o.nome + '|' + d, nome:d, n })) }));
 }
-const assinatura = () => ['quadro', 'experiencia', 'ferias', 'crachas', 'sancoes', 'rd', 'alojamentos', 'curriculos'].map(id => id + ':' + ((E.metas[id] && (E.metas[id].atualizado_em || E.metas[id].referencia)) || '')).join('|');
+const assinatura = () => 'hist:' + (window.__CRV_HIST_REF || '') + '|' + ['quadro', 'experiencia', 'ferias', 'crachas', 'sancoes', 'rd', 'alojamentos', 'curriculos'].map(id => id + ':' + ((E.metas[id] && (E.metas[id].atualizado_em || E.metas[id].referencia)) || '')).join('|');
 
 /* monta o recorte de uma chave a partir das bases completas (só o administrador consegue ler as bases) */
 async function recortes(chaves){
   const Q = await window.CRV_QUADRO(); if (!Q) throw new Error('Sem a base do Quadro Geral.');
   const M = Q.mapa, h = hoje();
+  // trajetória (departamentos e funções) dos relatórios da folha; o histórico de férias fica só com o RH
+  let HD = {}, HC = {}; try { HD = await window.CRV_HIST('depto'); HC = await window.CRV_HIST('cargo'); } catch(_){}
+  const traj = m => (HD[m] || []).map(x => [x[0], 'd', x[1], x[2]]).concat((HC[m] || []).map(x => [x[0], 'f', x[1], x[2]])).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 25);
   const dentro = (p, k) => p.situacao !== 'Desligado' && daChave(k, p);
   // bases auxiliares (lidas uma vez)
   const EXP = {}; let refExp = '';
@@ -97,7 +100,7 @@ async function recortes(chaves){
         rd: (RD[m] || []).sort((a, b) => String(b.d).localeCompare(String(a.d))),
         exp: p.vinculo === 'Experiência' || (EXP[m] && EXP[m].v2 >= addD(h, -30)) ? EXP[m] || null : null, fer: FER[m] || [], cr:(CR[m] || []).filter(x => !x.fim || x.fim >= addD(h, -30)), ob };
     }).sort((a, b) => a.n.localeCompare(b.n, 'pt-BR'));
-    P.forEach(p => { p.cid = CID[p.m] || ''; p.alo = ALO[p.m] || null; });
+    P.forEach(p => { p.cid = CID[p.m] || ''; p.alo = ALO[p.m] || null; const t = traj(p.m); if (t.length) p.tr = t; });
     // movimentação dos últimos 13 meses (inclui quem já saiu)
     const MOV = { adm:[], sai:[] };
     Object.entries(M).forEach(([m, p]) => { if (!casa(k, p)) return;
@@ -255,7 +258,8 @@ async function tela(abaIni){
       ['Sanções disciplinares', tab(['Data', 'Tipo', 'Motivo'], (p.san || []).map(x => [brD(x.d), x.t, x.mot]), 'Nenhuma sanção registrada.')],
       ['Registros de dano (RD)', tab(['RD', 'Data', 'Desfecho', 'Tratativa'], (p.rd || []).map(x => [x.n, brD(x.d), x.des, x.tr]), 'Nenhum RD registrado.')],
       ['Férias', tab(['Período aquisitivo', 'Data limite', 'Saldo', 'Programação', 'Situação'], (p.fer || []).map(f => [brD(f.de) + ' a ' + brD(f.ate), brD(f.lim), f.saldo + 'd', f.prog || '—', f.st]), 'Sem período em aberto.')],
-      ['Crachás de treinamento', tab(['Função', 'Início', 'Vencimento', 'Resultado'], (p.cr || []).map(x => [x.func, brD(x.ini), brD(x.fim), x.res || '—']), 'Nenhum crachá em andamento.')]];
+      ['Crachás de treinamento', tab(['Função', 'Início', 'Vencimento', 'Resultado'], (p.cr || []).map(x => [x.func, brD(x.ini), brD(x.fim), x.res || '—']), 'Nenhum crachá em andamento.')],
+      ['Trajetória na empresa', tab(['Data', 'Mudança', 'De', 'Para'], (p.tr || []).map(x => [brD(x[0]), x[1] === 'd' ? 'Departamento' : 'Função', x[2], x[3]]), 'Nenhuma mudança de departamento ou função no histórico da folha.')]];
     if (p.ob) S.push(['Integração (novos)', `<p class="fc-vz">${p.ob.falta.length ? 'Pendente: ' + esc(p.ob.falta.join(', ')) : 'Checklist de admissão completo.'} · Conversas do RH: ${[30, 60, 90].filter(k => p.ob.conv.includes(k)).map(k => k + ' dias').join(', ') || 'nenhuma ainda'}</p>`]);
     const al = []; const L12 = s12(p);
     if (L12.length) al.push([L12.some(x => /^Sus/.test(x.t)) ? 'crit' : '', `${L12.length} sanç${L12.length > 1 ? 'ões' : 'ão'} nos últimos 12 meses`]);
@@ -277,6 +281,7 @@ async function tela(abaIni){
         sec('Sanções disciplinares', ['Data', 'Tipo', 'Motivo'], (p.san || []).map(x => [brD(x.d), x.t, x.mot]));
         sec('Registros de dano (RD)', ['RD', 'Data', 'Desfecho', 'Tratativa'], (p.rd || []).map(x => [x.n, brD(x.d), x.des, x.tr]));
         sec('Férias', ['Período aquisitivo', 'Data limite', 'Saldo', 'Programação', 'Situação'], (p.fer || []).map(f => [brD(f.de) + ' a ' + brD(f.ate), brD(f.lim), f.saldo + 'd', f.prog || '—', f.st]));
+        sec('Trajetória na empresa', ['Data', 'Mudança', 'De', 'Para'], (p.tr || []).map(x => [brD(x[0]), x[1] === 'd' ? 'Departamento' : 'Função', x[2], x[3]]));
         rodapePDF(doc); baixar(doc.output('blob'), 'Ficha ' + p.n + '.pdf'); }; } });
   }
   const enviar = async (tipo, p, dados, assin) => {

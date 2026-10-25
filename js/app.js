@@ -651,6 +651,20 @@ async function fichaDados(mat){
   { const pr = E.paineis.find(x => x.id === 'risco'); if (pr && podeVer(pr)) tarefas.push((async () => { const s = await RISCO().daPessoa(mat); if (!s) return;
     F.sec.push({ k:'risco', t:'Risco de saída', painel:'risco', ref:s.ref, resumo:[['Nível', s.niv === 'a' ? 'Alto' : s.niv === 't' ? 'Atenção' : 'Sem sinal'], ['Faltas em 90 dias', s.fa.length], ['Dias de atestado em 90 dias', s.at.length], ['Última conversa', s.conv ? brD(s.conv.data) + ' · ' + (RISCO().RES[s.conv.res] || '') : '—']],
       alerta: s.niv === 'a' ? 'risco alto (' + s.S.join(', ') + ')' : s.niv === 't' ? 'atenção (' + s.S.join(', ') + ')' : '' }); })()); }
+  // Trajetória (departamentos e funções) e histórico de férias, vindos dos relatórios da folha
+  if (ehRH()) tarefas.push((async () => {
+    const { data } = await sb.from('registros').select('colecao,dados').eq('painel', 'quadro').in('caminho', ['hist_depto/m' + mat, 'hist_cargo/m' + mat, 'hist_ferias/m' + mat]);
+    const H = {}; (data || []).forEach(x => { H[x.colecao] = x.dados || {}; });
+    const T = ((H.hist_depto || {}).l || []).map(x => [x[0], 'Departamento', x[1], x[2]]).concat(((H.hist_cargo || {}).l || []).map(x => [x[0], 'Função', x[1], x[2]])).sort((a, b) => b[0].localeCompare(a[0]));
+    if (T.length) F.sec.push({ k:'traj', t:'Trajetória na empresa', ref:(H.hist_depto || H.hist_cargo || {}).ref, cab:['Data', 'Mudança', 'De', 'Para'], linhas:T.map(x => [brD(x[0]) + (x[0] > hoje ? ' (programada)' : ''), x[1], x[2], x[3]]),
+      resumo:[['Trocas de departamento', T.filter(x => x[1] === 'Departamento').length], ['Mudanças de função', T.filter(x => x[1] === 'Função').length], ['Última mudança de função', (T.find(x => x[1] === 'Função') || [''])[0] ? brD(T.find(x => x[1] === 'Função')[0]) : 'nenhuma no histórico']] });
+    const FE = ((H.hist_ferias || {}).l || []).slice().sort((a, b) => b[2].localeCompare(a[2]));
+    if (FE.length) { const lim = af => { const d = new Date(af + 'T12:00:00Z'); d.setUTCFullYear(d.getUTCFullYear() + 1); return d.toISOString().slice(0, 10); };
+      const L = FE.map(x => { const l = lim(x[1]), atr = x[2] > l ? fDias(l, x[2]) : 0; return [brD(x[0]) + ' a ' + brD(x[1]), brD(x[2]) + ' a ' + brD(x[3]), String(fDias(x[2], x[3]) + 1) + 'd', brD(x[4]), atr ? 'Fora do prazo (' + atr + ' dias depois do limite)' : 'No prazo']; });
+      const fora = FE.filter(x => x[2] > lim(x[1]));
+      F.sec.push({ k:'hfer', t:'Histórico de férias', painel:'ferias', ref:H.hist_ferias.ref, cab:['Período aquisitivo', 'Gozo', 'Dias', 'Retorno', 'Prazo'], linhas:L,
+        alerta: fora.some(x => x[2] >= new Date(Date.now() - 730 * 864e5).toISOString().slice(0, 10)) ? 'férias gozadas fora do prazo concessivo (CLT art. 137: pagamento em dobro)' : '' }); }
+  })());
   // Quadro: estabilidade, entrevista de desligamento, checklist
   tarefas.push((async () => { const { data } = await sb.from('registros').select('colecao,dados').eq('painel', 'quadro').in('colecao', ['estabilidade', 'entrevistas_resp', 'deslig_check']).range(0, 4999);
     (data || []).forEach(x => { const v = x.dados || {}; if (fMat(v.mat) !== mat || v.excluida) return;
@@ -1416,6 +1430,7 @@ async function telaModelo(p, cfg, acao){
     }
     window.CRV_RECARREGAR = () => { if (location.hash.startsWith('#/p/' + encodeURIComponent(p.id))) telaPainel(p.id); };
     let tplU = tpl;
+    if (p.id === 'ferias' && ehRH()) { try { const HF = await window.CRV_HIST('ferias'); if (Object.keys(HF).length > 1) tplU = tplU.replace(/<head[^>]*>/i, h => h + '<script>window.CRV_HF=' + JSON.stringify(HF).replace(/</g, '\\u003c') + ';<\/script>'); } catch(_) {} }
     if (['unimed', 'uniodonto'].includes(PAC_DE[p.id] || p.id)) { // Unimed e Uniodonto cruzam com o Quadro atual do app
       try { const Q = await window.CRV_QUADRO(); if (Q && Q.mapa) {
         const dig = v => String(v || '').replace(/\D/g, ''), P = [], DL = {};
@@ -1783,6 +1798,15 @@ async function lerPacote(f){
 }
 
 // respostas das entrevistas de desligamento (tabuladas): entram como registros do Quadro; não substituem o que já foi lançado ou corrigido no app
+/* históricos da folha (férias, departamentos, funções): um registro por pessoa, substitui o anterior */
+async function salvarHistorico(pac){
+  const quem = E.perfil ? E.perfil.nome : '', col = 'hist_' + pac.hist;
+  const linhas = Object.entries(pac.itens).map(([m, l]) => ({ painel:'quadro', caminho:col + '/m' + m, colecao:col, doc_id:'m' + m, dados:{ mat:m, l, ref:pac.referencia }, atualizado_por:quem }));
+  for (let i = 0; i < linhas.length; i += 200) { const { error } = await sb.from('registros').upsert(linhas.slice(i, i + 200), { onConflict:'painel,caminho' }); if (error) throw error; }
+  _histCache = {}; return linhas.length;
+}
+let _histCache = {};
+window.CRV_HIST = async function(h){ if (_histCache[h]) return _histCache[h]; const L = await window.CRV_REGS('quadro', 'hist_' + h); const o = {}; L.forEach(x => { if (x.mat) o[String(x.mat)] = x.l || []; }); o.__ref = (L[0] || {}).ref || ''; return (_histCache[h] = o); };
 async function salvarEntrevistas(itens){
   const quem = E.perfil ? E.perfil.nome : '';
   const linhas = itens.map(it => { const id = String(it.id || ('ent-' + it.mat + '-' + (it.ped || it.dataAss || ''))).replace(/[^\w-]+/g, '_').slice(0, 90);
@@ -1834,7 +1858,7 @@ async function carregarPacotes(arquivos, esperado){
     corpo: `<p style="margin-top:0;color:var(--mut)">Os dados atuais de cada painel serão substituídos pela versão do arquivo. As anotações feitas no app (avaliações, programações, fichas…) <b>são mantidas</b>.</p>
       <div class="tabela-env" style="max-height:340px"><table class="tab"><thead><tr><th>Arquivo</th><th>Painel</th><th>Dados de</th><th>Situação</th></tr></thead><tbody>
       ${itens.map((i, n) => `<tr style="cursor:default"><td>${esc(i.f.name)}</td><td>${esc(i.painel ? nomeP(i.painel) : '—')}</td>
-        <td>${i.rotulo ? esc(i.rotulo) + '<br><small>' + esc(fmtRef(i.pac.referencia)) + '</small>' : i.pac ? (i.pac.estab ? 'lista de estabilidade (' + i.pac.itens.length + ')' : i.pac.entr ? 'entrevistas de desligamento (' + i.pac.itens.length + ')' : fmtRef(i.pac.referencia)) : (i.zip ? 'arquivos' : '—')}</td>
+        <td>${i.rotulo ? esc(i.rotulo) + '<br><small>' + esc(fmtRef(i.pac.referencia)) + '</small>' : i.pac ? (i.pac.hist ? 'histórico da folha' : i.pac.estab ? 'lista de estabilidade (' + i.pac.itens.length + ')' : i.pac.entr ? 'entrevistas de desligamento (' + i.pac.itens.length + ')' : fmtRef(i.pac.referencia)) : (i.zip ? 'arquivos' : '—')}</td>
         <td id="pk-st-${n}">${i.erro ? `<span style="color:var(--coral)">${esc(i.erro)}</span>` : 'pronto'}</td></tr>`).join('')}
       </tbody></table></div>`,
     pe: `<button class="btn borda" id="pk-c">Cancelar</button><button class="btn prim" id="pk-ok" ${validos.length ? '' : 'disabled'}>Salvar no app</button>`,
@@ -1849,6 +1873,7 @@ async function carregarPacotes(arquivos, esperado){
           st.textContent = 'enviando…';
           try {
             if (i.zip) { const q = await enviarZip(i.f, i.painel, t => st.textContent = t); st.innerHTML = `<span style="color:var(--cane)">✓ ${q} arquivos</span>`; ok++; continue; }
+            if (i.pac.hist) { const n2 = await salvarHistorico(i.pac); st.innerHTML = `<span style="color:var(--cane)">✓ ${n2} pessoas</span>`; ok++; if (i.pac.hist !== 'ferias') setTimeout(() => GESTOR().gerar(true).catch(() => {}), 1500); continue; }
             if (i.pac.entr) { const n2 = await salvarEntrevistas(i.pac.itens); st.innerHTML = `<span style="color:var(--cane)">✓ ${n2} entrevistas</span>`; ok++; continue; }
             if (i.pac.estab) { const n2 = await salvarEstabilidade(i.pac.itens); st.innerHTML = `<span style="color:var(--cane)">✓ ${n2} de estabilidade</span>`; ok++; continue; }
             await salvarPacote(i.pac, i.f, t => st.textContent = t);

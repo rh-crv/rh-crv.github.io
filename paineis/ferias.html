@@ -1543,4 +1543,68 @@ window.CRV_PENDENCIAS=function(forcar){
 </script>
 
 
+<!-- ===== histórico de férias (relatório da folha, só RH) ===== -->
+<style>
+.hf-k{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(230px,100%),1fr));gap:12px;margin:4px 0 14px}
+.hf-c{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;text-align:left;cursor:pointer;font:inherit;color:inherit}
+.hf-c b{display:block;font-size:28px;line-height:1.1;margin:4px 0}.hf-c small{color:var(--muted,#6b6b6b);font-size:12.5px}.hf-c.on{outline:2px solid #b6532c}.hf-c.al b{color:#b6532c}
+.hf-box{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:14px}
+.hf-box header{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line-2)}
+.hf-box h3{margin:0;font-size:15px}.hf-t{width:100%;border-collapse:collapse;font-size:13px}.hf-t th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted,#6b6b6b);padding:8px 12px;border-bottom:1px solid var(--line-2)}
+.hf-t td{padding:8px 12px;border-bottom:1px solid var(--line-2);vertical-align:top}.hf-t tr:last-child td{border-bottom:0}.hf-w{overflow-x:auto}
+.hf-q{border:1px solid var(--line);border-radius:10px;padding:9px 12px;font:inherit;width:min(420px,100%);background:var(--surface);color:inherit}
+.hf-b{border:1px solid var(--line);background:var(--surface);color:inherit;border-radius:8px;padding:6px 12px;font:600 12.5px inherit;cursor:pointer}
+.hf-n{color:var(--muted,#6b6b6b);font-size:12.5px;margin:6px 0 12px}.hf-x{color:#b6532c;font-weight:600}.hf-pick{border:0;background:none;color:inherit;font:inherit;font-weight:600;text-decoration:underline;cursor:pointer;padding:0;text-align:left}
+@media (max-width:640px){.hf-t th:nth-child(n+5),.hf-t td:nth-child(n+5){display:none}}
+</style>
+<script>
+(function(){const HF=window.CRV_HF;if(!HF||typeof DATA==='undefined')return;
+ const $=id=>document.getElementById(id),esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+ const br=s=>s?s.slice(8,10)+'/'+s.slice(5,7)+'/'+s.slice(0,4):'—',dd=(a,b)=>Math.round((new Date(b+'T12:00:00')-new Date(a+'T12:00:00'))/864e5);
+ const lim=af=>{const d=new Date(af+'T12:00:00Z');d.setUTCFullYear(d.getUTCFullYear()+1);return d.toISOString().slice(0,10)};
+ const hoje=new Date().toISOString().slice(0,10),d2=new Date(Date.now()-730*864e5).toISOString().slice(0,10),m15=new Date(Date.now()-456*864e5).toISOString().slice(0,10);
+ const PM=new Map(DATA.map(p=>[String(p.c),p]));
+ // 1) gozo iniciado depois do fim do período concessivo (aquisitivo + 12 meses): CLT art. 137
+ const FORA=[];Object.entries(HF).forEach(([m,L])=>{if(m==='__ref')return;L.forEach(x=>{const l=lim(x[1]);if(x[2]>l)FORA.push({m,p:PM.get(m),a:x[0]+'|'+x[1],aq:br(x[0])+' a '+br(x[1]),l,g:x[2],gf:x[3],atr:dd(l,x[2])})})});
+ FORA.sort((a,b)=>b.g.localeCompare(a.g));
+ // 2) mais de 15 meses de casa sem nenhuma férias no histórico (confirmado pela base: o 1º período em aberto começa na admissão)
+ const NUNCA=DATA.filter(p=>p.a&&p.a<=m15&&!(HF[String(p.c)]||[]).length).map(p=>({p,conf:!!(p.p&&p.p[0]&&p.p[0][0]===p.a)})).sort((a,b)=>a.p.a.localeCompare(b.p.a));
+ let V='f',Q='';
+ const nav=document.querySelector('nav.tabs');const bt=document.createElement('button');bt.className='tab';bt.setAttribute('role','tab');bt.dataset.htab='1';bt.innerHTML='Histórico<span class="ct" id="ctHist">'+FORA.filter(x=>x.g>=d2).length+'</span>';nav.appendChild(bt);
+ const sec=document.createElement('section');sec.id='v-hist';sec.hidden=true;document.getElementById('v-ger').after(sec);
+ const outras=()=>['alertas','prog','nominal','mes','ger'].map(k=>$('v-'+k));
+ bt.onclick=()=>{outras().forEach(e=>e.hidden=true);document.querySelectorAll('nav.tabs .tab').forEach(b=>b.setAttribute('aria-selected',b===bt));sec.hidden=false;draw()};
+ document.querySelectorAll('nav.tabs .tab:not([data-htab])').forEach(b=>b.addEventListener('click',()=>{sec.hidden=true;bt.setAttribute('aria-selected','false')}));
+ const rowsF=()=>FORA.map(x=>[x.p?x.p.n:'(desligado) mat. '+x.m,x.m,x.p?x.p.d:'',x.aq,br(x.l),br(x.g)+' a '+br(x.gf),x.atr]);
+ const rowsN=()=>NUNCA.map(x=>[x.p.n,x.p.c,x.p.d,br(x.p.a),Math.floor(dd(x.p.a,hoje)/30.44)+' meses',x.conf?'Confirmado pela base de férias':'A base mostra período já gozado: conferir o histórico']);
+ const pessoa=m=>{const p=PM.get(String(m)),L=(HF[String(m)]||[]).slice().sort((a,b)=>b[2].localeCompare(a[2]));return {p,L}};
+ function exportar(tipo,fmt){const T=tipo==='f'?{t:'Férias gozadas fora do prazo concessivo',h:['Colaborador','Matrícula','Departamento','Período aquisitivo','Limite para gozar','Gozo','Dias de atraso'],r:rowsF()}:tipo==='n'?{t:'Colaboradores com mais de 15 meses sem férias no histórico',h:['Colaborador','Matrícula','Departamento','Admissão','Tempo de casa','Observação'],r:rowsN()}:(()=>{const {p,L}=pessoa(Q);return {t:'Histórico de férias · '+(p?p.n:Q),h:['Período aquisitivo','Gozo','Dias','Retorno','Prazo'],r:L.map(x=>[br(x[0])+' a '+br(x[1]),br(x[2])+' a '+br(x[3]),dd(x[2],x[3])+1,br(x[4]),x[2]>lim(x[1])?'Fora do prazo ('+dd(lim(x[1]),x[2])+' dias)':'No prazo'])}})();
+  const W=window.parent,nome=T.t.replace(/[\\/:*?"<>|]/g,' ')+' - '+hoje,save=(blob,fn)=>{const go=()=>{const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=fn;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},3000)};
+    if(typeof DL!=='undefined'&&DL&&DL.save)blob.arrayBuffer().then(b=>DL.save({filename:fn,data:new Uint8Array(b)})).catch(go);else go()};
+  if(fmt==='x'){const X=W.XLSX;if(!X)return;const ws=X.utils.aoa_to_sheet([[T.t+' · CRV Industrial · fonte: relatório de férias da folha'],[],T.h].concat(T.r));ws['!cols']=T.h.map((_,i)=>({wch:i?20:38}));const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,'Lista');save(new Blob([X.write(wb,{bookType:'xlsx',type:'array'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),nome+'.xlsx')}
+  else{const J=W.jspdf;if(!J)return;const doc=new J.jsPDF({unit:'pt',format:'a4',orientation:'landscape'});doc.setFontSize(13);doc.text(T.t,30,40);doc.setFontSize(8.5);doc.setTextColor(90);doc.text('CRV Industrial · Gestão de Pessoas · fonte: relatório de férias da folha · gerado em '+br(hoje),30,56);
+   doc.autoTable({startY:68,head:[T.h],body:T.r.map(r=>r.map(String)),styles:{fontSize:8,cellPadding:3},headStyles:{fillColor:[36,66,124]},margin:{left:30,right:30}});
+   Promise.resolve((W.CRV_PDF_LOGOS||(d=>d))(doc)).then(d=>save(new Blob([d.output('arraybuffer')],{type:'application/pdf'}),nome+'.pdf'))}}
+ function draw(){const f2=FORA.filter(x=>x.g>=d2);
+  let h='<div class="hf-n">Fonte: relatório de férias da folha (gozos válidos; os anulados ficam de fora). Atualizado em '+esc(br(HF.__ref))+'. Visível só para o RH.</div><div class="hf-k">'
+   +'<button class="hf-c al '+(V==='f'?'on':'')+'" data-v="f"><small>Gozadas fora do prazo concessivo</small><b>'+FORA.length+'</b><small>'+f2.length+' nos últimos 24 meses · CLT art. 137: pagamento em dobro</small></button>'
+   +'<button class="hf-c '+(V==='n'?'on':'')+'" data-v="n"><small>Mais de 15 meses de casa sem férias no histórico</small><b>'+NUNCA.length+'</b><small>'+NUNCA.filter(x=>x.conf).length+' confirmados pela base de férias</small></button>'
+   +'<button class="hf-c '+(V==='p'?'on':'')+'" data-v="p"><small>Pessoas com histórico</small><b>'+(Object.keys(HF).length-1)+'</b><small>busque por nome ou matrícula</small></button></div>';
+  const tb=(cab,L)=>'<div class="hf-w"><table class="hf-t"><thead><tr>'+cab.map(c=>'<th>'+c+'</th>').join('')+'</tr></thead><tbody>'+(L.join('')||'<tr><td colspan="'+cab.length+'">Nada aqui.</td></tr>')+'</tbody></table></div>';
+  const bar=t=>'<span><button class="hf-b" data-x="'+t+'">Excel</button> <button class="hf-b" data-p="'+t+'">PDF</button></span>';
+  if(V==='f')h+='<div class="hf-box"><header><h3>Férias gozadas depois do limite</h3>'+bar('f')+'</header>'+tb(['Colaborador','Período aquisitivo','Limite para gozar','Gozo','Atraso'],FORA.map(x=>'<tr><td><button class="hf-pick" data-m="'+x.m+'">'+esc(x.p?x.p.n:'Mat. '+x.m+' (desligado)')+'</button><div class="hf-n" style="margin:2px 0 0">Mat. '+x.m+(x.p?' · '+esc(x.p.d):'')+'</div></td><td>'+x.aq+'</td><td>'+br(x.l)+'</td><td>'+br(x.g)+' a '+br(x.gf)+'</td><td class="hf-x">'+x.atr+(x.atr==1?' dia':' dias')+'</td></tr>'))+'</div><p class="hf-n">O período concessivo termina 12 meses depois do fim do período aquisitivo. Confirme com o DP se a dobra foi paga.</p>';
+  if(V==='n')h+='<div class="hf-box"><header><h3>Sem férias no histórico, com mais de 15 meses de casa</h3>'+bar('n')+'</header>'+tb(['Colaborador','Admissão','Tempo de casa','Observação'],NUNCA.map(x=>'<tr><td><button class="hf-pick" data-m="'+x.p.c+'">'+esc(x.p.n)+'</button><div class="hf-n" style="margin:2px 0 0">Mat. '+x.p.c+' · '+esc(x.p.d)+'</div></td><td>'+br(x.p.a)+'</td><td>'+Math.floor(dd(x.p.a,hoje)/30.44)+' meses</td><td>'+(x.conf?'Confirmado pela base de férias':'<span class="hf-x">A base mostra período já gozado: o histórico pode estar incompleto</span>')+'</td></tr>'))+'</div>';
+  if(V==='p'){const q=Q.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');const M=q&&!PM.has(Q)?DATA.filter(p=>(p.n+' '+p.c).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').includes(q)).slice(0,20):[];
+   h+='<input class="hf-q" id="hfQ" type="search" placeholder="Nome ou matrícula" value="'+esc(Q)+'">';
+   if(PM.has(Q)||HF[Q]){const {p,L}=pessoa(Q);h+='<div class="hf-box" style="margin-top:12px"><header><h3>'+esc(p?p.n:'Matrícula '+Q)+(p?' · admissão '+br(p.a):'')+'</h3>'+bar('p')+'</header>'+tb(['Período aquisitivo','Gozo','Dias','Retorno','Prazo'],L.map(x=>{const l=lim(x[1]),a=x[2]>l;return '<tr><td>'+br(x[0])+' a '+br(x[1])+'</td><td>'+br(x[2])+' a '+br(x[3])+'</td><td>'+(dd(x[2],x[3])+1)+'</td><td>'+br(x[4])+'</td><td'+(a?' class="hf-x"':'')+'>'+(a?'Fora do prazo ('+dd(l,x[2])+' dias)':'No prazo')+'</td></tr>'}))+'</div>'}
+   else if(M.length)h+='<div class="hf-box" style="margin-top:12px">'+tb(['Colaborador','Matrícula','Departamento','Gozos no histórico'],M.map(p=>'<tr><td><button class="hf-pick" data-m="'+p.c+'">'+esc(p.n)+'</button></td><td>'+p.c+'</td><td>'+esc(p.d)+'</td><td>'+(HF[String(p.c)]||[]).length+'</td></tr>'))+'</div>'}
+  sec.innerHTML=h;
+  sec.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{V=b.dataset.v;draw()});
+  sec.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{V='p';Q=String(b.dataset.m);draw()});
+  sec.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>exportar(b.dataset.x,'x'));sec.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>exportar(b.dataset.p,'p'));
+  const i=$('hfQ');if(i){i.oninput=()=>{clearTimeout(i._t);i._t=setTimeout(()=>{Q=i.value.trim();draw();const e=$('hfQ');if(e){e.focus();e.setSelectionRange(e.value.length,e.value.length)}},300)}}}
+})();
+</script>
+<!-- ===== fim: histórico de férias ===== -->
+
 </body></html>

@@ -36,6 +36,10 @@ function detectar(wb, nomeArq){
   const R = linhas(wb);
   const h = (R[0] || []).map(s);
   if (h.includes('Matricula do Funcionário') && h.includes('EMPRESA') && h.includes('Situação do Funcionário')) return { tipo:'quadro', R };
+  // históricos da folha: férias (TFP56T), transferências de departamento (TFP89T) e alterações de cargo (TFP71T)
+  if (h.includes('Gozo Inicial') && h.includes('Aquisição Inicial')) return { tipo:'hist', h:'ferias', R };
+  if (h.includes('Data da Transferência') && h.includes('Novo Departamento')) return { tipo:'hist', h:'depto', R };
+  if (h.includes('Data Alteração') && h.includes('Cargo Novo')) return { tipo:'hist', h:'cargo', R };
   // cartões Sysprocard: a linha "Empresa: ... Código: 56906" às vezes não é lida; reconhece também pelo nome da aba e do arquivo
   const hi = R.findIndex(r => r && r.map(s).includes('MATRÍCULA') && r.map(s).includes('SITUAÇÃO'));
   if (hi >= 0 && hi <= 3) {
@@ -210,14 +214,45 @@ async function alojMapa(){
     const m = {}; A.people.forEach(p => { if (p.t === 'c' && p.m) m[String(p.m)] = (A.houses[p.h] || {}).n; }); return { map:m, ref:d.referencia || '' }; } catch(_) { return { map:null, ref:'' }; }
 }
 
+/* ---------- históricos da folha → um registro por pessoa (confere matrícula e nome com o Quadro) ---------- */
+const nomeN = v => s(v).toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Z ]/g, ' ').replace(/\s+/g, ' ').trim();
+const mesmoNome = (a, b) => { a = nomeN(a); b = nomeN(b); if (!a || !b) return false; if (a.startsWith(b) || b.startsWith(a)) return true; const x = a.split(' '), y = b.split(' '); return x.length > 1 && y.length > 1 && x[0] === y[0] && x[1] === y[1]; };
+function converterHist(h, R, mapa, REF){
+  const H = R[0].map(s), ix = n => H.findIndex(x => x.startsWith(n)), I = {};
+  const get = (r, n) => r[I[n] != null ? I[n] : (I[n] = ix(n))];
+  const itens = {}; let lin = 0, ign = 0, fora = 0, anul = 0;
+  for (const r of R.slice(1)) {
+    const m = parseInt(num(get(r, 'Funcionário')), 10); if (!m) continue;
+    const q = mapa[String(m)];
+    if (!q) { fora++; continue; }
+    if (!mesmoNome(get(r, 'Nome do Funcionário'), q.nome)) { ign++; continue; }
+    let it = null;
+    if (h === 'ferias') { if (s(get(r, 'Anula')).toUpperCase() === 'S') { anul++; continue; }
+      it = [iso(get(r, 'Aquisição Inicial')), iso(get(r, 'Aquisição Final')), iso(get(r, 'Gozo Inicial')), iso(get(r, 'Gozo Final')), iso(get(r, 'Data Retorno'))]; if (!it[2]) continue; }
+    else if (h === 'depto') { const a = sp(get(r, 'Nome do Departamento Anterior')), b = sp(get(r, 'Nome do Novo Departamento')); if (!a || a === b) continue;
+      it = [iso(get(r, 'Data da Transferência')), a, b]; if (!it[0]) continue; }
+    else { const a = sp(r[H.findIndex(x => x.startsWith('Busca Descrição Cargo Antigo'))]) || sp(get(r, 'Descrição Cargo Antigo')), b = sp(r[H.findIndex(x => x.startsWith('Busca Descrição Cargo Novo'))]) || sp(get(r, 'Descrição Cargo Novo'));
+      const d = iso(get(r, 'Data Alteração')); if (!d || !a || a === b) continue; it = [d, a, b]; }
+    (itens[m] = itens[m] || []).push(it); lin++;
+  }
+  Object.values(itens).forEach(L => L.sort((a, b) => (h === 'ferias' ? a[2] : a[0]).localeCompare(h === 'ferias' ? b[2] : b[0])));
+  return { tipo:'crv-hist', painel:'quadro', hist:h, referencia:REF, itens, n:{ linhas:lin, pessoas:Object.keys(itens).length, nomeDiferente:ign, foraDoQuadro:fora, anuladas:anul } };
+}
+
 /* ---------- entrada: arquivo .xlsx → pacotes para salvar ---------- */
 async function ler(f){
   if (!window.XLSX) throw new Error('leitor de Excel indisponível');
   const wb = XLSX.read(await f.arrayBuffer(), { type:'array', cellDates:true });
   const det = detectar(wb, f.name);
-  if (!det) throw new Error('planilha não reconhecida. Por enquanto o app lê o relatório de funcionários (Quadro) e as planilhas de cartões Sysprocard.');
+  if (!det) throw new Error('planilha não reconhecida. Por enquanto o app lê o relatório de funcionários (Quadro), as planilhas de cartões Sysprocard e os históricos de férias, departamentos e funções.');
   const REF = refDoNome(f.name, f);
   const out = [];
+  if (det.tipo === 'hist') {
+    const Q = await window.CRV_QUADRO(); if (!Q || !Q.mapa) throw new Error('carregue o Quadro Geral antes dos históricos');
+    const pac = converterHist(det.h, det.R, Q.mapa, REF), T = { ferias:'Histórico de férias', depto:'Histórico de departamentos', cargo:'Histórico de funções' }[det.h];
+    out.push({ pac, rotulo:`${T}: ${pac.n.linhas} registros de ${pac.n.pessoas} pessoas` + (pac.n.anuladas ? ` · ${pac.n.anuladas} anuladas fora` : '') + (pac.n.nomeDiferente ? ` · ${pac.n.nomeDiferente} com nome diferente do Quadro (fora)` : '') });
+    return out;
+  }
   if (det.tipo === 'quadro') {
     const atual = await window.CRV_DADOS('quadro');
     const { pac, resumo } = converterQuadro(det.R, atual && atual.dados, REF);
@@ -237,5 +272,5 @@ async function ler(f){
   }
   return out;
 }
-window.CRV_IMPORT = { ler, detectar, converterQuadro, montarCartao, cardsDaPlanilha };
+window.CRV_IMPORT = { ler, detectar, converterQuadro, montarCartao, cardsDaPlanilha, converterHist };
 })();
