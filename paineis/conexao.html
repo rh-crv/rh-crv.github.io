@@ -1,4 +1,58 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
+/* relatório do encontro */
+.rl-ind{width:100%;border-collapse:separate;border-spacing:0;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.rl-ind th,.rl-ind td{padding:11px 14px;text-align:right;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+.rl-ind th:first-child,.rl-ind td:first-child{text-align:left}
+.rl-ind thead th{font-family:var(--display);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:var(--surface-2)}
+.rl-ind thead th.m{color:var(--gold)} .rl-ind thead th.t{color:var(--navy-line)}
+.rl-ind tr:last-child td{border-bottom:0}
+.rl-ind td b{font-family:var(--display);font-size:18px}
+.rl-n{all:unset;cursor:pointer;font-family:var(--display);font-weight:800;font-size:18px;border-bottom:2px dotted currentColor;line-height:1.1}
+.rl-n:hover,.rl-n:focus-visible{color:var(--blue);outline:none}
+.rl-conf{margin-top:12px;padding:12px 14px;border-radius:12px;font-size:14.5px;line-height:1.5}
+.rl-conf.ok{background:var(--green-soft);border:1px solid color-mix(in srgb,var(--green) 40%,transparent)}
+.rl-conf.dif{background:var(--gold-soft);border:1px solid color-mix(in srgb,var(--gold) 45%,transparent)}
+.rl-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
+.rl-turno{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.rl-turno>header{padding:14px 18px;color:#fff;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.rl-turno.m>header{background:linear-gradient(135deg,#b47c12,#d9a03a)} .rl-turno.t>header{background:linear-gradient(135deg,#0b2a4a,#24527f)} .rl-turno.s>header{background:linear-gradient(135deg,#5a6472,#7d8896)}
+.rl-turno>header h3{font-family:var(--display);font-size:17px;font-weight:800;margin:0}
+.rl-turno>header span{opacity:.92;font-size:14px}
+.rl-turno>header .bar{flex-basis:100%;height:6px;border-radius:4px;background:rgba(255,255,255,.28);overflow:hidden}
+.rl-turno>header .bar i{display:block;height:100%;background:#fff}
+.rl-bloco{padding:12px 18px 6px}
+.rl-bloco h4{font-family:var(--display);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;margin:4px 0 8px;display:flex;align-items:center;gap:8px}
+.rl-bloco h4 i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.rl-bloco.sim h4 i{background:var(--green)} .rl-bloco.nao h4 i{background:var(--alert)}
+.rl-set{margin:0 0 10px}
+.rl-set>b{display:block;font-size:13px;color:var(--muted);font-weight:700;margin:6px 0 3px}
+.rl-set ol{margin:0;padding-left:22px}
+.rl-set li{padding:2px 0;font-size:14.5px}
+.rl-set li small{color:var(--muted)}
+.rl-set li em{white-space:nowrap;font-style:normal;font-size:12.5px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);margin-left:6px}
+.rl-set li em.ok{background:var(--green-soft);color:var(--green)}
+.rl-st{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.rl-st th,.rl-st td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums;font-size:14.5px}
+.rl-st th:first-child,.rl-st td:first-child{text-align:left}
+.rl-st thead th{font-family:var(--display);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:var(--surface-2)}
+.rl-st .ad{display:flex;align-items:center;gap:8px;justify-content:flex-end}
+.rl-st .ad span{width:90px;height:8px;border-radius:5px;background:var(--surface-2);overflow:hidden;display:inline-block}
+.rl-st .ad span i{display:block;height:100%}
+.rl-st button.rl-c{all:unset;cursor:pointer;border-bottom:1px dotted currentColor}
+.rl-st button.rl-c:hover{color:var(--blue)}
+.rl-av{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.rl-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;border-top:4px solid var(--c,var(--navy-line))}
+.rl-card h3{font-family:var(--display);font-size:15px;margin:0 0 8px}
+.rl-card p,.rl-card li{font-size:14.5px;line-height:1.55;margin:0 0 6px}
+.rl-card ul{margin:0;padding-left:18px}
+.rl-card textarea{width:100%;min-height:120px;font:inherit;font-size:14px;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}
+.rl-tag{display:inline-block;font-family:var(--display);font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 10px;border-radius:999px;margin-right:6px}
+.rl-tag.d{background:var(--blue-soft);color:var(--blue)} .rl-tag.i{background:var(--gold-soft);color:var(--gold)} .rl-tag.r{background:var(--green-soft);color:var(--green)}
+.rl-det{margin-top:14px}
+.rl-exp{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;font-size:14px}
+.rl-exp label{display:flex;gap:6px;align-items:center;cursor:pointer}
+@media (max-width:640px){.rl-ind th,.rl-ind td{padding:9px 8px}.rl-st .ad span{display:none}.rl-st th,.rl-st td{padding:8px 6px;font-size:13.5px}}
+</style></head><body>
 <title>Painel Conexão Líder</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap">
 <style>
@@ -403,6 +457,7 @@ details.more[open] summary{margin-bottom:14px}
   <button role="tab" id="n-lideres" aria-controls="v-lideres" aria-selected="false" tabindex="-1">Líderes</button>
   <button role="tab" id="n-psico" aria-controls="v-psico" aria-selected="false" tabindex="-1">Resumo para a psicóloga</button>
   <button role="tab" id="n-encontros" aria-controls="v-encontros" aria-selected="false" tabindex="-1">Encontros</button>
+  <button role="tab" id="n-relatorio" aria-controls="v-relatorio" aria-selected="false" tabindex="-1">Relatório do encontro</button>
   <button role="tab" id="n-campo" aria-controls="v-campo" aria-selected="false" tabindex="-1" hidden>RH em campo</button>
   <button role="tab" id="n-resultados" aria-controls="v-resultados" aria-selected="false" tabindex="-1">Resultados</button>
   <button role="tab" id="n-riscos" aria-controls="v-riscos" aria-selected="false" tabindex="-1">Riscos e ações</button>
@@ -731,6 +786,53 @@ details.more[open] summary{margin-bottom:14px}
 </div>
 
 <!-- RESULTADOS -->
+<!-- RELATÓRIO DO ENCONTRO -->
+<div class="view" role="tabpanel" id="v-relatorio" aria-labelledby="n-relatorio" hidden>
+  <section>
+    <div class="head"><p class="eyebrow">Relatório executivo</p><h2 id="rl-tit">Encontro 1 · Eu me percebo</h2>
+      <p id="rl-sub">Participantes nominais por turno e por setor, com a avaliação da facilitadora.</p></div>
+    <div class="psi-tools">
+      <label class="filtro" for="rl-enc">Encontro <select id="rl-enc"><option value="e1">Encontro 1 · Eu me percebo</option><option value="e2">Encontro 2 · Eu conduzo</option><option value="e3">Encontro 3 · Eu mobilizo</option></select></label>
+      <label class="filtro" for="rl-setor">Setor <select id="rl-setor"><option value="">Todos</option></select></label>
+    </div>
+    <p style="margin:6px 0 10px"><span class="rl-tag d">Dado</span><span class="note" style="font-size:14px">Números das fichas do painel (presença marcada em cada líder). Clique em um número para ver quem está nele.</span></p>
+    <div style="overflow-x:auto"><table class="rl-ind" id="rl-ind"></table></div>
+    <div id="rl-conf"></div>
+    <div class="rl-det" id="rl-det"></div>
+  </section>
+  <section>
+    <div class="head"><p class="eyebrow">Nominal</p><h2>Participantes por turno</h2>
+      <p>Quem compareceu e quem faltou em cada turno, separado por setor e em ordem alfabética. Para quem faltou aparece o motivo informado pela área.</p></div>
+    <div class="rl-cols" id="rl-cols"></div>
+  </section>
+  <section>
+    <div class="head"><p class="eyebrow">Setores</p><h2>Adesão por setor e turno</h2>
+      <p>Presentes sobre previstos. Clique em um número para ver os nomes.</p></div>
+    <div style="overflow-x:auto"><table class="rl-st" id="rl-st"></table></div>
+  </section>
+  <section>
+    <div class="head"><p class="eyebrow">Leitura qualitativa</p><h2>Avaliação da facilitadora e recomendações</h2>
+      <p id="rl-fonte">Texto do relatório executivo. É uma leitura qualitativa, não uma nota de desempenho.</p></div>
+    <div class="actions" data-need="rh" style="margin:0 0 12px"><button class="btn ghost" type="button" id="rl-edit">Editar texto</button><button class="btn" type="button" id="rl-save" hidden>Salvar texto</button><button class="btn ghost" type="button" id="rl-cancel" hidden>Cancelar</button></div>
+    <div class="rl-av" id="rl-av"></div>
+  </section>
+  <section>
+    <div class="head"><p class="eyebrow">Exportar</p><h2>Relatório em PDF ou lista em Excel</h2>
+      <p>Escolha o que entra. O PDF sai com a logo da CRV, no formato do relatório executivo.</p></div>
+    <div class="rl-exp">
+      <label><input type="checkbox" id="rx-m" checked> Turno da manhã</label>
+      <label><input type="checkbox" id="rx-t" checked> Turno da tarde</label>
+      <label><input type="checkbox" id="rx-sim" checked> Compareceram</label>
+      <label><input type="checkbox" id="rx-nao" checked> Faltaram</label>
+      <label><input type="checkbox" id="rx-set" checked> Adesão por setor</label>
+      <label><input type="checkbox" id="rx-av" checked> Avaliação da facilitadora</label>
+      <span class="grow"></span>
+      <button class="btn" type="button" id="rl-pdf">Baixar PDF</button>
+      <button class="btn ghost" type="button" id="rl-xls">Baixar Excel</button>
+    </div>
+  </section>
+</div>
+
 <div class="view" role="tabpanel" id="v-resultados" aria-labelledby="n-resultados" hidden>
   <section>
     <div class="head"><p class="eyebrow">Termômetro da Liderança</p><h2>O que a equipe percebe, antes e depois</h2>
@@ -889,7 +991,7 @@ details.more[open] summary{margin-bottom:14px}
     $('ind-body').appendChild(tr);
   });
   $('v-data').value=new Date().toLocaleDateString('en-CA');
-  var NAV={geral:'n-geral',lideres:'n-lideres',psicologa:'n-psico',encontros:'n-encontros',campo:'n-campo',resultados:'n-resultados',riscos:'n-riscos'};
+  var NAV={geral:'n-geral',lideres:'n-lideres',psicologa:'n-psico',encontros:'n-encontros',relatorio:'n-relatorio',campo:'n-campo',resultados:'n-resultados',riscos:'n-riscos'};
   var pickMain=wire($('nav'),function(t){try{history.replaceState(null,'','#'+t.id.slice(2))}catch(e){} });
   wire(document.querySelector('.tabs'));
   perms();
@@ -1432,6 +1534,134 @@ details.more[open] summary{margin-bottom:14px}
         g[1].forEach(function(d){var li=el('li',null,d.nome); li.appendChild(el('span',null,' · '+[d.cargo,d.turma?'turma da '+d.turma.toLowerCase():''].filter(Boolean).join(' · '))); ol.appendChild(li)}); a.appendChild(ol); c.appendChild(a)});
       box.appendChild(c)})}
   $('pr-enc').addEventListener('change',renderPres); $('pr-turma').addEventListener('change',renderPres);
+  /* ---------- relatório do encontro: nominal por turno e setor ---------- */
+  // texto do relatório executivo do Encontro 1 (21/10/2026), informado pela facilitadora; o RH pode editar e os outros encontros começam em branco
+  var RLTXT={e1:{data:'2026-10-14',fonte:'Relatório executivo do Encontro 1 (14/10/2026), com a avaliação qualitativa informada pela facilitadora.',
+    ref:{prev:{'Manhã':37,'Tarde':20},pres:{'Manhã':23,'Tarde':18}},
+    sintese:'O primeiro encontro concentrou-se no autoconhecimento, na percepção do próprio comportamento e na reflexão sobre competências psicoemocionais relevantes ao exercício da liderança. As atividades combinaram exposição dialogada, interação em grupos e desafios práticos.',
+    manha:'Embora tenha registrado a menor adesão, o grupo presente demonstrou maior envolvimento nas reflexões, abertura às propostas e qualidade nas entregas. O comportamento observado favoreceu a exploração do autoconhecimento e da responsabilidade individual na condução de equipes.',
+    tarde:'Com a maior adesão, o grupo demonstrou participação e comprometimento com a realização das atividades. As respostas e entregas foram percebidas com menor consistência em profundidade e elaboração, em relação aos objetivos do encontro. Recomenda-se reforçar a conexão entre as vivências e situações concretas de liderança, sem interpretar essa diferença como falta de interesse ou incapacidade do grupo.',
+    atividade:'Dinâmica da Torre: construir uma torre com materiais sensíveis e frágeis, para estimular autoestima, valorização das capacidades individuais, trabalho em equipe, comunicação, divisão de tarefas e responsabilidade compartilhada. A construção coletiva serviu como metáfora da interdependência entre pessoas e setores da usina. A atividade permitiu observar interações e formas de organização do grupo, sem constituir avaliação psicológica individual.',
+    recs:'Fortalecer a convocação e a liberação dos líderes, com atenção especial à Oficina e à Indústria no turno da manhã.\nManter a continuidade do programa, conectando autopercepção a comunicação, gestão de conflitos e responsabilidade sobre o clima das equipes.\nNo turno da tarde, ampliar momentos de reflexão guiada e aplicação prática à rotina da usina, buscando maior profundidade nas contribuições.\nAdotar um instrumento simples de acompanhamento entre encontros: presença, participação observada, compromisso de melhoria e devolutiva sobre sua aplicação no trabalho.',
+    conclusao:'O Encontro 1 estabeleceu uma oportunidade relevante de reflexão psicoemocional para lideranças de diferentes setores da usina. A avaliação qualitativa aponta resposta especialmente positiva no turno da manhã e espaço de evolução no aprofundamento das entregas do turno da tarde. Não se atribui, nesta etapa, impacto mensurado sobre indicadores operacionais ou clima organizacional.'}};
+  var RLCAMPOS=[['sintese','Síntese','var(--navy-line)'],['manha','Turno da manhã','var(--gold)'],['tarde','Turno da tarde','var(--navy-line)'],['atividade','Atividade realizada','var(--green)'],['recs','Recomendações à gestão','var(--green)'],['conclusao','Conclusão','var(--navy-line)']];
+  S.rel=S.rel||{}; var rlEdit=false;
+  function relTxt(k){return Object.assign({},RLTXT[k]||{},S.rel[k]||{})}
+  var TURMAS=['Manhã','Tarde'];
+  function relData(){var k=$('rl-enc').value, st=$('rl-setor').value, X=(k==='e1'?S.fichas:PART()).filter(function(d){return !st||(d.area||'Sem setor')===st});
+    var G={}; TURMAS.concat(['']).forEach(function(t){G[t]={prev:[],sim:[],nao:[]}});
+    X.forEach(function(d){var t=TURMAS.indexOf(d.turma)>=0?d.turma:''; var g=G[t]; g.prev.push(d); (d.presenca&&d.presenca[k]?g.sim:g.nao).push(d)});
+    var tot={prev:X,sim:X.filter(function(d){return d.presenca&&d.presenca[k]}),nao:X.filter(function(d){return !(d.presenca&&d.presenca[k])})};
+    return {k:k,st:st,enc:ENC.filter(function(e){return e.k===k})[0],X:X,G:G,tot:tot,semT:G[''].prev.length}}
+  function bySet(L){var g={}; L.forEach(function(d){var a=d.area||'Sem setor'; (g[a]=g[a]||[]).push(d)}); Object.keys(g).forEach(function(a){g[a].sort(function(x,y){return cmp(x.nome,y.nome)})}); return Object.keys(g).sort(cmp).map(function(a){return [a,g[a]]})}
+  function pctTxt(a,b){return b?Math.round(a/b*100)+'%':'—'}
+  function relDet(tit,L){var box=$('rl-det'); box.textContent=''; if(!L)return; var c=el('div','prbox'); var fx=el('button','btn ghost','Fechar'); fx.type='button'; fx.style.cssText='float:right;margin:0 0 8px 10px'; fx.onclick=function(){box.textContent=''}; c.appendChild(fx);
+    var h=el('h3',null,tit+' '); h.appendChild(el('span',null,String(L.length))); c.appendChild(h);
+    if(!L.length)c.appendChild(el('p','msg','Ninguém nesta lista.'));
+    bySet(L).forEach(function(g){var a=el('div','prarea'); a.appendChild(el('h4',null,g[0]+' · '+g[1].length)); var ol=el('ol'); g[1].forEach(function(d){var li=el('li',null,d.nome); li.appendChild(el('span',null,' · '+[d.cargo,d.turma?'turma da '+d.turma.toLowerCase():'sem turma'].filter(Boolean).join(' · '))); ol.appendChild(li)}); a.appendChild(ol); c.appendChild(a)});
+    box.appendChild(c); box.scrollIntoView({behavior:'smooth',block:'nearest'})}
+  function nBtn(n,tit,L){var b=el('button','rl-n',String(n)); b.type='button'; b.onclick=function(){relDet(tit,L)}; return b}
+  function renderRel(){if(!$('rl-ind'))return; var ss=$('rl-setor'), cur=ss.value, sets={}; (S.fichas||[]).forEach(function(d){sets[d.area||'Sem setor']=1});
+    ss.textContent=''; ss.appendChild(el('option',null,'Todos')).value=''; Object.keys(sets).sort(cmp).forEach(function(a){var o=el('option',null,a); o.value=a; ss.appendChild(o)}); if(sets[cur])ss.value=cur;
+    var D=relData(), tx=relTxt(D.k), dt=fmtDate(S.cfg[D.k])||fmtDate(tx.data);
+    $('rl-tit').textContent='Encontro '+D.enc.n+' · '+D.enc.t; $('rl-sub').textContent=(dt?dt+' · ':'')+'Participantes nominais por turno e por setor'+(D.st?' · setor '+D.st:'')+'.';
+    var T=$('rl-ind'); T.textContent=''; var th=el('thead'), hr=el('tr'); hr.appendChild(el('th',null,'Indicador')); var cols=TURMAS.slice(); if(D.semT)cols.push('');
+    cols.forEach(function(t){hr.appendChild(el('th',t==='Manhã'?'m':t==='Tarde'?'t':'',t||'Sem turma'))}); hr.appendChild(el('th',null,'Total')); th.appendChild(hr); T.appendChild(th); var tb=el('tbody');
+    [['Previstos','prev'],['Presentes','sim'],['Ausentes','nao'],['Adesão','pct']].forEach(function(r){var tr=el('tr'); tr.appendChild(el('td',null,r[0]));
+      cols.concat(['*']).forEach(function(t){var g=t==='*'?D.tot:D.G[t], td=el('td'), nm=(t==='*'?'Total':(t?'Turno da '+t.toLowerCase():'Sem turma'));
+        if(r[1]==='pct'){td.appendChild(el('b',null,pctTxt(g.sim.length,g.prev.length)))} else td.appendChild(nBtn(g[r[1]].length,r[0]+' · '+nm,g[r[1]]));
+        tr.appendChild(td)}); tb.appendChild(tr)}); T.appendChild(tb);
+    var cf=$('rl-conf'); cf.textContent=''; cf.className='';
+    if(tx.ref&&!D.st){var dif=[]; TURMAS.forEach(function(t){var pv=tx.ref.prev[t], pr=tx.ref.pres[t], g=D.G[t]; if(pv!=null&&pv!==g.prev.length)dif.push('previstos da '+t.toLowerCase()+': relatório '+pv+', fichas '+g.prev.length); if(pr!=null&&pr!==g.sim.length)dif.push('presentes da '+t.toLowerCase()+': relatório '+pr+', fichas '+g.sim.length)});
+      cf.className='rl-conf '+(dif.length?'dif':'ok');
+      if(!dif.length)cf.textContent='Os números das fichas batem com o relatório executivo (previstos e presentes por turno).';
+      else{cf.appendChild(el('b',null,'Os números das fichas não batem com o relatório executivo. ')); cf.appendChild(document.createTextNode('Diferenças: '+dif.join(' · ')+'. Confira a presença marcada nas fichas ou o relatório antes de apresentar.'))}}
+    var C=$('rl-cols'); C.textContent='';
+    cols.forEach(function(t){var g=D.G[t]; if(!g.prev.length&&!t)return; var cx=el('div','rl-turno '+(t==='Manhã'?'m':t==='Tarde'?'t':'s')), hd=el('header');
+      hd.appendChild(el('h3',null,t?'Turno da '+t.toLowerCase():'Sem turma')); hd.appendChild(el('span',null,g.sim.length+' presentes de '+g.prev.length+' previstos · '+pctTxt(g.sim.length,g.prev.length)+' de adesão'));
+      var br=el('div','bar'), bi=el('i'); bi.style.width=(g.prev.length?g.sim.length/g.prev.length*100:0)+'%'; br.appendChild(bi); hd.appendChild(br); cx.appendChild(hd);
+      [['sim','Compareceram',g.sim],['nao','Faltaram',g.nao]].forEach(function(b){var bl=el('div','rl-bloco '+b[0]), h4=el('h4'); h4.appendChild(el('i')); h4.appendChild(document.createTextNode(b[1]+' · '+b[2].length)); bl.appendChild(h4);
+        if(!b[2].length)bl.appendChild(el('p','msg',b[0]==='sim'?'Ninguém marcado como presente.':'Ninguém faltou.'));
+        bySet(b[2]).forEach(function(s){var w=el('div','rl-set'); w.appendChild(el('b',null,s[0]+' · '+s[1].length)); var ol=el('ol');
+          s[1].forEach(function(d){var li=el('li',null,d.nome+' '); if(d.cargo)li.appendChild(el('small',null,'· '+d.cargo));
+            if(b[0]==='nao'){var j=jOf(d,D.k); li.appendChild(el('em',j&&j.motivo?'ok':'',j&&j.motivo?j.motivo:'sem justificativa'))} ol.appendChild(li)}); w.appendChild(ol); bl.appendChild(w)});
+        cx.appendChild(bl)}); C.appendChild(cx)});
+    if(!D.X.length)C.appendChild(el('p','msg',S.fichas.length?'Nenhum líder neste filtro.':'Sem fichas cadastradas.'));
+    var ST=$('rl-st'); ST.textContent=''; var h2=el('thead'), r2=el('tr'); ['Setor'].concat(cols.map(function(t){return t||'Sem turma'})).concat(['Total','Adesão']).forEach(function(x){r2.appendChild(el('th',null,x))}); h2.appendChild(r2); ST.appendChild(h2); var b2=el('tbody');
+    bySet(D.X).map(function(g){return [g[0],g[1],g[1].filter(function(d){return d.presenca&&d.presenca[D.k]})]}).sort(function(a,b){return b[1].length-a[1].length||cmp(a[0],b[0])}).forEach(function(g){var tr=el('tr'); tr.appendChild(el('td',null,g[0]));
+      cols.forEach(function(t){var pv=g[1].filter(function(d){return (TURMAS.indexOf(d.turma)>=0?d.turma:'')===t}), pr=pv.filter(function(d){return d.presenca&&d.presenca[D.k]}), td=el('td');
+        if(pv.length){var bt=el('button','rl-c',pr.length+' de '+pv.length); bt.type='button'; bt.onclick=function(){relDet(g[0]+' · '+(t?'turno da '+t.toLowerCase():'sem turma')+' · presentes',pr)}; td.appendChild(bt)} else td.textContent='—'; tr.appendChild(td)});
+      var tt=el('td'), b3=el('button','rl-c',g[2].length+' de '+g[1].length); b3.type='button'; b3.onclick=function(){relDet(g[0]+' · presentes',g[2])}; tt.appendChild(b3); tr.appendChild(tt);
+      var p=g[1].length?g[2].length/g[1].length:0, ad=el('td'), dv=el('div','ad'), sp=el('span'), ii=el('i'); ii.style.width=Math.round(p*100)+'%'; ii.style.background=p>=.8?'var(--green)':p>=.5?'var(--gold)':'var(--alert)'; sp.appendChild(ii); dv.appendChild(sp); dv.appendChild(el('b',null,Math.round(p*100)+'%')); ad.appendChild(dv); tr.appendChild(ad); b2.appendChild(tr)});
+    ST.appendChild(b2);
+    $('rl-fonte').textContent=(tx.fonte||'Sem relatório da facilitadora para este encontro ainda.')+' É uma leitura qualitativa, não uma nota de desempenho.';
+    var AV=$('rl-av'); AV.textContent=''; var tem=RLCAMPOS.some(function(c){return tx[c[0]]});
+    if(!tem&&!rlEdit)AV.appendChild(el('p','msg','O texto da facilitadora deste encontro ainda não foi lançado.'+(S.isRH?' Clique em "Editar texto" para colar.':'')));
+    RLCAMPOS.forEach(function(c){if(!rlEdit&&!tx[c[0]])return; var cd=el('div','rl-card'); cd.style.setProperty('--c',c[2]); var hh=el('h3'); hh.appendChild(el('span','rl-tag '+(c[0]==='recs'?'r':'i'),c[0]==='recs'?'Recomendação':'Interpretação')); hh.appendChild(document.createTextNode(c[1])); cd.appendChild(hh);
+      if(rlEdit){var ta=el('textarea'); ta.id='rl-ta-'+c[0]; ta.value=tx[c[0]]||''; if(c[0]==='recs')ta.placeholder='Uma recomendação por linha'; cd.appendChild(ta)}
+      else if(c[0]==='recs'){var ul=el('ul'); String(tx.recs).split(/\n+/).filter(Boolean).forEach(function(x){ul.appendChild(el('li',null,x))}); cd.appendChild(ul)}
+      else String(tx[c[0]]).split(/\n+/).forEach(function(x){cd.appendChild(el('p',null,x))});
+      AV.appendChild(cd)});
+    $('rl-edit').hidden=rlEdit; $('rl-save').hidden=!rlEdit; $('rl-cancel').hidden=!rlEdit}
+  $('rl-enc').addEventListener('change',function(){rlEdit=false; $('rl-det').textContent=''; renderRel()}); $('rl-setor').addEventListener('change',function(){$('rl-det').textContent=''; renderRel()});
+  $('rl-edit').addEventListener('click',function(){rlEdit=true; renderRel()}); $('rl-cancel').addEventListener('click',function(){rlEdit=false; renderRel()});
+  $('rl-save').addEventListener('click',async function(){if(!S.db||!S.isRH)return; var k=$('rl-enc').value, b={atualizadoEm:new Date().toISOString()}; RLCAMPOS.forEach(function(c){var t=$('rl-ta-'+c[0]); if(t)b[c[0]]=t.value.trim()});
+    if(!RLTXT[k])b.fonte='Relatório do Encontro '+k.slice(1)+', texto lançado pelo RH.';
+    if(await w(S.db.doc('relatorios/'+k).set(Object.assign({},S.rel[k]||{},b)),'Texto salvo.')){rlEdit=false; S.rel[k]=Object.assign({},S.rel[k]||{},b); renderRel()}});
+  function rlSel(){return {m:$('rx-m').checked,t:$('rx-t').checked,sim:$('rx-sim').checked,nao:$('rx-nao').checked,set:$('rx-set').checked,av:$('rx-av').checked}}
+  function rlTurmas(O){return TURMAS.filter(function(t){return t==='Manhã'?O.m:O.t})}
+  $('rl-xls').addEventListener('click',async function(){var D=relData(), O=rlSel(), TS=rlTurmas(O); if(!TS.length||(!O.sim&&!O.nao)){say('Marque ao menos um turno e um grupo (compareceram ou faltaram).',true); return}
+    try{await loadXLSX(); var wb=XLSX.utils.book_new(), L=[];
+      TS.forEach(function(t){[['sim','Compareceu'],['nao','Faltou']].forEach(function(b){if(!O[b[0]])return; bySet(D.G[t][b[0]]).forEach(function(g){g[1].forEach(function(d){var j=b[0]==='nao'?jOf(d,D.k):null;
+        L.push({'Encontro':'Encontro '+D.enc.n+' · '+D.enc.t,'Turno':t,'Setor':g[0],'Matrícula':d.matricula||'','Nome':d.nome,'Cargo':d.cargo||'','Indicado por':d.gestor||'','Situação':b[1],'Motivo da falta':j&&j.motivo?j.motivo+(j.detalhe?' - '+j.detalhe:''):''})})})})});
+      var ws=XLSX.utils.json_to_sheet(L); ws['!cols']=[{wch:28},{wch:8},{wch:26},{wch:10},{wch:38},{wch:28},{wch:24},{wch:12},{wch:40}]; XLSX.utils.book_append_sheet(wb,ws,'Participantes');
+      var I=[['Indicador'].concat(TS).concat(['Total'])]; var tot=function(f){return TS.reduce(function(a,t){return a+D.G[t][f].length},0)};
+      [['Previstos','prev'],['Presentes','sim'],['Ausentes','nao']].forEach(function(r){I.push([r[0]].concat(TS.map(function(t){return D.G[t][r[1]].length})).concat([tot(r[1])]))});
+      I.push(['Adesão'].concat(TS.map(function(t){return pctTxt(D.G[t].sim.length,D.G[t].prev.length)})).concat([pctTxt(tot('sim'),tot('prev'))]));
+      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(I),'Indicadores');
+      if(O.set){var SA=[['Setor'].concat(TS.map(function(t){return t+' (presentes de previstos)'})).concat(['Adesão'])]; bySet(D.X.filter(function(d){return TS.indexOf(d.turma)>=0})).forEach(function(g){var pv=g[1], pr=pv.filter(function(d){return d.presenca&&d.presenca[D.k]}); SA.push([g[0]].concat(TS.map(function(t){var a=pv.filter(function(d){return d.turma===t}); return a.filter(function(d){return d.presenca&&d.presenca[D.k]}).length+' de '+a.length})).concat([pctTxt(pr.length,pv.length)]))});
+        var w2=XLSX.utils.aoa_to_sheet(SA); w2['!cols']=[{wch:28},{wch:26},{wch:26},{wch:10}]; XLSX.utils.book_append_sheet(wb,w2,'Por setor')}
+      var out=XLSX.write(wb,{bookType:'xlsx',type:'array'}); await saveFile('Conexao_Lider_Encontro_'+D.enc.n+'_participantes_'+new Date().toLocaleDateString('en-CA')+'.xlsx',new Uint8Array(out))}
+    catch(e){say('Não foi possível gerar o Excel.',true)}});
+  $('rl-pdf').addEventListener('click',async function(){var D=relData(), O=rlSel(), TS=rlTurmas(O), tx=relTxt(D.k); if(!TS.length){say('Marque ao menos um turno.',true); return}
+    var bt=$('rl-pdf'); bt.disabled=true;
+    try{await loadPDF(); var P=PDFLib, doc=await P.PDFDocument.create(); var F=await doc.embedFont(P.StandardFonts.Helvetica), FB=await doc.embedFont(P.StandardFonts.HelveticaBold);
+      var NAVYc=P.rgb(.043,.165,.29), GOLDc=P.rgb(.706,.486,.071), GREYc=P.rgb(.32,.38,.48), INK=P.rgb(.07,.14,.23), LINEc=P.rgb(.84,.86,.9), SOFTc=P.rgb(.945,.955,.97), GRN=P.rgb(.141,.38,.184), RED=P.rgb(.66,.2,.11), BLU=P.rgb(.14,.32,.5);
+      var W=595.28,H=841.89,M=42,y,pg,pn=0, logo=null; try{var lb=atob(document.querySelector('.logo img').src.split(',')[1]), lu=new Uint8Array(lb.length); for(var i=0;i<lb.length;i++)lu[i]=lb.charCodeAt(i); logo=await doc.embedJpg(lu)}catch(e){}
+      var dt=fmtDate(S.cfg[D.k])||fmtDate(tx.data), titulo='Encontro '+D.enc.n+' · '+D.enc.t;
+      function T(t,x,yy,sz,f,c){pg.drawText(pdfTxt(t),{x:x,y:yy,size:sz,font:f,color:c||INK})}
+      function wrap(t,f,sz,mw){var out=[]; String(t||'').split(/\n/).forEach(function(par){var ws=pdfTxt(par).split(/\s+/), l=''; ws.forEach(function(wd){var c=l?l+' '+wd:wd; if(f.widthOfTextAtSize(c,sz)>mw&&l){out.push(l); l=wd} else l=c}); out.push(l)}); return out}
+      function head(){pg=doc.addPage([W,H]); pn++; y=H-M; if(logo){var dm=logo.scaleToFit(104,30); pg.drawImage(logo,{x:M,y:y-dm.height,width:dm.width,height:dm.height})}
+        var t1='PROGRAMA CONEXÃO LÍDER · RELATÓRIO EXECUTIVO'; T(t1,W-M-FB.widthOfTextAtSize(pdfTxt(t1),7.5),y-8,7.5,FB,GOLDc); T(titulo,W-M-FB.widthOfTextAtSize(pdfTxt(titulo),13),y-25,13,FB,NAVYc);
+        y-=38; pg.drawRectangle({x:M,y:y,width:W-2*M,height:1.5,color:GOLDc}); y-=18; T('Página '+pn+'  ·  Gerado em '+hoje(),M,22,7.5,F,GREYc)}
+      function need(h){if(y-h<M+20)head()}
+      function sec(t){need(40); y-=6; pg.drawRectangle({x:M,y:y-15,width:3,height:15,color:GOLDc}); T(t.toUpperCase(),M+9,y-11,10.5,FB,NAVYc); y-=26}
+      function para(t,sz,f,c,ind){wrap(t,f||F,sz||9.5,W-2*M-(ind||0)).forEach(function(l){need(14); T(l,M+(ind||0),y,sz||9.5,f||F,c); y-=(sz||9.5)+4})}
+      head(); para((dt?'Data do encontro: '+dt+'  ·  ':'')+'Participantes nominais por turno e setor'+(D.st?'  ·  Setor: '+D.st:''),9.5,F,GREYc); y-=6;
+      sec('Indicadores de participação'); var cw=[150].concat(TS.map(function(){return 90})).concat([90]), hdrs=['Indicador'].concat(TS).concat(['Total']);
+      pg.drawRectangle({x:M,y:y-14,width:cw.reduce(function(a,b){return a+b},0),height:16,color:SOFTc}); var x=M; hdrs.forEach(function(h,i){T(h.toUpperCase(),x+(i?cw[i]-8-FB.widthOfTextAtSize(pdfTxt(h.toUpperCase()),7):6),y-9.5,7,FB,GREYc); x+=cw[i]}); y-=26;
+      var tot=function(f){return TS.reduce(function(a,t){return a+D.G[t][f].length},0)};
+      [['Previstos','prev'],['Presentes','sim'],['Ausentes','nao'],['Adesão','pct']].forEach(function(r){var v=TS.map(function(t){return r[1]==='pct'?pctTxt(D.G[t].sim.length,D.G[t].prev.length):String(D.G[t][r[1]].length)}).concat([r[1]==='pct'?pctTxt(tot('sim'),tot('prev')):String(tot(r[1]))]);
+        x=M; T(r[0],x+6,y,9.5,FB); x+=cw[0]; v.forEach(function(s,i){T(s,x+cw[i+1]-8-FB.widthOfTextAtSize(pdfTxt(s),10),y,10,FB,r[1]==='pct'?GOLDc:INK); x+=cw[i+1]}); y-=6; pg.drawRectangle({x:M,y:y,width:cw.reduce(function(a,b){return a+b},0),height:.5,color:LINEc}); y-=12});
+      if(tx.ref&&!D.st){var dif=TURMAS.filter(function(t){return tx.ref.prev[t]!==D.G[t].prev.length||tx.ref.pres[t]!==D.G[t].sim.length}); if(dif.length){y-=4; para('Atenção: os números das fichas diferem do relatório da facilitadora em '+dif.map(function(t){return 'turno da '+t.toLowerCase()}).join(' e ')+' (relatório: '+TURMAS.map(function(t){return t.toLowerCase()+' '+tx.ref.pres[t]+' de '+tx.ref.prev[t]}).join(', ')+').',8.5,F,RED)}}
+      y-=4; para('Fonte: presença marcada nas fichas do painel Conexão Líder.',8,F,GREYc);
+      if(O.set){sec('Adesão por setor'); var sw=[180].concat(TS.map(function(){return 95})).concat([80]); var sh=['Setor'].concat(TS).concat(['Adesão']); pg.drawRectangle({x:M,y:y-14,width:W-2*M,height:16,color:SOFTc}); x=M; sh.forEach(function(h,i){T(h.toUpperCase(),x+6,y-9.5,7,FB,GREYc); x+=sw[i]}); y-=26;
+        bySet(D.X.filter(function(d){return TS.indexOf(d.turma)>=0})).sort(function(a,b){return b[1].length-a[1].length}).forEach(function(g){need(16); var pr=g[1].filter(function(d){return d.presenca&&d.presenca[D.k]}); x=M; T(g[0],x+6,y,9,FB); x+=sw[0];
+          TS.forEach(function(t,i){var a=g[1].filter(function(d){return d.turma===t}); T(a.length?a.filter(function(d){return d.presenca&&d.presenca[D.k]}).length+' de '+a.length:'-',x+6,y,9,F); x+=sw[i+1]});
+          var p=g[1].length?pr.length/g[1].length:0; T(Math.round(p*100)+'%',x+6,y,9,FB,p>=.8?GRN:p>=.5?GOLDc:RED); y-=5; pg.drawRectangle({x:M,y:y,width:W-2*M,height:.5,color:LINEc}); y-=11})}
+      TS.forEach(function(t){var g=D.G[t]; sec('Turno da '+t.toLowerCase()+'  ·  '+g.sim.length+' presentes de '+g.prev.length+' ('+pctTxt(g.sim.length,g.prev.length)+')');
+        [['sim','Compareceram',GRN,g.sim],['nao','Faltaram',RED,g.nao]].forEach(function(b){if(!O[b[0]])return; need(30); pg.drawCircle({x:M+4,y:y+3,size:3.2,color:b[2]}); T(b[1]+' · '+b[3].length,M+12,y,9.5,FB,b[2]); y-=15;
+          if(!b[3].length){para(b[0]==='sim'?'Ninguém marcado como presente.':'Ninguém faltou.',9,F,GREYc,12); y-=4}
+          bySet(b[3]).forEach(function(s){need(28); T(s[0]+' · '+s[1].length,M+12,y,8.8,FB,BLU); y-=13;
+            s[1].forEach(function(d,i){need(13); var j=b[0]==='nao'?jOf(d,D.k):null; T((i+1)+'.',M+16,y,8.6,F,GREYc); T(d.nome,M+32,y,8.6,FB); var nx=M+32+FB.widthOfTextAtSize(pdfTxt(d.nome),8.6)+6;
+              var rest=[d.cargo,b[0]==='nao'?(j&&j.motivo?'Motivo: '+j.motivo:'Sem justificativa'):''].filter(Boolean).join('  ·  '); if(rest){var mw=W-M-nx; var r=pdfTxt(rest); while(r.length>1&&F.widthOfTextAtSize(r,8.2)>mw)r=r.slice(0,-1); T(r,nx,y,8.2,F,GREYc)} y-=12}); y-=4}); y-=4})});
+      if(O.av&&RLCAMPOS.some(function(c){return tx[c[0]]})){sec('Avaliação da facilitadora (leitura qualitativa)'); para('Leitura qualitativa do relatório executivo; não corresponde a uma pontuação padronizada de desempenho.',8.5,F,GREYc); y-=4;
+        RLCAMPOS.forEach(function(c){if(!tx[c[0]])return; need(34); T(c[1],M,y,10,FB,c[0]==='recs'?GRN:NAVYc); y-=14;
+          if(c[0]==='recs')String(tx.recs).split(/\n+/).filter(Boolean).forEach(function(r){var ls=wrap(r,F,9.3,W-2*M-14); ls.forEach(function(l,i){need(13); if(!i)T('•',M+3,y,9.3,FB,GRN); T(l,M+14,y,9.3,F); y-=13})});
+          else para(tx[c[0]],9.3); y-=8})}
+      var bytes=await doc.save(); await saveFile('Conexao_Lider_Relatorio_Encontro_'+D.enc.n+'_'+new Date().toLocaleDateString('en-CA')+'.pdf',bytes)}
+    catch(e){console.error(e); say('Não foi possível gerar o PDF.',true)} finally{bt.disabled=false}});
+
   async function presPDF(tipo){var D=presData(), G=tipo==='sim'?D.gsim:D.gnao, N=tipo==='sim'?D.sim.length:D.nao.length;
     if(!N){say(tipo==='sim'?'Ninguém marcado como presente neste encontro.':'Ninguém faltou neste encontro.',true); return}
     var bt=$(tipo==='sim'?'pr-pdf-sim':'pr-pdf-nao'); bt.disabled=true;
@@ -1647,15 +1877,16 @@ details.more[open] summary{margin-bottom:14px}
   function map(snap){var o={}; snap.docs.forEach(function(s){o[s.id]=s.data()}); return o}
   function fail(){say('Não foi possível carregar parte dos dados. Recarregue a página.',true)}
   db.collection('fichas').orderBy('nome').limit(500).onSnapshot(function(snap){
-    S.fichas=snap.docs.map(function(s){var d=Object.assign({},s.data()); d.id=s.id; return d}); renderGeral(); renderFichas(); renderPsi(); renderPres(); if(S.isRH)renderVisitas()},fail);
+    S.fichas=snap.docs.map(function(s){var d=Object.assign({},s.data()); d.id=s.id; return d}); renderGeral(); renderFichas(); renderPsi(); renderPres(); renderRel(); if(S.isRH)renderVisitas()},fail);
+  db.collection('relatorios').onSnapshot(function(s){S.rel=map(s); if(!rlEdit)renderRel()},fail);
   db.collection('colaboradores').onSnapshot(function(snap){var b={}, meta=null, n=0;
     snap.docs.forEach(function(d){var x=d.data(); if(d.id==='meta'){meta=x;return} n++; (x.linhas||[]).forEach(function(l){var r=String(l).split('\u001f'); b[matKey(r[0])]=r})});
     S.base=b; S.baseMeta=meta; S.baseParts=n; renderBaseInfo(); if($('f-mat').value.trim())lookupMat()},fail);
   db.collection('termometro').onSnapshot(function(s){S.termo=map(s); renderTermo()},fail);
   db.collection('indicadores').onSnapshot(function(s){S.ind=map(s); fillStatic()},fail);
-  db.collection('justificativas').limit(1000).onSnapshot(function(s){var m={}; s.docs.forEach(function(x){m[x.id]=x.data()}); S.just=m; var ae=document.activeElement; if(!(ae&&ae.closest&&ae.closest('#js-lista')))renderJust(); else renderJust.pending=true},fail);
+  db.collection('justificativas').limit(1000).onSnapshot(function(s){var m={}; s.docs.forEach(function(x){m[x.id]=x.data()}); S.just=m; renderRel(); var ae=document.activeElement; if(!(ae&&ae.closest&&ae.closest('#js-lista')))renderJust(); else renderJust.pending=true},fail);
   db.collection('acoes').onSnapshot(function(s){S.acoes=map(s); fillStatic()},fail);
-  db.collection('config').onSnapshot(function(s){var m=map(s); S.cfg=m.encontros||{}; S.pend=m.pendencias||{}; S.fechada=!!(m.turma1&&m.turma1.fechada); S.psiNote=(m.psicologa&&m.psicologa.texto)||''; setVal($('ps-note'),S.psiNote); renderPres(); renderFichas(); renderPsi(); renderGeral(); if(S.isRH)renderVisitas(); fillStatic(); renderGeral(); if(S.isRH){renderVisitas(); renderFichas()}},fail);
+  db.collection('config').onSnapshot(function(s){var m=map(s); S.cfg=m.encontros||{}; S.pend=m.pendencias||{}; S.fechada=!!(m.turma1&&m.turma1.fechada); S.psiNote=(m.psicologa&&m.psicologa.texto)||''; setVal($('ps-note'),S.psiNote); renderPres(); renderRel(); renderFichas(); renderPsi(); renderGeral(); if(S.isRH)renderVisitas(); fillStatic(); renderGeral(); if(S.isRH){renderVisitas(); renderFichas()}},fail);
   if(S.isRH){
     db.collection('rhnotas').limit(500).onSnapshot(function(s){S.notas=map(s); renderFichas()},fail);
     db.collection('visitas').limit(1000).onSnapshot(function(snap){S.visitas=snap.docs.map(function(s){var d=Object.assign({},s.data()); d.id=s.id; return d}); renderVisitas(); renderFichas()},fail);
