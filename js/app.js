@@ -13,7 +13,7 @@ const sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_KEY, {
 /* ---------- identidade visual das frentes ---------- */
 const FRENTES = {
   'Quadro e movimentação':         { cor:'#24427c', ic:'pessoas',   desc:'Quadro, admissões, rescisões e experiência' },
-  'Atração e perfil':              { cor:'#1f8a8a', ic:'lupa',      desc:'Recrutamento, seleção e perfil' },
+  'Recrutamento e Seleção':              { cor:'#1f8a8a', ic:'lupa',      desc:'Recrutamento, seleção e perfil' },
   'Frequência e férias':           { cor:'#e9a23b', ic:'calendario',desc:'Absenteísmo, férias e sanções' },
   'Benefícios':                    { cor:'#2e8a57', ic:'presente',  desc:'VA, plano de saúde, odonto e farmácia' },
   'Jovem Aprendiz':                { cor:'#7a4fb5', ic:'capelo',    desc:'Programa Conexão Aprendiz' },
@@ -63,7 +63,7 @@ const GESTOR_MENU = [
   ['Quadro e movimentação', [['eq', 'Equipe'], ['mov', 'Admissões e saídas'], ['pv', 'Quadro x previsto'], ['exp', 'Período de experiência'], ['nov', 'Novos colaboradores']]],
   ['Frequência e férias', [['fer', 'Férias'], ['freq', 'Frequência']]],
   ['Gestão de Ocorrências', [['disc', 'Disciplina e RD']]],
-  ['Atração e perfil', [['perfil', 'Perfil profissional']]],
+  ['Recrutamento e Seleção', [['perfil', 'Perfil profissional']]],
   ['T&D | Pessoas e Desenvolvimento', [['cr', 'Em treinamento']]],
   ['Alojamento e transporte', [['alo', 'Alojamento']]],
   ['Atendimento e escuta', [['env', 'Meus envios ao RH']]] ];
@@ -149,7 +149,7 @@ async function carregarCatalogo(){
   E.paineis = (p.data || []).filter(x => x.id !== 'absenteismo-gestao' && x.id !== 'nr1'); E.paineis.forEach(x => { if (x.id === 'absenteismo') x.nome = String(x.nome || '').replace(/\s*·\s*Controle RH\s*$/i, ''); }); // NR-1 retirado por enquanto (out/2026); os registros continuam guardados // R&S fica dentro do Banco de Currículos; Absenteísmo Gestão foi retirado (fica só o do RH)
   // Recrutamento e Seleção vira painel próprio (com "Em contratação"); o Banco de Currículos sai do menu
   { const cv = E.paineis.find(x => x.id === 'curriculos'), rs = E.paineis.find(x => x.id === 'rs');
-    if (rs) { const alvo = { nome:'Recrutamento e Seleção', frente: cv ? cv.frente : 'Atração e perfil', nivel: cv ? cv.nivel : rs.nivel, ordem: cv ? cv.ordem : rs.ordem };
+    if (rs) { const alvo = { nome:'Recrutamento e Seleção', frente: cv ? cv.frente : 'Recrutamento e Seleção', nivel: cv ? cv.nivel : rs.nivel, ordem: cv ? cv.ordem : rs.ordem };
       const dif = Object.keys(alvo).some(k => rs[k] !== alvo[k]); Object.assign(rs, alvo);
       if (dif && E.perfil && E.perfil.papel === 'admin') sb.from('paineis').update(alvo).eq('id', 'rs').then(() => {}, () => {}); }
     else if (cv && E.perfil && E.perfil.papel === 'admin') { const n = { id:'rs', frente:cv.frente, nome:'Recrutamento e Seleção', nivel:cv.nivel, ordem:cv.ordem };
@@ -161,7 +161,7 @@ async function carregarCatalogo(){
   if (!E.paineis.some(x => x.id === 'risco') && E.perfil && E.perfil.papel === 'admin') { const n = { id:'risco', frente:'Quadro e movimentação', nome:'Risco de saída', nivel:'restrito', ordem:16 };
     sb.from('paineis').insert(n).then(() => {}, () => {}); E.paineis.push(n); }
   // organização do menu (out/2026): frentes renomeadas e painéis que mudaram de lugar; o administrador grava no banco
-  { const REN = { 'Outros controles':'Remuneração e gratificações', 'RH externo':'Alojamento e transporte', 'Atendimento':'Atendimento e escuta', 'Treinamento e liderança':'T&D | Pessoas e Desenvolvimento', 'Ocorrências, risco e jurídico':'Gestão de Ocorrências' };
+  { const REN = { 'Outros controles':'Remuneração e gratificações', 'RH externo':'Alojamento e transporte', 'Atendimento':'Atendimento e escuta', 'Treinamento e liderança':'T&D | Pessoas e Desenvolvimento', 'Ocorrências, risco e jurídico':'Gestão de Ocorrências', 'Atração e perfil':'Recrutamento e Seleção' };
     const MOV = { sancoes:'Gestão de Ocorrências', ouvidorias:'Atendimento e escuta' };
     const mud = [];
     E.paineis.forEach(x => { const nf = MOV[x.id] || REN[x.frente]; if (nf && nf !== x.frente) { x.frente = nf; mud.push(x); } });
@@ -169,7 +169,7 @@ async function carregarCatalogo(){
     // quem tinha acesso a uma frente renomeada continua com acesso (Sanções e Ouvidorias são restritas: só administradores)
     const ajF = L => { if (!Array.isArray(L)) return L; const o = new Set(L.map(f => REN[f] || f)); return [...o]; };
     if (E.perfil && Array.isArray(E.perfil.frentes)) E.perfil.frentes = ajF(E.perfil.frentes);
-    if (E.perfil && E.perfil.papel === 'admin') { try { if (!localStorage.getItem('crv-mig-frentes-2510c')) sb.from('perfis').select('user_id,frentes').then(({ data }) => { (data || []).forEach(u => { const n = ajF(u.frentes || []); if (JSON.stringify(n) !== JSON.stringify(u.frentes || [])) sb.from('perfis').update({ frentes:n }).eq('user_id', u.user_id).then(() => {}, () => {}); }); try { localStorage.setItem('crv-mig-frentes-2510c', '1'); } catch(_){} }, () => {}); } catch(_){} } }
+    if (E.perfil && E.perfil.papel === 'admin') { try { if (!localStorage.getItem('crv-mig-frentes-2510d')) sb.from('perfis').select('user_id,frentes').then(({ data }) => { (data || []).forEach(u => { const n = ajF(u.frentes || []); if (JSON.stringify(n) !== JSON.stringify(u.frentes || [])) sb.from('perfis').update({ frentes:n }).eq('user_id', u.user_id).then(() => {}, () => {}); }); try { localStorage.setItem('crv-mig-frentes-2510d', '1'); } catch(_){} }, () => {}); } catch(_){} } }
   // nome padrão do Jovem Aprendiz (Instituto João Bittar), separado do RENAPSI
   const jv = E.paineis.find(x => x.id === 'jovem');
   if (jv && jv.nome === 'Jovem Aprendiz') {
@@ -795,7 +795,7 @@ async function consultaDetalhe(p){
   return { bloq, proc, sanc, rd, ent };
 }
 function telaConsulta(){
-  moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Atração e perfil</div><h1>Consulta de candidato</h1><div class="ini-data">Pelo CPF ou pelo nome: se já trabalhou em alguma das empresas, se tem bloqueio e o histórico, para a área analisar junto com o currículo</div></div></section>
+  moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Recrutamento e Seleção</div><h1>Consulta de candidato</h1><div class="ini-data">Pelo CPF ou pelo nome: se já trabalhou em alguma das empresas, se tem bloqueio e o histórico, para a área analisar junto com o currículo</div></div></section>
     <div class="fc-busca cartao"><input id="cs-q" type="search" placeholder="CPF (só números ou com pontos) ou nome completo" autocomplete="off" aria-label="CPF ou nome"><div class="fc-sug" id="cs-sug" hidden></div></div>
     <div id="cs-corpo"><div class="cartao vazio"><p>Digite o CPF ou o nome do candidato.</p></div></div>`);
   const q = $('#cs-q'), sug = $('#cs-sug'); let B = null;
@@ -1765,7 +1765,7 @@ function jsValor(v){
 // cores da capa por frente (tons escuros, para o texto branco continuar legível)
 const CAPA = {
   'Quadro e movimentação':         ['#08394a','#137089'],
-  'Atração e perfil':              ['#0a4440','#16807a'],
+  'Recrutamento e Seleção':              ['#0a4440','#16807a'],
   'Frequência e férias':           ['#4a2608','#a0581b'],
   'Jovem Aprendiz':                ['#2a1a57','#5a3fa0'],
   'T&D | Pessoas e Desenvolvimento': ['#561d12','#a3462a'],
