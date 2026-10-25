@@ -1438,7 +1438,8 @@ async function telaModelo(p, cfg, acao){
           if (o.situacao === 'Desligado') { const c = dig(o.cpf); if (c && (!DL[c] || (o.deslig || '') > DL[c][0])) DL[c] = [o.deslig || '', o.cc || '', o.ccd || '', o.setor || '', o.nome || '']; return; }
           P.push([+m, o.nome, o.funcao, o.area, o.vinculo, o.situacao, o.admissao, dig(o.cpf), o.setor, o.gerencia, o.idade || '', o.nasc || '', o.cid || '', o.ccd || '', o.cc || '', o.fx === '' || o.fx == null ? '' : o.fx, o.cel || '']); });
         const rf = String(Q.referencia || ''), ref = /^\d{4}-\d{2}-\d{2}/.test(rf) ? rf.slice(8, 10) + '/' + rf.slice(5, 7) + '/' + rf.slice(0, 4) : rf;
-        const js = JSON.stringify({ P, DL, ref }).replace(/</g, '\\u003c');
+        let DF = null; try { const H = await window.CRV_HIST('dep'); if (Object.keys(H).length > 1) { DF = { ref:H.__ref, c:{} }; Object.entries(H).forEach(([m, L]) => { if (m !== '__ref') L.forEach(d => { if (d[4]) DF.c[d[4]] = [d[0], d[2], +m]; }); }); } } catch(_) {}
+        const js = JSON.stringify({ P, DL, ref, DF }).replace(/</g, '\\u003c');
         tplU = tpl.replace(/<head[^>]*>/i, h => h + '<script>window.CRV_QB=' + js + ';<\/script>'); } } catch(_) {}
     }
     const html = montarModelo(tplU, d.conteudo, d.referencia, p, novos);
@@ -1873,7 +1874,7 @@ async function carregarPacotes(arquivos, esperado){
           st.textContent = 'enviando…';
           try {
             if (i.zip) { const q = await enviarZip(i.f, i.painel, t => st.textContent = t); st.innerHTML = `<span style="color:var(--cane)">✓ ${q} arquivos</span>`; ok++; continue; }
-            if (i.pac.hist) { const n2 = await salvarHistorico(i.pac); st.innerHTML = `<span style="color:var(--cane)">✓ ${n2} pessoas</span>`; ok++; if (i.pac.hist !== 'ferias') setTimeout(() => GESTOR().gerar(true).catch(() => {}), 1500); continue; }
+            if (i.pac.hist) { const n2 = await salvarHistorico(i.pac); st.innerHTML = `<span style="color:var(--cane)">✓ ${n2} pessoas</span>`; ok++; if (i.pac.hist === 'depto' || i.pac.hist === 'cargo') setTimeout(() => GESTOR().gerar(true).catch(() => {}), 1500); continue; }
             if (i.pac.entr) { const n2 = await salvarEntrevistas(i.pac.itens); st.innerHTML = `<span style="color:var(--cane)">✓ ${n2} entrevistas</span>`; ok++; continue; }
             if (i.pac.estab) { const n2 = await salvarEstabilidade(i.pac.itens); st.innerHTML = `<span style="color:var(--cane)">✓ ${n2} de estabilidade</span>`; ok++; continue; }
             await salvarPacote(i.pac, i.f, t => st.textContent = t);

@@ -38,6 +38,8 @@ function detectar(wb, nomeArq){
   if (h.includes('Matricula do Funcionário') && h.includes('EMPRESA') && h.includes('Situação do Funcionário')) return { tipo:'quadro', R };
   // históricos da folha: férias (TFP56T), transferências de departamento (TFP89T) e alterações de cargo (TFP71T)
   if (h.includes('Gozo Inicial') && h.includes('Aquisição Inicial')) return { tipo:'hist', h:'ferias', R };
+  // dependentes cadastrados na folha (PFP0658P: "Dados Cadastrais dos Dependentes")
+  if (R.slice(0, 4).some(r => (r || []).map(s).some(x => /^Dados Cadastrais dos/i.test(x))) && R.some(r => s((r || [])[0]) === 'DEPENDENTES')) return { tipo:'hist', h:'dep', R };
   if (h.includes('Data da Transferência') && h.includes('Novo Departamento')) return { tipo:'hist', h:'depto', R };
   if (h.includes('Data Alteração') && h.includes('Cargo Novo')) return { tipo:'hist', h:'cargo', R };
   // cartões Sysprocard: a linha "Empresa: ... Código: 56906" às vezes não é lida; reconhece também pelo nome da aba e do arquivo
@@ -221,6 +223,15 @@ function converterHist(h, R, mapa, REF){
   const H = R[0].map(s), ix = n => H.findIndex(x => x.startsWith(n)), I = {};
   const get = (r, n) => r[I[n] != null ? I[n] : (I[n] = ix(n))];
   const itens = {}; let lin = 0, ign = 0, fora = 0, anul = 0;
+  if (h === 'dep') { let m = 0, ok = false, modo = '';
+    for (const r of R) { const c = (r || []).map(s);
+      if (/^#/.test(c[0]) && /^\d+$/.test(c[1])) { m = parseInt(c[1], 10); const q = mapa[String(m)]; ok = !!q && mesmoNome(c[2], q.nome); if (!q) fora++; else if (!ok) ign++; modo = ''; if (ok) itens[m] = itens[m] || []; continue; }
+      if (c[0] === 'DEPENDENTES') { modo = 'd'; continue; }
+      if (/^Total/i.test(c[0])) { modo = ''; continue; }
+      if (modo === 'd' && ok && /^\d+$/.test(c[0]) && c[1]) { itens[m].push([sp(c[1]), iso(r[2]), sp(c[3]), c[4], dig(c[8]) ? dig(c[8]).padStart(11, '0') : '']); lin++; } }
+    Object.keys(itens).forEach(k => { if (!itens[k].length) delete itens[k]; });
+    return { tipo:'crv-hist', painel:'quadro', hist:h, referencia:REF, itens, n:{ linhas:lin, pessoas:Object.keys(itens).length, nomeDiferente:ign, foraDoQuadro:fora, anuladas:0 } };
+  }
   for (const r of R.slice(1)) {
     const m = parseInt(num(get(r, 'Funcionário')), 10); if (!m) continue;
     const q = mapa[String(m)];
@@ -249,8 +260,8 @@ async function ler(f){
   const out = [];
   if (det.tipo === 'hist') {
     const Q = await window.CRV_QUADRO(); if (!Q || !Q.mapa) throw new Error('carregue o Quadro Geral antes dos históricos');
-    const pac = converterHist(det.h, det.R, Q.mapa, REF), T = { ferias:'Histórico de férias', depto:'Histórico de departamentos', cargo:'Histórico de funções' }[det.h];
-    out.push({ pac, rotulo:`${T}: ${pac.n.linhas} registros de ${pac.n.pessoas} pessoas` + (pac.n.anuladas ? ` · ${pac.n.anuladas} anuladas fora` : '') + (pac.n.nomeDiferente ? ` · ${pac.n.nomeDiferente} com nome diferente do Quadro (fora)` : '') });
+    const pac = converterHist(det.h, det.R, Q.mapa, REF), T = { ferias:'Histórico de férias', depto:'Histórico de departamentos', cargo:'Histórico de funções', dep:'Dependentes da folha' }[det.h];
+    out.push({ pac, rotulo:`${T}: ${pac.n.linhas} ${det.h === 'dep' ? 'dependentes' : 'registros'} de ${pac.n.pessoas} ${det.h === 'dep' ? 'colaboradores' : 'pessoas'}` + (pac.n.anuladas ? ` · ${pac.n.anuladas} anuladas fora` : '') + (pac.n.nomeDiferente ? ` · ${pac.n.nomeDiferente} com nome diferente do Quadro (fora)` : '') });
     return out;
   }
   if (det.tipo === 'quadro') {

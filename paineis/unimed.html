@@ -492,6 +492,8 @@ dialog#fd::backdrop{background:rgba(8,30,20,.55)}
       <div class="scroll"><div class="xbar" data-x="q"></div><table class="nom"><thead><tr><th class="ck"><input type="checkbox" id="all-q" data-all="q" aria-label="Selecionar todos desta lista"></th><th>Beneficiário cobrado</th><th>Titular</th><th>Tipo</th><th class="num">Valor em <span class="mm"></span></th><th>Observação</th></tr></thead><tbody id="tbQ"></tbody></table></div></div>
     <div class="blk" data-sub="dm"><div class="bh"><h2 id="dmH"></h2><p>Titulares que continuam ativos na lista de beneficiários da Unimed, mas cujo CPF não está entre os ativos e afastados do Quadro atual. A data de desligamento e o centro de custo vêm do Quadro (desligados).</p><span class="q"><b>O que fazer:</b> pedir à Unimed a exclusão do titular e dos dependentes. Enquanto não sai, a mensalidade continua vindo na fatura, sem folha para descontar.</span></div>
       <div class="xbar" data-x="dm"></div><div class="scroll"><table class="nom" id="dmT"></table></div></div>
+    <div class="blk" data-sub="nf"><div class="bh"><h2 id="nfH"></h2><p>Dependentes ativos na Unimed, de titulares que estão no Quadro, cujo CPF não aparece no cadastro de dependentes da folha (relatório de dependentes do sistema).</p><span class="q"><b>O que conferir:</b> se o dependente precisa ser cadastrado na folha ou se não deveria estar no plano.</span></div>
+      <div class="xbar" data-x="nf"></div><div class="scroll"><table class="nom" id="nfT"></table></div></div>
     <div class="blk" data-sub="af"><div class="bh"><h2 id="afH"></h2><p>Coparticipação do titular e dos dependentes de quem está afastado no quadro, mês a mês pelo mês de uso, para o desconto parcelado no retorno. Os relatórios começam no uso de <span id="afIni"></span>: se o afastamento começou antes, pode haver valores anteriores que não aparecem aqui.</p><span class="q"><b>Como usar:</b> marque quem voltou ou vai voltar e exporte para o DP montar o parcelamento.</span></div>
       <div class="xbar" data-x="af"></div><div class="scroll"><table class="nom" id="afT"></table></div></div>
     <div class="blk" data-sub="pd"><div class="bh"><h2 id="pdH"></h2><p>Atendimentos com data depois do desligamento e mensalidades cobradas dois meses ou mais depois da saída, em todos os relatórios enviados. A data de desligamento vem da Base Geral de desligados.</p><span class="q"><b>O que conferir:</b> se a pessoa ficou no plano como ex-empregado, pagando por conta própria, ou se a exclusão na Unimed atrasou.</span></div>
@@ -552,6 +554,8 @@ dialog#fd::backdrop{background:rgba(8,30,20,.55)}
    let emp=0,desc=0;Object.values(FIN).forEach(f=>{emp+=f[0]-f[2];desc+=f[2]+f[1]+f[3]+f[4]});
    EVO.push({k,n:m.lab.n,m:m.lab.m,c:m.lab.c,pend:A.pend,mp:A.mp,cp:A.cp,vp:A.vp,up:A.up,vidas:A.vidas,users:A.users,atend:A.atend,cons:A.cons,emp:r2(emp),desc:r2(desc),fo:r2(F.filter(f=>!f[13]).reduce((s,f)=>s+f[4]+f[5],0)),fs:r2(F.filter(f=>f[13]).reduce((s,f)=>s+f[4]+f[5],0)),est:A.est})});
  DATA.EVO=EVO;const ms=[...new Set(MU)].sort();
+ // dependentes no plano cujo CPF não está no cadastro de dependentes da folha (titular no quadro)
+ if(QB.DF&&QB.DF.c){DATA.NFREF=QB.DF.ref;DATA.NF=DATA.BEN.filter(b=>b[1]!==b[2]&&PC[b[1]]&&b[2]!=='00000000000'&&!QB.DF.c[b[2]]).map(b=>({n:b[3],cpf:fc(b[2]),cod:b[4],ini:b[5],pl:b[0],m:PC[b[1]][0],tn:PC[b[1]][1]})).sort((a,b)=>a.tn.localeCompare(b.tn))}
  // demitidos (ou fora do quadro) que continuam ativos na lista de beneficiários da Unimed: pedir exclusão
  DATA.DEM=DATA.BEN.filter(b=>b[1]===b[2]&&!PC[b[1]]&&!AUT.has(b[1])).map(b=>{const d=DLQ[b[1]],f=FREF[b[1]],dp=BD[b[1]]||[],lm=(DATA.M[last].T||{})[b[1]];
    return {n:b[3],cpf:fc(b[1]),pl:b[0],cod:b[4],ini:b[5],dd:d?d[0]:'',cc:f?f[0]:d&&d[2]?(d[1]?d[1]+' - ':'')+d[2]:'',dep:f?f[1]:d?d[3]:'',deps:dp.map(x=>[x[3],x[4]]),v:1+dp.length,mens:lm?r2(lm[1]+lm[2]):0}}).sort((a,b)=>(a.dd||'9')<(b.dd||'9')?-1:1);
@@ -618,7 +622,7 @@ function geral(){KI=0;
   $('bArea').innerHTML=ar.map(a=>'<button class="cov row btn" data-area="'+esc(a[0])+'" style="grid-template-columns:minmax(110px,26%) minmax(40px,1fr) auto"><span class="n">'+esc(a[0])+'</span><span class="trk"><span class="fill ok" style="width:'+a[2]/a[1]*100+'%"></span></span><span class="v">'+pc(a[2],a[1])+'<i>'+a[2]+' de '+a[1]+(a[1]-a[2]?' · '+(a[1]-a[2])+' sem plano':'')+'</i></span></button>').join('');
 }
 let CF='';const FATN=i=>(i<3?'Mensalidade ':'Coparticipação ')+PLN[i%3],FATS=i=>(i<3?'Mens. ':'Copart. ')+['Local','Nac. Enfermaria','Nac. Apartamento'][i%3],FATV=i=>i<3?A.mp[i]:A.cp[i-3],FATQ=i=>i<3?A.vp[i]:A.up[i-3];
-const SEL={dm:new Set(),e:new Set(),af:new Set(),pd:new Set(),cn:new Set(),r:new Set(),x:new Set(),n:new Set(),d:new Set(),s:new Set(),o:new Set(),u:new Set(),k:new Set(),f:new Set(),q:new Set()};
+const SEL={nf:new Set(),dm:new Set(),e:new Set(),af:new Set(),pd:new Set(),cn:new Set(),r:new Set(),x:new Set(),n:new Set(),d:new Set(),s:new Set(),o:new Set(),u:new Set(),k:new Set(),f:new Set(),q:new Set()};
 const ck=(k,id)=>'<td class="ck"><input type="checkbox" data-ck="'+k+'" value="'+esc(id)+'"'+(SEL[k].has(String(id))?' checked':'')+' aria-label="Selecionar"></td>';
 const nmb=r=>'<button class="nmb" data-f="'+r[MAT]+'">'+esc(r[NOME])+'</button>';
 function rows(){const q=norm(st.q.trim());return P.filter(r=>(!q||r.k.includes(q))&&(!st.tem||(st.tem=='com'?r[PL]>=0:st.tem=='sem'?r[PL]<0:r[DEPS].length>0))&&(st.pl===''||r[PL]==st.pl)&&(!st.ar||r[AREA]==st.ar)&&(!st.cc||cc(r)==st.cc)&&(!st.si||r[SIT]==st.si)).sort((a,b)=>a[NOME].localeCompare(b[NOME]))}
@@ -746,9 +750,9 @@ function custos(){const q=P.map(r=>r[FIN]),emp=q.reduce((s,f)=>s+f[0]-f[2],0),dt
   const za=A.area.filter(a=>a[1]>=10);
   $('zArea').innerHTML=za.map(a=>'<button class="cov row btn" data-dr="ua:'+esc(a[0])+'" style="grid-template-columns:minmax(110px,26%) minmax(40px,1fr) auto"><span class="n">'+esc(a[0])+'</span><span class="trk"><span class="fill ok" style="width:'+a[3]/a[1]*100+'%"></span></span><span class="v">'+pc(a[3],a[1])+'<i>'+a[3]+' de '+nf(a[1])+' vidas · '+brl(a[4])+' · '+brl(a[4]/a[1])+' por vida</i></span></button>').join('');}
   folha()}
-function csub(s){if(s)st.cs=s;if(st.cs=='o'&&!nOrf)st.cs='f';if(!DATA.AFC&&(st.cs=='af'||st.cs=='pd'))st.cs='f';const n={dm:(DATA.DEM||[]).length,o:nOrf,f:FQD.length,q:A.hist?'—':QQ.length,u:NU_.length,af:AFL.length,pd:new Set(PDT.map(x=>x.cpf)).size},l={o:'Dependente sem titular',f:'Desligados com cobrança',q:'Cobrados fora da lista de ativos',u:'Nomes divergentes',af:'Afastados: coparticipação acumulada',pd:'Uso depois do desligamento',dm:'Demitidos ativos no plano'};
-  if(st.cs=='af')afast();if(st.cs=='pd')posdes();if(st.cs=='dm')demat();
-  $('cSub').innerHTML=((DATA.DEM||[]).length?['dm']:[]).concat(nOrf?['o','f','q','u']:['f','q','u']).concat(DATA.AFC?['af','pd']:[]).map(k=>'<button data-sub="'+k+'"'+(k==st.cs?' class="on"':'')+'>'+l[k]+' ('+n[k]+')</button>').join('');
+function csub(s){if(s)st.cs=s;if(st.cs=='o'&&!nOrf)st.cs='f';if(!DATA.AFC&&(st.cs=='af'||st.cs=='pd'))st.cs='f';const n={nf:(DATA.NF||[]).length,dm:(DATA.DEM||[]).length,o:nOrf,f:FQD.length,q:A.hist?'—':QQ.length,u:NU_.length,af:AFL.length,pd:new Set(PDT.map(x=>x.cpf)).size},l={o:'Dependente sem titular',f:'Desligados com cobrança',q:'Cobrados fora da lista de ativos',u:'Nomes divergentes',af:'Afastados: coparticipação acumulada',pd:'Uso depois do desligamento',dm:'Demitidos ativos no plano',nf:'Dependente sem cadastro na folha'};
+  if(st.cs=='af')afast();if(st.cs=='pd')posdes();if(st.cs=='dm')demat();if(st.cs=='nf')semcad();
+  $('cSub').innerHTML=((DATA.DEM||[]).length?['dm']:[]).concat(nOrf?['o','f','q','u']:['f','q','u'],DATA.NF?['nf']:[]).concat(DATA.AFC?['af','pd']:[]).map(k=>'<button data-sub="'+k+'"'+(k==st.cs?' class="on"':'')+'>'+l[k]+' ('+n[k]+')</button>').join('');
   document.querySelectorAll('#tab-c .blk').forEach(b=>b.hidden=b.dataset.sub!=st.cs)}
 function folha(){const R=krows();$('cntK').textContent=nf(R.length)+' colaboradores · '+brl(R.reduce((s,r)=>s+dsc(r),0))+' a descontar';
   [...$('kTem').children].forEach(b=>b.classList.toggle('on',b.dataset.v==st.ktem));
@@ -796,6 +800,12 @@ function afast(){if(!$('afT'))return;const tot=AFL.reduce((s,x)=>s+x.t,0);$('afI
 LEV.af=()=>({t:'Afastados · coparticipação acumulada por mês de uso',f:'Unimed - Afastados coparticipacao acumulada',m:AFM.map((_,i)=>i+6).concat([AFM.length+6]),
   h:['Matrícula','Nome','CPF','Função','Área','Uso por beneficiário'].concat(AFM.map(k=>'Uso '+mlab(k)),['Total']),w:[15,42,24,30,20,60].concat(AFM.map(()=>14),[18]),
   r:AFL.map(x=>[x.r[MAT],x.r[MAT],x.r[NOME],x.r[CPF],x.r[FUN],x.r[AREA],Object.entries(x.a.b).map(b=>b[0]+' '+n2f(b[1])).join('; ')].concat(AFM.map(k=>x.a.v[k]||0),[+x.t.toFixed(2)]))});
+/* Dependentes no plano sem cadastro na folha */
+function semcad(){if(!$('nfT'))return;const L=DATA.NF||[];$('nfH').textContent=L.length+(L.length==1?' dependente':' dependentes')+' no plano sem cadastro na folha'+(DATA.NFREF?' (cadastro de dependentes de '+dbr(DATA.NFREF)+')':'');
+  $('nfT').innerHTML='<thead><tr><th class="ck"><input type="checkbox" data-all="nf" aria-label="Selecionar todos"></th><th>Dependente</th><th>Titular</th><th>Plano</th><th>No plano desde</th></tr></thead><tbody>'
+    +L.map(x=>'<tr>'+ck('nf',x.cod)+'<td data-l="Dependente"><div class="nm">'+esc(x.n)+'</div><div class="sm">CPF '+x.cpf+' · Nº '+x.cod+'</div></td><td data-l="Titular"><button class="nmb" data-f="'+x.m+'">'+esc(x.tn)+'</button><div class="sm">Mat. '+x.m+'</div></td><td data-l="Plano">'+plTag(x.pl)+'</td><td data-l="No plano desde" class="dt">'+dbr(x.ini)+'</td></tr>').join('')+'</tbody>';xbar('nf')}
+LEV.nf=()=>({t:'Dependentes na Unimed sem cadastro na folha',f:'Unimed - Dependentes sem cadastro na folha',h:['Dependente','CPF do dependente','Nº do beneficiário','Titular','Matrícula','Plano','No plano desde'],w:[50,24,30,50,16,24,18],
+  r:(DATA.NF||[]).map(x=>[x.cod,x.n,x.cpf,x.cod,x.tn,x.m,PLN[x.pl],dbr(x.ini)])});
 /* Demitidos ainda ativos na Unimed */
 function demat(){if(!$('dmT'))return;const L=DATA.DEM||[],v=L.reduce((t,x)=>t+x.v,0);$('dmH').textContent=L.length+(L.length==1?' demitido ainda ativo':' demitidos ainda ativos')+' na Unimed · '+v+(v==1?' vida':' vidas');
   $('dmT').innerHTML='<thead><tr><th class="ck"><input type="checkbox" data-all="dm" aria-label="Selecionar todos"></th><th>Titular</th><th>Desligado em</th><th>Plano e nº</th><th>Dependentes ativos</th><th>Onde estava</th><th class="num">Mensalidade '+DATA.M[DATA.MK[DATA.MK.length-1]].lab.m+'</th></tr></thead><tbody>'
@@ -969,7 +979,7 @@ function exportar(k,tipo){const L=pick(k);
     const d=new Date(),nome=L.f.replace(/[\\/:*?"<>|]/g,' ').replace(/\s+/g,' ').slice(0,90)+(L.sel?' (seleção)':'')+' - '+d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+(tipo=='x'?'.xlsx':'.pdf');
     DLH.save({filename:nome,data:buf}).then(()=>toast('Arquivo salvo.'),e=>toast(e&&e.code=='declined'?'Download cancelado.':e&&e.code=='rate_limited'?'Já existe um download aguardando confirmação.':'Não foi possível salvar o arquivo aqui.'))},60)}
 function ccnTxt(){$('kCCn').textContent='Cada titular cobrado com o seu centro de custo, em ordem alfabética, com o total no fim'+(CF===''?' · todas as faturas do mês':' · só a fatura '+FATN(CF))+(SEL.r.size?' · só '+(SEL.r.size==1?'o centro de custo marcado':'os '+SEL.r.size+' centros de custo marcados'):' · todos os centros de custo')+'.';}
-const redraw={dm:()=>demat(),e:()=>evo(),af:()=>afast(),pd:()=>posdes(),r:custos,x:drawDr,n:nominal,d:deps,s:sem,o:conf,u:conf,k:folha,f:cobr,q:cobr};
+const redraw={nf:()=>semcad(),dm:()=>demat(),e:()=>evo(),af:()=>afast(),pd:()=>posdes(),r:custos,x:drawDr,n:nominal,d:deps,s:sem,o:conf,u:conf,k:folha,f:cobr,q:cobr};
 function setMes(k){const m=DATA.M[k];MES=k;FQ=m.F.filter(f=>!f[13]);FS=m.F.filter(f=>f[13]);QQ=m.Q;A=m.A;U=m.U;EV=m.E;PRN=m.PR;MM=m.lab.m;MC=m.lab.c;MN=m.lab.n;
   FQA=FQ.filter(f=>AUT.has(f[1]));FQD=FQ.filter(f=>!AUT.has(f[1]));
   P.forEach(r=>{r[FIN]=m.FIN[r[MAT]]||[0,0,0,0,0,0,0,0]});
