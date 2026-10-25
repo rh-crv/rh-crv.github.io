@@ -148,7 +148,7 @@ async function carregarCatalogo(){
   if (p.error) throw p.error;
   E.paineis = (p.data || []).filter(x => x.id !== 'absenteismo-gestao' && x.id !== 'nr1'); E.paineis.forEach(x => { if (x.id === 'absenteismo') x.nome = String(x.nome || '').replace(/\s*·\s*Controle RH\s*$/i, ''); }); // NR-1 retirado por enquanto (out/2026); os registros continuam guardados // R&S fica dentro do Banco de Currículos; Absenteísmo Gestão foi retirado (fica só o do RH)
   // nomes dos painéis (out/2026, tabela da Scarlatt): o administrador grava no banco
-  { const NOMES = { quadro:'Quadro de Colaboradores', onboarding:'Integração de Colaboradores', rescisoes:'Desligamentos', risco:'Risco de Desligamento', pesquisas:'Pesquisas com Colaboradores', ouvidorias:'Ouvidoria', recepcao:'Atendimento do RH', onibus:'Transporte de Colaboradores', 'servicos-gerais':'Serviços Gerais — Extras e Gratificações' };
+  { const NOMES = { quadro:'Quadro de Colaboradores', onboarding:'Integração de Colaboradores', rescisoes:'Desligamentos', risco:'Risco de Desligamento', pesquisas:'Pesquisas com Colaboradores', sysprocard:'Sysprocard', ouvidorias:'Ouvidoria', recepcao:'Atendimento do RH', onibus:'Transporte de Colaboradores', 'servicos-gerais':'Serviços Gerais — Extras e Gratificações' };
     window.CRV_NOMES = NOMES;
     E.paineis.forEach(x => { const n = NOMES[x.id]; if (n && x.nome !== n) { x.nome = n; if (E.perfil && E.perfil.papel === 'admin') sb.from('paineis').update({ nome:n }).eq('id', x.id).then(() => {}, () => {}); } }); }
   // Recrutamento e Seleção vira painel próprio (com "Em contratação"); o Banco de Currículos sai do menu
