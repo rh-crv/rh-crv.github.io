@@ -901,8 +901,8 @@ async function pendenciasASO(){
     const it = { nome:c.nome, mat:m, det:`${u[2]} em ${brD(u[0])} · próximo ${brD(u[1])} · ${c.setor || ''}` };
     if (u[1] < hj) V.push(Object.assign(it, { ord:u[1] })); else if (u[1] <= ate) P30.push(Object.assign(it, { ord:u[1] })); });
   const out = [];
-  if (V.length) out.push({ id:'aso-venc', sev:'warn', t:'ASO periódico vencido (quem está trabalhando)', d:'Pelo relatório de exames da folha. Afastados não entram aqui: fazem o exame de retorno ao voltar. Pode ser exame feito e não lançado no sistema: confira com o SESMT.', painel:'quadro', pnome:'Quadro Geral', itens:V.sort((a, b) => a.ord.localeCompare(b.ord)) });
-  if (P30.length) out.push({ id:'aso-30', sev:'info', t:'ASO vence nos próximos 30 dias', d:'Agendar o periódico com o SESMT.', painel:'quadro', pnome:'Quadro Geral', itens:P30.sort((a, b) => a.ord.localeCompare(b.ord)) });
+  if (V.length) out.push({ id:'aso-venc', sev:'warn', t:'ASO periódico vencido (quem está trabalhando)', d:'Pelo relatório de exames da folha. Afastados não entram aqui: fazem o exame de retorno ao voltar. Pode ser exame feito e não lançado no sistema: confira com o SESMT.', painel:'quadro', acao:'aso', pnome:'Exames (ASO)', itens:V.sort((a, b) => a.ord.localeCompare(b.ord)) });
+  if (P30.length) out.push({ id:'aso-30', sev:'info', t:'ASO vence nos próximos 30 dias', d:'Agendar o periódico com o SESMT.', painel:'quadro', acao:'aso', pnome:'Exames (ASO)', itens:P30.sort((a, b) => a.ord.localeCompare(b.ord)) });
   return out;
 }
 async function coletarCentral(){
@@ -975,7 +975,7 @@ function blocoFrente(f, lista){
    ===================================================================== */
 // opções que aparecem abaixo do painel no menu (seta)
 const SUBACOES = {
-  quadro:   [{ acao:'hcol', nome:'Histórico do colaborador' }, { acao:'ent', nome:'Entrevista de desligamento' }, { acao:'entr', nome:'Respostas das entrevistas' }, { acao:'estab', nome:'Estabilidade' }],
+  quadro:   [{ acao:'hcol', nome:'Histórico do colaborador' }, { acao:'ent', nome:'Entrevista de desligamento' }, { acao:'entr', nome:'Respostas das entrevistas' }, { acao:'estab', nome:'Estabilidade' }, { acao:'aso', nome:'Exames (ASO)' }],
   admissoes: [{ acao:'vq', nome:'Todas as empresas e anos' }, { acao:'vp', nome:'Acompanhamento 2026' }],
   rescisoes: [{ acao:'vq', nome:'Todas as empresas e anos' }, { acao:'vp', nome:'Acompanhamento 2026' }],
   rs: [{ acao:'ctr', nome:'Em contratação' }],
@@ -1008,6 +1008,7 @@ function executarAcao(acao){
   if (acao === 'ctr' && w && typeof w.CRV_CONTRATACAO === 'function') { fecharJanelasAut(w); w.CRV_CONTRATACAO(); return true; }
   if (acao === 'hcol' && w && typeof w.CRV_HISTCOL === 'function') { fecharJanelasAut(w); w.CRV_HISTCOL(); return true; }
   if (acao === 'estab' && w && typeof w.CRV_ESTAB === 'function') { fecharJanelasAut(w); w.CRV_ESTAB(); return true; }
+  if (acao === 'aso' && w && typeof w.CRV_EXAMES === 'function') { fecharJanelasAut(w); w.CRV_EXAMES(); return true; }
   if (acao === 'entr' && w && typeof w.CRV_ENT_RESP === 'function') { fecharJanelasAut(w); w.CRV_ENT_RESP(); return true; }
   if (acao === 'ent' && w && typeof w.CRV_ENTREVISTA === 'function') { fecharJanelasAut(w); w.CRV_ENTREVISTA(); return true; }
   if (acao === 'termo' && w && typeof w.CRV_TERMO === 'function') { fecharJanelasAut(w); w.CRV_TERMO(); return true; }

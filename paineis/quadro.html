@@ -3098,6 +3098,56 @@ fb.addEventListener('change',()=>setTimeout(resumo,30));resumo();
  };
 })();
 </script>
+<!-- ===== exames ocupacionais (ASO) · relatório TFP39T carregado no app ===== -->
+<style>.ax-k{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;padding:12px 16px}.ax-k button{text-align:left;border:1px solid #e1e5ec;border-left:4px solid var(--c);border-radius:10px;background:#fff;padding:9px 11px;cursor:pointer;font:inherit}.ax-k button.on{background:#f3f6fb;box-shadow:inset 0 0 0 1px var(--c)}.ax-k b{display:block;font-size:22px;color:var(--c)}.ax-k span{font-size:11.5px;font-weight:700;color:#3b4660}.ax-k small{display:block;font-size:11px;color:#6b7590}
+.ax-st{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11.5px;font-weight:700;white-space:nowrap}.ax-st.v{background:#fde8e6;color:#a3301c}.ax-st.a{background:#eef0f5;color:#5d6a85}.ax-st.p{background:#fdf1da;color:#8a5a00}.ax-st.o{background:#e6f4ec;color:#1d5c3a}.ax-st.s{background:#f1eefa;color:#5a4fb0}
+.ax-nm{border:0;background:none;padding:0;font:inherit;font-weight:700;color:#14213d;text-decoration:underline;cursor:pointer;text-align:left}.ax-h td{background:#f8f9fb;font-size:12px}.ax-mini{border:1px solid #d5dbe6;background:#fff;border-radius:7px;padding:3px 8px;font-size:11.5px;cursor:pointer}</style>
+<script>
+(function(){
+ const e=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])),b=s=>s?s.slice(8,10)+'/'+s.slice(5,7)+'/'+s.slice(0,4):'—';
+ const hoje=()=>new Date().toISOString().slice(0,10),dd=a=>Math.round((new Date(a+'T12:00:00')-new Date(hoje()+'T12:00:00'))/864e5);
+ let DB=null;const db=async()=>{if(DB)return DB;try{DB=window.claude&&window.claude.use?await window.claude.use('db'):null}catch(_){DB=null}return DB};
+ const salvar=async(nome,bytes,tipo)=>{try{const DL=window.claude&&window.claude.use?await window.claude.use('downloads'):null;if(DL)return DL.save({filename:nome,data:bytes})}catch(_){}
+   const u=URL.createObjectURL(new Blob([bytes],{type:tipo})),a=document.createElement('a');a.href=u;a.download=nome;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},3000)};
+ const K=[['v','Vencido (trabalhando)','#a3301c','fazer o periódico'],['a','Vencido (afastados)','#5d6a85','exame de retorno ao voltar'],['p30','Vence em até 30 dias','#b7791f','agendar'],['p60','Vence em 31 a 60 dias','#2f6fa8','programar'],['s','Sem exame no histórico','#5a4fb0','conferir com o SESMT'],['o','Em dia','#2e8a57',''],['t','Todos','#14213d','']];
+ window.CRV_EXAMES=async()=>{
+  const w=document.createElement('div');w.className='es-fundo';const S={k:'v',q:'',ar:'',sel:new Set(),ab:''};
+  w.innerHTML=`<div class="es-modal" role="dialog" aria-modal="true" style="max-width:1180px"><div class="es-cab"><h3>Exames ocupacionais (ASO)<small>Último exame de cada colaborador ativo ou afastado e a data do próximo, pelo relatório de exames da folha (TFP39T). Exame demissional não conta como último exame.</small></h3><button class="es-b" id="axXls">Excel</button><button class="es-b" id="axPdf">PDF</button><button class="es-b" id="axX">Fechar</button></div>
+   <div class="ax-k" id="axK"><div style="padding:8px;color:#5d6a85">Carregando…</div></div>
+   <div class="es-tools"><input type="search" id="axQ" placeholder="Buscar nome, matrícula ou função"><select id="axA"><option value="">Todos os setores</option></select><span id="axC" style="margin-left:auto;color:#5d6a85;font-size:12px"></span></div>
+   <div class="es-tab"><table><thead><tr><th><input type="checkbox" id="axAll" aria-label="Selecionar todos"></th><th>Matrícula</th><th>Colaborador</th><th>Setor / seção</th><th>Situação</th><th>Último exame</th><th>Próximo exame</th><th>Prazo</th><th></th></tr></thead><tbody id="axB"></tbody></table></div></div>`;
+  document.body.appendChild(w);const g=id=>w.querySelector('#'+id),fe=()=>w.remove();g('axX').onclick=fe;w.addEventListener('mousedown',ev=>{if(ev.target===w)fe()});
+  const D0=await db();let H={},ref='';
+  if(D0){try{const s=await D0.collection('hist_exame').get();s.docs.forEach(d=>{const x=d.data();if(x&&x.mat){H[String(x.mat)]=x.l||[];ref=ref||x.ref||''}})}catch(_){}}
+  if(!Object.keys(H).length){g('axK').innerHTML='<div style="padding:10px 4px;color:#5d6a85">O relatório de exames ainda não foi carregado no app. Em Administração → Painéis → carregar em lote, escolha a planilha TFP39T do sistema.</div>';return}
+  const P=D.map(r=>{const m=String(r[MAT]),L=(H[m]||[]).slice().sort((a,c)=>c[0].localeCompare(a[0])),u=L.find(x=>!x[3]);let k='o';
+    if(!u)k='s';else if(u[1]&&u[1]<hoje())k=r[SIT]==='Afastado'?'a':'v';else if(u[1]&&dd(u[1])<=30)k='p30';else if(u[1]&&dd(u[1])<=60)k='p60';
+    return {r,m,L,u,k,q:(r[NOME]+' '+m+' '+r[FUN]+' '+(r[DEP]||'')).toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'')}});
+  g('axA').innerHTML+=[...new Set(D.map(r=>r[AREA]))].sort().map(a=>'<option>'+e(a)+'</option>').join('');
+  const lista=()=>{const q=S.q.toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'');return P.filter(x=>(S.k==='t'||x.k===S.k)&&(!S.ar||x.r[AREA]===S.ar)&&(!q||x.q.includes(q))).sort((a,c)=>((a.u&&a.u[1])||'0').localeCompare((c.u&&c.u[1])||'0')||a.r[NOME].localeCompare(c.r[NOME]))};
+  const prazo=x=>!x.u?'<span class="ax-st s">Sem exame</span>':!x.u[1]?'<span class="ax-st a">Sem data</span>':x.k==='v'?'<span class="ax-st v">Vencido há '+(-dd(x.u[1]))+' dias</span>':x.k==='a'?'<span class="ax-st a">Vencido · afastado</span>':x.k==='o'?'<span class="ax-st o">Em dia · '+dd(x.u[1])+' dias</span>':'<span class="ax-st p">Vence em '+dd(x.u[1])+' dias</span>';
+  const draw=()=>{const L=lista(),n=k=>k==='t'?P.length:P.filter(x=>x.k===k).length;
+   g('axK').innerHTML=K.map(([k,t,c,s])=>`<button class="${S.k===k?'on':''}" data-k="${k}" style="--c:${c}"><span>${t}</span><b>${n(k)}</b><small>${s}</small></button>`).join('');
+   g('axC').textContent=L.length+' colaborador(es)'+(S.sel.size?' · '+S.sel.size+' selecionado(s)':'')+(ref?' · relatório de '+b(ref):'');
+   g('axB').innerHTML=L.map(x=>`<tr data-m="${x.m}"><td><input type="checkbox" data-s="${x.m}"${S.sel.has(x.m)?' checked':''}></td><td>${x.m}</td><td><button class="ax-nm" data-f="${x.m}">${e(x.r[NOME])}</button><div style="font-size:11.5px;color:#5d6a85">${e(x.r[FUN])}</div></td><td>${e(x.r[AREA])}<div style="font-size:11.5px;color:#5d6a85">${e(x.r[DEP]||'')}</div></td><td>${e(x.r[SIT])}</td><td>${x.u?e(x.u[2]||'Tipo não informado')+'<div style="font-size:11.5px;color:#5d6a85">'+b(x.u[0])+'</div>':'—'}</td><td>${x.u?b(x.u[1]):'—'}</td><td>${prazo(x)}</td><td>${x.L.length?`<button class="ax-mini" data-h="${x.m}">${S.ab===x.m?'fechar':'histórico ('+x.L.length+')'}</button>`:''}</td></tr>`
+     +(S.ab===x.m?`<tr class="ax-h"><td></td><td colspan="8">${x.L.map(y=>b(y[0])+' · '+e(y[2]||'tipo não informado')+(y[3]?' (demissional)':'')+(y[1]?' · próximo '+b(y[1]):'')).join('<br>')}</td></tr>`:'')).join('')||'<tr><td colspan="9" style="padding:10px;color:#5d6a85">Ninguém aqui.</td></tr>';
+   g('axK').querySelectorAll('[data-k]').forEach(x=>x.onclick=()=>{S.k=x.dataset.k;S.sel.clear();draw()});
+   g('axB').querySelectorAll('[data-s]').forEach(x=>x.onchange=()=>{x.checked?S.sel.add(x.dataset.s):S.sel.delete(x.dataset.s);g('axC').textContent=L.length+' colaborador(es)'+(S.sel.size?' · '+S.sel.size+' selecionado(s)':'')});
+   g('axB').querySelectorAll('[data-h]').forEach(x=>x.onclick=()=>{S.ab=S.ab===x.dataset.h?'':x.dataset.h;draw()});
+   g('axB').querySelectorAll('[data-f]').forEach(x=>x.onclick=()=>{fe();st.fi=+x.dataset.f;st.tab='f';render();window.scrollTo(0,0)});
+   g('axAll').checked=L.length&&L.every(x=>S.sel.has(x.m));g('axAll').onchange=()=>{L.forEach(x=>g('axAll').checked?S.sel.add(x.m):S.sel.delete(x.m));draw()}};
+  g('axQ').oninput=ev=>{S.q=ev.target.value.trim();draw()};g('axA').onchange=ev=>{S.ar=ev.target.value;draw()};
+  const linhas=()=>{const L=lista().filter(x=>!S.sel.size||S.sel.has(x.m));return L.map(x=>({'Matrícula':x.m,'Nome':x.r[NOME],'Função':x.r[FUN],'Setor':x.r[AREA],'Seção':x.r[DEP]||'','Situação':x.r[SIT],'Último exame':x.u?(x.u[2]||'Tipo não informado'):'','Data do último exame':x.u?b(x.u[0]):'','Próximo exame':x.u&&x.u[1]?b(x.u[1]):'','Prazo':prazo(x).replace(/<[^>]+>/g,'')}))};
+  const tit=()=>'Exames ocupacionais (ASO) · '+K.find(k=>k[0]===S.k)[1]+(S.ar?' · '+S.ar:'');
+  g('axXls').onclick=async()=>{const X=window.XLSX||(window.parent&&window.parent.XLSX),L=linhas();if(!X||!L.length)return;const ws=X.utils.json_to_sheet(L);ws['!cols']=Object.keys(L[0]).map(k=>({wch:k==='Nome'||k==='Função'||k==='Seção'?34:16}));const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,'ASO');
+    await salvar(tit().replace(/[\\/:*?"<>|]/g,' ')+' '+b(hoje()).split('/').join('-')+'.xlsx',new Uint8Array(X.write(wb,{bookType:'xlsx',type:'array'})),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')};
+  g('axPdf').onclick=async()=>{const J=(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF),L=linhas();if(!J||!L.length)return;const doc=new J({orientation:'landscape',unit:'mm',format:'a4'});
+    doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text(tit()+' · CRV Industrial',12,14);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text(L.length+' colaborador(es) · relatório de exames de '+b(ref)+' · emitido em '+b(hoje()),12,20);
+    const cols=['Matrícula','Nome','Função','Setor','Situação','Último exame','Data do último exame','Próximo exame','Prazo'];doc.autoTable({startY:24,head:[cols],body:L.map(r=>cols.map(c=>String(r[c]??''))),styles:{fontSize:7.5,cellPadding:1.5},headStyles:{fillColor:[11,58,71]},margin:{left:10,right:10}});
+    const f=window.parent&&window.parent.CRV_PDF_LOGOS;await salvar(tit().replace(/[\\/:*?"<>|]/g,' ')+' '+b(hoje()).split('/').join('-')+'.pdf',new Uint8Array((await (f?f(doc):doc)).output('arraybuffer')),'application/pdf')};
+  draw()};
+})();
+</script>
 </body></html>
 
 <style>
