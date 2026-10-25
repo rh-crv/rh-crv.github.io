@@ -655,7 +655,7 @@ async function fichaDados(mat){
       alerta: s.niv === 'a' ? 'risco alto (' + s.S.join(', ') + ')' : s.niv === 't' ? 'atenção (' + s.S.join(', ') + ')' : '' }); })()); }
   // Trajetória (departamentos e funções) e histórico de férias, vindos dos relatórios da folha
   if (ehRH()) tarefas.push((async () => {
-    const { data } = await sb.from('registros').select('colecao,dados').eq('painel', 'quadro').in('caminho', ['hist_depto/m' + mat, 'hist_cargo/m' + mat, 'hist_ferias/m' + mat, 'hist_dep/m' + mat, 'hist_curso/m' + mat, 'hist_exame/m' + mat, 'hist_afast/m' + mat, 'hist_apos/m' + mat, 'hist_ocor/m' + mat]);
+    const { data } = await sb.from('registros').select('colecao,dados').eq('painel', 'quadro').in('caminho', ['hist_depto/m' + mat, 'hist_cargo/m' + mat, 'hist_ferias/m' + mat, 'hist_dep/m' + mat, 'hist_curso/m' + mat, 'hist_exame/m' + mat, 'hist_afast/m' + mat, 'hist_apos/m' + mat, 'hist_ocor/m' + mat, 'hist_ocor6/c' + mat]);
     const H = {}; (data || []).forEach(x => { H[x.colecao] = x.dados || {}; });
     const T = ((H.hist_depto || {}).l || []).map(x => [x[0], 'Departamento', x[1], x[2]]).concat(((H.hist_cargo || {}).l || []).map(x => [x[0], 'Função', x[1], x[2]])).sort((a, b) => b[0].localeCompare(a[0]));
     const DP = (H.hist_dep || {}).l || [], idd = n => { if (!n) return ''; const a = Math.floor((Date.now() - new Date(n + 'T12:00:00')) / 31557600000); return ' (' + a + ' anos)'; };
@@ -669,12 +669,13 @@ async function fichaDados(mat){
     if (AF.length || AP.length) F.sec.push({ k:'afast', t:'Afastamentos (' + AF.length + ')', ref:(H.hist_afast || H.hist_apos).ref, cab:['Início', 'Retorno', 'Motivo', 'CID', 'Dias'], linhas:AF.map(x => [brD(x[0]), x[1] ? brD(x[1]) : 'segue afastado', x[3] || x[2], x[4] || '—', dAf(x[0], x[1])]),
       resumo:[['Situação', AB ? 'Afastado desde ' + brD(AB[0]) + ' · ' + (AB[3] || AB[2]) : 'Sem afastamento em aberto'], ['Últimos 12 meses', A12.length + (A12.length === 1 ? ' afastamento' : ' afastamentos') + ' · ' + A12.reduce((t, x) => t + dAf(x[0] > c12 ? x[0] : c12, x[1]), 0) + ' dias']].concat(AP.map(x => ['Aposentadoria', (x[2] || 'Benefício não informado') + ' desde ' + brD(x[0]) + (x[3] ? ' · nº ' + x[3] : '')])),
       alerta: AB && /ACID/i.test(AB[3]) ? 'afastado por acidente de trabalho' : '' });
-    const OC = (H.hist_ocor || {}).l || [];
-    if (OC.length) { const TN = { f:'Falta', j:'Falta justificada', s:'Suspensão', m:'Licença-maternidade', p:'Licença-paternidade', o:'Outra ocorrência' }, EP = [];
+    const ocSec = (OC, tit, k, ref, nota) => { if (!OC.length) return; const TN = { f:'Falta', j:'Falta justificada', s:'Suspensão', m:'Licença-maternidade', p:'Licença-paternidade', o:'Outra ocorrência' }, EP = [];
       OC.forEach(x => { const u = EP[EP.length - 1], prox = u && u.t === x[1] && Math.round((new Date(x[0] + 'T12:00:00') - new Date(u.z + 'T12:00:00')) / 864e5) === 1; if (prox) { u.z = x[0]; u.n++; } else EP.push({ a:x[0], z:x[0], t:x[1], n:1, d:x[3] || '' }); });
       const ano = {}; OC.forEach(x => { const y = x[0].slice(0, 4); (ano[y] = ano[y] || { f:0, j:0, s:0 })[x[1]] != null && ano[y][x[1]]++; });
-      F.sec.push({ k:'ocor', t:'Faltas e suspensões (ponto)', ref:H.hist_ocor.ref, cab:['Período', 'Ocorrência', 'Dias'], linhas:EP.reverse().map(e => [brD(e.a) + (e.z !== e.a ? ' a ' + brD(e.z) : ''), e.d || TN[e.t] || e.t, e.n]),
-        resumo:Object.keys(ano).sort().reverse().map(y => [y, ano[y].f + (ano[y].f === 1 ? ' falta' : ' faltas') + ' · ' + ano[y].j + ' justificada' + (ano[y].j === 1 ? '' : 's') + ' · ' + ano[y].s + (ano[y].s === 1 ? ' dia' : ' dias') + ' de suspensão']) }); }
+      F.sec.push({ k, t:tit, ref, nota, cab:['Período', 'Ocorrência', 'Dias'], linhas:EP.reverse().map(e => [brD(e.a) + (e.z !== e.a ? ' a ' + brD(e.z) : ''), e.d || TN[e.t] || e.t, e.n]),
+        resumo:(nota ? [['Origem', nota]] : []).concat(Object.keys(ano).sort().reverse().map(y => [y, ano[y].f + (ano[y].f === 1 ? ' falta' : ' faltas') + ' · ' + ano[y].j + ' justificada' + (ano[y].j === 1 ? '' : 's') + ' · ' + ano[y].s + (ano[y].s === 1 ? ' dia' : ' dias') + ' de suspensão'])) }); }
+    ocSec((H.hist_ocor || {}).l || [], 'Faltas e suspensões (ponto)', 'ocor', (H.hist_ocor || {}).ref);
+    ocSec((H.hist_ocor6 || {}).l || [], 'Faltas e suspensões na APFO (empresa 6)', 'ocor6', (H.hist_ocor6 || {}).ref, 'Histórico da época da APFO' + ((H.hist_ocor6 || {}).de ? ', matrícula ' + H.hist_ocor6.de.join(', ') + ' na APFO' : '') + '. Não entra nos números da CRV.');
     const CU = ((H.hist_curso || {}).l || []).slice().sort((a, b) => b[0].localeCompare(a[0]));
     if (CU.length) F.sec.push({ k:'cursos', t:'Treinamentos realizados (' + CU.length + ')', ref:H.hist_curso.ref, cab:['Data', 'Treinamento'], linhas:CU.map(x => [brD(x[0]) + (x[1] && x[1] !== x[0] ? ' a ' + brD(x[1]) : ''), x[2]]) });
     if (H.hist_dep) F.sec.push({ k:'deps', t:'Dependentes (' + DP.length + ')', ref:H.hist_dep.ref, cab:['Nome', 'Parentesco', 'Nascimento', 'CPF'], linhas:DP.map(d => [d[0], d[2], brD(d[1]) + idd(d[1]), d[4] ? d[4].replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : '—']) });
@@ -1482,7 +1483,8 @@ async function telaModelo(p, cfg, acao){
     if (p.id === 'ferias' && ehRH()) { try { const HF = await window.CRV_HIST('ferias'); if (Object.keys(HF).length > 1) tplU = tplU.replace(/<head[^>]*>/i, h => h + '<script>window.CRV_HF=' + JSON.stringify(HF).replace(/</g, '\\u003c') + ';<\/script>'); } catch(_) {} }
     if (p.id === 'absenteismo' && ehRH()) { try { const HO = await window.CRV_HIST('ocor'), Q = await window.CRV_QUADRO(); if (Q && Q.mapa && Object.keys(HO).length > 1) {
         const P = {}; Object.keys(HO).forEach(m => { if (m === '__ref') return; const o = Q.mapa[m] || {}; P[m] = [o.nome || '', o.funcao || '', o.area || '', o.setor || '', o.gerencia || '', o.situacao || '', o.admissao || '', o.deslig || '']; });
-        tplU = tplU.replace(/<head[^>]*>/i, h => h + '<script>window.CRV_OC=' + JSON.stringify({ ref:HO.__ref, P, L:HO }).replace(/</g, '\\u003c') + ';<\/script>'); } } catch(_) {} }
+        const A6 = { P:{}, L:{}, C:{} }; try { (await window.CRV_REGS('quadro', 'hist_ocor6')).forEach(x => { if (!String(x._id || '').startsWith('a') || !x.mat) return; A6.L[x.mat] = x.l || []; A6.P[x.mat] = x.p || []; if (x.crv) A6.C[x.mat] = x.crv; }); } catch(_) {}
+        tplU = tplU.replace(/<head[^>]*>/i, h => h + '<script>window.CRV_OC=' + JSON.stringify({ ref:HO.__ref, P, L:HO, A6 }).replace(/</g, '\\u003c') + ';<\/script>'); } } catch(_) {} }
     if (['unimed', 'uniodonto'].includes(PAC_DE[p.id] || p.id)) { // Unimed e Uniodonto cruzam com o Quadro atual do app
       try { const Q = await window.CRV_QUADRO(); if (Q && Q.mapa) {
         const dig = v => String(v || '').replace(/\D/g, ''), P = [], DL = {};
@@ -1854,17 +1856,21 @@ async function lerPacote(f){
 
 // respostas das entrevistas de desligamento (tabuladas): entram como registros do Quadro; não substituem o que já foi lançado ou corrigido no app
 /* históricos da folha (férias, departamentos, funções): um registro por pessoa, substitui o anterior */
-let _ocorMem = null;
+let _ocorMem = {};
 async function salvarHistorico(pac){
   const quem = E.perfil ? E.perfil.nome : '', col = 'hist_' + pac.hist;
   if (pac.faixa !== undefined) { // ocorrências do ponto: cada arquivo cobre um período; troca só os lançamentos desse período e mantém os outros
-    if (!pac.faixa) return 0; const [a, z] = pac.faixa;
-    if (!_ocorMem) { _ocorMem = {}; (await window.CRV_REGS('quadro', col)).forEach(x => { if (x.mat) _ocorMem[String(x.mat)] = x.l || []; }); }
-    const mud = {};
-    Object.keys(_ocorMem).forEach(m => { if (_ocorMem[m].some(x => x[0] >= a && x[0] <= z) || pac.itens[m]) mud[m] = 1; }); Object.keys(pac.itens).forEach(m => mud[m] = 1);
-    Object.keys(mud).forEach(m => { _ocorMem[m] = (_ocorMem[m] || []).filter(x => x[0] < a || x[0] > z).concat(pac.itens[m] || []).sort((x, y) => x[0].localeCompare(y[0])); });
-    const linhas = Object.keys(mud).map(m => ({ painel:'quadro', caminho:col + '/m' + m, colecao:col, doc_id:'m' + m, dados:{ mat:m, l:_ocorMem[m], ref:pac.referencia }, atualizado_por:quem }));
-    for (let i = 0; i < linhas.length; i += 200) { const { error } = await sb.from('registros').upsert(linhas.slice(i, i + 200), { onConflict:'painel,caminho' }); if (error) { _ocorMem = null; throw error; } }
+    if (!pac.faixa) return 0; const [a, z] = pac.faixa, pre = pac.docPre || 'm', X = pac.extra || {};
+    if (!_ocorMem[col]) { const M = {}; (await window.CRV_REGS('quadro', col)).forEach(x => { if (x.mat && String(x._id || '').startsWith(pre)) M[String(x.mat)] = { l:x.l || [], p:x.p, crv:x.crv }; }); _ocorMem[col] = M; }
+    const MEM = _ocorMem[col], mud = {};
+    Object.keys(MEM).forEach(m => { if (MEM[m].l.some(x => x[0] >= a && x[0] <= z)) mud[m] = 1; }); Object.keys(pac.itens).forEach(m => mud[m] = 1);
+    Object.keys(mud).forEach(m => { const o = MEM[m] || (MEM[m] = { l:[] }); o.l = o.l.filter(x => x[0] < a || x[0] > z).concat(pac.itens[m] || []).sort((x, y) => x[0].localeCompare(y[0])); if (X[m]) { o.p = X[m].p; o.crv = X[m].crv; } });
+    const doc = (id, dados) => ({ painel:'quadro', caminho:col + '/' + id, colecao:col, doc_id:id, dados:Object.assign({ ref:pac.referencia }, dados), atualizado_por:quem });
+    const linhas = Object.keys(mud).map(m => doc(pre + m, { mat:m, l:MEM[m].l, p:MEM[m].p, crv:MEM[m].crv }));
+    // APFO: cópia na matrícula atual da CRV, para aparecer na ficha de quem foi transferido
+    if (pre !== 'm') { const cs = new Set(Object.keys(mud).map(m => MEM[m].crv).filter(Boolean));
+      cs.forEach(c => { const de = Object.keys(MEM).filter(m => MEM[m].crv === c); linhas.push(doc('c' + c, { mat:c, crv:c, de, l:[].concat(...de.map(m => MEM[m].l)).sort((x, y) => x[0].localeCompare(y[0])) })); }); }
+    for (let i = 0; i < linhas.length; i += 200) { const { error } = await sb.from('registros').upsert(linhas.slice(i, i + 200), { onConflict:'painel,caminho' }); if (error) { delete _ocorMem[col]; throw error; } }
     _histCache = {}; return Object.keys(pac.itens).length;
   }
   const linhas = Object.entries(pac.itens).map(([m, l]) => ({ painel:'quadro', caminho:col + '/m' + m, colecao:col, doc_id:'m' + m, dados:{ mat:m, l, ref:pac.referencia }, atualizado_por:quem }));
