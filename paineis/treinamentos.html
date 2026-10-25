@@ -453,6 +453,8 @@ if(DATA.ano===2026&&Array.isArray(DATA.metas)&&DATA.metas.length>4)DATA.metas[4]
 if(DATA.ano===2026&&Array.isArray(DATA.metas)&&DATA.metas.length>5)DATA.metas[5]=250;
 /* meta revisada pela gestão: julho/2026 passa para 300 treinamentos */
 if(DATA.ano===2026&&Array.isArray(DATA.metas)&&DATA.metas.length>6)DATA.metas[6]=300;
+/* meta revisada pela gestão: agosto/2026 passa para 240 treinamentos */
+if(DATA.ano===2026&&Array.isArray(DATA.metas)&&DATA.metas.length>7)DATA.metas[7]=240;
 window.CRV_HORAS=v=>{const t=String(v==null?'':v).trim().toLowerCase().replace(/\s+/g,'');if(!t)return NaN;let m;
   if((m=t.match(/^(\d+):(\d{1,2})$/)))return +m[1]+(+m[2])/60;
   if((m=t.match(/^(\d+)h(\d{1,2})?(min)?$/)))return +m[1]+(+(m[2]||0))/60;
