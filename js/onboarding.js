@@ -87,10 +87,10 @@ async function pendencias(){
   const D = await dados(100); if (!D) return [];
   const out = [];
   const atr = D.L.filter(x => x.mk.includes('atr'));
-  if (atr.length) out.push({ id:'onb-conv', sev:'warn', t:'Conversas de acompanhamento atrasadas (30, 60 ou 90 dias)', painel:'onboarding', pnome:'Onboarding', d:'Conversa do RH com quem acabou de entrar; não substitui a avaliação de experiência da área.',
+  if (atr.length) out.push({ id:'onb-conv', sev:'warn', t:'Conversas de acompanhamento atrasadas (30, 60 ou 90 dias)', painel:'onboarding', pnome:'Integração de Colaboradores', d:'Conversa do RH com quem acabou de entrar; não substitui a avaliação de experiência da área.',
     itens: atr.map(x => ({ nome:x.nome, mat:x.mat, det:`${x.casa} dias de casa · falta a conversa de ${MARCOS.filter((k, i) => x.mk[i] === 'atr').join(', ')} dias` })) });
   const ck = D.L.filter(x => x.cobra && x.casa > 15 && x.falta.length);
-  if (ck.length) out.push({ id:'onb-check', sev:'info', t:'Checklist de admissão incompleto há mais de 15 dias', painel:'onboarding', pnome:'Onboarding', d:'',
+  if (ck.length) out.push({ id:'onb-check', sev:'info', t:'Checklist de admissão incompleto há mais de 15 dias', painel:'onboarding', pnome:'Integração de Colaboradores', d:'',
     itens: ck.map(x => ({ nome:x.nome, mat:x.mat, det:`admitido em ${brD(x.adm)} · falta: ${x.falta.map(id => (D.itens.find(i => i.id === id) || {}).nome).filter(Boolean).join(', ')}` })) });
   return out;
 }
@@ -100,7 +100,7 @@ async function tela(p){
   let aba = 'lista', D = null;
   const F = { q:'', area:'', dias:120, so:'' };
   moldura(`<div class="trilha"><button data-ir="#/">Início</button> › <span>${esc(p.frente)}</span> › <b>${esc(p.nome)}</b></div>
-    <section class="ini-topo capa" style="${(c => c ? '--c1:' + c[0] + ';--c2:' + c[1] : '')((window.CRV_CAPA || {})[p.frente])}"><div><div class="ini-eyebrow">${esc(p.frente)}</div><h1>Onboarding</h1><div class="ini-data">Quem acabou de entrar: checklist de admissão, conversas do RH aos 30, 60 e 90 dias e retenção</div></div>
+    <section class="ini-topo capa" style="${(c => c ? '--c1:' + c[0] + ';--c2:' + c[1] : '')((window.CRV_CAPA || {})[p.frente])}"><div><div class="ini-eyebrow">${esc(p.frente)}</div><h1>Integração de Colaboradores</h1><div class="ini-data">Quem acabou de entrar: checklist de admissão, conversas do RH aos 30, 60 e 90 dias e retenção</div></div>
       <div class="dk-acoes"><button class="btn borda" id="ob-xls">Excel</button><button class="btn borda" id="ob-pdf">PDF</button></div></section>
     <nav class="vista-seg" id="ob-abas"><button data-a="lista" class="on">Acompanhamento</button><button data-a="ret">Retenção aos 90 dias</button>${E.perfil.papel === 'admin' ? '<button data-a="itens">Itens do checklist</button>' : ''}</nav>
     <div id="ob-corpo"><div class="cartao vazio"><div class="spinner" style="margin:0 auto"></div></div></div>`);
@@ -132,7 +132,7 @@ async function tela(p){
         return `<article class="dk-p ob-p ${x.mk.includes('atr') ? 'atr' : !x.falta.length && !x.mk.includes('pend') ? 'feito' : ''}">
           <div class="dk-quem"><b><a class="cd-fl" href="#/ficha/${esc(x.mat)}">${esc(x.nome)}</a></b><span>${esc(x.mat)} · ${esc(x.funcao)}</span><span>${esc([x.area, x.setor].filter(Boolean).join(' · '))}</span>
             <span class="dk-dt">Admitido em <b>${esc(brD(x.adm))}</b> · ${x.casa} dias · ${esc(x.vinculo || '')}${x.situacao !== 'Ativo' ? ' · ' + esc(x.situacao) : ''}</span>
-            ${rs ? `<span class="rs-niv ${rs.niv}" title="${esc(rs.S.join(', '))}" style="align-self:flex-start;margin-top:4px">Risco de saída: ${rs.niv === 'a' ? 'alto' : 'atenção'}</span>` : ''}</div>
+            ${rs ? `<span class="rs-niv ${rs.niv}" title="${esc(rs.S.join(', '))}" style="align-self:flex-start;margin-top:4px">Risco de desligamento: ${rs.niv === 'a' ? 'alto' : 'atenção'}</span>` : ''}</div>
           <div class="ob-dir">
             <div class="ob-ck">${D.itens.map(i => { const ok = x.ok[i.id], dica = (D.H[x.mat] || {})[i.id];
               return `<button class="ob-i ${ok ? 'ok' : ''}" ${pode ? '' : 'disabled'} data-ck="${esc(x.mat)}|${esc(i.id)}" title="${esc(ok ? 'Feito em ' + brD(ok.em) + (ok.por ? ' por ' + ok.por : '') : dica || 'Marcar como feito')}"><i>${ok ? '✓' : ''}</i>${esc(i.nome)}${dica && !ok ? '<em>•</em>' : ''}</button>`; }).join('')}</div>
@@ -218,13 +218,13 @@ async function tela(p){
   const linhas = () => filtrar().map(x => [x.nome, x.mat, x.funcao, x.area || '', x.setor || '', brD(x.adm), x.casa, ...D.itens.map(i => x.ok[i.id] ? 'Feito ' + brD(x.ok[i.id].em) : 'Pendente'),
     ...MARCOS.map((k, j) => { const cv = x.conv.find(v => +v.marco === k); return cv ? (COMO[cv.como] || 'Feita') + ' (' + brD(cv.data) + ')' : MKT[x.mk[j]]; }), D.RS[x.mat] ? (D.RS[x.mat].niv === 'a' ? 'Alto' : 'Atenção') : '']);
   const linhasRet = () => D.RET.map(o => [mesNome(o.mes), o.adm.length, o.sai.length, (100 - pct(o.sai.length, o.adm.length)) + '%', o.fechado ? '' : 'em andamento']);
-  const nome = 'Onboarding ' + new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
+  const nome = 'Integracao ' + new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
   $('#ob-xls').onclick = () => { if (!D) return; const wb = XLSX.utils.book_new();
     const a = XLSX.utils.aoa_to_sheet([cab(), ...linhas()]); a['!cols'] = cab().map((c, i) => ({ wch: i === 0 ? 34 : 16 })); XLSX.utils.book_append_sheet(wb, a, 'Acompanhamento');
     const r = XLSX.utils.aoa_to_sheet([['Mês de admissão', 'Admitidos', 'Saíram com até 90 dias', 'Retenção aos 90 dias', ''], ...linhasRet()]); r['!cols'] = [{ wch:18 }, { wch:12 }, { wch:24 }, { wch:22 }, { wch:16 }]; XLSX.utils.book_append_sheet(wb, r, 'Retenção 90 dias');
     baixar(new Blob([XLSX.write(wb, { bookType:'xlsx', type:'array' })], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), nome + '.xlsx'); };
   $('#ob-pdf').onclick = () => { if (!D) return; const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit:'pt', format:'a4', orientation:'landscape' });
-    cabecalhoPDF(doc, 'Onboarding', `${filtrar().length} admitidos · últimos ${F.dias} dias`);
+    cabecalhoPDF(doc, 'Integração de Colaboradores', `${filtrar().length} admitidos · últimos ${F.dias} dias`);
     const c0 = ['Colaborador', 'Função', 'Área', 'Admissão', 'Dias', 'Checklist pendente', '30 dias', '60 dias', '90 dias'];
     const L = filtrar().map(x => [x.nome, x.funcao, x.area || '', brD(x.adm), String(x.casa), x.falta.map(nomeItem).join(', ') || 'Completo', ...MARCOS.map((k, j) => { const cv = x.conv.find(v => +v.marco === k); return cv ? (COMO[cv.como] || 'Feita') : MKT[x.mk[j]]; })]);
     doc.autoTable({ startY:104, head:[c0], body:L, margin:{ left:30, right:30 }, styles:{ fontSize:7, cellPadding:2.5, overflow:'linebreak' }, headStyles:{ fillColor:[36,66,124] }, alternateRowStyles:{ fillColor:[244,246,250] } });

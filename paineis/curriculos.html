@@ -527,7 +527,7 @@ table.tb{border-collapse:collapse;width:100%;font-size:.88rem;min-width:640px}
     <section class="kpis" id="rsKpis" aria-label="Resumo do recrutamento"></section>
     <p class="brief" id="rsBrief"></p>
 
-    <section class="panel" id="rsContrat" style="margin-bottom:18px"><div class="panel-h"><h2>Em contratação</h2><span class="hint">Fichas de contratação em andamento, com ou sem currículo no banco. Clique para abrir.</span></div><div id="rsContratB"><p class="hint">Carregando…</p></div></section>
+    <section class="panel" id="rsContrat" style="margin-bottom:18px"><div class="panel-h"><h2>Contratações em Andamento</h2><span class="hint">Fichas de contratação em andamento, com ou sem currículo no banco. Clique para abrir.</span></div><div id="rsContratB"><p class="hint">Carregando…</p></div></section>
 
     <section class="grid2" aria-label="Andamento">
       <div class="panel">
@@ -2834,7 +2834,7 @@ async function bloco(){const B=document.getElementById('rsContratB');if(!B)retur
 setTimeout(bloco,400);
 /* botão no topo do painel */
 function botao(){const a=document.querySelector('.top-actions');if(!a||document.getElementById('btnContrat'))return;const b=document.createElement('button');b.className='btn cta';b.id='btnContrat';b.type='button';
-  b.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg>Em contratação';b.onclick=abrir;a.prepend(b)}
+  b.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg>Contratações em Andamento';b.onclick=abrir;a.prepend(b)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',botao);else botao();
 })();
 </script>

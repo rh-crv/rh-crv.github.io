@@ -79,7 +79,7 @@ async function pendencias(){
   const lim = addD(new Date().toISOString().slice(0, 10), -30);
   const L = D.L.filter(x => x.niv === 'a' && !(x.conv && x.conv.data >= lim));
   if (!L.length) return [];
-  return [{ id:'risco-alto', sev:'warn', t:'Risco alto de saída sem conversa recente', painel:'risco', pnome:'Risco de saída', d:'Faltas recentes e pouco tempo de casa. Uma conversa agora pode evitar a saída.',
+  return [{ id:'risco-alto', sev:'warn', t:'Risco alto de desligamento sem conversa recente', painel:'risco', pnome:'Risco de Desligamento', d:'Faltas recentes e pouco tempo de casa. Uma conversa agora pode evitar a saída.',
     itens:L.map(x => ({ nome:x.nome, mat:x.mat, det:`${x.area || ''} · ${x.S.join(', ')}` })) }];
 }
 
@@ -166,11 +166,11 @@ async function tela(p, cfg){
   const cab = ['Colaborador', 'Matrícula', 'Função', 'Área', 'Seção', 'Vínculo', 'Nível', 'Sinais', 'Faltas 90d', 'Dias de atestado 90d', 'Dias de casa', 'Última conversa'];
   const nome = 'Risco de saida ' + new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
   $('#rs-xls').onclick = () => { if (!D || !D.L) return; const ws = XLSX.utils.aoa_to_sheet([cab, ...linhas()]); ws['!cols'] = cab.map((c, i) => ({ wch: i === 0 ? 34 : i === 7 ? 44 : 14 }));
-    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Risco de saída');
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Risco de Desligamento');
     const t = XLSX.utils.aoa_to_sheet([['Sinal nos 90 dias antes', 'Quem saiu (%)', 'Pedido de demissão (%)', 'Ativos hoje (%)'], ...D.T.linhas, [], [fonte]]); t['!cols'] = [{ wch:40 }, { wch:16 }, { wch:22 }, { wch:16 }]; XLSX.utils.book_append_sheet(wb, t, 'Teste do critério');
     baixar(new Blob([XLSX.write(wb, { bookType:'xlsx', type:'array' })], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), nome + '.xlsx'); };
   $('#rs-pdf').onclick = () => { if (!D || !D.L) return; const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit:'pt', format:'a4', orientation:'landscape' });
-    cabecalhoPDF(doc, 'Risco de saída', `${filtrar().length} colaboradores · uso interno do RH`);
+    cabecalhoPDF(doc, 'Risco de Desligamento', `${filtrar().length} colaboradores · uso interno do RH`);
     doc.setFontSize(8.5); doc.setTextColor(60, 70, 90); doc.text(doc.splitTextToSize(fonte + ' O alerta aponta com quem conversar; não serve para decidir medidas sobre a pessoa.', 780), 30, 104);
     doc.autoTable({ startY:124, head:[cab], body:linhas().map(l => l.map(String)), margin:{ left:30, right:30 }, styles:{ fontSize:7, cellPadding:2.5, overflow:'linebreak' }, headStyles:{ fillColor:[36,66,124] }, alternateRowStyles:{ fillColor:[244,246,250] } });
     rodapePDF(doc); baixar(doc.output('blob'), nome + '.pdf'); };

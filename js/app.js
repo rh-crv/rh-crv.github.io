@@ -147,6 +147,10 @@ async function carregarCatalogo(){
   ]);
   if (p.error) throw p.error;
   E.paineis = (p.data || []).filter(x => x.id !== 'absenteismo-gestao' && x.id !== 'nr1'); E.paineis.forEach(x => { if (x.id === 'absenteismo') x.nome = String(x.nome || '').replace(/\s*·\s*Controle RH\s*$/i, ''); }); // NR-1 retirado por enquanto (out/2026); os registros continuam guardados // R&S fica dentro do Banco de Currículos; Absenteísmo Gestão foi retirado (fica só o do RH)
+  // nomes dos painéis (out/2026, tabela da Scarlatt): o administrador grava no banco
+  { const NOMES = { quadro:'Quadro de Colaboradores', onboarding:'Integração de Colaboradores', rescisoes:'Desligamentos', risco:'Risco de Desligamento', pesquisas:'Pesquisas com Colaboradores', ouvidorias:'Ouvidoria', recepcao:'Atendimento do RH', onibus:'Transporte de Colaboradores', 'servicos-gerais':'Serviços Gerais — Extras e Gratificações' };
+    window.CRV_NOMES = NOMES;
+    E.paineis.forEach(x => { const n = NOMES[x.id]; if (n && x.nome !== n) { x.nome = n; if (E.perfil && E.perfil.papel === 'admin') sb.from('paineis').update({ nome:n }).eq('id', x.id).then(() => {}, () => {}); } }); }
   // Recrutamento e Seleção vira painel próprio (com "Em contratação"); o Banco de Currículos sai do menu
   { const cv = E.paineis.find(x => x.id === 'curriculos'), rs = E.paineis.find(x => x.id === 'rs');
     if (rs) { const alvo = { nome:'Recrutamento e Seleção', frente: cv ? cv.frente : 'Seleção e Perfil Profissional', nivel: cv ? cv.nivel : rs.nivel, ordem: cv ? cv.ordem : rs.ordem };
@@ -155,10 +159,10 @@ async function carregarCatalogo(){
     else if (cv && E.perfil && E.perfil.papel === 'admin') { const n = { id:'rs', frente:cv.frente, nome:'Recrutamento e Seleção', nivel:cv.nivel, ordem:cv.ordem };
       sb.from('paineis').insert(n).then(() => {}, () => {}); E.paineis.push(n); } }
   // Onboarding (integração de novos): painel do app, a partir das admissões do Quadro
-  if (!E.paineis.some(x => x.id === 'onboarding') && E.perfil && E.perfil.papel === 'admin') { const n = { id:'onboarding', frente:'Gestão de Colaboradores', nome:'Onboarding', nivel:'controlado', ordem:12 };
+  if (!E.paineis.some(x => x.id === 'onboarding') && E.perfil && E.perfil.papel === 'admin') { const n = { id:'onboarding', frente:'Gestão de Colaboradores', nome:'Integração de Colaboradores', nivel:'controlado', ordem:12 };
     sb.from('paineis').insert(n).then(() => {}, () => {}); E.paineis.push(n); }
   // Risco de saída: painel do app, calculado a partir do Quadro; restrito
-  if (!E.paineis.some(x => x.id === 'risco') && E.perfil && E.perfil.papel === 'admin') { const n = { id:'risco', frente:'Gestão de Colaboradores', nome:'Risco de saída', nivel:'restrito', ordem:16 };
+  if (!E.paineis.some(x => x.id === 'risco') && E.perfil && E.perfil.papel === 'admin') { const n = { id:'risco', frente:'Gestão de Colaboradores', nome:'Risco de Desligamento', nivel:'restrito', ordem:16 };
     sb.from('paineis').insert(n).then(() => {}, () => {}); E.paineis.push(n); }
   // organização do menu (out/2026): frentes renomeadas e painéis que mudaram de lugar; o administrador grava no banco
   { const REN = { 'Outros controles':'Horas Extras e Gratificações', 'RH externo':'Alojamentos e Transporte', 'Atendimento':'Atendimento e Ouvidoria', 'Treinamento e liderança':'T&D | Desenvolvimento de Pessoas', 'Ocorrências, risco e jurídico':'Ocorrências e Relações Trabalhistas', 'Atração e perfil':'Seleção e Perfil Profissional', 'Quadro e movimentação':'Gestão de Colaboradores', 'Recrutamento e Seleção':'Seleção e Perfil Profissional', 'Frequência e férias':'Absenteísmo e Férias', 'Benefícios':'Gestão de Benefícios', 'Jovem Aprendiz':'Programa Jovem Aprendiz', 'T&D | Pessoas e Desenvolvimento':'T&D | Desenvolvimento de Pessoas', 'Gestão de Ocorrências':'Ocorrências e Relações Trabalhistas', 'Atendimento e escuta':'Atendimento e Ouvidoria', 'Alojamento e transporte':'Alojamentos e Transporte', 'Remuneração e gratificações':'Horas Extras e Gratificações' };
@@ -184,12 +188,12 @@ async function carregarCatalogo(){
     { id:'cartao-convenio',    frente:'Gestão de Benefícios', nome:'Cartão Convênio',    nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.2 },
     { id:'cartao-premium',     frente:'Gestão de Benefícios', nome:'Cartão Premium',     nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.3 },
     { id:'cartao-adm',         frente:'Gestão de Benefícios', nome:'Cartão Convênio ADM', nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.4 },
-    { id:'servicos-gerais',    frente:'Horas Extras e Gratificações', nome:'Serviços Gerais · Horas extras e gratificação', nivel:'controlado', ordem:90 }
+    { id:'servicos-gerais',    frente:'Horas Extras e Gratificações', nome:'Serviços Gerais — Extras e Gratificações', nivel:'controlado', ordem:90 }
   ].filter(n => !E.paineis.some(x => x.id === n.id));
   if (NOVOS.length && E.perfil && E.perfil.papel === 'admin') {
     await sb.from('paineis').insert(NOVOS.map((n, i) => ({ ...n, ordem: (n.id.startsWith('cartao-') || n.id === 'sysprocard-credito') ? (sp ? sp.ordem : 40) + 1 + i : n.ordem })));
     const r2 = await sb.from('paineis').select('*').order('ordem');
-    if (!r2.error) E.paineis = (r2.data || []).filter(x => x.id !== 'absenteismo-gestao'); E.paineis.forEach(x => { if (x.id === 'absenteismo') x.nome = String(x.nome || '').replace(/\s*·\s*Controle RH\s*$/i, ''); });
+    if (!r2.error) E.paineis = (r2.data || []).filter(x => x.id !== 'absenteismo-gestao'); E.paineis.forEach(x => { if (window.CRV_NOMES && window.CRV_NOMES[x.id]) x.nome = window.CRV_NOMES[x.id]; if (x.id === 'absenteismo') x.nome = String(x.nome || '').replace(/\s*·\s*Controle RH\s*$/i, ''); });
   }
   // os cartões ficam logo abaixo do Sysprocard
   if (sp) { const ix = E.paineis.indexOf(sp); const OC = ['sysprocard-credito','cartao-alimentacao','cartao-convenio','cartao-adm','cartao-premium']; const cs = E.paineis.filter(x => OC.includes(x.id)).sort((a,b) => OC.indexOf(a.id) - OC.indexOf(b.id));
@@ -650,9 +654,9 @@ async function fichaDados(mat){
     const p = (DB.P || []).find(x => fMat(x.mat) === mat || (cpf8 && String(x.c || '').replace(/\D/g, '').slice(-8) === cpf8)); if (!p) return;
     F.sec.push({ k:'proc', t:'Processos trabalhistas', painel:'processos', cab:['Processo', 'Empresa', 'Tipo'], linhas:(p.p || []).map(x => [x[0], x[1], x[2]]), alerta:(p.p || []).length ? (p.p.length === 1 ? '1 processo' : p.p.length + ' processos') : '' });
     if (p.bq) F.bloqueio = p.bq; })());
-  // Risco de saída (só para quem pode ver o painel)
+  // Risco de Desligamento (só para quem pode ver o painel)
   { const pr = E.paineis.find(x => x.id === 'risco'); if (pr && podeVer(pr)) tarefas.push((async () => { const s = await RISCO().daPessoa(mat); if (!s) return;
-    F.sec.push({ k:'risco', t:'Risco de saída', painel:'risco', ref:s.ref, resumo:[['Nível', s.niv === 'a' ? 'Alto' : s.niv === 't' ? 'Atenção' : 'Sem sinal'], ['Faltas em 90 dias', s.fa.length], ['Dias de atestado em 90 dias', s.at.length], ['Última conversa', s.conv ? brD(s.conv.data) + ' · ' + (RISCO().RES[s.conv.res] || '') : '—']],
+    F.sec.push({ k:'risco', t:'Risco de Desligamento', painel:'risco', ref:s.ref, resumo:[['Nível', s.niv === 'a' ? 'Alto' : s.niv === 't' ? 'Atenção' : 'Sem sinal'], ['Faltas em 90 dias', s.fa.length], ['Dias de atestado em 90 dias', s.at.length], ['Última conversa', s.conv ? brD(s.conv.data) + ' · ' + (RISCO().RES[s.conv.res] || '') : '—']],
       alerta: s.niv === 'a' ? 'risco alto (' + s.S.join(', ') + ')' : s.niv === 't' ? 'atenção (' + s.S.join(', ') + ')' : '' }); })()); }
   // Trajetória (departamentos e funções) e histórico de férias, vindos dos relatórios da folha
   if (ehRH()) tarefas.push((async () => {
@@ -998,7 +1002,7 @@ const SUBACOES = {
   quadro:   [{ acao:'hcol', nome:'Histórico do colaborador' }, { acao:'ent', nome:'Entrevista de desligamento' }, { acao:'entr', nome:'Respostas das entrevistas' }, { acao:'estab', nome:'Estabilidade' }, { acao:'aso', nome:'Exames (ASO)' }, { acao:'afast', nome:'Afastamentos' }],
   admissoes: [{ acao:'vq', nome:'Todas as empresas e anos' }, { acao:'vp', nome:'Acompanhamento 2026' }],
   rescisoes: [{ acao:'vq', nome:'Todas as empresas e anos' }, { acao:'vp', nome:'Acompanhamento 2026' }],
-  rs: [{ acao:'ctr', nome:'Em contratação' }],
+  rs: [{ acao:'ctr', nome:'Contratações em Andamento' }],
   jovem:    [{ acao:'novo', nome:'Cadastrar jovem' }, { acao:'dslj', nome:'Registrar desligamento' }, { acao:'atj', nome:'Atestados' }],
   renapsi:  [{ acao:'novo', nome:'Cadastrar jovem' }, { acao:'dslj', nome:'Registrar desligamento' }, { acao:'atj', nome:'Atestados' }],
   sancoes:  [{ acao:'doc', nome:'Emitir advertência / suspensão / orientação' }],
