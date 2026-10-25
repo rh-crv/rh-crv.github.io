@@ -158,12 +158,12 @@ tr.dp{cursor:pointer}tr.dp:hover td{background:var(--soft)}
     <div><h1>Absenteísmo CRV</h1><p id="hsub">Atestados e ocorrências · Unidade Capinópolis · janeiro a setembro de 2026</p></div>
   </div>
   <div class="tabs" role="tablist" id="tabs" hidden>
+    <button class="tab" role="tab" id="tab-h" aria-selected="false" data-v="h" hidden>Histórico (sistema)</button>
     <button class="tab" role="tab" id="tab-g" aria-selected="true" data-v="g">Visão Gestão</button>
     <button class="tab" role="tab" aria-selected="false" data-v="t0">Atestados</button>
     <button class="tab" role="tab" aria-selected="false" data-v="t1">Faltas</button>
     <button class="tab" role="tab" aria-selected="false" data-v="t2">Suspensões</button>
     <button class="tab" role="tab" id="tab-r" aria-selected="false" data-v="r">Nominal · Histórico</button>
-    <button class="tab" role="tab" id="tab-h" aria-selected="false" data-v="h" hidden>Histórico (sistema)</button>
   </div>
 </div></header>
 
@@ -580,7 +580,13 @@ render();
 .hcol .bx{width:100%;max-width:54px;display:flex;flex-direction:column;justify-content:flex-end;border-radius:5px 5px 0 0;overflow:hidden}.hcol:hover .bx{filter:brightness(1.1)}
 .hcol.on .bx{box-shadow:0 0 0 2px var(--cane)}.hcol .tv{font:700 11px var(--body);margin-bottom:3px;white-space:nowrap}
 .hxl{display:grid;gap:8px;font-size:12px;color:var(--muted);text-align:center;margin-top:5px}.hxl b{display:block;color:var(--ink)}
-#hf{flex-direction:column;align-items:stretch;gap:8px}.hrow{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}.hlab{font:700 11.5px var(--body);text-transform:uppercase;letter-spacing:.08em;color:var(--muted);min-width:34px}
+body.vh .cf-wrap,body.vh main .wrap>.filters,body.vh .cf-tool{display:none!important}
+#hf{flex-direction:column;align-items:stretch;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:12px 16px;margin-bottom:16px}
+#hk .kpi::before{content:'';position:absolute;left:0;right:0;top:0;height:4px;background:var(--kc,var(--line))}#hk .kpi{padding-top:18px}#hk .kpi .v{font-size:30px}#hk .kpi .s{line-height:1.35}
+.hsplit{display:flex;height:12px;border-radius:99px;overflow:hidden;margin:10px 0 6px;background:var(--soft)}.hsplit i{display:block;height:100%}
+.hsl{display:flex;justify-content:space-between;font:700 13px var(--body)}
+#view-h .card h2{display:flex;align-items:center;gap:8px}#view-h .card h2::before{content:'';width:4px;height:18px;border-radius:3px;background:var(--cane)}
+#hnb td.num{font-weight:700}#hnb td.n-a{color:var(--s-at)}#hnb td.n-f{color:#b7791f}#hnb td.n-j{color:var(--h-fj)}#hnb td.n-s{color:var(--s-su)}.hrow{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}.hlab{font:700 11.5px var(--body);text-transform:uppercase;letter-spacing:.08em;color:var(--muted);min-width:34px}
 #hk .kpi[data-ht]{cursor:pointer}#hk .kpi[data-ht]:hover,#hk .kpi.on{border-color:var(--bar);box-shadow:inset 0 0 0 1px var(--bar)}
 #hsb tr,#hnb tr.hp{cursor:pointer}#hsb tr:hover td,#hnb tr.hp:hover td{background:var(--soft)}#hsb tr.on td{background:var(--brand-soft)}
 .hep td{background:var(--soft);font-size:12.5px;line-height:1.6}.hsel{font-size:12.5px;color:var(--muted);margin-left:auto}
@@ -621,8 +627,9 @@ render();
    +'<select id="har" aria-label="Setor"><option value="">Todos os setores</option>'+[...new Set(PS.map(x=>x.ar))].sort().map(a=>`<option${a===H.ar?' selected':''}>${esc(a)}</option>`).join('')+'</select>'
    +(H.y||H.mo||H.t||H.ar||H.q||H.cap||H.sit!=='at'?'<button class="chip" data-hclr="1">Limpar filtros</button>':'')+'</div>';
   const at=sum('a'),fa=sum('f'),aus=at+fa,K=[['a','Atestados',at,pes('a'),nf(sum('an'))+' atestados'],['f','Faltas',fa,pes('f'),''],['j','Faltas justificadas',sum('j'),pes('j'),''],['s','Suspensão',sum('s'),pes('s'),''],['l','Licenças',sum('l'),pes('l'),'maternidade e paternidade']];
-  $('hk').innerHTML=K.map(k=>`<div class="kpi${H.t===k[0]?' on':''}" role="button" tabindex="0" data-ht="${k[0]}"><div class="l">${k[1]}</div><div class="v">${nf(k[2])}</div><div class="s">dias · ${nf(k[3])} ${k[3]===1?'pessoa':'pessoas'}${k[4]?' · '+k[4]:''}</div></div>`).join('')
-   +`<div class="kpi"><div class="l">Atestado × falta</div><div class="v">${aus?nf(at/aus*100,0)+'% · '+nf(fa/aus*100,0)+'%':'—'}</div><div class="s">dos dias de ausência · ${per}</div></div>`;
+  const KC={a:'var(--s-at)',f:'var(--s-fa)',j:'var(--h-fj)',s:'var(--s-su)',l:'#8a94a8'};
+  $('hk').innerHTML=K.map(k=>`<div class="kpi${H.t===k[0]?' on':''}" role="button" tabindex="0" data-ht="${k[0]}" style="--kc:${KC[k[0]]}"><div class="l">${k[1]}</div><div class="v">${nf(k[2])}</div><div class="s">dias · ${nf(k[3])} ${k[3]===1?'pessoa':'pessoas'}${k[4]?'<br>'+k[4]:''}</div></div>`).join('')
+   +`<div class="kpi" style="--kc:linear-gradient(90deg,var(--s-at),var(--s-fa))"><div class="l">Atestado × falta</div>${aus?`<div class="hsplit"><i style="width:${at/aus*100}%;background:var(--s-at)"></i><i style="width:${fa/aus*100}%;background:var(--s-fa)"></i></div><div class="hsl"><span style="color:var(--s-at)">${nf(at/aus*100,0)}% atestado</span><span style="color:#b7791f">${nf(fa/aus*100,0)}% falta</span></div>`:'<div class="v">—</div>'}<div class="s">dos dias de ausência · ${per}</div></div>`;
   const ag={};base.forEach(r=>{const a=ag[r.x.ar]||(ag[r.x.ar]={a:0,f:0,j:0,s:0,p:0});TK.forEach(k=>a[k]+=r[k]);if(tot(r))a.p++});const AR=Object.entries(ag).filter(a=>tot(a[1])).sort((a,b)=>tot(b[1])-tot(a[1]));
   const T=base.reduce((t,r)=>t+tot(r),0),top=ROWS.slice(0,Math.max(1,Math.round(base.filter(r=>tot(r)).length*0.1))),tt=top.reduce((t,r)=>t+tot(r),0);
   const CP={};base.forEach(r=>Object.entries(r.cp).forEach(([k,v])=>CP[k]=(CP[k]||0)+v));const CPL=Object.entries(CP).sort((a,b)=>b[1]-a[1]);
@@ -640,7 +647,7 @@ render();
   const cm=CPL.length?CPL[0][1]:1;$('hcid').innerHTML=CPL.length?CPL.slice(0,12).map(([k,v])=>`<button class="hcid${H.cap===k?' on':''}" data-hcp="${esc(k)}"><span class="n">${esc(k)}</span><span class="t"><i style="width:${v/cm*100}%"></i></span><span class="v">${nf(v)} d · ${nf(v/at*100,0)}%</span></button>`).join(''):'<p class="note">Nenhum atestado no filtro.</p>';
   $('hns').innerHTML=nf(ROWS.length)+' '+(ROWS.length===1?'colaborador':'colaboradores')+(H.t?' com '+(H.t==='l'?'licença':TN[H.t].toLowerCase()):'')+(H.cap?' · atestados de '+esc(H.cap.toLowerCase()):'')+' · '+per+(H.ar?' · '+esc(H.ar):'')+'. Clique em uma linha para ver as datas'+(H.cap?'':' e os CIDs')+'.';
   const L=ROWS.slice(0,H.lim);
-  $('hnb').innerHTML=L.map(r=>{const x=r.x;return `<tr class="hp" data-hp="${x.m}"><td onclick="event.stopPropagation()"><input type="checkbox" data-hk="${x.m}"${H.sel.has(x.m)?' checked':''}></td><td><b>${esc(x.n)}</b><small style="display:block;color:var(--muted)">${x.m} · ${esc(x.fu)}</small></td><td>${esc(x.ar)}<small style="display:block;color:var(--muted)">${esc(x.se)}</small></td><td>${esc(x.si||'—')}${x.crv?'<small style="display:block;color:var(--h-fj);font-weight:600">hoje na CRV · mat. '+x.crv+'</small>':''}${x.dl?'<small style="display:block;color:var(--muted)">saiu em '+br(x.dl)+'</small>':''}</td><td class="num">${r.a?r.a+'<small style="display:block;color:var(--muted)">'+r.an+'×</small>':''}</td><td class="num">${r.f||''}</td><td class="num">${r.j||''}</td><td class="num">${r.s||''}</td><td class="num">${r.l||''}</td><td>${br(r.u)}</td></tr>`
+  $('hnb').innerHTML=L.map(r=>{const x=r.x;return `<tr class="hp" data-hp="${x.m}"><td onclick="event.stopPropagation()"><input type="checkbox" data-hk="${x.m}"${H.sel.has(x.m)?' checked':''}></td><td><b>${esc(x.n)}</b><small style="display:block;color:var(--muted)">${x.m} · ${esc(x.fu)}</small></td><td>${esc(x.ar)}<small style="display:block;color:var(--muted)">${esc(x.se)}</small></td><td>${esc(x.si||'—')}${x.crv?'<small style="display:block;color:var(--h-fj);font-weight:600">hoje na CRV · mat. '+x.crv+'</small>':''}${x.dl?'<small style="display:block;color:var(--muted)">saiu em '+br(x.dl)+'</small>':''}</td><td class="num n-a">${r.a?r.a+'<small style="display:block;color:var(--muted);font-weight:400">'+r.an+'×</small>':''}</td><td class="num n-f">${r.f||''}</td><td class="num n-j">${r.j||''}</td><td class="num n-s">${r.s||''}</td><td class="num">${r.l||''}</td><td>${br(r.u)}</td></tr>`
     +(H.open===x.m?`<tr class="hep"><td></td><td colspan="9">${epis(x).map(e=>`<span class="hpill ${e.t}">${esc(e.t==='a'?'Atestado':e.d||TN[e.t])}</span>${br(e.a)}${e.z!==e.a?' a '+br(e.z):''} · ${e.n} ${e.n===1?'dia':'dias'}${e.t==='a'&&e.d!=='Atestado'?' · '+esc(e.d.replace(/^Atestado · /,'')):''}`).join('<br>')||'Nenhum registro no filtro.'}</td></tr>`:'')}).join('')||'<tr><td colspan="10" class="note">Ninguém no filtro.</td></tr>';
   $('hmore').hidden=ROWS.length<=H.lim;$('hsel').textContent=H.sel.size?H.sel.size+' selecionado(s) para exportar':'Nada marcado: exporta a lista inteira';
   $('hall').checked=L.length>0&&L.every(r=>H.sel.has(r.x.m));
@@ -665,7 +672,7 @@ render();
   if(t.closest('[data-ht]')||(t.closest('[data-hb]')&&H.y&&H.mo))H.lim=40;draw();if(t.closest('[data-ht]'))$('hnom').scrollIntoView({behavior:'smooth'})});
  V.addEventListener('change',e=>{const t=e.target;if(t.id==='har'){H.ar=t.value;draw()}else if(t.dataset.hk){t.checked?H.sel.add(t.dataset.hk):H.sel.delete(t.dataset.hk);$('hsel').textContent=H.sel.size?H.sel.size+' selecionado(s) para exportar':'Nada marcado: exporta a lista inteira'}else if(t.id==='hall'){ROWS.slice(0,H.lim).forEach(r=>t.checked?H.sel.add(r.x.m):H.sel.delete(r.x.m));draw()}});
  $('hq').addEventListener('input',e=>{H.q=e.target.value.trim();H.lim=40;draw()});
- const R0=render,HS0=$('hsub').textContent;render=function(){const f0=document.querySelector('main .filters'),f=f0&&(f0.closest('.cf-wrap')||f0);if(S.view==='h'){['view-g','view-t','view-r'].forEach(i=>$(i).hidden=true);V.hidden=false;if(f)f.hidden=true;document.querySelectorAll('.tab').forEach(x=>x.setAttribute('aria-selected',x.dataset.v==='h'));draw();$('hsub').textContent='Atestados, faltas e suspensões do sistema'+(H.emp!=='5'?' · '+ENM(H.emp):'')+' · '+ANOS[0]+' a '+ANOS[ANOS.length-1];return}
+ const R0=render,HS0=$('hsub').textContent;render=function(){const f0=document.querySelector('main .filters'),f=f0&&(f0.closest('.cf-wrap')||f0);document.body.classList.toggle('vh',S.view==='h');if(S.view==='h'){['view-g','view-t','view-r'].forEach(i=>$(i).hidden=true);V.hidden=false;if(f)f.hidden=true;document.querySelectorAll('.tab').forEach(x=>x.setAttribute('aria-selected',x.dataset.v==='h'));draw();$('hsub').textContent='Atestados, faltas e suspensões do sistema'+(H.emp!=='5'?' · '+ENM(H.emp):'')+' · '+ANOS[0]+' a '+ANOS[ANOS.length-1];return}
   V.hidden=true;if(f)f.hidden=false;$('hsub').textContent=HS0;R0()};
  // o histórico do sistema passa a ser a aba de abertura
  S.view='h';render();

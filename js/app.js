@@ -1760,14 +1760,14 @@ function jsValor(v){
 
 // cores da capa por frente (tons escuros, para o texto branco continuar legível)
 const CAPA = {
-  'Quadro e movimentação':         ['#0b3a47','#15647d'],
-  'Atração e perfil':              ['#0d4747','#1b7470'],
-  'Frequência e férias':           ['#4a300b','#80561a'],
-  'Jovem Aprendiz':                ['#2f1f5a','#53398f'],
-  'Treinamento e liderança':       ['#5a2317','#94432b'],
-  'Ocorrências, risco e jurídico': ['#4a1420','#7c2536'],
-  'Atendimento e escuta':          ['#283a4b','#40607b'],
-  'Alojamento e transporte':       ['#363c18','#5d6427']
+  'Quadro e movimentação':         ['#08394a','#137089'],
+  'Atração e perfil':              ['#0a4440','#16807a'],
+  'Frequência e férias':           ['#4a2608','#a0581b'],
+  'Jovem Aprendiz':                ['#2a1a57','#5a3fa0'],
+  'Treinamento e liderança':       ['#561d12','#a3462a'],
+  'Ocorrências, risco e jurídico': ['#46111d','#8a2a3d'],
+  'Atendimento e escuta':          ['#1f3346','#3f6688'],
+  'Alojamento e transporte':       ['#1f3d17','#3f7a2c']
 };
 // como cada painel azul pinta a capa (os demais já têm cor própria: Unimed, Uniodonto, Sanções, Sysprocard…)
 const CAPA_MODO = {
