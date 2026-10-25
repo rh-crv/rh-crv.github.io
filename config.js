@@ -5,5 +5,5 @@ window.CRV_CONFIG = {
   SUPABASE_KEY: 'sb_publishable_EeolMYcoC3szvl2R1k_paw_QOJDAyKV',
   // domínio interno usado para transformar "usuário" em login (ninguém precisa ter este e-mail)
   DOMINIO_LOGIN: 'crv-gp.app',
-  VERSAO: '1.96.1'
+  VERSAO: '1.97.0'
 };

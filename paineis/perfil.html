@@ -1,4 +1,17 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
+.hap{border:1px solid var(--line,#dfe4ec);border-radius:12px;padding:14px 16px;background:var(--card,#fff)}
+.hap table{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:6px}
+.hap th,.hap td{padding:6px 8px;border-bottom:1px solid var(--line,#e6eaf0);text-align:right;font-variant-numeric:tabular-nums}
+.hap th:first-child,.hap td:first-child{text-align:left}
+.hap thead th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut,#6b7686)}
+.hap tr.cur td{font-weight:700;background:color-mix(in srgb,#e9a23b 10%,transparent)}
+.hap .evs{display:flex;flex-direction:column;gap:4px;margin-top:8px;max-height:260px;overflow:auto}
+.hap .ev{display:flex;gap:10px;align-items:baseline;font-size:13.5px}
+.hap .ev b{min-width:86px;font-variant-numeric:tabular-nums}
+.hap .ev i{font-style:normal;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:999px;color:#fff;white-space:nowrap}
+.hap .top{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.hap .dif{margin-top:8px;padding:9px 12px;border-radius:9px;background:color-mix(in srgb,#e9a23b 14%,transparent);font-size:13.5px}
+</style></head><body>
 <title>Painel Perfil Profissional</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -588,6 +601,7 @@ function renderSheet(){
        <div class="fact"><span>${p.gerencia?'Gerência / área':'Grupo'}</span><b>${esc(p.gerencia?title(p.gerencia):p.grp)}</b></div>
      </div>
      <div><p class="h3">Registros funcionais</p><div class="big-mets">${NUMS.map(m=>{const v=p[m[0]], mx=Math.max(1,...DATA.map(x=>x[m[0]])); return `<div class="bm ${hot(m[0],v)?'hot':''}"><div class="l">${m[1]}</div><div class="v">${v}</div><div class="c">média do grupo: ${AVG(m[0]).toLocaleString('pt-BR',{maximumFractionDigits:1})}</div><div class="bar"><i style="background:${m[2]}" data-w="${v/mx*100}"></i></div></div>`}).join('')}</div></div>
+     <div id="hApp"></div>
      ${p.aviso?`<div class="warn">⚠ ${esc(p.aviso)}</div>`:''}
      <div><p class="h3">Informações da Gestão de Pessoas (RH)</p><div class="fb">${esc(p.obsF)||'—'}</div></div>
      ${p.tm.length?`<div><p class="h3">Pontos de atenção</p><div class="tags">${p.tm.map(t=>`<span class="tag">${t}</span>`).join('')}</div></div>`:''}
@@ -599,7 +613,7 @@ function renderSheet(){
        <p class="hint" id="gaInfo" style="margin:8px 0 0">${window.PAINEL_OFFLINE?'Para registrar o parecer, gere o PDF da ficha, imprima, preencha, assine e entregue ao RH.':(ga.em?'Parecer atualizado em '+fmtD(parseD(ga.em))+'. ':'')+(canWrite?'O parecer é salvo automaticamente e fica visível para o RH.':'Seu acesso é somente para consulta.')}</p>
      </div>
    </div></div>`;
-  grow('.bm .bar i');
+  grow('.bm .bar i'); fillHist(p);
   $('#prev').onclick=()=>step(-1); $('#next').onclick=()=>step(1);
   if(dl) $('#pdfOne').onclick=()=>makePDF([p],title(p.nome));
   if(canAdmin) $('#edBtn').onclick=()=>{ editing=p._id; renderSheet(); };
@@ -669,6 +683,45 @@ function renderAll(){
 }
 
 // ===== importar planilha no mesmo padrão =====
+
+// ===== histórico do colaborador direto do app (ponto, atestados do sistema e sanções), sem digitar nada =====
+async function histDoApp(m){ const P=window.parent||{}; if(typeof P.CRV_HIST!=='function') return null;
+  let HO={},HA={},O={P:{}}; try{HO=await P.CRV_HIST('ocor')}catch(_){} try{HA=await P.CRV_HIST('atest')}catch(_){} try{if(typeof P.CRV_OCORR==='function')O=await P.CRV_OCORR([m])}catch(_){}
+  const x=O.P[m]||{at:[],fa:[],adv:[],sus:[]}, oc=HO[m]||[], aa=HA[m]||[], temO=Object.keys(HO).length>1, temA=Object.keys(HA).length>1;
+  const ev=[]; // [data, tipo, dias, detalhe]
+  if(temO) oc.forEach(r=>{ if('fjs'.includes(r[1])) ev.push([r[0],r[1],1,'']) }); else (x.fa||[]).forEach(d=>ev.push([d,'f',1,'']));
+  if(temA) aa.forEach(a=>ev.push([a[0],'a',+a[1]||1,''])); else (x.at||[]).forEach(d=>ev.push([d,'a',1,'']));
+  (x.adv||[]).forEach(a=>ev.push([a.data,'v',0,a.motivo||''])); (x.sus||[]).forEach(a=>ev.push([a.data,'z',+a.dias||0,a.motivo||'']));
+  ev.sort((a,b)=>b[0].localeCompare(a[0])); return {ev,temO,temA};
+}
+const HT={a:['Atestado','#4a7cc7'],f:['Falta','#e0793a'],j:['Falta justificada','#8a93a3'],s:['Suspensão (ponto)','#b42318'],v:['Advertência','#c9962b'],z:['Suspensão (sanção)','#b42318']};
+let histTok=0;
+async function fillHist(p){ const box=$('#hApp'); if(!box) return; const tok=++histTok; const m=String(p.mat||'').replace(/\D/g,'').replace(/^0+(?=\d)/,'');
+  if(!m||typeof (window.parent||{}).CRV_HIST!=='function'){ box.innerHTML=''; return; }
+  box.innerHTML='<p class="h3">Histórico no app</p><div class="hap"><span class="hint">Buscando faltas, atestados e sanções no app…</span></div>';
+  let H; try{ H=await histDoApp(m) }catch(_){ H=null } if(tok!==histTok) return;
+  if(!H){ box.innerHTML=''; return; }
+  const E=H.ev, anos=[...new Set(E.map(e=>e[0].slice(0,4)))].sort().reverse(), hj=new Date(), ini=iso(new Date(hj.getTime()-365*864e5));
+  const cnt=(L,t)=>L.filter(e=>e[1]===t), sd=L=>L.reduce((a,e)=>a+e[2],0);
+  const row=(lab,L,cls)=>{ const A=cnt(L,'a'); return `<tr class="${cls||''}"><td>${lab}</td><td>${A.length}${A.length?' <small>('+sd(A)+' d)</small>':''}</td><td>${cnt(L,'f').length}</td><td>${cnt(L,'j').length}</td><td>${cnt(L,'s').length}</td><td>${cnt(L,'v').length}</td><td>${cnt(L,'z').length}</td></tr>`; };
+  const u12=E.filter(e=>e[0]>=ini), fb=d=>d.slice(8,10)+'/'+d.slice(5,7)+'/'+d.slice(0,4), gapD=(a,b)=>Math.round((new Date(a+'T12:00:00')-new Date(b+'T12:00:00'))/864e5);
+  // dias seguidos do mesmo tipo (até 3 dias de intervalo, para pular fim de semana) viram um período só
+  const EP=[]; E.forEach(e=>{ const u=EP[EP.length-1]; if(u&&u.t===e[1]&&'fjs'.includes(e[1])&&gapD(u.a,e[0])<=3){u.a=e[0];u.n++} else EP.push({a:e[0],z:e[0],t:e[1],n:1,d:e[2],x:e[3]}) });
+  // números de 12 meses do app × números gravados no levantamento
+  const app={atest:cnt(u12,'a').length,falta:cnt(u12,'f').length,fj:cnt(u12,'j').length,adv:cnt(u12,'v').length,susp:cnt(u12,'z').length};
+  const dif=NUMS.filter(n=>(+p[n[0]]||0)!==app[n[0]]);
+  box.innerHTML=`<p class="h3">Histórico no app</p><div class="hap">
+    <div class="top"><span class="hint">Direto dos outros painéis: ponto (faltas, faltas justificadas e suspensões)${H.temO?'':' — ponto ainda não carregado'}, atestados ${H.temA?'do sistema':'da planilha'} e sanções disciplinares.</span>
+      <button type="button" class="btn" id="hFicha">Abrir ficha completa</button></div>
+    ${E.length?`<table><thead><tr><th>Período</th><th>Atestados</th><th>Faltas</th><th>F. just.</th><th>Susp. ponto</th><th>Advert.</th><th>Susp. sanção</th></tr></thead><tbody>
+      ${row('Últimos 12 meses',u12,'cur')}${anos.map(y=>row(y,E.filter(e=>e[0].startsWith(y)))).join('')}</tbody></table>
+      <div class="evs">${EP.slice(0,60).map(e=>`<div class="ev"><b>${fb(e.a)}${e.z!==e.a?' a '+fb(e.z):''}</b><i style="background:${HT[e.t][1]}">${HT[e.t][0]}</i><span>${e.n>1&&'fjs'.includes(e.t)?e.n+(e.t==='j'?' faltas justificadas':e.t==='s'?' dias':' faltas'):''}${e.t==='a'&&e.d>1?e.d+' dias':''}${e.t==='z'&&e.d?e.d+(e.d===1?' dia':' dias'):''}${e.x?(e.n>1||e.d>1?' · ':'')+esc(e.x.length>140?e.x.slice(0,140)+'…':e.x):''}</span></div>`).join('')}${EP.length>60?`<span class="hint">Mostrando os 60 registros mais recentes. A ficha completa tem todos.</span>`:''}</div>`
+      :'<p class="hint" style="margin:8px 0 0">Nenhuma falta, atestado ou sanção registrada no app para esta matrícula.</p>'}
+    ${dif.length&&canAdmin?`<div class="dif">Os números dos últimos 12 meses no app são diferentes dos gravados neste levantamento (${dif.map(n=>n[1].toLowerCase()+': '+(+p[n[0]]||0)+' → '+app[n[0]]).join(' · ')}). <button type="button" class="btn" id="hUpd" style="margin-left:6px">Atualizar com o app</button></div>`:''}
+  </div>`;
+  $('#hFicha').onclick=()=>{ try{ window.parent.location.hash='#/ficha/'+m }catch(_){} };
+  const up=$('#hUpd'); if(up) up.onclick=()=>{ const n=Object.assign({},p,app); write(p._id,()=>col.doc(p._id).set(body(n))).then(()=>toast('Números atualizados com o app.')); };
+}
 // ===== trazer do app os colaboradores ativos mais em atenção (faltas e suspensões do ponto, atestados do sistema e sanções) =====
 async function pessoaDoApp(m){ const P=window.parent||{}; if(typeof P.CRV_QUADRO!=='function') throw new Error('abra este painel pelo app');
   const Q=await P.CRV_QUADRO(), o=Q&&Q.mapa&&Q.mapa[m]; if(!o||o.situacao==='Desligado') return null;
