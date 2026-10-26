@@ -798,7 +798,18 @@ async function consultaDetalhe(p){
   let rd = []; if (fPode('rd')) { const d = await window.CRV_DADOS('rd'); const D = d && d.dados.D; const DES = ['Sem tratativa', 'Ausência de culpa', 'Culpa apontada, sem medida', 'Medida disciplinar', 'Desconto', 'Sem informação'];
     if (D) rd = D.rows.filter(r => crv.includes(String(r[2]))).map(r => [String(r[0]), brD(r[1]), DES[r[9]] || '', r[10] || '']); }
   let ent = null; try { const { data } = await todasLinhas((a, z) => sb.from('registros').select('dados').eq('painel', 'quadro').eq('colecao', 'entrevistas_resp').order('caminho').range(a, z)); ent = (data || []).map(x => x.dados).find(v => v && !v.excluida && crv.includes(String(v.mat))) || null; } catch(_){}
-  return { bloq, proc, sanc, rd, ent };
+  // frequência por passagem (ponto e atestados do sistema): só o que está dentro do período da passagem, porque a mesma matrícula pode ter sido usada por outra pessoa
+  const oc = []; try {
+    const HO = await window.CRV_HIST('ocor'), HA = await window.CRV_HIST('atest'), hj = new Date().toISOString().slice(0, 10), outra = {};
+    const regs = async (col, e) => { const k = col + e; if (!outra[k]) { outra[k] = {}; try { (await window.CRV_REGS('quadro', col + e)).forEach(x => { if (String(x._id || '').startsWith('a') && x.mat) outra[k][String(x.mat)] = x.l || []; }); } catch(_){} } return outra[k]; };
+    for (const x of p.pass) { const e = (/\((\d+)\)/.exec(x.emp) || [])[1] || '5', ini = x.adm || '0000', fim = x.atual ? hj : (x.saida || hj), den = d => d >= ini && d <= fim;
+      const LO = (e === '5' ? HO[x.mat] : (await regs('hist_ocor', e))[x.mat]) || [], LA = (e === '5' ? HA[x.mat] : (await regs('hist_atest', e))[x.mat]) || [];
+      const anos = {}; const ano = d => anos[d.slice(0, 4)] || (anos[d.slice(0, 4)] = { aq:0, ad:0, f:0, j:0, s:0 });
+      LO.filter(o => den(o[0])).forEach(o => { const a = ano(o[0]); if (o[1] === 'f') a.f++; else if (o[1] === 'j') a.j++; else if (o[1] === 's') a.s++; });
+      LA.filter(o => den(o[0])).forEach(o => { const a = ano(o[0]); a.aq++; a.ad += Math.max(1, +o[1] || 1); });
+      Object.keys(anos).sort().reverse().forEach(y => { const a = anos[y]; if (a.aq || a.f || a.j || a.s) oc.push({ emp:x.emp, mat:x.mat, ano:y, ...a }); }); }
+  } catch(_){}
+  return { bloq, proc, sanc, rd, ent, oc };
 }
 function telaConsulta(){
   moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Seleção e Perfil Profissional</div><h1>Consulta de Candidatos</h1><div class="ini-data">Pelo CPF ou pelo nome: se já trabalhou em alguma das empresas, se tem bloqueio e o histórico, para a área analisar junto com o currículo</div></div></section>
@@ -831,6 +842,7 @@ function telaConsulta(){
     if (curto.length) pts.push(['warn', curto.length === 1 ? 'Saiu com até 90 dias de casa em uma passagem' : `Saiu com até 90 dias de casa em ${curto.length} passagens`, '']);
     if (X.sanc.filter(s => /Suspens/.test(s[1])).length >= 3) pts.push(['warn', X.sanc.filter(s => /Suspens/.test(s[1])).length + ' suspensões no histórico', '']);
     if (X.rd.some(r => /culpa apontada|medida|desconto/i.test(r[2]))) pts.push(['warn', 'RD com culpa apontada ou medida', '']);
+    { const tf = X.oc.reduce((t, o) => t + o.f, 0); if (tf >= 10) pts.push(['warn', tf + ' faltas no histórico do ponto', '']); }
     const ver = X.bloq.length || jc.length ? ['r', 'Bloqueio ou restrição registrada'] : pts.some(x => x[0] === 'warn') ? ['a', 'Pontos para a área avaliar'] : p.pass.length ? ['v', 'Sem bloqueio registrado'] : ['v', 'Nunca trabalhou nas empresas'];
     C.innerHTML = `<section class="fc-cab cartao cs-cab ${ver[0]}"><div class="fc-av">${esc(iniciais(p.nome))}</div>
         <div class="fc-id"><h2>${esc(p.nome)}</h2><div class="fc-sub">${p.d ? 'CPF ' + esc(fCpf(p.cpf)) + ' · ' : ''}${p.pass.length ? p.pass.length + ' passage' + (p.pass.length > 1 ? 'ns' : 'm') + ' pelas empresas' : 'Não consta passagem por nenhuma das empresas'} (base do Quadro de ${esc(brD(B.ref))})</div>
@@ -840,6 +852,7 @@ function telaConsulta(){
       <div class="fc-grade">
         <section class="fc-sec cartao" style="grid-column:1/-1"><header><h3>Passagens pelas empresas</h3></header><div class="fc-tw"><table class="fc-t"><thead><tr><th>Empresa</th><th>Matrícula</th><th>Função</th><th>Seção / setor</th><th>Admissão</th><th>Saída</th><th>Tempo</th><th>Tipo e motivo da saída</th></tr></thead>
           <tbody>${p.pass.length ? '' : '<tr><td colspan="8">Não consta passagem por nenhuma das empresas do Quadro (CRV, APFO, CAPFO). Para confirmar, busque também pelo CPF.</td></tr>'}${p.pass.map(x => `<tr><td>${esc(x.emp)}</td><td>${esc(x.mat)}</td><td>${esc(x.funcao)}</td><td>${esc([x.secao, x.area].filter(Boolean).join(' · '))}</td><td>${esc(brD(x.adm))}</td><td>${x.atual ? '<b>' + esc(x.sit) + ' hoje</b>' : esc(brD(x.saida))}</td><td>${esc(fCasa(x.adm, x.saida || ''))}</td><td>${esc([x.tipo, (x.mot || []).join(', '), x.obs].filter(Boolean).join(' · ')) || (x.atual ? '' : '<span class="fc-vz2">não informado</span>')}${x.re3 ? ' · readmitido em até 3 dias' : ''}</td></tr>`).join('')}</tbody></table></div></section>
+        <section class="fc-sec cartao" style="grid-column:1/-1"><header><h3>Frequência: faltas, faltas justificadas e atestados</h3><small>ponto e atestados do sistema, por passagem e ano</small></header>${X.oc.length ? `<div class="fc-tw"><table class="fc-t"><thead><tr><th>Empresa</th><th>Matrícula</th><th>Ano</th><th>Faltas</th><th>Faltas justificadas</th><th>Atestados</th><th>Dias de atestado</th><th>Suspensões (ponto)</th></tr></thead><tbody>${X.oc.map(o => `<tr><td>${esc(o.emp)}</td><td>${esc(o.mat)}</td><td>${esc(o.ano)}</td><td>${o.f ? '<b style="color:#a3301c">' + o.f + '</b>' : 0}</td><td>${o.j}</td><td>${o.aq ? '<b>' + o.aq + '</b>' : 0}</td><td>${o.ad}</td><td>${o.s ? '<b style="color:#a3301c">' + o.s + '</b>' : 0}</td></tr>`).join('')}<tr style="font-weight:800"><td colspan="3">Total</td>${['f', 'j', 'aq', 'ad', 's'].map(k => `<td>${X.oc.reduce((t, o) => t + o[k], 0)}</td>`).join('')}</tr></tbody></table></div>` : '<p class="fc-vz">Nenhuma falta, falta justificada ou atestado no histórico do sistema.</p>'}</section>
         <section class="fc-sec cartao"><header><h3>Sanções disciplinares (CRV)</h3></header>${X.sanc.length ? `<div class="fc-tw"><table class="fc-t"><thead><tr><th>Data</th><th>Tipo</th><th>Motivo</th></tr></thead><tbody>${X.sanc.map(l => `<tr>${l.map(v => `<td>${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '<p class="fc-vz">Nada registrado.</p>'}</section>
         <section class="fc-sec cartao"><header><h3>Registros de dano (RD)</h3></header>${X.rd.length ? `<div class="fc-tw"><table class="fc-t"><thead><tr><th>RD</th><th>Data</th><th>Desfecho</th><th>Tratativa</th></tr></thead><tbody>${X.rd.map(l => `<tr>${l.map(v => `<td>${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '<p class="fc-vz">Nada registrado.</p>'}</section>
         ${X.ent ? `<section class="fc-sec cartao"><header><h3>Entrevista de desligamento</h3></header><div class="fc-res"><div><b>${esc((X.ent.mot || []).join('; ') || '—')}</b><span>Motivo</span></div><div><b>${esc(X.ent.volta || 'Não respondeu')}</b><span>Voltaria a trabalhar</span></div></div></section>` : ''}
@@ -853,10 +866,11 @@ function telaConsulta(){
       const sec = (t, cab, body) => { const y = doc.lastAutoTable.finalY + 18; doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(20,33,61); doc.text(t, 40, y);
         doc.autoTable({ startY:y + 5, head:[cab], body: body.length ? body : [cab.map((h, i) => i ? '' : 'Nada registrado')], styles:{ fontSize:8, cellPadding:2.5, overflow:'linebreak' }, headStyles:{ fillColor:[46,138,87] } }); };
       sec('Passagens pelas empresas', ['Empresa', 'Matrícula', 'Função', 'Admissão', 'Saída', 'Tempo', 'Tipo e motivo da saída'], p.pass.map(x => [x.emp, x.mat, x.funcao, brD(x.adm), x.atual ? x.sit + ' hoje' : brD(x.saida), fCasa(x.adm, x.saida || ''), [x.tipo, (x.mot || []).join(', ')].filter(Boolean).join(' · ')]));
+      sec('Frequência (faltas, faltas justificadas e atestados)', ['Empresa', 'Matrícula', 'Ano', 'Faltas', 'Faltas just.', 'Atestados', 'Dias de atestado', 'Suspensões (ponto)'], X.oc.map(o => [o.emp, o.mat, o.ano, o.f, o.j, o.aq, o.ad, o.s].map(String)));
       sec('Sanções disciplinares', ['Data', 'Tipo', 'Motivo'], X.sanc);
       sec('Registros de dano (RD)', ['RD', 'Data', 'Desfecho', 'Tratativa'], X.rd);
       const y = doc.lastAutoTable.finalY + 22; doc.setFont('helvetica', 'italic'); doc.setFontSize(8); doc.setTextColor(93,106,133);
-      doc.text(doc.splitTextToSize('Documento interno da Gestão de Pessoas para análise de recontratação, junto com o currículo. Não inclui dados de saúde nem processos judiciais. Uso restrito à área solicitante.', 515), 40, y);
+      doc.text(doc.splitTextToSize('Documento interno da Gestão de Pessoas para análise de recontratação, junto com o currículo. Atestados aparecem só em quantidade e dias, sem diagnóstico. Não inclui processos judiciais. Uso restrito à área solicitante.', 515), 40, y);
       rodapePDF(doc); baixar(doc.output('blob'), 'Historico candidato ' + p.nome.split(' ')[0] + '.pdf'); };
   }
 }
