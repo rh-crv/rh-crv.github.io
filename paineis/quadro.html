@@ -639,7 +639,7 @@ button.tile:hover,button.act:hover{transform:translateY(-2px);box-shadow:var(--s
           <div id="xCampos"></div>
         </div>
         <div class="rx-box"><h3><span>3</span>Salário <small>(opcional)</small></h3>
-          <p class="rx-nota">O salário não fica guardado no app. Para incluir, carregue a planilha de salários do sistema (com as colunas de matrícula e salário). Ela é lida só neste relatório e some ao fechar o painel.</p>
+          <p class="rx-nota">O salário vem da última planilha de salários carregada no app (só a equipe RH vê). Para usar uma planilha mais nova só neste relatório, carregue aqui.</p>
           <label class="btn2 rx-up">Carregar planilha de salários<input type="file" id="xSalF" accept=".xlsx,.xls,.csv" hidden></label> <span id="xSalSt" class="rx-st"></span>
         </div>
         <div class="rx-box"><h3><span>4</span>Arquivo</h3>
@@ -1001,13 +1001,14 @@ function hist(){
     '<p class="sm">Busca pelo nome ou pelo CPF. Para CRV o CPF vem da Base Geral; para APFO e CAPFO a base de desligados não traz CPF, então a ligação é feita pelo nome.</p></div>';
 }
 const v=x=>x===''||x==null?'—':esc(x);
+let SALREF='';
 const brl=n=>n===''?'—':'R$ '+n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const flist=()=>base().sort((a,b)=>a[NOME]<b[NOME]?-1:1);
 const j=(a,s)=>a.filter(Boolean).join(s);
 const HIDEF=new Set(['Código do setor','Especialidade','Salário mensal']);
 function fdata(r){const x=r.x,cv=x[5]&&days(x[5])>0,d=s=>s?dbr(s):'';
   return [['Dados pessoais',[['Data de nascimento',d(x[0])],['Idade',r[AGE]+' anos'],['Sexo',x[34]],['Estado civil',x[1]],['Naturalidade',j([x[15],x[16]],' / '),2],['Tipo sanguíneo',x[17],2],['Nome da mãe',x[22],2],['Nome do pai',x[21],2]]],
-  ['Contrato e lotação',[['Data de admissão',d(r[ADM])],['Tempo de casa',casa(r.t)],['Tipo de contrato',r[CON]],['Situação',r[SIT]],['Horário de trabalho',r.h?r.h.e+' às '+r.h.s+' (intervalo '+r.h.i1+' às '+r.h.i2+')':'Não consta na planilha de horários',2],['Folga (DSR)',r.h?r.h.dsr:''],['Função',r[FUN]+(x[24]?' (cód. '+x[24]+')':''),2],['CBO',x[14]],['Salário mensal',x[27]===''?'':brl(x[27])],['Setor',r[AREA],2],['Seção',r[DEP]+(x[23]?' (cód. '+x[23]+')':''),2],['Código do setor',r[SET],2],['Centro de custo',r[CC]+(x[33]?' (cód. '+x[33]+')':''),2],['Gestão / frente',r[GES]||'Não classificada na base',2],['Especialidade',r[ESP],2]]],
+  ['Contrato e lotação',[['Data de admissão',d(r[ADM])],['Tempo de casa',casa(r.t)],['Tipo de contrato',r[CON]],['Situação',r[SIT]],['Horário de trabalho',r.h?r.h.e+' às '+r.h.s+' (intervalo '+r.h.i1+' às '+r.h.i2+')':'Não consta na planilha de horários',2],['Folga (DSR)',r.h?r.h.dsr:''],['Função',r[FUN]+(x[24]?' (cód. '+x[24]+')':''),2],['CBO',x[14]],['Salário mensal',x[27]===''?'':brl(x[27])+(SALREF?' (planilha de '+dbr(SALREF)+')':'')],['Setor',r[AREA],2],['Seção',r[DEP]+(x[23]?' (cód. '+x[23]+')':''),2],['Código do setor',r[SET],2],['Centro de custo',r[CC]+(x[33]?' (cód. '+x[33]+')':''),2],['Gestão / frente',r[GES]||'Não classificada na base',2],['Especialidade',r[ESP],2]]],
   ['Documentos',[['CPF',x[11]],['RG',x[7]],['Órgão emissor / UF',j([x[8],x[10]],' / ')],['Emissão do RG',d(x[9])],['PIS',x[2]],['CTPS',x[12]],['Série da CTPS',x[13]],['CNH',x[3]],['Categoria da CNH',x[4]],['UF da CNH',x[6]],['Validade da CNH',x[5]?(cv?'Vencida em '+d(x[5]):d(x[5])):'',2,cv]]],
   ['Endereço e contato',[['Endereço',x[18],2],['Bairro',x[19]],['Cidade / UF',j([r[CID],x[20]],' / ')],['Celular 1',x[25]],['Celular 2',x[26]],['E-mail',x[28],2]]],
   ['Gestação e maternidade',r.gs?[['Situação',gLab(r)+' (informado pela Gestão de Pessoas em 07/10/2026)',2,true],['Nascimento da criança',r.gs[3]?d(r.gs[3]):(r.gs[2]=='g'?'':'A informar'),1],['Estabilidade até (150 dias corridos após o parto)',r.gs[3]?d(add5(r.gs[3]))+(new Date(add5(r.gs[3])+'T23:59:59')<REF?' (já encerrada)':''):'',1],['Data do exame entregue no ambulatório',r.gs[0]?d(r.gs[0]):(r.gs[2]=='g'?'Não informada':''),1],['Observação',r.gs[1],1]]:[]],
@@ -2370,6 +2371,15 @@ if(MODOQ){st.tab=MODOQ;
   document.addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if(b&&b.dataset.tab!==MODOQ){e.stopPropagation();e.preventDefault()}},true);
 }else{['tb-a','tb-r'].forEach(id=>{const b=$(id);if(b)b.hidden=true});if(st.tab=='a'||st.tab=='r'||st.tab=='d')st.tab='g'}
 render();
+// salários: vêm do painel restrito do app (o banco só entrega para a equipe RH); entram na ficha e no gerador de relatórios
+(async()=>{try{const f=window.parent&&window.parent!==window&&window.parent.CRV_SAL;if(typeof f!=='function')return;const o=await f();if(!o||!o.SAL)return;const S0=o.SAL;
+  // só usa o salário quando o nome da planilha confere com o do Quadro (primeiro e último nome): matrícula trocada não leva o salário de outra pessoa
+  const nN=s=>String(s||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').split(/\s+/).filter(Boolean),ok=(r,v)=>{const a=nN(v[4]),b=nN(r[NOME]);return !a.length||(a[0]==b[0]&&a[a.length-1]==b[b.length-1])};
+  const sal=r=>{const v=S0[String(r[MAT])];return v&&ok(r,v)?v[0]:null};
+  D.forEach(r=>{const v=sal(r);if(v!=null&&r.x)r.x[27]=v});
+  DM.forEach(r=>{if(!/\(5\)\s*$/.test(String(r[21]||'')))return;const v=sal(r);if(v!=null&&r.x)r.x[27]=v});
+  SALREF=o.ref||'';if(!GRX.SAL){const m={};D.forEach(r=>{const v=sal(r);if(v!=null)m[String(r[MAT])]=v});GRX.SAL=m;const s2=$('xSalSt');if(s2){s2.className='rx-st ok';s2.textContent='✓ Salários do app (planilha de '+dbr(SALREF)+'): '+nf(Object.keys(m).length)+' dos '+nf(D.length)+' ativos.'}}
+  render()}catch(_){}})();
 </script>
 
 </body></html>

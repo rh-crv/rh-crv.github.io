@@ -53,6 +53,9 @@ function detectar(wb, nomeArq){
   if (R.slice(0, 4).some(r => (r || []).map(s).some(x => /^Dados Cadastrais dos/i.test(x))) && R.some(r => s((r || [])[0]) === 'DEPENDENTES')) return { tipo:'hist', h:'dep', R };
   if (h.includes('Data da Transferência') && h.includes('Novo Departamento')) return { tipo:'hist', h:'depto', R };
   if (h.includes('Data Alteração') && h.includes('Cargo Novo')) return { tipo:'hist', h:'cargo', R };
+  // salários da folha (Código, Nome, CPF, Situação, Função, Admissão, Salário): painel restrito, só a equipe RH vê
+  { const im = h.findIndex(x => /^(c[oó]digo|matr[ií]cula)$/i.test(x)), is = h.findIndex(x => /^sal[aá]rio/i.test(x));
+    if (im >= 0 && is >= 0 && h.filter(Boolean).length <= 15 && !h.includes('EMPRESA')) return { tipo:'salario', R, im, is }; }
   // cartões Sysprocard: a linha "Empresa: ... Código: 56906" às vezes não é lida; reconhece também pelo nome da aba e do arquivo
   const hi = R.findIndex(r => r && r.map(s).includes('MATRÍCULA') && r.map(s).includes('SITUAÇÃO'));
   if (hi >= 0 && hi <= 3) {
@@ -342,6 +345,21 @@ async function ler(f){
       
       out.push({ pac, rotulo:`${T} de ${br(pac.faixa[0])} a ${br(pac.faixa[1])}: ${pac.n.linhas} lançamentos de ${pac.n.pessoas} pessoas (${pac.tipos ? (l => l.length > 1 ? l.slice(0, -1).join(', ') + ' e ' + l[l.length - 1] : l[0] || 'nenhuma ocorrência')(['f', 'j', 's', 'm', 'p', 'o'].filter(t => pac.tipos.includes(t)).map(t => ({ f:'faltas', j:'faltas justificadas', s:'suspensões', m:'licença-maternidade', p:'licença-paternidade', o:'outras' })[t])) + ' do período; os outros tipos já carregados ficam como estão' : 'faltas, faltas justificadas, suspensões e licenças'}; ${pac.n.atestados} atestados ficam de fora)` + (pac.n.nomeDiferente ? ` · ${pac.n.nomeDiferente} com nome diferente do Quadro (fora)` : '') + (pac.n.foraDoQuadro ? ` · ${pac.n.foraDoQuadro} ${pac.hist === 'ocor' ? 'matrículas fora do Quadro' : 'sem cadastro no Quadro nem nome igual na CRV'}` : '') + (pac.n.ligados != null ? ` · ${pac.n.ligados} estão hoje na CRV (aparecem na ficha deles)` : '') }); return out; }
     out.push({ pac, rotulo:`${T}: ${pac.n.linhas} ${det.h === 'dep' ? 'dependentes' : 'registros'} de ${pac.n.pessoas} ${det.h === 'dep' ? 'colaboradores' : 'pessoas'}` + (pac.n.anuladas ? ` · ${pac.n.anuladas} anuladas fora` : '') + (pac.n.nomeDiferente ? ` · ${pac.n.nomeDiferente} com nome diferente do Quadro (fora)` : '') });
+    return out;
+  }
+  if (det.tipo === 'salario') { // fica no painel restrito "salarios": o banco só entrega para a equipe RH
+    const H = det.R[0].map(s), ix = re => H.findIndex(x => re.test(x)), iN = ix(/^nome/i), iS = ix(/^situa/i), iF = ix(/^fun[cç]/i), iA = ix(/^admiss/i);
+    const ant = await window.CRV_DADOS('salarios'), A = (ant && ant.dados && ant.dados.SAL) || {}, refA = (ant && ant.referencia) || '';
+    const S = {}; let n = 0, at = 0, mud = 0;
+    det.R.slice(1).forEach(r => { if (!r) return; const m = dig(r[det.im]).replace(/^0+/, ''); let v = r[det.is];
+      if (typeof v !== 'number') v = parseFloat(s(v).replace(/[^\d,.-]/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.'));
+      if (!m || !(v > 0)) return; v = Math.round(v * 100) / 100;
+      const o = A[m], hist = o ? (o[5] || []).slice() : [];
+      if (o && o[0] !== v && refA < REF) { hist.unshift([refA, o[0]]); mud++; }
+      S[m] = [v, iS >= 0 ? sp(r[iS]) : '', iF >= 0 ? sp(r[iF]) : '', iA >= 0 ? iso(r[iA]) : '', iN >= 0 ? sp(r[iN]) : '', hist.slice(0, 12)]; n++;
+      if (/^(ativo|afastado)/i.test(S[m][1])) at++; });
+    if (!n) throw new Error('planilha de salários sem valores');
+    out.push({ pac:{ tipo:'crv-pacote', painel:'salarios', referencia:REF, nomes:['SAL'], dados:[S] }, rotulo:`Salários: ${n} matrículas (${at} ativas ou afastadas)` + (mud ? ` · ${mud} com salário diferente da base anterior (fica no histórico)` : '') + ' · só a equipe RH vê' });
     return out;
   }
   if (det.tipo === 'quadro') {

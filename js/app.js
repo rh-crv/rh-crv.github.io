@@ -146,7 +146,7 @@ async function carregarCatalogo(){
     sb.from('pacotes').select('painel,referencia,atualizado_em,atualizado_por')
   ]);
   if (p.error) throw p.error;
-  E.paineis = (p.data || []).filter(x => x.id !== 'absenteismo-gestao' && x.id !== 'nr1'); E.paineis.forEach(x => { if (x.id === 'absenteismo') x.nome = String(x.nome || '').replace(/\s*·\s*Controle RH\s*$/i, ''); }); // NR-1 retirado por enquanto (out/2026); os registros continuam guardados // R&S fica dentro do Banco de Currículos; Absenteísmo Gestão foi retirado (fica só o do RH)
+  window._temSal = (p.data || []).some(x => x.id === 'salarios'); E.paineis = (p.data || []).filter(x => x.id !== 'absenteismo-gestao' && x.id !== 'nr1' && x.id !== 'salarios'); E.paineis.forEach(x => { if (x.id === 'absenteismo') x.nome = String(x.nome || '').replace(/\s*·\s*Controle RH\s*$/i, ''); }); // NR-1 retirado por enquanto (out/2026); os registros continuam guardados // R&S fica dentro do Banco de Currículos; Absenteísmo Gestão foi retirado (fica só o do RH)
   // nomes dos painéis (out/2026, tabela da Scarlatt): o administrador grava no banco
   { const NOMES = { quadro:'Quadro de Colaboradores', onboarding:'Integração de Colaboradores', rescisoes:'Desligamentos', risco:'Risco de Desligamento', pesquisas:'Pesquisas com Colaboradores', sysprocard:'Sysprocard', ouvidorias:'Ouvidoria', recepcao:'Atendimento do RH', onibus:'Transporte de Colaboradores', 'servicos-gerais':'Serviços Gerais — Extras e Gratificações' };
     window.CRV_NOMES = NOMES;
@@ -164,6 +164,8 @@ async function carregarCatalogo(){
   // Risco de saída: painel do app, calculado a partir do Quadro; restrito
   if (!E.paineis.some(x => x.id === 'risco') && E.perfil && E.perfil.papel === 'admin') { const n = { id:'risco', frente:'Gestão de Colaboradores', nome:'Risco de Desligamento', nivel:'restrito', ordem:16 };
     sb.from('paineis').insert(n).then(() => {}, () => {}); E.paineis.push(n); }
+  // Salários: guardados num painel restrito que não aparece no menu; o banco só entrega para a equipe RH (admin e rh)
+  if (!window._temSal && E.perfil && E.perfil.papel === 'admin') { window._temSal = true; sb.from('paineis').insert({ id:'salarios', frente:'Gestão de Colaboradores', nome:'Salários (restrito)', nivel:'restrito', ordem:99 }).then(() => {}, () => {}); }
   // organização do menu (out/2026): frentes renomeadas e painéis que mudaram de lugar; o administrador grava no banco
   { const REN = { 'Outros controles':'Horas Extras e Gratificações', 'RH externo':'Alojamentos e Transporte', 'Atendimento':'Atendimento e Ouvidoria', 'Treinamento e liderança':'T&D | Desenvolvimento de Pessoas', 'Ocorrências, risco e jurídico':'Ocorrências e Relações Trabalhistas', 'Atração e perfil':'Seleção e Perfil Profissional', 'Quadro e movimentação':'Gestão de Colaboradores', 'Recrutamento e Seleção':'Seleção e Perfil Profissional', 'Frequência e férias':'Absenteísmo e Férias', 'Benefícios':'Gestão de Benefícios', 'Jovem Aprendiz':'Programa Jovem Aprendiz', 'T&D | Pessoas e Desenvolvimento':'T&D | Desenvolvimento de Pessoas', 'Gestão de Ocorrências':'Ocorrências e Relações Trabalhistas', 'Atendimento e escuta':'Atendimento e Ouvidoria', 'Alojamento e transporte':'Alojamentos e Transporte', 'Remuneração e gratificações':'Horas Extras e Gratificações' };
     const MOV = { sancoes:'Ocorrências e Relações Trabalhistas', ouvidorias:'Atendimento e Ouvidoria' };
@@ -193,7 +195,7 @@ async function carregarCatalogo(){
   if (NOVOS.length && E.perfil && E.perfil.papel === 'admin') {
     await sb.from('paineis').insert(NOVOS.map((n, i) => ({ ...n, ordem: (n.id.startsWith('cartao-') || n.id === 'sysprocard-credito') ? (sp ? sp.ordem : 40) + 1 + i : n.ordem })));
     const r2 = await sb.from('paineis').select('*').order('ordem');
-    if (!r2.error) E.paineis = (r2.data || []).filter(x => x.id !== 'absenteismo-gestao'); E.paineis.forEach(x => { if (window.CRV_NOMES && window.CRV_NOMES[x.id]) x.nome = window.CRV_NOMES[x.id]; if (x.id === 'absenteismo') x.nome = String(x.nome || '').replace(/\s*·\s*Controle RH\s*$/i, ''); });
+    if (!r2.error) E.paineis = (r2.data || []).filter(x => x.id !== 'absenteismo-gestao' && x.id !== 'salarios'); E.paineis.forEach(x => { if (window.CRV_NOMES && window.CRV_NOMES[x.id]) x.nome = window.CRV_NOMES[x.id]; if (x.id === 'absenteismo') x.nome = String(x.nome || '').replace(/\s*·\s*Controle RH\s*$/i, ''); });
   }
   // os cartões ficam logo abaixo do Sysprocard
   if (sp) { const ix = E.paineis.indexOf(sp); const OC = ['sysprocard-credito','cartao-alimentacao','cartao-convenio','cartao-adm','cartao-premium']; const cs = E.paineis.filter(x => OC.includes(x.id)).sort((a,b) => OC.indexOf(a.id) - OC.indexOf(b.id));
@@ -639,6 +641,12 @@ async function fichaDados(mat){
       B.push(['Alojamento', x ? 'Alojado' : 'Não alojado', x ? ((A.houses[x.h] || {}).n || '') + (x.q ? ', quarto ' + x.q : '') : '', brD(d.referencia)]); } }
     if (B.length) F.sec.push({ k:'ben', t:'Benefícios e alojamento', cab:['Benefício', 'Situação', 'Detalhe', 'Base de'], linhas:B, alerta: c.situacao === 'Desligado' && B.some(b => /Titular|Ativo|Alojado/.test(b[1]) && !/Alimenta|Premium/.test(b[0])) ? 'Desligado com benefício ativo' : '' });
   })());
+  // Remuneração: só a equipe RH (a planilha de salários fica num painel restrito)
+  if (ehRH()) tarefas.push((async () => { const o = await window.CRV_SAL(); const v = o && o.SAL[mat]; if (!v) return;
+    const R$ = n => 'R$ ' + Number(n).toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 }), nN = t => String(t || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').split(/\s+/).filter(Boolean);
+    const a = nN(v[4]), b = nN(c.nome), mesmo = !a.length || (a[0] === b[0] && a[a.length - 1] === b[b.length - 1]);
+    F.sec.push({ k:'sal', t:'Remuneração', ref:o.ref, resumo: mesmo ? [['Salário', R$(v[0])], ['Função na folha', v[2] || '—'], ['Situação na folha', v[1] || '—']].concat((v[5] || []).map(h => ['Antes (base de ' + brD(h[0]) + ')', R$(h[1])])) : [['Salário', 'não mostrado'], ['Na planilha de salários, a matrícula ' + mat + ' é de', v[4] + (v[1] ? ' (' + v[1].toLowerCase() + ')' : '')]],
+      alerta: !mesmo ? 'nome diferente na planilha de salários: conferir a matrícula' : (c.situacao !== 'Desligado' && /DEMITIDO/i.test(v[1]) ? 'consta como demitido na planilha de salários' : '') }); })());
   // Experiência
   if (fPode('experiencia')) tarefas.push((async () => { const d = await window.CRV_DADOS('experiencia'); const R = d && d.dados.RAW; if (!R) return; const r = R.find(x => fMat(x[0]) === mat); if (!r) return;
     const reg = (await window.CRV_REGS('experiencia', 'registros')).find(x => x._id === 'm' + mat) || {};
@@ -1669,6 +1677,7 @@ window.CRV_QUADRO = async function(){
 
 /* dados de outro painel (para o histórico do colaborador no Quadro) */
 const _pacCache = {};
+window.CRV_SAL = async function(){ if (!ehRH()) return null; const d = await window.CRV_DADOS('salarios'); return d && d.dados && d.dados.SAL ? { SAL:d.dados.SAL, ref:d.referencia } : null; };
 window.CRV_DADOS = async function(painel){
   try {
     const { data: d, error } = await sb.from('pacotes').select('referencia,conteudo,atualizado_em').eq('painel', painel).maybeSingle();
@@ -1957,6 +1966,7 @@ async function carregarPacotes(arquivos, esperado){
   }
   for (const it of itens) {
     if (it.erro) continue;
+    if (it.painel === 'salarios') { if (!ehRH()) it.erro = 'só a equipe RH pode carregar salários'; continue; }
     const p = E.paineis.find(x => x.id === it.painel);
     if (it.zip) { if (!it.painel) it.painel = 'curriculos'; continue; }
     if (!p) it.erro = `painel "${it.painel}" não existe no app`;
@@ -1964,7 +1974,7 @@ async function carregarPacotes(arquivos, esperado){
     else if (!podeEditar(p)) it.erro = 'sem permissão para este painel';
   }
   const validos = itens.filter(i => !i.erro);
-  const nomeP = id => E.paineis.find(x => x.id === id)?.nome || id;
+  const nomeP = id => id === 'salarios' ? 'Salários (só RH)' : E.paineis.find(x => x.id === id)?.nome || id;
   abrirModal({
     titulo: validos.length > 1 ? `Carregar ${validos.length} arquivos de dados` : 'Atualizar dados',
     largo: itens.length > 1,
