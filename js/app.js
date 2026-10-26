@@ -553,7 +553,7 @@ async function dadosDesligamento(){
   const pode = id => { const p = E.paineis.find(x => x.id === id); return p && podeVer(p) && E.metas[id]; };
   if (pode('cartao-convenio')) { const d = await window.CRV_DADOS('cartao-convenio'); const C = d && d.dados.CARTAO; if (C && C.rows) { refs.conv = C.refPlanilha || d.referencia; C.rows.filter(r => String(r.card || '').toLowerCase() === 'ativo').forEach(r => add(r.mat, r.nome, 'conv', 'Cartão ativo na planilha', refs.conv)); } }
   if (pode('unimed')) { const d = await window.CRV_DADOS('unimed'); const U = d && d.dados.DATA; const T3 = U ? await unimedPorMat(U) : null;
-    if (T3) { refs.unimed = U.BREF ? U.BREF.split('/').reverse().join('-') : d.referencia; Object.entries(T3).forEach(([m, t]) => add(m, t.nome, 'unimed', t.deps.length ? `Titular + ${t.deps.length} dependente${t.deps.length > 1 ? 's' : ''}` : 'Titular', refs.unimed)); }
+    if (T3) { refs.unimed = U.BREF ? U.BREF.split('/').reverse().join('-') : d.referencia; Object.entries(T3).filter(([, t]) => !t.aut).forEach(([m, t]) => add(m, t.nome, 'unimed', t.deps.length ? `Titular + ${t.deps.length} dependente${t.deps.length > 1 ? 's' : ''}` : 'Titular', refs.unimed)); }
     else if (U && U.P) { refs.unimed = d.referencia; U.P.filter(r => r[8] >= 0).forEach(r => add(r[0], r[1], 'unimed', r[11] && r[11].length ? `Titular + ${r[11].length} dependente${r[11].length > 1 ? 's' : ''}` : 'Titular', refs.unimed)); } }
   if (pode('uniodonto')) { const d = await window.CRV_DADOS('uniodonto'); const U = d && d.dados.DATA; if (U && U.T) { refs.odonto = d.referencia; U.T.forEach(t => add(t[5] || t[1], t[2], 'odonto', t[7] && t[7].length ? `Titular + ${t[7].length} dependente${t[7].length > 1 ? 's' : ''}` : 'Titular', refs.odonto)); } }
   if (pode('alojamentos')) { const d = await window.CRV_DADOS('alojamentos'); const A = d && d.dados.DATA; if (A && A.people) { refs.aloj = d.referencia; A.people.filter(x => x.t === 'c' && x.m).forEach(x => { const h = A.houses && A.houses[x.h]; add(x.m, x.n, 'aloj', h ? `${h.n}${x.q ? ', quarto ' + x.q : ''}` : 'Alojado', refs.aloj); }); } }
@@ -632,7 +632,7 @@ async function fichaDados(mat){
       const r = (C.rows || []).find(x => fMat(x.mat) === mat); B.push([C.titulo, r && r.card ? r.card : 'Sem cartão', r && r.idc ? 'ID ' + r.idc : '', brD(C.refPlanilha)]); }
     if (fPode('unimed')) { const d = await window.CRV_DADOS('unimed'); const U = d && d.dados.DATA; const T3 = U ? await unimedPorMat(U) : null;
       if (T3) { const t = Object.entries(T3).find(([m]) => fMat(m) === mat); const PLN = ['Local', 'Nacional Enfermaria', 'Nacional Apartamento'];
-        B.push(['Unimed', t ? 'Titular · ' + PLN[t[1].pl] : 'Sem plano', t && t[1].deps.length ? t[1].deps.length + ' dependente' + (t[1].deps.length > 1 ? 's' : '') + ': ' + t[1].deps.join(', ') : '', U.BREF || brD(d.referencia)]); }
+        B.push(['Unimed', t ? (t[1].aut && c.situacao === 'Desligado' ? 'Mantido no plano (autorizado pela diretoria) · ' : 'Titular · ') + PLN[t[1].pl] : 'Sem plano', t && t[1].deps.length ? t[1].deps.length + ' dependente' + (t[1].deps.length > 1 ? 's' : '') + ': ' + t[1].deps.join(', ') : '', U.BREF || brD(d.referencia)]); }
       else if (U) { const r = (U.P || []).find(x => fMat(x[0]) === mat);
       const PLN = ['Local', 'Nacional Enfermaria', 'Nacional Apartamento']; B.push(['Unimed', r && r[8] >= 0 ? 'Titular · ' + (PLN[r[8]] || 'plano') : 'Sem plano', r && r[11] && r[11].length ? r[11].length + ' dependente' + (r[11].length > 1 ? 's' : '') + ': ' + r[11].map(x => x[0]).join(', ') : '', brD(d.referencia)]); } }
     if (fPode('uniodonto')) { const d = await window.CRV_DADOS('uniodonto'); const U = d && d.dados.DATA; if (U) { const t = (U.T || []).find(x => fMat(x[5] || x[1]) === mat);
@@ -1639,9 +1639,11 @@ async function unimedPorMat(U){
   const Q = await window.CRV_QUADRO(); if (!Q || !Q.mapa) return null;
   const T = {}, D = {}; U.BEN.forEach(b => { if (b[1] === b[2]) T[b[1]] = b; else (D[b[1]] = D[b[1]] || []).push(b[3]); });
   const dg = o => String(o.cpf || '').replace(/\D/g, '').padStart(11, '0'), ativo = new Set();
+  // autorizados pela diretoria a continuar no plano (lista do painel Unimed): não entram como pendência de exclusão
+  const AUT = new Set([].concat(U.AUT || [], U.O || []).map(a => String(a[1] || '').replace(/\D/g, '').padStart(11, '0')));
   Object.values(Q.mapa).forEach(o => { if (o.situacao !== 'Desligado') ativo.add(dg(o)); });
   // quem foi readmitido: a matrícula antiga (desligada) não conta, o plano é da matrícula atual
-  const out = {}; Object.entries(Q.mapa).forEach(([m, o]) => { const c = dg(o), t = T[c]; if (t && !(o.situacao === 'Desligado' && ativo.has(c))) out[m] = { pl:t[0], deps:D[c] || [], nome:o.nome }; });
+  const out = {}; Object.entries(Q.mapa).forEach(([m, o]) => { const c = dg(o), t = T[c]; if (t && !(o.situacao === 'Desligado' && ativo.has(c))) out[m] = { pl:t[0], deps:D[c] || [], nome:o.nome, aut:AUT.has(c) }; });
   return out;
 }
 window.CRV_QUADRO = async function(){
