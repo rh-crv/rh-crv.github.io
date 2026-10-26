@@ -162,7 +162,7 @@ dialog::backdrop{background:rgba(10,16,30,.55)}
 .encbox .ck input{width:16px;height:16px;accent-color:var(--crit)}
 .encf{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:8px}
 .encf label{display:flex;flex-direction:column;gap:4px;font:600 12px var(--f-body);color:var(--mut)}
-.encf input{font:400 15px var(--f-body);padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink)}
+.encf input,.encf select{font:400 15px var(--f-body);padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink)}
 .tag.at{background:var(--crit-bg);color:var(--crit);border-color:transparent}
 /* barras */
 .row{display:grid;grid-template-columns:minmax(100px,40%) minmax(40px,1fr) auto;gap:8px;align-items:center;padding:4px 0;width:100%;border:0;background:none;color:inherit;font:inherit;text-align:left}
@@ -554,7 +554,7 @@ table.fmt td.scn{width:46px;padding:4px}
     <label class="fld" for="regAO" style="margin-bottom:0">Observação da área<input id="regAO" maxlength="300" placeholder="Ex.: gestor confirmou por e-mail que vai efetivar"></label>
     <p class="sub" style="margin:8px 0 0">Use quando a área já sinalizou o caminho, antes ou junto da avaliação formal. Aparece como etiqueta na lista, nos filtros “Área efetivando” / “Área encerrando” e nas exportações.</p></div>
   <div class="encbox"><label class="ck" for="regEnc"><input type="checkbox" id="regEnc"> RH está encerrando este contrato</label>
-    <div class="encf" id="regEncF"><label for="regEncD">Data de encerramento<input type="date" id="regEncD"></label><label for="regEncO">Motivo / observação<input id="regEncO" maxlength="300" placeholder="Ex.: avaliação negativa da área; pedido de desligamento"></label></div>
+    <div class="encf" id="regEncF"><label for="regEncT">Tipo de encerramento<select id="regEncT"><option value="">No vencimento do contrato</option><option value="empresa">Antecipado pela empresa</option><option value="colab">Antecipado a pedido do colaborador</option></select></label><label for="regEncD">Data de encerramento<input type="date" id="regEncD"></label><label for="regEncO">Motivo / observação<input id="regEncO" maxlength="300" placeholder="Ex.: avaliação negativa da área; pedido de desligamento"></label></div><p class="sub" id="regEncI" style="margin:8px 0 0;font-weight:700;color:var(--crit)" hidden></p>
     <p class="sub" style="margin:8px 0 0">Sem data, o contrato fica como <b>RH encerrando</b>. Ao informar a data, ele passa para <b>Encerrado</b>, sai das listas de vencimento e aparece no filtro “Encerrados” e nas exportações.</p></div>
   <div class="rfoot"><button class="btn2 dng" id="regDel">Apagar registro</button><span style="display:flex;gap:8px"><button class="btn2" id="regCancel">Cancelar</button><button class="btn2 pri" id="regSave">Salvar</button></span></div>
 </div></dialog>
@@ -605,7 +605,7 @@ function splitEnc(){P.length=0;ENC.length=0;ALLA.forEach(p=>(p.encOk?ENC:P).push
 const lvl=d=>d<0?"gone":d<=7?"crit":d<=15?"warn":"ok";
 const pill=p=>{if(p.encOk)return`<span class="pill p-gone">Contrato encerrado</span>`;const d=p.dias;const t=d<0?"Prazo encerrado":d===0?"Vence hoje":d===1?"Amanhã":"em "+d+" dias";return`<span class="pill p-${lvl(d)}">${t}</span>`};
 const bqO=p=>p.bq?`<div class="blqo"><b>Bloqueado · ${esc(p.bq[0])}:</b> ${esc(p.bq[1])}</div>`:"";
-const tagT=p=>(p.encOk?`<span class="tag dX">Encerrado em ${fdy(pd(p.enc.data))}</span> `:p.encAnd?`<span class="tag dX">RH encerrando</span> `:"")+(!p.encOk&&p.arEf?`<span class="tag dE">Área efetivando</span> `:"")+(!p.encOk&&p.arEn?`<span class="tag dX">Área encerrando</span> `:"")+`<span class="tag ${p.tipo==="Prorrogação"?"pr":"ef"}">${p.tipo}</span>`+(p.bq?` <span class="tag blq" title="${esc(p.bq[1])}">Bloqueado</span>`:"")+(p.novo?' <span class="tag nv" title="Admissão recente, ainda fora da planilha de experiência. Datas calculadas pela admissão (30 + 30 dias).">Novo na base</span>':"")+(p.p90&&!p.encOk?` <span class="tag n90" title="Contrato de 60 dias: a gestão pode trocar para avaliar até 90 dias (${fdy(p.d90)})">Pode ir a 90 dias</span>`:"");
+const tagT=p=>(p.encOk?`<span class="tag dX">Encerrado${p.enc.tipo==="empresa"?" antecipado pela empresa":p.enc.tipo==="colab"?" antecipado (pedido do colaborador)":""} em ${fdy(pd(p.enc.data))}</span> `:p.encAnd?`<span class="tag dX">RH encerrando</span> `:"")+(!p.encOk&&p.arEf?`<span class="tag dE">Área efetivando</span> `:"")+(!p.encOk&&p.arEn?`<span class="tag dX">Área encerrando</span> `:"")+`<span class="tag ${p.tipo==="Prorrogação"?"pr":"ef"}">${p.tipo}</span>`+(p.bq?` <span class="tag blq" title="${esc(p.bq[1])}">Bloqueado</span>`:"")+(p.novo?' <span class="tag nv" title="Admissão recente, ainda fora da planilha de experiência. Datas calculadas pela admissão (30 + 30 dias).">Novo na base</span>':"")+(p.p90&&!p.encOk?` <span class="tag n90" title="Contrato de 60 dias: a gestão pode trocar para avaliar até 90 dias (${fdy(p.d90)})">Pode ir a 90 dias</span>`:"");
 const avTag=p=>p.cur?` <span class="tag ${DEC[p.cur.decisao][1]}" title="${p.cur.rh?"Avaliação registrada pelo RH":"Avaliação recebida da área"}${p.cur.data?" em "+fdy(pd(p.cur.data)):""}">${p.cur.rh?"RH":"Área"}: ${DEC[p.cur.decisao][0].toLowerCase()}</span>`:p.av?' <span class="tag av">Avaliação recebida</span>':(p.ext?' <span class="tag dP">Prorrogado até 90 dias</span>':"");
 const regBtn=p=>(CANW?`<button class="btn2 sm rg" data-m="${p.mat}">${p.cur?"Editar avaliação":"Registrar avaliação"}</button> `:"")+`<button class="btn2 sm rg fmb" data-m="${p.mat}">Formulário</button>`;
 const histHTML=p=>p.hist.length?`<div class="hist">${p.hist.map(h=>`${MK[h.k]}: ${h.rh?"RH registrou":"área pediu"} ${DEC[h.decisao][0].toLowerCase()}${h.data?" em "+fd(pd(h.data)):""}`).join(" · ")}</div>`:"";
@@ -825,7 +825,7 @@ const COLS=[
   ["Próximo marco",p=>p.tipo,1],["Data do marco",p=>fdy(p.data),1],["Dias restantes",p=>p.dias,1],["Pode ir a 90 dias até",p=>p.p90?fdy(p.d90):"",1],
   ["Atestado (dias)",p=>p.oc[0],0],["Falta",p=>p.oc[1],0],["Falta justificada",p=>p.oc[2],0],["Advertência",p=>p.oc[3],0],["Suspensão",p=>p.oc[4],0],
   ["Total de ocorrências",p=>p.tot,1],
-  ["Situação do contrato",p=>p.encOk?"Encerrado":p.encAnd?"RH encerrando":p.arEn?"Área encerrando":p.arEf?"Área efetivando":"Em experiência",1],["Situação informada pela área",p=>p.arEf?"Área efetivando":p.arEn?"Área encerrando":"",0],["Observação da área",p=>p.area&&p.area.obs||"",0],["Data de encerramento",p=>p.encOk?fdy(pd(p.enc.data)):"",1],["Motivo do encerramento",p=>p.enc&&p.enc.obs||"",0],
+  ["Situação do contrato",p=>p.encOk?(p.enc.tipo==="empresa"?"Encerrado antecipado pela empresa":p.enc.tipo==="colab"?"Encerrado antecipado a pedido do colaborador":"Encerrado"):p.encAnd?"RH encerrando":p.arEn?"Área encerrando":p.arEf?"Área efetivando":"Em experiência",1],["Situação informada pela área",p=>p.arEf?"Área efetivando":p.arEn?"Área encerrando":"",0],["Observação da área",p=>p.area&&p.area.obs||"",0],["Data de encerramento",p=>p.encOk?fdy(pd(p.enc.data)):"",1],["Motivo do encerramento",p=>p.enc&&p.enc.obs||"",0],
   ["Bloqueado (semáforo)",p=>p.bq?p.bq[0]:"",1],["Observação do bloqueio",p=>p.bq?p.bq[1]:"",1],
   ["Avaliação da área",p=>p.cur?DEC[p.cur.decisao][0]:p.av?"Recebida (planilha)":"Aguardando",1],["Data da avaliação",p=>p.cur&&p.cur.data?fdy(pd(p.cur.data)):"",0],["Observação do RH",p=>p.cur&&p.cur.obs||"",1],["Histórico",p=>p.hist.map(h=>`${MK[h.k]}: ${DEC[h.decisao][0].toLowerCase()}`).join("; "),0],["Observação da planilha",p=>p.obs+(p.novo?(p.obs?" · ":"")+"Novo na base: datas calculadas pela admissão":""),0]
 ];
@@ -1008,7 +1008,7 @@ function capa(){
 const arD=document.getElementById("arDlg");
 const arCanPr=p=>p.key==="pr"||p.p90;
 const arMarco=p=>`${p.tipo==="Prorrogação"?"Fim do 1º período":p.ext?"Fim dos 90 dias":"Fim do contrato"} ${fdy(p.data)}${p.dias<0?" (vencido)":p.dias===0?" (hoje)":` (${p.dias} dia${p.dias===1?"":"s"})`}`;
-const arSit=p=>{const a=[];if(p.encOk)a.push("Encerrado em "+fdy(pd(p.enc.data)));else if(p.encAnd)a.push("RH encerrando");
+const arSit=p=>{const a=[];if(p.encOk)a.push("Encerrado"+(p.enc.tipo==="empresa"?" antecipado pela empresa":p.enc.tipo==="colab"?" antecipado a pedido do colaborador":"")+" em "+fdy(pd(p.enc.data)));else if(p.encAnd)a.push("RH encerrando");
   if(p.cur)a.push(`Já registrado: ${DEC[p.cur.decisao][0].toLowerCase()}${p.cur.data?" em "+fdy(pd(p.cur.data)):""}${p.cur.obs?" - "+p.cur.obs:""}`);else if(p.av)a.push("Avaliação recebida (planilha)");
   if(p.ext)a.push("Prorrogado até 90 dias");if(p.arEf)a.push("Área sinalizou: efetivando");if(p.arEn)a.push("Área sinalizou: encerrando");if(p.area&&p.area.obs)a.push(p.area.obs);
   if(p.bq)a.push(`BLOQUEADO - ${p.bq[0]}: ${p.bq[1]}`);if(p.p90&&!p.cur)a.push(`Contrato de 60 dias: pode ir até ${fdy(p.d90)}`);return a.join(" · ")};
@@ -1135,7 +1135,7 @@ function openReg(mat){
   document.getElementById("regH").innerHTML=p.hist.length?"Já registrado: "+p.hist.map(h=>`${MK[h.k]} — ${DEC[h.decisao][0].toLowerCase()}${h.data?" em "+fdy(pd(h.data)):""}${h.obs?" ("+esc(h.obs)+")":""}`).join(" · "):"";
   document.getElementById("regH").hidden=!p.hist.length;
   document.getElementById("regDel").hidden=!p.cur;
-  const en=p.enc||null;document.getElementById("regEnc").checked=!!en;document.getElementById("regEncD").value=en&&en.data||"";document.getElementById("regEncO").value=en&&en.obs||"";
+  const en=p.enc||null;document.getElementById("regEnc").checked=!!en;document.getElementById("regEncD").value=en&&en.data||"";document.getElementById("regEncO").value=en&&en.obs||"";document.getElementById("regEncT").value=en&&en.tipo||"";encInfo();
   document.getElementById("regEncF").style.display=en?"":"none";
   const ar=p.area&&p.area.st||"";document.querySelectorAll('#regA input').forEach(i=>i.checked=i.value===ar);document.getElementById("regAO").value=p.area&&p.area.obs||"";
   if(!reg.open)reg.showModal();
@@ -1152,16 +1152,25 @@ async function regWrite(fn){
   catch(e){regErr(e);return false}
   finally{regBusy=false;document.getElementById("regSave").disabled=false}
 }
-document.getElementById("regEnc").addEventListener("change",e=>{document.getElementById("regEncF").style.display=e.target.checked?"":"none"});
+document.getElementById("regEnc").addEventListener("change",e=>{document.getElementById("regEncF").style.display=e.target.checked?"":"none";encInfo()});
+/* encerramento antecipado (pedido do RH, 26/10/2026): pela empresa ou a pedido do colaborador, com a data */
+const ENCT={empresa:"antecipado pela empresa",colab:"antecipado a pedido do colaborador"};
+function encInfo(){const i=document.getElementById("regEncI");if(!i||!regP)return;const tp=document.getElementById("regEncT").value,ed=document.getElementById("regEncD").value,on=document.getElementById("regEnc").checked,fim=regP.vf;
+  if(!on||!tp){i.hidden=true;return}i.hidden=false;
+  if(!ed){i.textContent="Informe a data do encerramento. O contrato vai até "+fdy(fim)+".";return}
+  const n=Math.round((fim-pd(ed))/864e5);
+  i.textContent=n<=0?"A data é igual ou depois do fim do contrato ("+fdy(fim)+"): use “No vencimento do contrato”.":"Encerramento "+n+(n===1?" dia":" dias")+" antes do fim do contrato ("+fdy(fim)+")."+(tp==="empresa"?" Confira com o DP a indenização do art. 479 da CLT (metade da remuneração dos dias que faltavam).":"")}
+["regEncT","regEncD"].forEach(id=>document.getElementById(id).addEventListener("input",encInfo));document.getElementById("regEncT").addEventListener("change",encInfo);
 document.getElementById("regO").addEventListener("change",e=>{if(e.target.value==="encerrar"&&!document.getElementById("regEnc").checked){document.getElementById("regEnc").checked=true;document.getElementById("regEncF").style.display=""}});
 document.getElementById("regSave").onclick=async()=>{
   const d=document.querySelector('#regO input:checked'),encOn=document.getElementById("regEnc").checked;
   const aS=(document.querySelector('#regA input:checked')||{}).value||"",aO=document.getElementById("regAO").value.trim().slice(0,300);
   if(!d&&!encOn&&!regP.enc&&!aS&&!regP.area){toast("Escolha o que a área devolveu, a situação informada pela área ou o encerramento pelo RH.");return}
   const key=regP.key,val=d?{decisao:d.value,data:document.getElementById("regD").value||iso(TODAY),obs:document.getElementById("regOb").value.trim().slice(0,2000),venc:iso(regP.data)}:null;
-  const ed=document.getElementById("regEncD").value,eo=document.getElementById("regEncO").value.trim().slice(0,300);
-  const msg=encOn?(ed?`Contrato encerrado em ${fdy(pd(ed))}.`:"Marcado como RH encerrando. Informe a data quando concluir."):(regP.enc?"Encerramento desfeito: o contrato voltou para a lista.":aS&&!d?(aS==="efetivando"?"Marcado como Área efetivando.":"Marcado como Área encerrando."):!aS&&regP.area&&!d?"Situação da área removida.":"Avaliação registrada.");
-  if(await regWrite(c=>{if(val)c[key]=val;if(encOn)c.enc={data:ed||"",obs:eo,em:iso(TODAY)};else delete c.enc;if(aS)c.area={st:aS,obs:aO,em:(c.area&&c.area.st===aS&&c.area.em)||iso(TODAY)};else delete c.area}))toast(msg);
+  const ed=document.getElementById("regEncD").value,eo=document.getElementById("regEncO").value.trim().slice(0,300),et=document.getElementById("regEncT").value;
+  if(encOn&&et){if(!ed){toast("Informe a data do encerramento antecipado.");return}if(pd(ed)>=regP.vf){toast("A data é igual ou depois do fim do contrato: escolha “No vencimento do contrato”.");return}}
+  const msg=encOn?(ed?`Contrato encerrado${et?" "+ENCT[et]:""} em ${fdy(pd(ed))}.`:"Marcado como RH encerrando. Informe a data quando concluir."):(regP.enc?"Encerramento desfeito: o contrato voltou para a lista.":aS&&!d?(aS==="efetivando"?"Marcado como Área efetivando.":"Marcado como Área encerrando."):!aS&&regP.area&&!d?"Situação da área removida.":"Avaliação registrada.");
+  if(await regWrite(c=>{if(val)c[key]=val;if(encOn)c.enc={data:ed||"",obs:eo,em:iso(TODAY),...(et?{tipo:et}:{})};else delete c.enc;if(aS)c.area={st:aS,obs:aO,em:(c.area&&c.area.st===aS&&c.area.em)||iso(TODAY)};else delete c.area}))toast(msg);
 };
 document.getElementById("regDel").onclick=async()=>{const key=regP.key;if(await regWrite(c=>{delete c[key]}))toast("Registro apagado.")};
 function refresh(){ALLA.forEach(apply);PX.forEach(apply);splitEnc();buildWeeks();render();if(dlg.open){dlgList=dlgList.filter(p=>P.includes(p));document.getElementById("dlgB").innerHTML=dlgList.length?dlgList.map(rowHTML).join(""):`<div class="empty">Ninguém nesta lista com os filtros atuais.</div>`}}
