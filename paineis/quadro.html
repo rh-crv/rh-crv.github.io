@@ -646,7 +646,7 @@ button.tile:hover,button.act:hover{transform:translateY(-2px);box-shadow:var(--s
           <label class="rx-f">Título<input id="xTit" type="text"></label>
           <div class="rx-row"><label class="rx-f">Ordenar por<select id="xOrd"><option value="nome">Nome</option><option value="mat">Matrícula</option><option value="dep">Departamento / seção</option><option value="fun">Função</option></select></label>
           <label class="rx-chk"><input type="checkbox" id="xGrp"> Separar por departamento</label></div>
-          <div class="rx-bts"><button class="btn2 rx-b x" id="xXls">Baixar Excel</button><button class="btn2 rx-b p" id="xPdf">Baixar PDF</button><button class="btn2 rx-b" id="xCopy">Copiar</button></div>
+          <div class="rx-bts"><button class="btn2 rx-b x" id="xXls">Baixar Excel</button><button class="btn2 rx-b p" id="xPdf">Baixar PDF</button><button class="btn2 rx-b p" id="xPrt">Imprimir</button><button class="btn2 rx-b" id="xCopy">Copiar</button></div>
         </div>
       </div>
       <div class="rx-prev"><div class="rx-ph"><b id="xN"></b><span id="xSub"></span></div><div class="tile scroll"><table class="nom rx-tb" id="xTb"></table></div><p class="foot" id="xFoot"></p></div>
@@ -2233,8 +2233,8 @@ function rxPrev(){const L=rxRows(),C=rxCols();
   $('xFoot').textContent=(L.length>200?'Mostrando 200 de '+nf(L.length)+'; o arquivo leva todos. ':'')+'Base de __CRV_REFBR__.'+(sem?' '+sem+' sem horário na planilha de horários.':'')+(ss?' '+ss+' sem salário na planilha carregada.':'')}
 function rxXlsx(){const L=rxRows(),C=rxCols();if(!L.length||!C.length)return toast('Nada para exportar.');
   saveFile(fname(rxTitulo())+'.xlsx',()=>xlsx(C.map(c=>c[1]),L.map(r=>C.map(c=>{const v=rxVal(c,r);return c[0]==='mat'||c[0]==='idade'||typeof v==='number'?(v===''?'':+v):v})),'Relatório'),'Excel salvo.')}
-function rxPdf(){const L=rxRows(),C=rxCols();if(!L.length||!C.length)return toast('Nada para exportar.');
-  saveFile(fname(rxTitulo())+'.pdf',()=>{const doc=new MiniPdf(),W_=210,M=12,tot=C.reduce((t,c)=>t+c[3],0),CW=C.map(c=>c[3]*(W_-2*M)/tot),fs=C.length>8?6.2:C.length>6?6.8:7.4,rh=fs*0.78;
+function rxPdf(imp){const L=rxRows(),C=rxCols();if(!L.length||!C.length)return toast('Nada para exportar.');
+  const gera=()=>{const doc=new MiniPdf(),W_=210,M=12,tot=C.reduce((t,c)=>t+c[3],0),CW=C.map(c=>c[3]*(W_-2*M)/tot),fs=C.length>8?6.2:C.length>6?6.8:7.4,rh=fs*0.78;
     const fit=(s,wd)=>{s=pt(s);if(doc.tw(s)<=wd)return s;while(s.length>1&&doc.tw(s+'…')>wd)s=s.slice(0,-1);return s+'…'};
     let y=0,pg=0;const head=()=>{if(pg)doc.addPage();pg++;
       doc.setFillColor(22,40,77);doc.rect(0,0,W_,22,'F');doc.setFillColor(233,162,59);doc.rect(0,22,W_,1,'F');
@@ -2248,7 +2248,9 @@ function rxPdf(){const L=rxRows(),C=rxCols();if(!L.length||!C.length)return toas
     L.forEach(r=>{if(GRX.grp&&r[DEP]!==last){last=r[DEP];if(y>276)head();doc.setFillColor(253,241,218);doc.rect(M,y-3.6,W_-2*M,rh+1.6,'F');doc.setFont('h','bold');doc.setFontSize(fs);doc.setTextColor(138,90,0);doc.text(fit(last+' · '+L.filter(z=>z[DEP]===last).length,W_-2*M-2),M+1,y);y+=rh+1.6;i=0}
       if(y>280)head();let x=M;if(i%2){doc.setFillColor(242,244,249);doc.rect(M,y-3.6,W_-2*M,rh+1.6,'F')}
       doc.setFont('h','normal');doc.setFontSize(fs);doc.setTextColor(20,33,61);C.forEach((c,j)=>{doc.text(fit(rxFmt(c,rxVal(c,r)),CW[j]-1.5),x+.8,y);x+=CW[j]});y+=rh+1.6;i++});
-    return doc.output('arraybuffer')},'PDF salvo.')}
+    return doc.output('arraybuffer')};
+  if(imp){try{const u=URL.createObjectURL(new Blob([gera()],{type:'application/pdf'})),w=window.open(u,'_blank');if(w){toast('Relatório aberto em outra aba: use o botão de imprimir do PDF.');return}}catch(_){}toast('O navegador bloqueou a aba nova; o PDF foi baixado para você imprimir.')}
+  saveFile(fname(rxTitulo())+'.pdf',gera,'PDF salvo.')}
 function rxCopy(){const L=rxRows(),C=rxCols();(navigator.clipboard?navigator.clipboard.writeText([C.map(c=>c[1]).join('\t')].concat(L.map(r=>C.map(c=>rxFmt(c,rxVal(c,r))).join('\t'))).join('\n')):Promise.reject()).then(()=>toast('Relatório copiado: '+nf(L.length)+' linhas. Cole no Excel.'),()=>toast('Não foi possível copiar neste aparelho.'))}
 async function rxSal(f){const st=$('xSalSt');st.className='rx-st';st.textContent='Lendo…';
   try{const X_=window.XLSX||(window.parent&&window.parent.XLSX);if(!X_)throw new Error('leitor de Excel indisponível');
@@ -2270,7 +2272,7 @@ document.addEventListener('change',e=>{const t=e.target;if(!t.closest||!t.closes
   if(t.id==='xSalF'&&t.files[0])return rxSal(t.files[0])});
 document.addEventListener('input',e=>{const t=e.target;if(t.id==='xDepQ'){GRX.dq=t.value;const p=t.selectionStart;relGer();const q=$('xDepQ');q.focus();q.setSelectionRange(p,p)}if(t.id==='xMats'){GRX.mats=t.value;rxPrev()}if(t.id==='xTit'){GRX.tit=t.value;rxPrev()}});
 document.addEventListener('click',e=>{const b=e.target.closest('[data-xp]');if(b){const v=b.dataset.xp;GRX.campos=v==='all'?new Set(Object.keys(GRXL)):v==='none'?new Set():new Set(GRXP[+v][1]);return relGer()}
-  if(e.target.id==='xXls')return rxXlsx();if(e.target.id==='xPdf')return rxPdf();if(e.target.id==='xCopy')return rxCopy()});
+  if(e.target.id==='xXls')return rxXlsx();if(e.target.id==='xPdf')return rxPdf();if(e.target.id==='xPrt')return rxPdf(1);if(e.target.id==='xCopy')return rxCopy()});
 
 document.addEventListener('input',e=>{if(e.target.id=='rQ'){RS.q=e.target.value;RS.n=100;rNom()}if(e.target.id=='bTq'){AB.tq=e.target.value;AB.tn=40;absTab();const q=$('bTq');q.focus();q.setSelectionRange(q.value.length,q.value.length)}if(e.target.id=='bNq'){AB.q=e.target.value;AB.n=40;absTab();const q=$('bNq');q.focus();q.setSelectionRange(q.value.length,q.value.length)}});
 document.addEventListener('change',e=>{if(e.target.id=='hSel'){HS.k=e.target.value;horarios()}if(e.target.id=='fAno'){if(st.tab=='b'){}else if(st.tab=='r'){RS.y=e.target.value;RS.m=''}else if(st.tab=='a'){AS.y=e.target.value;AS.m=''}else if(st.tab=='d'){DS.y=e.target.value;DS.m=''}else{st.ano=e.target.value;st.n=50;st.open=null}render()}if(e.target.id=='rOrd'){RS.ord=e.target.value;return rescTab()}if(e.target.id=='rTr'){RS.tr=e.target.checked;return rescTab()}if(e.target.id=='rMot'){RS.mot=e.target.value;RS.n=100;return rNom()}if(e.target.id=='rTen'){RS.ten=e.target.value;RS.n=100;return rNom()}if(e.target.id=='rTp'){RS.tp=e.target.value;RS.n=100;return rNom()}if(e.target.dataset&&e.target.dataset.rc){const c=e.target.dataset.rc;e.target.checked?RS.cols.add(c):RS.cols.delete(c);return rNom()}if(e.target.id=='bGe'){AB.ge=e.target.value;return render()}if(e.target.id=='bEx'){AB.excl=e.target.checked;return absTab()}if(e.target.classList&&e.target.classList.contains('bOrd')){AB.sd=+e.target.value;return absTab()}if(e.target.classList&&e.target.classList.contains('bMq')){AB.minq=e.target.checked;return absTab()}if(e.target.id=='bTsit'){AB.tsit=e.target.value;AB.tn=40;return absTab()}if(e.target.id=='bNs'){AB.sit=e.target.value;AB.n=40;return absTab()}if(e.target.id=='fMes'){if(st.tab=='b')AB.m=e.target.value;else if(st.tab=='r')RS.m=e.target.value;else if(st.tab=='a')AS.m=e.target.value;else DS.m=e.target.value;render()}});
@@ -2371,6 +2373,7 @@ if(MODOQ){st.tab=MODOQ;
   document.addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if(b&&b.dataset.tab!==MODOQ){e.stopPropagation();e.preventDefault()}},true);
 }else{['tb-a','tb-r'].forEach(id=>{const b=$(id);if(b)b.hidden=true});if(st.tab=='a'||st.tab=='r'||st.tab=='d')st.tab='g'}
 render();
+window.CRV_GERREL=()=>{st.tab='x';try{history.replaceState(null,'','#relatorios')}catch(_){}render();try{window.scrollTo(0,0)}catch(_){}};
 // salários: vêm do painel restrito do app (o banco só entrega para a equipe RH); entram na ficha e no gerador de relatórios
 (async()=>{try{const f=window.parent&&window.parent!==window&&window.parent.CRV_SAL;if(typeof f!=='function')return;const o=await f();if(!o||!o.SAL)return;const S0=o.SAL;
   // só usa o salário quando o nome da planilha confere com o do Quadro (primeiro e último nome): matrícula trocada não leva o salário de outra pessoa
