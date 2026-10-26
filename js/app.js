@@ -651,7 +651,9 @@ async function fichaDados(mat){
     if (L.length) F.sec.push({ k:'cr', t:'Crachás de treinamento', painel:'crachas', cab:['Função em treinamento', 'Início', 'Vencimento', 'Resultado'], linhas:L.map(x => [x.funcaoTrein || '', brD(x.inicio), brD(x.fim), String(x.resultado || '—').replace(/_/g, ' ').toLowerCase()]) }); })());
   // Processos trabalhistas e bloqueio para recontratação
   if (fPode('processos')) tarefas.push((async () => { const d = await window.CRV_DADOS('processos'); const DB = d && d.dados.DB; if (!DB) return;
-    const p = (DB.P || []).find(x => fMat(x.mat) === mat || (cpf8 && String(x.c || '').replace(/\D/g, '').slice(-8) === cpf8)); if (!p) return;
+    const nN = t => String(t || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Z ]/g, ' ').split(/\s+/).filter(Boolean), mesmo = (a, b) => { const x = nN(a), y = nN(b); return x.length && y.length && x[0] === y[0] && x[x.length - 1] === y[y.length - 1]; };
+    // a mesma matrícula já foi usada por outra pessoa (outra empresa ou outro período): liga pelo CPF; pela matrícula só quando o nome também bate
+    const p = (DB.P || []).find(x => (cpf8 && String(x.c || '').replace(/\D/g, '').slice(-8) === cpf8) || (fMat(x.mat) === mat && mesmo(x.n, c.nome))); if (!p) return;
     F.sec.push({ k:'proc', t:'Processos trabalhistas', painel:'processos', cab:['Processo', 'Empresa', 'Tipo'], linhas:(p.p || []).map(x => [x[0], x[1], x[2]]), alerta:(p.p || []).length ? (p.p.length === 1 ? '1 processo' : p.p.length + ' processos') : '' });
     if (p.bq) F.bloqueio = p.bq; })());
   // Risco de Desligamento (só para quem pode ver o painel)
@@ -788,7 +790,8 @@ async function consultaDetalhe(p){
   for (const id of ['admissoes', 'rescisoes']) { if (!fPode(id)) continue; const d = await window.CRV_DADOS(id); const B = d && d.dados.BLQ; if (B) crv.forEach(m => { if (B[m] && !bloq.some(b => b.m === m && b.t === B[m][0])) bloq.push({ m, t:B[m][0], o:B[m][1], fonte:id === 'admissoes' ? 'Acompanhamento de admissões' : 'Acompanhamento de rescisões' }); }); }
   let proc = null;
   if (fPode('processos')) { const d = await window.CRV_DADOS('processos'); const DB = d && d.dados.DB; if (DB) { const c8 = p.d.slice(-8);
-    proc = (DB.P || []).find(x => (c8 && String(x.c || '').replace(/\D/g, '').slice(-8) === c8) || crv.includes(String(x.mat)));
+    const nN = t => String(t || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Z ]/g, ' ').split(/\s+/).filter(Boolean), mesmo = (a, b) => { const x = nN(a), y = nN(b); return x.length && y.length && x[0] === y[0] && x[x.length - 1] === y[y.length - 1]; };
+    proc = (DB.P || []).find(x => (c8 && String(x.c || '').replace(/\D/g, '').slice(-8) === c8) || (crv.includes(String(x.mat)) && mesmo(x.n, p.nome)));
     if (proc && proc.bq && !bloq.some(b => b.t === proc.bq[0])) bloq.push({ m:String(proc.mat || ''), t:proc.bq[0], o:proc.bq[1], fonte:'Processos trabalhistas' }); } }
   const O = crv.length ? await window.CRV_OCORR(crv) : { P:{} };
   const sanc = []; crv.forEach(m => { const o = O.P[m]; if (!o) return; o.adv.forEach(x => sanc.push([brD(x.data), 'Advertência', x.motivo || ''])); o.sus.forEach(x => sanc.push([brD(x.data), 'Suspensão' + (x.dias ? ' (' + x.dias + 'd)' : ''), x.motivo || ''])); });
