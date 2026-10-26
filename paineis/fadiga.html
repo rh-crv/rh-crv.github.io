@@ -819,15 +819,17 @@ let MUDOU=false;
 /* ---------- PDF no modelo ---------- */
 async function pdf(d){
   const J=(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF);if(!J)throw new Error('gerador de PDF indisponível');
+  /* cabe numa folha só com as assinaturas (pedido do RH, 26/10/2026): se o texto empurrar as assinaturas, monta de novo com a letra um pouco menor */
+  const build=K=>{let quebrou=false;
   const doc=new J({unit:'mm',format:'a4'});
   const NAVY=[31,58,104],INK=[40,46,58],MUT=[110,116,128],GREEN=[110,150,60];const L=18,R=192,W2=R-L;
   const segs=t=>{const out=[];String(t||'').split(/(\*\*[^*]+\*\*)/).forEach(p=>{if(!p)return;if(/^\*\*[^*]+\*\*$/.test(p))out.push([p.slice(2,-2),1]);else out.push([p,0])});return out};
   const cab2=()=>{doc.setFillColor(...NAVY);doc.rect(0,0,210,4,'F')};
-  const rich=(S,y,fs=8.9,lh=4.25)=>{doc.setFontSize(fs);const words=[];S.forEach(([t,bd])=>String(t).split(/(\s+)/).forEach(w=>{if(w!=='')words.push({w,bd:!!bd})}));
+  const rich=(S,y,fs=8.9*K,lh=4.25*K)=>{doc.setFontSize(fs);const words=[];S.forEach(([t,bd])=>String(t).split(/(\s+)/).forEach(w=>{if(w!=='')words.push({w,bd:!!bd})}));
     let x=L;let lines=[[]];words.forEach(o=>{if(/\n/.test(o.w)){const n=(o.w.match(/\n/g)||[]).length;for(let k=0;k<n;k++)lines.push([]);x=L;return}
       doc.setFont('helvetica',o.bd?'bold':'normal');const ww=doc.getTextWidth(o.w);const sp=/^\s+$/.test(o.w);if(sp&&x===L)return;if(x+ww>R&&!sp){lines.push([]);x=L}if(sp&&x===L)return;lines[lines.length-1].push({...o,x});x+=ww});
-    lines.forEach(ln=>{if(y>262){doc.addPage();cab2();y=20}ln.forEach(o=>{doc.setFont('helvetica',o.bd?'bold':'normal');doc.setTextColor(...INK);doc.text(o.w,o.x,y)});y+=lh});return y};
-  const sec=(t,y)=>{if(y>252){doc.addPage();cab2();y=20}doc.setFont('helvetica','bold');doc.setFontSize(9.6);doc.setTextColor(...NAVY);doc.text(t,L,y);return y+5};
+    lines.forEach(ln=>{if(y>262){quebrou=true;doc.addPage();cab2();y=20}ln.forEach(o=>{doc.setFont('helvetica',o.bd?'bold':'normal');doc.setTextColor(...INK);doc.text(o.w,o.x,y)});y+=lh});return y};
+  const sec=(t,y)=>{if(y>252){quebrou=true;doc.addPage();cab2();y=20}doc.setFont('helvetica','bold');doc.setFontSize(9.6*Math.max(K,.85));doc.setTextColor(...NAVY);doc.text(t,L,y);return y+5*K};
   const rodape=()=>{const n=doc.getNumberOfPages();for(let i=1;i<=n;i++){doc.setPage(i);doc.setDrawColor(215,220,228);doc.setLineWidth(0.3);doc.line(L,276,R,276);doc.setFont('helvetica','bold');doc.setFontSize(7.3);doc.setTextColor(...INK);doc.text('CRV INDUSTRIAL LTDA - UNIDADE CAPINÓPOLIS | CNPJ 03.937.452/0004-35',105,280.5,{align:'center'});
     doc.setFont('helvetica','normal');doc.setTextColor(...MUT);doc.text('Rodovia MG-226, s/nº, km 63, Zona Rural, Capinópolis/MG - CEP 38.360-000',105,284.3,{align:'center'});doc.text('Telefone: (34) 3263-8100',105,288,{align:'center'})}};
   const lab=(t,v,x,y)=>{doc.setFont('helvetica','bold');doc.text(t,x,y);const w=doc.getTextWidth(t);doc.setFont('helvetica','normal');const vv=String(v||'');doc.text(vv||'____________________',x+w+1.6,y);return x+w+1.6+doc.getTextWidth(vv||'____________________')};
@@ -862,14 +864,16 @@ async function pdf(d){
     y+=2;y=sec('4. CONDUTA ESPERADA E ORIENTAÇÕES',y);y=rich(segs(d.ori),y)+1;
     y=rich([['A reincidência ou novo descumprimento poderá resultar em medidas disciplinares mais severas, considerando a gravidade e as circunstâncias de cada ocorrência, as normas internas e a legislação aplicável.']],y)+2;
     y=sec('CIÊNCIA DO COLABORADOR',y);y=rich([['Declaro que recebi e tomei ciência deste documento e das orientações nele contidas. Minha assinatura registra o recebimento e a ciência, sem implicar concordância com todos os fatos descritos.']],y)}
-  if(y>234){doc.addPage();cab2();y=30}
-  let ys=Math.min(Math.max(y+14,232),246);const c2=118;doc.setDrawColor(...INK);doc.setLineWidth(0.3);doc.line(L,ys,L+78,ys);doc.line(c2-4,ys,R,ys);
+  if(y>240){quebrou=true;doc.addPage();cab2();y=30}
+  let ys=Math.min(Math.max(y+10,232),246);const c2=118;doc.setDrawColor(...INK);doc.setLineWidth(0.3);doc.line(L,ys,L+78,ys);doc.line(c2-4,ys,R,ys);
   doc.setFont('helvetica','bold');doc.setFontSize(8.8);doc.setTextColor(...INK);doc.text(d.tipo==='ter'?'Motorista terceiro':'Colaborador(a)',L+39,ys+4.5,{align:'center'});doc.text('Gestão de RH',(c2-4+R)/2,ys+4.5,{align:'center'});
   doc.setFont('helvetica','normal');doc.setFontSize(7.8);doc.text(d.nome+(d.mat?' | Matrícula: '+d.mat:''),L+39,ys+9,{align:'center'});doc.text('Nome: '+(d.rh||'______________________________________'),(c2-4+R)/2,ys+9,{align:'center'});
   ys+=21;doc.line(L,ys-5,L+78,ys-5);doc.line(c2-4,ys-5,R,ys-5);
   doc.text('Testemunha - Nome: ______________________________',L,ys);doc.text('CPF: _____________________________________________',L,ys+4.3);
   doc.text('Testemunha - Nome: ______________________________',c2-4,ys);doc.text('CPF: _____________________________________________',c2-4,ys+4.3);
   rodape();
+  return {doc,quebrou}};
+  let K=1,B=build(K);while(B.quebrou&&K>0.62){K=Math.round((K-0.04)*100)/100;B=build(K)}const doc=B.doc;
   const nome=`${({ori:'Termo de orientacao',adv:'Advertencia',sus:'Suspensao',ter:'Termo terceiro'})[d.tipo]} - ${String(d.nome).split(' ')[0]}${d.mat?' '+d.mat:''} - ${br(d.data).split('/').join('-')}.pdf`;
   const bytes=new Uint8Array((await (window.parent.CRV_PDF_LOGOS||window.CRV_PDF_LOGOS||(d=>d))(doc)).output('arraybuffer'));
   const DL=window.claude&&window.claude.use?await window.claude.use('downloads').catch(()=>null):null;
