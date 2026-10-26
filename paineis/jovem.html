@@ -530,11 +530,16 @@ function fbMini(n){if(typeof FB==="undefined")return "";const x=fbJ(n),l=fbL(n);
 function renderJ(){
   const m=MESES[cur],c=calc(m),q=$("busca").value.trim().toLowerCase(),fr=$("frad").value,o=$("ford").value;
   let js=c.js.filter(j=>(!q||j.n.toLowerCase().includes(q)||String(j.mat||"").includes(q))&&(fr===""||j.rad===+fr)&&(!$("fset").value||(j.area||"Sem setor")===$("fset").value));
+  /* mês atual: entram também os ativos da base que não estão na frequência do Instituto (novos, reativados, cadastrados no app), para abrir a ficha e completar os dados */
+  const naL=new Set(c.js.map(j=>nkey(j.n))),isoB=s=>s&&/^\d{2}\/\d{2}\/\d{4}$/.test(s)?s.slice(6)+"-"+s.slice(3,5)+"-"+s.slice(0,2):(s||"");
+  const extra=(cur!==MESES.length-1||fr!=="")?[]:BASE.filter(b=>b.st!=="Desligado"&&!naL.has(nkey(b.nome))).map(b=>({n:tcase(b.nome),mat:b.mat,matb:b.matb,setor:b.setor||"",area:String(b.setor||"").split(" - ")[0]||"Sem setor",jor:b.jor||"",ini:isoB(b.ini),fim:isoB(b.fim),rad:0,fa:[],at:[],ab:[],fj:[],fe:[],med:null,ocN:0,sinais:[],notas:[],sn:[],oc:[],aus:0,semF:1,st:b.st}))
+    .filter(j=>(!q||j.n.toLowerCase().includes(q)||String(j.mat||"").includes(q))&&(!$("fset").value||(j.area||"Sem setor")===$("fset").value));
+  js=js.concat(extra);
   const by={rad:(a,b)=>b.rad-a.rad||b.sinais.length-a.sinais.length||a.n.localeCompare(b.n),nome:(a,b)=>a.n.localeCompare(b.n),aus:(a,b)=>b.aus-a.aus||a.n.localeCompare(b.n),med:(a,b)=>(a.med===null?999:a.med)-(b.med===null?999:b.med)};
   js.sort(by[o]);
-  $("jcnt").textContent=js.length+" de "+c.n+" aprendizes";
+  $("jcnt").textContent=extra.length?js.length+" aprendizes · "+(js.length-extra.length)+" na frequência de "+m.label+" · "+extra.length+" ativo"+(extra.length>1?"s":"")+" só na base":js.length+" de "+c.n+" aprendizes";
   $("jtb").innerHTML=js.length?js.map(j=>{
-    let r='<tr class="j" tabindex="0" data-n="'+esc(j.n)+'" aria-expanded="'+(aberto===j.n)+'"><td><span class="nm">'+esc(j.n)+'</span><div class="sm">'+esc(idl(j))+'</div></td><td>'+pill(j.rad)+'</td><td class="r" data-l="Faltas">'+j.fa.length+'</td><td class="r" data-l="Atestado (dias)">'+j.at.length+'</td><td class="r" data-l="Média">'+(j.med===null?"–":Math.round(j.med))+'</td><td class="r" data-l="Registros">'+j.ocN+'</td><td><div class="tags">'+(j.sinais.map(s=>'<span class="tag">'+esc(s)+"</span>").join("")||'<span class="sm">Sem sinais</span>')+"</div></td></tr>";
+    let r='<tr class="j" tabindex="0" data-n="'+esc(j.n)+'" aria-expanded="'+(aberto===j.n)+'"><td><span class="nm">'+esc(j.n)+'</span><div class="sm">'+esc(idl(j))+'</div></td><td>'+(j.semF?'<span class="tag">'+(j.st==="Stand-by"?"Ainda não começou":"Sem frequência no mês")+'</span>':pill(j.rad))+'</td><td class="r" data-l="Faltas">'+j.fa.length+'</td><td class="r" data-l="Atestado (dias)">'+j.at.length+'</td><td class="r" data-l="Média">'+(j.med===null?"–":Math.round(j.med))+'</td><td class="r" data-l="Registros">'+j.ocN+'</td><td><div class="tags">'+(j.sinais.map(s=>'<span class="tag">'+esc(s)+"</span>").join("")||'<span class="sm">Sem sinais</span>')+"</div></td></tr>";
     if(aberto===j.n){
       const ds=(a,l)=>a.length?"<li>"+l+": "+a.map(d=>dm(d,m)).join(", ")+"</li>":"";
       r+='<tr class="det"><td colspan="7"><div class="dg"><div><h4>Histórico mês a mês</h4><table><tr><th>Mês</th><th>Radar</th><th>Faltas</th><th>Atest.</th><th>Média</th><th>Reg.</th></tr>'+hist(j.n)+"</table></div>"
@@ -1056,10 +1061,10 @@ function aplicar(){
 async function atualizar(){await carregar();aplicar();PRONTO=true;try{MESES.forEach(m=>{delete m._c})}catch(_){}try{renderBase()}catch(_){}try{render()}catch(_){}}
 window.CRV_JOV_ATUALIZAR=atualizar;
 
-let W=null;const fechar=()=>{if(W){W.remove();W=null}};
-function modal(tit,sub){fechar();W=document.createElement('div');W.className='jf-fundo';W.innerHTML='<div class="jf-modal" role="dialog" aria-modal="true"><div class="jf-cab"><h3>'+e_(tit)+'<small>'+e_(sub||'')+'</small></h3><button class="jf-b" data-x>Fechar</button></div><div class="jf-corpo"></div><div class="jf-rod"><span class="msg"></span></div></div>';
+let W=null,JMUD=false;const fechar=()=>{if(W){W.remove();W=null;if(JMUD){JMUD=false;try{window.parent&&window.parent.CRV_RECARREGAR&&window.parent.CRV_RECARREGAR()}catch(_){}}}};
+function modal(tit,sub){if(W){W.remove();W=null}W=document.createElement('div');W.className='jf-fundo';W.innerHTML='<div class="jf-modal" role="dialog" aria-modal="true"><div class="jf-cab"><h3>'+e_(tit)+'<small>'+e_(sub||'')+'</small></h3><button class="jf-b" data-x>Fechar</button></div><div class="jf-corpo"></div><div class="jf-rod"><span class="msg"></span></div></div>';
   document.body.appendChild(W);W.querySelector('[data-x]').onclick=fechar;W.addEventListener('mousedown',ev=>{if(ev.target===W)fechar()});return{C:W.querySelector('.jf-corpo'),R:W.querySelector('.jf-rod'),msg:(t,c)=>{const m=W.querySelector('.jf-rod .msg');m.style.color=c||'';m.textContent=t}}}
-async function salvarReg(k,r){const D=await db();if(!D)throw new Error('O registro não está disponível nesta visualização.');r.atualizadoEm=new Date().toISOString();r.atualizadoPor=quem();await D.collection('jovens').doc(k).set(r);REG[k]=r}
+async function salvarReg(k,r){const D=await db();if(!D)throw new Error('O registro não está disponível nesta visualização.');r.atualizadoEm=new Date().toISOString();r.atualizadoPor=quem();await D.collection('jovens').doc(k).set(r);REG[k]=r;JMUD=true}
 
 const CAMPOS=[['sec','Contrato'],['mat','Matrícula CRV','w3',1],['matb','Matrícula '+JC.inst,'w3'],['ini','Início do contrato','w3','date'],['fim','Término do contrato','w3','date'],
  ['setor','Setor','w6','setor'],['jor','Jornada','w3',0,'Ex.: 13:00 às 19:00'],['cbo','CBO','w3'],
@@ -1146,8 +1151,8 @@ async function ficha(k,aba,aviso){if(!PRONTO)await atualizar();const b=BASE.find
       M.C.querySelector('[data-addat]').onclick=async()=>{const a={chave:k,mat:b.mat||'',nome:NM(b),entregue:ga('entregue').value,ini:ga('ini').value,dias:parseInt(ga('dias').value,10)||0,tipo:ga('tipo').value,cid:ga('cid').value.trim().toUpperCase(),prof:ga('prof').value.trim(),obs:ga('obs').value.trim(),por:quem(),em:new Date().toISOString()};
         if(!a.ini||!a.dias)return M.msg('Informe o início e a quantidade de dias.','#a3301c');a.fim=addD(a.ini,a.dias-1);
         const D=await db();if(!D)return M.msg('Não dá para salvar nesta visualização.','#a3301c');
-        try{await D.collection('atestados').add(a);await atualizar();ficha(k,'at','Atestado registrado.')}catch(er){M.msg(er.message,'#a3301c')}}}
-    M.C.querySelectorAll('[data-rmat]').forEach(x=>x.onclick=async()=>{if(!x.dataset.c){x.dataset.c=1;x.textContent='Confirmar';return}const D=await db();try{await D.collection('atestados').doc(x.dataset.rmat).update({excluido:true,excluidoEm:new Date().toISOString(),excluidoPor:quem()});await atualizar();ficha(k,'at','Atestado excluído.')}catch(er){M.msg(er.message,'#a3301c')}});
+        try{await D.collection('atestados').add(a);JMUD=true;await atualizar();ficha(k,'at','Atestado registrado.')}catch(er){M.msg(er.message,'#a3301c')}}}
+    M.C.querySelectorAll('[data-rmat]').forEach(x=>x.onclick=async()=>{if(!x.dataset.c){x.dataset.c=1;x.textContent='Confirmar';return}const D=await db();JMUD=true;try{await D.collection('atestados').doc(x.dataset.rmat).update({excluido:true,excluidoEm:new Date().toISOString(),excluidoPor:quem()});await atualizar();ficha(k,'at','Atestado excluído.')}catch(er){M.msg(er.message,'#a3301c')}});
     const BX=M.R.querySelector('[data-bx]');if(BX)BX.onclick=async()=>{const gb=n=>M.C.querySelector('[data-b='+n+']');const bx={data:gb('data').value,motivo:gb('motivo').value,obs:gb('obs').value.trim(),por:quem(),em:new Date().toISOString()};
       if(!bx.data)return M.msg('Informe a data de saída.','#a3301c');if(bx.motivo==='Outro'&&!bx.obs)return M.msg('Descreva o motivo na observação.','#a3301c');
       try{await salvarReg(k,Object.assign({},r,{baixa:bx}));await atualizar();ficha(k,'bx','Baixa registrada.')}catch(er){M.msg(er.message,'#a3301c')}};

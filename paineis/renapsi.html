@@ -913,10 +913,10 @@ function aplicar(){
 async function atualizar(){await carregar();aplicar();PRONTO=true;try{MESES.forEach(m=>{delete m._c})}catch(_){}try{renderBase()}catch(_){}try{render()}catch(_){}}
 window.CRV_JOV_ATUALIZAR=atualizar;
 
-let W=null;const fechar=()=>{if(W){W.remove();W=null}};
-function modal(tit,sub){fechar();W=document.createElement('div');W.className='jf-fundo';W.innerHTML='<div class="jf-modal" role="dialog" aria-modal="true"><div class="jf-cab"><h3>'+e_(tit)+'<small>'+e_(sub||'')+'</small></h3><button class="jf-b" data-x>Fechar</button></div><div class="jf-corpo"></div><div class="jf-rod"><span class="msg"></span></div></div>';
+let W=null,JMUD=false;const fechar=()=>{if(W){W.remove();W=null;if(JMUD){JMUD=false;try{window.parent&&window.parent.CRV_RECARREGAR&&window.parent.CRV_RECARREGAR()}catch(_){}}}};
+function modal(tit,sub){if(W){W.remove();W=null}W=document.createElement('div');W.className='jf-fundo';W.innerHTML='<div class="jf-modal" role="dialog" aria-modal="true"><div class="jf-cab"><h3>'+e_(tit)+'<small>'+e_(sub||'')+'</small></h3><button class="jf-b" data-x>Fechar</button></div><div class="jf-corpo"></div><div class="jf-rod"><span class="msg"></span></div></div>';
   document.body.appendChild(W);W.querySelector('[data-x]').onclick=fechar;W.addEventListener('mousedown',ev=>{if(ev.target===W)fechar()});return{C:W.querySelector('.jf-corpo'),R:W.querySelector('.jf-rod'),msg:(t,c)=>{const m=W.querySelector('.jf-rod .msg');m.style.color=c||'';m.textContent=t}}}
-async function salvarReg(k,r){const D=await db();if(!D)throw new Error('O registro não está disponível nesta visualização.');r.atualizadoEm=new Date().toISOString();r.atualizadoPor=quem();await D.collection('jovens').doc(k).set(r);REG[k]=r}
+async function salvarReg(k,r){const D=await db();if(!D)throw new Error('O registro não está disponível nesta visualização.');r.atualizadoEm=new Date().toISOString();r.atualizadoPor=quem();await D.collection('jovens').doc(k).set(r);REG[k]=r;JMUD=true}
 
 const CAMPOS=[['sec','Contrato'],['mat','Matrícula CRV','w3',1],['matb','Matrícula '+JC.inst,'w3'],['ini','Início do contrato','w3','date'],['fim','Término do contrato','w3','date'],
  ['setor','Setor','w6','setor'],['jor','Jornada','w3',0,'Ex.: 13:00 às 19:00'],['cbo','CBO','w3'],
@@ -1003,8 +1003,8 @@ async function ficha(k,aba,aviso){if(!PRONTO)await atualizar();const b=BASE.find
       M.C.querySelector('[data-addat]').onclick=async()=>{const a={chave:k,mat:b.mat||'',nome:NM(b),entregue:ga('entregue').value,ini:ga('ini').value,dias:parseInt(ga('dias').value,10)||0,tipo:ga('tipo').value,cid:ga('cid').value.trim().toUpperCase(),prof:ga('prof').value.trim(),obs:ga('obs').value.trim(),por:quem(),em:new Date().toISOString()};
         if(!a.ini||!a.dias)return M.msg('Informe o início e a quantidade de dias.','#a3301c');a.fim=addD(a.ini,a.dias-1);
         const D=await db();if(!D)return M.msg('Não dá para salvar nesta visualização.','#a3301c');
-        try{await D.collection('atestados').add(a);await atualizar();ficha(k,'at','Atestado registrado.')}catch(er){M.msg(er.message,'#a3301c')}}}
-    M.C.querySelectorAll('[data-rmat]').forEach(x=>x.onclick=async()=>{if(!x.dataset.c){x.dataset.c=1;x.textContent='Confirmar';return}const D=await db();try{await D.collection('atestados').doc(x.dataset.rmat).update({excluido:true,excluidoEm:new Date().toISOString(),excluidoPor:quem()});await atualizar();ficha(k,'at','Atestado excluído.')}catch(er){M.msg(er.message,'#a3301c')}});
+        try{await D.collection('atestados').add(a);JMUD=true;await atualizar();ficha(k,'at','Atestado registrado.')}catch(er){M.msg(er.message,'#a3301c')}}}
+    M.C.querySelectorAll('[data-rmat]').forEach(x=>x.onclick=async()=>{if(!x.dataset.c){x.dataset.c=1;x.textContent='Confirmar';return}const D=await db();JMUD=true;try{await D.collection('atestados').doc(x.dataset.rmat).update({excluido:true,excluidoEm:new Date().toISOString(),excluidoPor:quem()});await atualizar();ficha(k,'at','Atestado excluído.')}catch(er){M.msg(er.message,'#a3301c')}});
     const BX=M.R.querySelector('[data-bx]');if(BX)BX.onclick=async()=>{const gb=n=>M.C.querySelector('[data-b='+n+']');const bx={data:gb('data').value,motivo:gb('motivo').value,obs:gb('obs').value.trim(),por:quem(),em:new Date().toISOString()};
       if(!bx.data)return M.msg('Informe a data de saída.','#a3301c');if(bx.motivo==='Outro'&&!bx.obs)return M.msg('Descreva o motivo na observação.','#a3301c');
       try{await salvarReg(k,Object.assign({},r,{baixa:bx}));await atualizar();ficha(k,'bx','Baixa registrada.')}catch(er){M.msg(er.message,'#a3301c')}};
