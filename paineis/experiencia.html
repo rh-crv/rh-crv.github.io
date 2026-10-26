@@ -606,9 +606,9 @@ const lvl=d=>d<0?"gone":d<=7?"crit":d<=15?"warn":"ok";
 const pill=p=>{if(p.encOk)return`<span class="pill p-gone">Contrato encerrado</span>`;const d=p.dias;const t=d<0?"Prazo encerrado":d===0?"Vence hoje":d===1?"Amanhã":"em "+d+" dias";return`<span class="pill p-${lvl(d)}">${t}</span>`};
 const bqO=p=>p.bq?`<div class="blqo"><b>Bloqueado · ${esc(p.bq[0])}:</b> ${esc(p.bq[1])}</div>`:"";
 const tagT=p=>(p.encOk?`<span class="tag dX">Encerrado em ${fdy(pd(p.enc.data))}</span> `:p.encAnd?`<span class="tag dX">RH encerrando</span> `:"")+(!p.encOk&&p.arEf?`<span class="tag dE">Área efetivando</span> `:"")+(!p.encOk&&p.arEn?`<span class="tag dX">Área encerrando</span> `:"")+`<span class="tag ${p.tipo==="Prorrogação"?"pr":"ef"}">${p.tipo}</span>`+(p.bq?` <span class="tag blq" title="${esc(p.bq[1])}">Bloqueado</span>`:"")+(p.novo?' <span class="tag nv" title="Admissão recente, ainda fora da planilha de experiência. Datas calculadas pela admissão (30 + 30 dias).">Novo na base</span>':"")+(p.p90&&!p.encOk?` <span class="tag n90" title="Contrato de 60 dias: a gestão pode trocar para avaliar até 90 dias (${fdy(p.d90)})">Pode ir a 90 dias</span>`:"");
-const avTag=p=>p.cur?` <span class="tag ${DEC[p.cur.decisao][1]}" title="Avaliação recebida da área${p.cur.data?" em "+fdy(pd(p.cur.data)):""}">Área: ${DEC[p.cur.decisao][0].toLowerCase()}</span>`:p.av?' <span class="tag av">Avaliação recebida</span>':(p.ext?' <span class="tag dP">Prorrogado até 90 dias</span>':"");
+const avTag=p=>p.cur?` <span class="tag ${DEC[p.cur.decisao][1]}" title="${p.cur.rh?"Avaliação registrada pelo RH":"Avaliação recebida da área"}${p.cur.data?" em "+fdy(pd(p.cur.data)):""}">${p.cur.rh?"RH":"Área"}: ${DEC[p.cur.decisao][0].toLowerCase()}</span>`:p.av?' <span class="tag av">Avaliação recebida</span>':(p.ext?' <span class="tag dP">Prorrogado até 90 dias</span>':"");
 const regBtn=p=>(CANW?`<button class="btn2 sm rg" data-m="${p.mat}">${p.cur?"Editar avaliação":"Registrar avaliação"}</button> `:"")+`<button class="btn2 sm rg fmb" data-m="${p.mat}">Formulário</button>`;
-const histHTML=p=>p.hist.length?`<div class="hist">${p.hist.map(h=>`${MK[h.k]}: área pediu ${DEC[h.decisao][0].toLowerCase()}${h.data?" em "+fd(pd(h.data)):""}`).join(" · ")}</div>`:"";
+const histHTML=p=>p.hist.length?`<div class="hist">${p.hist.map(h=>`${MK[h.k]}: ${h.rh?"RH registrou":"área pediu"} ${DEC[h.decisao][0].toLowerCase()}${h.data?" em "+fd(pd(h.data)):""}`).join(" · ")}</div>`:"";
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
 const S={set:null,tipo:null,win:null,week:null,ger:"",fun:"",q:"",ord:"d",tab:"P",qz:"1"};
@@ -1498,7 +1498,7 @@ window.CRV_PENDENCIAS=function(forcar){
 /* O formulário RE.0150.07 é preenchido só pela área (pelo gestor no app ou em papel). O RH recebe e dá andamento:
    aqui o formulário fica só para consulta e download do que a área enviou. Os formulários em branco para as áreas continuam. */
 (()=>{
-  const tf=document.getElementById("tF"); if(tf) tf.textContent="Formulários recebidos";
+  const tf=document.getElementById("tF"); if(tf) tf.textContent="Formulários";
   const st=document.createElement("style");
   st.textContent="#fmSave,#fmClr{display:none!important}#fmBox input,#fmBox textarea{pointer-events:none}#fmBox textarea,#fmBox input:not([type=radio]){background:transparent}.fmb.semform{display:none!important}.fm-ro{margin:8px 0 12px;padding:9px 12px;border-radius:9px;background:rgba(36,66,124,.07);font-size:13px}";
   document.head.appendChild(st);
@@ -1514,7 +1514,7 @@ window.CRV_PENDENCIAS=function(forcar){
     ["fmPdf","fmXls"].forEach(id=>{const b=document.getElementById(id); if(b) b.hidden=!s;});
     document.querySelectorAll(".fmrh,.fmtipo").forEach(e=>e.style.display=s?"":"none");
   };
-  const marca=()=>document.querySelectorAll(".fmb").forEach(b=>{const p=P.find(x=>x.mat===+b.dataset.m); b.classList.toggle("semform",!(p&&fmSaved(p)));});
+  const marca=()=>document.querySelectorAll(".fmb").forEach(b=>{const p=P.find(x=>x.mat===+b.dataset.m),s=p&&fmSaved(p); b.classList.toggle("semform",!s&&!CANW); const tx=s?"Formulário":"Preencher avaliação"; if(b.textContent!==tx)b.textContent=tx;});
   new MutationObserver(()=>{ clearTimeout(marca._t); marca._t=setTimeout(marca,60); }).observe(document.body,{childList:true,subtree:true});
   marca();
   /* Todas as áreas respondem pelo app: sem formulário em lote para enviar e sem registrar no RH a decisão em papel.
@@ -1526,6 +1526,61 @@ window.CRV_PENDENCIAS=function(forcar){
   const ren=()=>document.querySelectorAll(".rg:not(.fmb)").forEach(b=>{ if(b.textContent!=="Andamento do RH") b.textContent="Andamento do RH"; });
   new MutationObserver(()=>{ clearTimeout(ren._t); ren._t=setTimeout(ren,60); }).observe(document.body,{childList:true,subtree:true}); ren();
   const enc=document.getElementById("regEnc"); if(enc){ const bx=enc.closest(".encbox"); if(bx && !document.getElementById("regInfo")){ const i=document.createElement("p"); i.id="regInfo"; i.className="sub"; i.style.margin="12px 0 0"; i.textContent="A avaliação é enviada pelo gestor da área pelo app e chega em Envios dos gestores. Aqui o RH registra só o andamento do encerramento."; bx.parentNode.insertBefore(i,bx); } }
+})();
+</script>
+<script>
+/* Preenchimento pelo RH (26/10/2026): quando o RH encerra ou decide por situação em verificação, ou a pedido da área,
+   e o gestor não tem como preencher na hora. O RH e o administrador preenchem o mesmo formulário RE.0150.07 e fica
+   registrado como "avaliação registrada pelo RH", com motivo, nome e data. Formulário enviado pelo gestor continua só para consulta. */
+(()=>{
+  const MOT=["A pedido da área (o gestor não conseguiu preencher)","Encerramento por situação em verificação pelo RH","Gestor ausente ou sem acesso ao app","Outro motivo"];
+  const quem=()=>{try{return (window.parent&&window.parent.CRV_QUEM)||""}catch(_){return ""}};
+  const st=document.createElement("style");
+  st.textContent="body.fm-rh #fmSave{display:inline-flex!important}#fmBox.rh input,#fmBox.rh textarea{pointer-events:auto}#fmBox.rh textarea,#fmBox.rh input:not([type=radio]){background:#fff}#fmBox.rh .fmres,#fmBox.rh #fmResHint{display:none!important}"+
+    ".fm-rhbox{margin:14px 0 4px;padding:12px 14px;border-radius:12px;border:1px solid rgba(181,115,26,.35);background:rgba(233,162,59,.08)}.fm-rhbox .fmh3{margin:0 0 8px}"+
+    ".fm-rhg{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}.fm-rhg label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:var(--mut,#5d6a85)}.fm-rhg select,.fm-rhg input{font:inherit;font-weight:400;font-size:14px;padding:8px 10px;border:1px solid #cfd6e4;border-radius:8px;background:#fff;color:#14213d}"+
+    ".fm-rhd{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.fm-rhd label{display:flex;gap:6px;align-items:center;padding:8px 12px;border:1px solid #cfd6e4;border-radius:9px;background:#fff;cursor:pointer;font-weight:700;font-size:13px}.fm-rhd label:has(input:checked){border-color:#b5731a;background:#fff6e8}"+
+    ".fm-rhn{font-size:12px;color:#5d6a85;margin:8px 0 0}";
+  document.head.appendChild(st);
+  const _r=fmRender;
+  fmRender=function(){ _r();
+    const p=FMP,box=document.getElementById("fmBox"); let x=document.getElementById("fmRh");
+    const s=p?fmSaved(p):null, modo=!!(p&&CANW&&(!s||s.rh));
+    box.classList.toggle("rh",modo); document.body.classList.toggle("fm-rh",modo);
+    if(!modo){ if(x)x.remove(); return; }
+    box.querySelectorAll("input,textarea").forEach(e=>{e.readOnly=false;e.disabled=false;});
+    document.querySelectorAll(".fmrh,.fmtipo").forEach(e=>e.style.display="");
+    ["fmPdf","fmXls"].forEach(id=>{const b=document.getElementById(id); if(b) b.hidden=false;});
+    const R=(s&&s.rh)||{}, ro=document.getElementById("fmRo");
+    if(ro) ro.textContent=s?("Avaliação registrada pelo RH"+(R.nome?" por "+R.nome:"")+(R.em?" em "+fdy(pd(R.em.slice(0,10))):"")+". Você pode corrigir e salvar de novo."):"Nenhum formulário recebido da área para esta etapa. Se precisar, o RH preenche aqui e a avaliação fica registrada como feita pelo RH.";
+    if(!x){ x=document.createElement("div"); x.id="fmRh"; x.className="fm-rhbox"; box.querySelector(".fmbtns").before(x); }
+    x.innerHTML='<p class="fmh3">Preenchimento pelo RH</p><div class="fm-rhg"><label>Motivo *<select id="fmRhM"><option value="">Escolha o motivo…</option>'+MOT.map(m=>'<option'+(R.motivo===m?" selected":"")+'>'+esc(m)+'</option>').join("")+'</select></label><label>Detalhe (opcional)<input id="fmRhO" maxlength="300" placeholder="Ex.: pedido do gestor por telefone em 26/10" value="'+esc(R.obs||"")+'"></label></div>'+
+      '<div class="fm-rhd">'+[["efetivar","Efetivar"],["prorrogar","Prorrogar"],["encerrar","Encerrar o contrato"]].map(([k,l])=>'<label><input type="radio" name="fmRhD" value="'+k+'"'+(R.dec===k?" checked":"")+'> '+l+'</label>').join("")+'</div>'+
+      '<p class="fm-rhn">As notas são opcionais quando não há como avaliar. Para prorrogar ou encerrar, escreva nos comentários o que justifica a decisão. Se depois o gestor enviar a avaliação pelo app e o RH aceitar, ela substitui esta.</p>';
+    if(!s){ if(!FM.verif){FM.verif=quem(); const v=document.getElementById("fmVer"); if(v) v.value=FM.verif;}
+      if(!FM.dataRec){FM.dataRec=iso(TODAY); const r=document.getElementById("fmRec"); if(r) r.value=FM.dataRec;}
+      if(!FM.dataVerif){FM.dataVerif=iso(TODAY); const r=document.getElementById("fmVerD"); if(r) r.value=FM.dataVerif;} }
+  };
+  async function rhSave(){
+    const box=document.getElementById("fmBox"); if(!box.classList.contains("rh")) return fmSave();
+    if(!CANW||!DBH||!FMP) return toast("Somente quem edita o painel pode salvar.");
+    const mot=document.getElementById("fmRhM").value, ob=document.getElementById("fmRhO").value.trim(), d=(document.querySelector("input[name=fmRhD]:checked")||{}).value;
+    if(!mot) return toast("Escolha o motivo do preenchimento pelo RH.");
+    if(!d) return toast("Escolha a decisão: efetivar, prorrogar ou encerrar.");
+    const com=String(FM.coment||"").trim(); if((d==="encerrar"||d==="prorrogar")&&com.length<10) return toast("Escreva nos comentários o que justifica a decisão.");
+    const p=FMP,key=p.key,{pct}=fmCalc(FM.notas),agora=new Date().toISOString(),nome=quem();
+    FM.resultado=d==="encerrar"?"nao":"efetivar"; FM.rh={nome,em:agora,motivo:mot,obs:ob,dec:d};
+    const cur=JSON.parse(JSON.stringify(REG[p.mat]||{})), e={...(cur[key]||{})};
+    e.form={...FM,notas:FM.notas.slice(),pct}; e.decisao=d; e.data=FM.dataRec||iso(TODAY); e.venc=iso(p.data); e.rh=FM.rh;
+    e.obs=["Avaliação registrada pelo RH"+(nome?" ("+nome+")":"")+": "+mot+(ob?" - "+ob:""),com].filter(Boolean).join(" · ").slice(0,2000);
+    cur[key]=e; cur.atualizadoEm=agora;
+    const b=document.getElementById("fmSave"); b.disabled=true;
+    try{ await DBH.doc("registros/m"+p.mat).set(cur); REG[p.mat]=cur; refresh(); fmRender(); toast("Avaliação registrada pelo RH e salva no painel.");
+      try{ window.parent&&window.parent.CRV_GESTOR_GERAR&&window.parent.CRV_GESTOR_GERAR(); }catch(_){} }
+    catch(err){ regErr(err); } finally{ b.disabled=false; }
+  }
+  document.getElementById("fmSave").onclick=rhSave;
+  try{ if(FMP) fmRender(); }catch(_){}
 })();
 </script>
 </body></html>
