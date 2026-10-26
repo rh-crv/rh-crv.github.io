@@ -652,8 +652,7 @@ async function fichaDados(mat){
   // Processos trabalhistas e bloqueio para recontratação
   if (fPode('processos')) tarefas.push((async () => { const d = await window.CRV_DADOS('processos'); const DB = d && d.dados.DB; if (!DB) return;
     const nN = t => String(t || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Z ]/g, ' ').split(/\s+/).filter(Boolean), mesmo = (a, b) => { const x = nN(a), y = nN(b); return x.length && y.length && x[0] === y[0] && x[x.length - 1] === y[y.length - 1]; };
-    // a mesma matrícula já foi usada por outra pessoa (outra empresa ou outro período): liga pelo CPF; pela matrícula só quando o nome também bate
-    const p = (DB.P || []).find(x => (cpf8 && String(x.c || '').replace(/\D/g, '').slice(-8) === cpf8) || (fMat(x.mat) === mat && mesmo(x.n, c.nome))); if (!p) return;
+    const p = cpf8 ? (DB.P || []).find(x => String(x.c || '').replace(/\D/g, '').slice(-8) === cpf8) : null; if (!p) return; // processo trabalhista: só pelo CPF
     F.sec.push({ k:'proc', t:'Processos trabalhistas', painel:'processos', cab:['Processo', 'Empresa', 'Tipo'], linhas:(p.p || []).map(x => [x[0], x[1], x[2]]), alerta:(p.p || []).length ? (p.p.length === 1 ? '1 processo' : p.p.length + ' processos') : '' });
     if (p.bq) F.bloqueio = p.bq; })());
   // Risco de Desligamento (só para quem pode ver o painel)
@@ -791,7 +790,7 @@ async function consultaDetalhe(p){
   let proc = null;
   if (fPode('processos')) { const d = await window.CRV_DADOS('processos'); const DB = d && d.dados.DB; if (DB) { const c8 = p.d.slice(-8);
     const nN = t => String(t || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Z ]/g, ' ').split(/\s+/).filter(Boolean), mesmo = (a, b) => { const x = nN(a), y = nN(b); return x.length && y.length && x[0] === y[0] && x[x.length - 1] === y[y.length - 1]; };
-    proc = (DB.P || []).find(x => (c8 && String(x.c || '').replace(/\D/g, '').slice(-8) === c8) || (crv.includes(String(x.mat)) && mesmo(x.n, p.nome)));
+    proc = c8 ? (DB.P || []).find(x => String(x.c || '').replace(/\D/g, '').slice(-8) === c8) : null; // só pelo CPF
     if (proc && proc.bq && !bloq.some(b => b.t === proc.bq[0])) bloq.push({ m:String(proc.mat || ''), t:proc.bq[0], o:proc.bq[1], fonte:'Processos trabalhistas' }); } }
   const O = crv.length ? await window.CRV_OCORR(crv) : { P:{} };
   const sanc = []; crv.forEach(m => { const o = O.P[m]; if (!o) return; o.adv.forEach(x => sanc.push([brD(x.data), 'Advertência', x.motivo || ''])); o.sus.forEach(x => sanc.push([brD(x.data), 'Suspensão' + (x.dias ? ' (' + x.dias + 'd)' : ''), x.motivo || ''])); });
