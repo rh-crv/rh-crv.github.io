@@ -2596,13 +2596,13 @@ async function gerarPdf(d){
     doc.setFont('helvetica','normal');doc.setFontSize(8.8);doc.text(t,x+4.6,y)};
   const perg=(y,t)=>{doc.setFont('helvetica','bold');doc.setFontSize(8.8);doc.text(t,L+1.5,y)};
   const campo=(x,y,rot,val,ate)=>{doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.text(rot,x,y);const xi=x+doc.getTextWidth(rot)+1.5;
-    doc.setLineWidth(0.15);doc.line(xi,y+0.8,ate,y+0.8);if(val){doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.text(String(val),xi+1,y-0.3,{maxWidth:ate-xi-1})}};
+    doc.setLineWidth(0.15);doc.line(xi,y+0.8,ate,y+0.8);if(val){doc.setFont('helvetica','bold');let fz=9.5;doc.setFontSize(fz);while(fz>6.5&&doc.getTextWidth(String(val))>ate-xi-1){fz-=0.3;doc.setFontSize(fz)}doc.text(String(val),xi+1,y-0.3,{maxWidth:ate-xi-1});doc.setFontSize(9.5)}};
   const dataC=(x,y,rot,iso)=>{doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.text(rot,x,y);const xi=x+doc.getTextWidth(rot)+1.5;
     if(iso){doc.setLineWidth(0.15);doc.line(xi,y+0.8,xi+24,y+0.8);doc.setFont('helvetica','bold');doc.text(brData(iso),xi+1,y-0.3)}
     else doc.text('____/____/______',xi,y)};
   /* identificação */
   let y=37;const K=0.85;barra(y,'ENTREVISTA DE DESLIGAMENTO');
-  y+=12*K;campo(L+1.5,y,'Nome:',d.nome,R-20);
+  y+=12*K;campo(L+1.5,y,'Nome:',d.nome,R-48);campo(R-45,y,'Matrícula:',d.mat?String(d.mat):'',R-2);
   y+=7.5*K;campo(L+1.5,y,'Departamento:',d.dep,L+102);campo(L+105,y,'Função:',d.func,R-2);
   y+=7.5*K;dataC(L+1.5,y,'Admissão:',d.adm);dataC(L+60,y,'Data do pedido:',d.ped);
   y+=7.5*K;doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.text('Tipo de contrato:',L+1.5,y);
