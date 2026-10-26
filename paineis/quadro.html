@@ -5,6 +5,27 @@
 .dsetor .pv.f{background:#fdecea!important;color:#a3301c!important;border-color:#f2b8ae!important}
 .dsetor .pv.c{background:#e6f4ec!important;color:#1d5c3a!important;border-color:#a8d5bb!important}
 .dsetor tr.totr td{border-top:2px solid var(--line);background:rgba(127,127,127,.05)}
+
+/* gerador de relatórios */
+.rx-head{display:flex;justify-content:space-between;gap:12px;margin:4px 0 12px}.rx-t{font:800 20px var(--f-disp);color:var(--ink)}.rx-head p{margin:2px 0 0;color:var(--mut);font-size:14px}
+.rx-grid{display:grid;grid-template-columns:minmax(300px,380px) 1fr;gap:14px;align-items:start}
+.rx-cfg{display:flex;flex-direction:column;gap:12px}
+.rx-box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow)}
+.rx-box h3{margin:0 0 10px;font:800 15px var(--f-disp);display:flex;align-items:center;gap:8px}.rx-box h3 span{width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;display:grid;place-items:center;font-size:12px}.rx-box h3 small{font-weight:600;color:var(--mut)}
+.rx-f{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:var(--mut);margin-bottom:9px}.rx-f small{font-weight:600}
+.rx-f select,.rx-f input,.rx-f textarea{font:inherit;font-size:14px;font-weight:500;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:7px 9px}
+.rx-row{display:flex;gap:10px;align-items:flex-end}.rx-row>*{flex:1}
+.rx-deps{max-height:170px;overflow:auto;border:1px solid var(--line);border-radius:9px;padding:4px 6px;background:var(--bg)}
+.rx-deps label,.rx-cps label{display:flex;gap:7px;align-items:center;font-size:13px;font-weight:500;color:var(--ink);padding:3px 2px;cursor:pointer}.rx-deps label small{color:var(--mut);margin-left:auto}
+.rx-pre{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}.rx-pre button{font:700 12px var(--f-body);border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:20px;padding:5px 11px;cursor:pointer}.rx-pre button:hover{border-color:var(--navy);color:var(--navy)}
+.rx-g{margin-bottom:8px}.rx-g b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin:6px 0 2px}.rx-cps{display:grid;grid-template-columns:1fr 1fr;gap:0 8px}
+.rx-cps label.dis{opacity:.45}
+.rx-nota{font-size:13px;color:var(--mut);margin:0 0 8px}.rx-up{cursor:pointer;display:inline-block}.rx-st{font-size:13px;font-weight:700}.rx-st.ok{color:#1a7f5a}.rx-st.er{color:#b42318}
+.rx-chk{display:flex;gap:7px;align-items:center;font-size:13px;margin-bottom:12px}
+.rx-bts{display:flex;flex-wrap:wrap;gap:8px}.rx-b{font-weight:800}.rx-b.x{background:#1a7f5a;border-color:#1a7f5a;color:#fff}.rx-b.p{background:var(--navy);border-color:var(--navy);color:#fff}
+.rx-prev{min-width:0}.rx-ph{display:flex;align-items:baseline;gap:10px;margin:2px 0 8px}.rx-ph b{font:800 18px var(--f-disp)}.rx-ph span{color:var(--mut);font-size:13px}
+.rx-tb th{white-space:nowrap}.rx-tb td{font-size:13px;white-space:nowrap}.rx-tb tr.gp td{background:var(--amber-soft);font-weight:800;color:var(--amber-ink)}
+@media (max-width:900px){.rx-grid{grid-template-columns:1fr}}
 </style><style>
 .hst{margin-top:18px;border-top:2px solid var(--line,#e0e5ef);padding-top:14px}
 .hst h3{margin:0 0 10px;font-size:16px}
@@ -481,6 +502,7 @@ button.tile:hover,button.act:hover{transform:translateY(-2px);box-shadow:var(--s
     <button id="tb-f" data-tab="f">Ficha</button>
     <button id="tb-p" data-tab="p">Previsão</button>
     <button id="tb-h" data-tab="h">Horários</button>
+    <button id="tb-x" data-tab="x">Relatórios</button>
     <button id="tb-a" data-tab="a">Admissões</button>
     <button id="tb-r" data-tab="r">Desligamentos</button>
     <button id="tb-b" data-tab="b" hidden>Absenteísmo</button>
@@ -600,6 +622,35 @@ button.tile:hover,button.act:hover{transform:translateY(-2px);box-shadow:var(--s
     <h2 class="sech">Ativos sem horário na planilha</h2>
     <div class="tile scroll"><table class="nom dept hmx" id="hS"></table></div>
     <p class="foot" id="hFoot"></p>
+  </section>
+  <section id="tab-x" hidden>
+    <div class="rx-head"><div><b class="rx-t">Gerador de relatórios</b><p>Escolha quem entra e quais informações aparecem. Sai em Excel ou em PDF com a logo da CRV, pronto para mandar à área.</p></div></div>
+    <div class="rx-grid">
+      <div class="rx-cfg">
+        <div class="rx-box"><h3><span>1</span>Quem entra</h3>
+          <label class="rx-f">Setor<select id="xArea"></select></label>
+          <div class="rx-f">Departamento / seção <small id="xDepN"></small><input id="xDepQ" type="search" placeholder="Buscar seção…"><div class="rx-deps" id="xDeps"></div></div>
+          <div class="rx-row"><label class="rx-f">Situação<select id="xSit"><option value="">Ativos e afastados</option><option>Ativo</option><option>Afastado</option></select></label>
+          <label class="rx-f">Contrato<select id="xCon"></select></label></div>
+          <label class="rx-f">Ou só estas matrículas <small>(separe por vírgula ou espaço)</small><textarea id="xMats" rows="2" placeholder="Ex.: 24478, 22070"></textarea></label>
+        </div>
+        <div class="rx-box"><h3><span>2</span>O que aparece</h3>
+          <div class="rx-pre" id="xPre"></div>
+          <div id="xCampos"></div>
+        </div>
+        <div class="rx-box"><h3><span>3</span>Salário <small>(opcional)</small></h3>
+          <p class="rx-nota">O salário não fica guardado no app. Para incluir, carregue a planilha de salários do sistema (com as colunas de matrícula e salário). Ela é lida só neste relatório e some ao fechar o painel.</p>
+          <label class="btn2 rx-up">Carregar planilha de salários<input type="file" id="xSalF" accept=".xlsx,.xls,.csv" hidden></label> <span id="xSalSt" class="rx-st"></span>
+        </div>
+        <div class="rx-box"><h3><span>4</span>Arquivo</h3>
+          <label class="rx-f">Título<input id="xTit" type="text"></label>
+          <div class="rx-row"><label class="rx-f">Ordenar por<select id="xOrd"><option value="nome">Nome</option><option value="mat">Matrícula</option><option value="dep">Departamento / seção</option><option value="fun">Função</option></select></label>
+          <label class="rx-chk"><input type="checkbox" id="xGrp"> Separar por departamento</label></div>
+          <div class="rx-bts"><button class="btn2 rx-b x" id="xXls">Baixar Excel</button><button class="btn2 rx-b p" id="xPdf">Baixar PDF</button><button class="btn2 rx-b" id="xCopy">Copiar</button></div>
+        </div>
+      </div>
+      <div class="rx-prev"><div class="rx-ph"><b id="xN"></b><span id="xSub"></span></div><div class="tile scroll"><table class="nom rx-tb" id="xTb"></table></div><p class="foot" id="xFoot"></p></div>
+    </div>
   </section>
   <section id="tab-b" hidden>
     <div class="tools" style="margin-top:4px"><b style="font:800 20px var(--f-disp)">Absenteísmo</b><div class="seg2" id="bvs"><button id="bvg" data-bv="g">Visão geral</button><button id="bv0" data-bv="0">Atestados</button><button id="bv1" data-bv="1">Faltas</button><button id="bv2" data-bv="2">Suspensões</button><button id="bvn" data-bv="n">Nominal · Histórico</button></div><div class="repw"><button class="btn2 pdfb repb cp" id="bpdf">Capa do absenteísmo em PDF</button><button class="btn2 pdfb repb x" id="bxls">Excel desta tela</button></div></div>
@@ -2130,12 +2181,96 @@ function aeSel(){
 function render(){
   closeWho();chips('fArea','Setor',AREAS,'area');depSelect();funSelect();selUI();chips('fCon','Contrato',CONS,'con');chips('fSit','Situação',['Ativo','Afastado'],'sit');chips('fEmp','Empresa',EMPS,'emp');aeSel();
   $('tab-g').hidden=st.tab!='g';$('tab-n').hidden=st.tab!='n';
-  $('tab-f').hidden=st.tab!='f';$('tab-d').hidden=st.tab!='d';$('tb-d').className=st.tab=='d'?'on':'';$('tab-a').hidden=st.tab!='a';$('tb-a').className=st.tab=='a'?'on':'';$('tab-r').hidden=st.tab!='r';$('tb-r').className=st.tab=='r'?'on':'';$('tab-b').hidden=st.tab!='b';$('tb-b').className=st.tab=='b'?'on':'';$('fSit').hidden=st.tab=='d'||st.tab=='a'||st.tab=='r'||st.tab=='b';$('rep').hidden=$('repx').hidden=st.tab=='d'||st.tab=='a'||st.tab=='r'||st.tab=='b';$('tab-p').hidden=st.tab!='p';$('tab-h').hidden=st.tab!='h';$('tb-h').className=st.tab=='h'?'on':'';$('filters').hidden=st.tab=='p';$('tb-p').className=st.tab=='p'?'on':'';
+  $('tab-f').hidden=st.tab!='f';$('tab-d').hidden=st.tab!='d';$('tb-d').className=st.tab=='d'?'on':'';$('tab-a').hidden=st.tab!='a';$('tb-a').className=st.tab=='a'?'on':'';$('tab-r').hidden=st.tab!='r';$('tb-r').className=st.tab=='r'?'on':'';$('tab-b').hidden=st.tab!='b';$('tb-b').className=st.tab=='b'?'on':'';$('fSit').hidden=st.tab=='d'||st.tab=='a'||st.tab=='r'||st.tab=='b';$('rep').hidden=$('repx').hidden=st.tab=='d'||st.tab=='a'||st.tab=='r'||st.tab=='b';$('tab-p').hidden=st.tab!='p';$('tab-h').hidden=st.tab!='h';$('tb-h').className=st.tab=='h'?'on':'';$('filters').hidden=st.tab=='p'||st.tab=='x';$('tb-p').className=st.tab=='p'?'on':'';
+  $('tab-x').hidden=st.tab!='x';$('tb-x').className=st.tab=='x'?'on':'';
   $('tb-g').className=st.tab=='g'?'on':'';$('tb-n').className=st.tab=='n'?'on':'';$('tb-f').className=st.tab=='f'?'on':'';
   capLab();
-  st.tab=='g'?geral():st.tab=='n'?nominal():st.tab=='p'?previsao():st.tab=='h'?horarios():st.tab=='d'?desl():st.tab=='a'?admTab():st.tab=='r'?rescTab():st.tab=='b'?absTab():ficha();
+  st.tab=='g'?geral():st.tab=='n'?nominal():st.tab=='p'?previsao():st.tab=='h'?horarios():st.tab=='x'?relGer():st.tab=='d'?desl():st.tab=='a'?admTab():st.tab=='r'?rescTab():st.tab=='b'?absTab():ficha();
 }
 function toast(t){$('toast').textContent=t;$('toast').hidden=false;setTimeout(()=>$('toast').hidden=true,2600)}
+/* ---- gerador de relatórios: o RH escolhe quem entra e quais campos ---- */
+const GRX={area:'',deps:new Set(),dq:'',sit:'',con:'',mats:'',ord:'nome',grp:false,tit:'',campos:new Set(['mat','nome','fun','dep','cid','hor']),SAL:null,salN:''};
+const xbr=s=>s?dbr(s):'';
+const GRXF=[
+ ['Identificação',[['mat','Matrícula',r=>r[MAT],12],['nome','Nome',r=>r[NOME],48],['cpf','CPF',r=>r.x[11],24]]],
+ ['Trabalho',[['fun','Função',r=>r[FUN],36],['dep','Departamento / seção',r=>r[DEP],40],['area','Setor',r=>r[AREA],24],['ges','Gestão / frente',r=>r[GES],30],['cc','Centro de custo',r=>r[CC],34],['con','Contrato',r=>r[CON],18],['sit','Situação',r=>r[SIT],16],['adm','Admissão',r=>xbr(r[ADM]),17],['casa','Tempo de casa',r=>casa(r.t),20],['cbo','CBO',r=>r.x[14],12]]],
+ ['Jornada',[['hor','Horário',r=>r.h?r.h.e+' às '+r.h.s:'Sem horário',22],['int','Intervalo',r=>r.h?r.h.i1+' às '+r.h.i2:'',20],['dsr','Folga (DSR)',r=>r.h?r.h.dsr:'',18]]],
+ ['Pessoal e contato',[['cid','Cidade',r=>r[CID],24],['end','Endereço',r=>r.x[18],44],['bai','Bairro',r=>r.x[19],24],['cel','Celular',r=>r.x[25],22],['cel2','Celular 2',r=>r.x[26],22],['email','E-mail',r=>r.x[28],36],['idade','Idade',r=>r[AGE],9],['sexo','Sexo',r=>r.x[34],14],['nasc','Nascimento',r=>xbr(r.x[0]),17],['civil','Estado civil',r=>r.x[1],18]]],
+ ['Documentos',[['pis','PIS',r=>r.x[2],20],['rg','RG',r=>r.x[7],18],['ctps','CTPS',r=>r.x[12],16],['cnh','CNH (categoria)',r=>r.x[4]||r[CNHC],12],['cnhv','Validade da CNH',r=>xbr(r.x[5]),17]]],
+ ['Remuneração',[['sal','Salário',r=>GRX.SAL?(GRX.SAL[String(r[MAT])]!=null?GRX.SAL[String(r[MAT])]:''):'',18]]]];
+const GRXL={};GRXF.forEach(g=>g[1].forEach(c=>GRXL[c[0]]=c));
+const GRXP=[['Gestor (básico)',['mat','nome','fun','dep','cid','hor']],['Gestor com salário',['mat','nome','fun','dep','cid','hor','sal']],['Contato',['mat','nome','fun','dep','cel','cel2','cid']],['Jornada',['mat','nome','fun','dep','hor','int','dsr']],['Contrato',['mat','nome','fun','dep','con','adm','casa','sit']]];
+const rxBase=()=>D.filter(r=>!r.dm);
+function rxRows(){const ms=GRX.mats.split(/[^\d]+/).filter(Boolean).map(Number);let L=rxBase();
+  if(ms.length){const S=new Set(ms);L=L.filter(r=>S.has(+r[MAT]))}
+  else{if(GRX.area)L=L.filter(r=>r[AREA]===GRX.area);if(GRX.deps.size)L=L.filter(r=>GRX.deps.has(r[DEP]));if(GRX.sit)L=L.filter(r=>r[SIT]===GRX.sit);if(GRX.con)L=L.filter(r=>r[CON]===GRX.con)}
+  const k={nome:r=>r[NOME],mat:r=>String(r[MAT]).padStart(8,'0'),dep:r=>r[DEP]+'|'+r[NOME],fun:r=>r[FUN]+'|'+r[NOME]}[GRX.ord];
+  return L.slice().sort((a,b)=>(GRX.grp?String(a[DEP]).localeCompare(b[DEP],'pt'):0)||String(k(a)).localeCompare(String(k(b)),'pt'))}
+const rxCols=()=>GRXF.flatMap(g=>g[1]).filter(c=>GRX.campos.has(c[0])&&(c[0]!=='sal'||GRX.SAL));
+const rxVal=(c,r)=>{const v=c[2](r);return c[0]==='sal'&&typeof v==='number'?v:(v==null?'':v)};
+const rxFmt=(c,v)=>c[0]==='sal'&&typeof v==='number'?v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}):String(v);
+function rxTitulo(){if(GRX.tit)return GRX.tit;const ms=GRX.mats.trim();return 'Relatório de colaboradores'+(ms?'':(GRX.deps.size===1?' · '+[...GRX.deps][0]:GRX.area?' · '+GRX.area:''))}
+function relGer(){
+  const AR=[...new Set(rxBase().map(r=>r[AREA]))].sort((a,b)=>a.localeCompare(b,'pt')),CS=[...new Set(rxBase().map(r=>r[CON]))].sort();
+  $('xArea').innerHTML='<option value="">Todos os setores</option>'+AR.map(a=>'<option'+(a===GRX.area?' selected':'')+'>'+esc(a)+'</option>').join('');
+  $('xCon').innerHTML='<option value="">Todos</option>'+CS.map(a=>'<option'+(a===GRX.con?' selected':'')+'>'+esc(a)+'</option>').join('');
+  $('xSit').value=GRX.sit;$('xOrd').value=GRX.ord;$('xGrp').checked=GRX.grp;
+  const dc={};rxBase().filter(r=>!GRX.area||r[AREA]===GRX.area).forEach(r=>dc[r[DEP]]=(dc[r[DEP]]||0)+1);
+  const dq=GRX.dq.toUpperCase();$('xDeps').innerHTML=Object.keys(dc).sort((a,b)=>a.localeCompare(b,'pt')).filter(d=>!dq||d.toUpperCase().includes(dq)).map(d=>'<label><input type="checkbox" data-xd="'+esc(d)+'"'+(GRX.deps.has(d)?' checked':'')+'>'+esc(d)+'<small>'+dc[d]+'</small></label>').join('')||'<small style="padding:6px;display:block">Nenhuma seção.</small>';
+  $('xDepN').textContent=GRX.deps.size?'('+GRX.deps.size+' marcada'+(GRX.deps.size>1?'s':'')+' · todas se nenhuma)':'(todas se nenhuma marcada)';
+  $('xPre').innerHTML=GRXP.map((p,i)=>'<button data-xp="'+i+'">'+esc(p[0])+'</button>').join('')+'<button data-xp="all">Marcar tudo</button><button data-xp="none">Limpar</button>';
+  $('xCampos').innerHTML=GRXF.map(g=>'<div class="rx-g"><b>'+g[0]+'</b><div class="rx-cps">'+g[1].map(c=>'<label class="'+(c[0]==='sal'&&!GRX.SAL?'dis':'')+'"><input type="checkbox" data-xc="'+c[0]+'"'+(GRX.campos.has(c[0])?' checked':'')+'>'+esc(c[1])+(c[0]==='sal'&&!GRX.SAL?' <small>(carregue a planilha)</small>':'')+'</label>').join('')+'</div></div>').join('');
+  if(document.activeElement!==$('xTit'))$('xTit').value=GRX.tit;$('xTit').placeholder=rxTitulo();
+  rxPrev()}
+function rxPrev(){const L=rxRows(),C=rxCols();
+  $('xN').textContent=nf(L.length)+(L.length===1?' colaborador':' colaboradores');$('xSub').textContent=C.length+' informaç'+(C.length===1?'ão':'ões')+' · '+rxTitulo();
+  if(!C.length){$('xTb').innerHTML='<tr><td>Marque ao menos uma informação.</td></tr>';return}
+  let last=null,h='<thead><tr>'+C.map(c=>'<th>'+esc(c[1])+'</th>').join('')+'</tr></thead><tbody>';
+  L.slice(0,200).forEach(r=>{if(GRX.grp&&r[DEP]!==last){last=r[DEP];h+='<tr class="gp"><td colspan="'+C.length+'">'+esc(last)+' · '+L.filter(x=>x[DEP]===last).length+'</td></tr>'}h+='<tr>'+C.map(c=>'<td>'+esc(rxFmt(c,rxVal(c,r)))+'</td>').join('')+'</tr>'});
+  $('xTb').innerHTML=h+'</tbody>';
+  const sem=C.some(c=>c[0]==='hor')?L.filter(r=>!r.h).length:0,ss=GRX.SAL&&C.some(c=>c[0]==='sal')?L.filter(r=>GRX.SAL[String(r[MAT])]==null).length:0;
+  $('xFoot').textContent=(L.length>200?'Mostrando 200 de '+nf(L.length)+'; o arquivo leva todos. ':'')+'Base de __CRV_REFBR__.'+(sem?' '+sem+' sem horário na planilha de horários.':'')+(ss?' '+ss+' sem salário na planilha carregada.':'')}
+function rxXlsx(){const L=rxRows(),C=rxCols();if(!L.length||!C.length)return toast('Nada para exportar.');
+  saveFile(fname(rxTitulo())+'.xlsx',()=>xlsx(C.map(c=>c[1]),L.map(r=>C.map(c=>{const v=rxVal(c,r);return c[0]==='mat'||c[0]==='idade'||typeof v==='number'?(v===''?'':+v):v})),'Relatório'),'Excel salvo.')}
+function rxPdf(){const L=rxRows(),C=rxCols();if(!L.length||!C.length)return toast('Nada para exportar.');
+  saveFile(fname(rxTitulo())+'.pdf',()=>{const doc=new MiniPdf(),W_=210,M=12,tot=C.reduce((t,c)=>t+c[3],0),CW=C.map(c=>c[3]*(W_-2*M)/tot),fs=C.length>8?6.2:C.length>6?6.8:7.4,rh=fs*0.78;
+    const fit=(s,wd)=>{s=pt(s);if(doc.tw(s)<=wd)return s;while(s.length>1&&doc.tw(s+'…')>wd)s=s.slice(0,-1);return s+'…'};
+    let y=0,pg=0;const head=()=>{if(pg)doc.addPage();pg++;
+      doc.setFillColor(22,40,77);doc.rect(0,0,W_,22,'F');doc.setFillColor(233,162,59);doc.rect(0,22,W_,1,'F');
+      doc.setFillColor(255,255,255);doc.rect(M,4.5,38,13,'F');doc.addImage(1,'JPEG',M+2,5.6,34,10.9);
+      doc.setTextColor(255,255,255);doc.setFont('h','bold');doc.setFontSize(11);doc.text(doc.splitTextToSize(pt(rxTitulo()),W_-M-58)[0],56,10.5);
+      doc.setFont('h','normal');doc.setFontSize(8.5);doc.text(nf(L.length)+(L.length==1?' colaborador':' colaboradores')+'  |  CRV Industrial  |  base de __CRV_REFBR__',56,16);
+      y=30;let x=M;doc.setFont('h','bold');doc.setFontSize(6.6);doc.setTextColor(93,106,133);C.forEach((c,i)=>{doc.text(fit(c[1].toUpperCase(),CW[i]-1.5),x+.8,y);x+=CW[i]});
+      doc.setDrawColor(233,162,59);doc.setLineWidth(.4);doc.line(M,y+1.5,W_-M,y+1.5);y+=6;
+      doc.setFontSize(7);doc.setTextColor(93,106,133);doc.setFont('h','normal');doc.text('Gerado em '+new Date().toLocaleDateString('pt-BR')+'  |  Gestão de Pessoas  |  uso interno'+(C.some(c=>c[0]==='sal')?'  |  contém salário: confidencial':''),M,290);doc.text('Página '+pg,W_-M,290,{align:'right'})};
+    head();let last=null,i=0;
+    L.forEach(r=>{if(GRX.grp&&r[DEP]!==last){last=r[DEP];if(y>276)head();doc.setFillColor(253,241,218);doc.rect(M,y-3.6,W_-2*M,rh+1.6,'F');doc.setFont('h','bold');doc.setFontSize(fs);doc.setTextColor(138,90,0);doc.text(fit(last+' · '+L.filter(z=>z[DEP]===last).length,W_-2*M-2),M+1,y);y+=rh+1.6;i=0}
+      if(y>280)head();let x=M;if(i%2){doc.setFillColor(242,244,249);doc.rect(M,y-3.6,W_-2*M,rh+1.6,'F')}
+      doc.setFont('h','normal');doc.setFontSize(fs);doc.setTextColor(20,33,61);C.forEach((c,j)=>{doc.text(fit(rxFmt(c,rxVal(c,r)),CW[j]-1.5),x+.8,y);x+=CW[j]});y+=rh+1.6;i++});
+    return doc.output('arraybuffer')},'PDF salvo.')}
+function rxCopy(){const L=rxRows(),C=rxCols();(navigator.clipboard?navigator.clipboard.writeText([C.map(c=>c[1]).join('\t')].concat(L.map(r=>C.map(c=>rxFmt(c,rxVal(c,r))).join('\t'))).join('\n')):Promise.reject()).then(()=>toast('Relatório copiado: '+nf(L.length)+' linhas. Cole no Excel.'),()=>toast('Não foi possível copiar neste aparelho.'))}
+async function rxSal(f){const st=$('xSalSt');st.className='rx-st';st.textContent='Lendo…';
+  try{const X_=window.XLSX||(window.parent&&window.parent.XLSX);if(!X_)throw new Error('leitor de Excel indisponível');
+    const u8=new Uint8Array(await f.arrayBuffer());let bs='';for(let i=0;i<u8.length;i+=32768)bs+=String.fromCharCode.apply(null,u8.subarray(i,i+32768));const wb=X_.read(bs,{type:'binary'});let mapa=null,col='';
+    for(const nm of wb.SheetNames){const R=X_.utils.sheet_to_json(wb.Sheets[nm],{header:1,raw:true,defval:''});
+      for(let i=0;i<Math.min(R.length,15)&&!mapa;i++){const H=R[i].map(h=>String(h).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim());
+        const im=H.findIndex(h=>/^matr|^cod.*func|^codigo$|^chapa/.test(h)),is=H.findIndex(h=>/salario/.test(h)&&!/familia/.test(h));
+        if(im>=0&&is>=0){mapa={};col=R[i][is];R.slice(i+1).forEach(r=>{const m=String(r[im]).replace(/\D/g,'').replace(/^0+/,'');let v=r[is];if(typeof v!=='number')v=parseFloat(String(v).replace(/[^\d,.-]/g,'').replace(/\.(?=\d{3}(\D|$))/g,'').replace(',','.'));if(m&&v>0)mapa[m]=Math.round(v*100)/100})}}
+      if(mapa)break}
+    if(!mapa||!Object.keys(mapa).length)throw new Error('não achei as colunas de matrícula e salário');
+    GRX.SAL=mapa;GRX.campos.add('sal');const n=rxBase().filter(r=>mapa[String(r[MAT])]!=null).length;
+    st.className='rx-st ok';st.textContent='✓ '+f.name+': coluna "'+col+'", salário de '+nf(n)+' dos '+nf(rxBase().length)+' ativos.';relGer()}
+  catch(e){st.className='rx-st er';st.textContent='Não consegui ler: '+(e.message||e)+'.'}}
+document.addEventListener('change',e=>{const t=e.target;if(!t.closest||!t.closest('#tab-x'))return;
+  if(t.id==='xArea'){GRX.area=t.value;GRX.deps.clear();return relGer()}
+  if(t.dataset.xd!=null){t.checked?GRX.deps.add(t.dataset.xd):GRX.deps.delete(t.dataset.xd);return relGer()}
+  if(t.dataset.xc!=null){t.checked?GRX.campos.add(t.dataset.xc):GRX.campos.delete(t.dataset.xc);return rxPrev()}
+  if(t.id==='xSit'){GRX.sit=t.value;return rxPrev()}if(t.id==='xCon'){GRX.con=t.value;return rxPrev()}if(t.id==='xOrd'){GRX.ord=t.value;return rxPrev()}if(t.id==='xGrp'){GRX.grp=t.checked;return rxPrev()}
+  if(t.id==='xSalF'&&t.files[0])return rxSal(t.files[0])});
+document.addEventListener('input',e=>{const t=e.target;if(t.id==='xDepQ'){GRX.dq=t.value;const p=t.selectionStart;relGer();const q=$('xDepQ');q.focus();q.setSelectionRange(p,p)}if(t.id==='xMats'){GRX.mats=t.value;rxPrev()}if(t.id==='xTit'){GRX.tit=t.value;rxPrev()}});
+document.addEventListener('click',e=>{const b=e.target.closest('[data-xp]');if(b){const v=b.dataset.xp;GRX.campos=v==='all'?new Set(Object.keys(GRXL)):v==='none'?new Set():new Set(GRXP[+v][1]);return relGer()}
+  if(e.target.id==='xXls')return rxXlsx();if(e.target.id==='xPdf')return rxPdf();if(e.target.id==='xCopy')return rxCopy()});
+
 document.addEventListener('input',e=>{if(e.target.id=='rQ'){RS.q=e.target.value;RS.n=100;rNom()}if(e.target.id=='bTq'){AB.tq=e.target.value;AB.tn=40;absTab();const q=$('bTq');q.focus();q.setSelectionRange(q.value.length,q.value.length)}if(e.target.id=='bNq'){AB.q=e.target.value;AB.n=40;absTab();const q=$('bNq');q.focus();q.setSelectionRange(q.value.length,q.value.length)}});
 document.addEventListener('change',e=>{if(e.target.id=='hSel'){HS.k=e.target.value;horarios()}if(e.target.id=='fAno'){if(st.tab=='b'){}else if(st.tab=='r'){RS.y=e.target.value;RS.m=''}else if(st.tab=='a'){AS.y=e.target.value;AS.m=''}else if(st.tab=='d'){DS.y=e.target.value;DS.m=''}else{st.ano=e.target.value;st.n=50;st.open=null}render()}if(e.target.id=='rOrd'){RS.ord=e.target.value;return rescTab()}if(e.target.id=='rTr'){RS.tr=e.target.checked;return rescTab()}if(e.target.id=='rMot'){RS.mot=e.target.value;RS.n=100;return rNom()}if(e.target.id=='rTen'){RS.ten=e.target.value;RS.n=100;return rNom()}if(e.target.id=='rTp'){RS.tp=e.target.value;RS.n=100;return rNom()}if(e.target.dataset&&e.target.dataset.rc){const c=e.target.dataset.rc;e.target.checked?RS.cols.add(c):RS.cols.delete(c);return rNom()}if(e.target.id=='bGe'){AB.ge=e.target.value;return render()}if(e.target.id=='bEx'){AB.excl=e.target.checked;return absTab()}if(e.target.classList&&e.target.classList.contains('bOrd')){AB.sd=+e.target.value;return absTab()}if(e.target.classList&&e.target.classList.contains('bMq')){AB.minq=e.target.checked;return absTab()}if(e.target.id=='bTsit'){AB.tsit=e.target.value;AB.tn=40;return absTab()}if(e.target.id=='bNs'){AB.sit=e.target.value;AB.n=40;return absTab()}if(e.target.id=='fMes'){if(st.tab=='b')AB.m=e.target.value;else if(st.tab=='r')RS.m=e.target.value;else if(st.tab=='a')AS.m=e.target.value;else DS.m=e.target.value;render()}});
 document.addEventListener('click',e=>{
@@ -2190,7 +2325,7 @@ document.addEventListener('click',e=>{
   if(e.target.id=='fpdf'){const r=D.find(r=>r[MAT]==st.fi);return savePdf([r],'Ficha - '+r[NOME]+' - '+r[MAT])}
   if(e.target.id=='fcopy'){const r=D.find(r=>r[MAT]==st.fi);return (navigator.clipboard?navigator.clipboard.writeText(fichaTxt(r)):Promise.reject()).then(()=>toast('Ficha copiada. Cole no Excel ou no Word.'),()=>toast('Não foi possível copiar neste aparelho.'))}
   if(!e.target.closest('.fbox'))$('fres').hidden=true;
-  const b=e.target.closest('[data-tab]');if(b){st.tab=b.dataset.tab;st.n=50;try{history.replaceState(null,'','#'+(st.tab=='n'?'nominal':st.tab=='f'?'ficha':st.tab=='p'?'previsao':st.tab=='h'?'horarios':st.tab=='d'?'desligamentos':st.tab=='a'?'admissoes':st.tab=='r'?'rescisoes':st.tab=='b'?'absenteismo':'geral'))}catch(x){}return render()}
+  const b=e.target.closest('[data-tab]');if(b){st.tab=b.dataset.tab;st.n=50;try{history.replaceState(null,'','#'+(st.tab=='n'?'nominal':st.tab=='f'?'ficha':st.tab=='p'?'previsao':st.tab=='h'?'horarios':st.tab=='x'?'relatorios':st.tab=='d'?'desligamentos':st.tab=='a'?'admissoes':st.tab=='r'?'rescisoes':st.tab=='b'?'absenteismo':'geral'))}catch(x){}return render()}
   const k=e.target.closest('[data-k]');if(k){const key=k.dataset.k,v=k.dataset.v;st[key]=st[key]==v||!v?null:v;st.n=50;st.open=null;return render()}
   const s=e.target.closest('[data-s]');if(s){const sv=s.dataset.s,i=sv=='t'?'t':+sv;st.dir=st.sort==i?-st.dir:1;st.sort=i;return render()}
   const pg=e.target.closest('[data-pg]');if(pg){const i=+pg.dataset.pg;st.pSel=st.pSel===i?null:i;st.pOpen=null;return previsao()}
@@ -2220,7 +2355,7 @@ $('more').onclick=()=>{st.n+=100;nominal()};
 $('q').oninput=e=>{st.q=e.target.value;st.n=50;nominal()};
 $('sGes').onchange=e=>{st.ges=e.target.value;st.n=50;nominal()};
 $('copy').onclick=()=>copyList(nomRows());
-if(location.hash=='#nominal')st.tab='n';if(location.hash=='#ficha')st.tab='f';if(location.hash=='#previsao')st.tab='p';if(location.hash=='#horarios')st.tab='h';if(location.hash=='#desligamentos'||location.hash=='#admissoes')st.tab='a';if(location.hash=='#rescisoes')st.tab='r';if(location.hash=='#absenteismo')st.tab='g';
+if(location.hash=='#nominal')st.tab='n';if(location.hash=='#ficha')st.tab='f';if(location.hash=='#previsao')st.tab='p';if(location.hash=='#horarios')st.tab='h';if(location.hash=='#relatorios')st.tab='x';if(location.hash=='#desligamentos'||location.hash=='#admissoes')st.tab='a';if(location.hash=='#rescisoes')st.tab='r';if(location.hash=='#absenteismo')st.tab='g';
 $('fq').oninput=fsearch;$('fq').onfocus=fsearch;
 const fstep=d=>{const L=flist(),i=L.findIndex(r=>r[MAT]==st.fi)+d;if(L[i]){st.fi=L[i][MAT];ficha()}};
 $('fprev').onclick=()=>fstep(-1);$('fnext').onclick=()=>fstep(1);
