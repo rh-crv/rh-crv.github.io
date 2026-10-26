@@ -902,10 +902,10 @@ async function carregar(){const D=await db();if(!D)return;
 /* aplica no BASE: jovens cadastrados no app, complementos e baixas */
 function aplicar(){
   for(let i=BASE.length-1;i>=0;i--)if(BASE[i]._app)BASE.splice(i,1);
-  BASE.forEach(b=>{if(b._orig===undefined)b._orig={st:b.st,desl:b.desl,setor:b.setor};b.st=b._orig.st;b.desl=b._orig.desl;if(!JC.caixa)b.setor=b._orig.setor;delete b.motivo;delete b._baixa;delete b.comp});
+  BASE.forEach(b=>{if(b._orig===undefined)b._orig={st:b.st,desl:b.desl,setor:b.setor};if(!b._app){if(b._o0===undefined)b._o0={ini:b.ini,fim:b.fim,jor:b.jor,cbo:b.cbo,nasc:b.nasc,nome:b[JC.nomeK],matb:b[JC.instK]};b.ini=b._o0.ini;b.fim=b._o0.fim;b.jor=b._o0.jor;b.cbo=b._o0.cbo;b.nasc=b._o0.nasc;b[JC.nomeK]=b._o0.nome;b[JC.instK]=b._o0.matb;delete b._ed}b.st=b._orig.st;b.desl=b._orig.desl;if(!JC.caixa)b.setor=b._orig.setor;delete b.motivo;delete b._baixa;delete b.comp});
   Object.entries(REG).forEach(([k,r])=>{if(r.excluido)return;let b=BASE.find(x=>chave(x)===k);
     if(!b&&r.novo&&r.dados){const d=r.dados;b={mat:d.mat||'',ini:toB(d.ini),fim:toB(d.fim),jor:d.jor||'',setor:JC.caixa?String(d.setor||'A definir').toUpperCase():(d.setor||''),cbo:d.cbo||'',cpf:String(d.cpf||'').replace(/\D/g,''),st:d.ini&&d.ini>hojeI()?'Stand-by':'Ativo',desl:'',nasc:toB(d.nasc),_app:true};b[JC.nomeK]=JC.caixa?String(d.nome||'').toUpperCase():tc(d.nome);b[JC.instK]=d.matb||'';BASE.push(b)}
-    if(!b)return;b.comp=r.dados||{};if(!JC.caixa&&!b._app&&r.dados&&r.dados.setor)b.setor=r.dados.setor;
+    if(!b)return;b.comp=r.dados||{};if(!b._app&&r.ed&&Object.keys(r.ed).length){const E=r.ed;['ini','fim','nasc'].forEach(x=>{if(E[x])b[x]=toB(E[x])});if(E.jor!=null)b.jor=E.jor;if(E.cbo!=null)b.cbo=E.cbo;if(E.nome)b[JC.nomeK]=JC.caixa?String(E.nome).toUpperCase():tc(E.nome);if(E.matb!=null)b[JC.instK]=E.matb;b._ed=Object.keys(E)}if(!JC.caixa&&!b._app&&r.dados&&r.dados.setor)b.setor=r.dados.setor;
     if(r.baixa&&r.baixa.data){b.motivo=r.baixa.motivo==='Outro'?(r.baixa.obs||'Outro'):r.baixa.motivo;b._baixa=r.baixa;if(r.baixa.data<=hojeI()){b.st='Desligado';b.desl=toB(r.baixa.data)}else b.motivo='Saída programada para '+i2b(r.baixa.data)+' · '+b.motivo}});
   BASE.forEach(b=>{b._ats=ATS.filter(a=>a.chave===chave(b))})}
 async function atualizar(){await carregar();aplicar();PRONTO=true;try{MESES.forEach(m=>{delete m._c})}catch(_){}try{renderBase()}catch(_){}try{render()}catch(_){}}
@@ -957,9 +957,9 @@ async function ficha(k,aba,aviso){if(!PRONTO)await atualizar();const b=BASE.find
   const T=[['dados','Dados'],['at','Atestados ('+(b._ats||[]).length+')'],['bx',b.st==='Desligado'||r.baixa?'Desligamento':'Desligar do programa']];
   const draw=()=>{M.R.querySelectorAll('button').forEach(x=>x.remove());
     let h='<div class="jf-tabs">'+T.map(t=>'<button data-t="'+t[0]+'" class="'+(aba===t[0]?'on':'')+'">'+t[1]+'</button>').join('')+'</div>';
-    if(aba==='dados'){const d=Object.assign({mat:b.mat,matb:b[JC.instK],ini:fromB(b.ini),fim:fromB(b.fim),setor:b.setor,jor:b.jor,cbo:b.cbo,nome:tc(NM(b)),cpf:b.cpf,nasc:fromB(b.nasc)},r.dados||{});
-      const ro=b._app?[]:['mat','matb','ini','fim','nome','cpf'].concat(b.nasc?['nasc']:[]);
-      h+='<div class="jf-g">'+(b._app?'':'<div class="jf-av in">Os campos de contrato e identificação vêm da relação de '+e_(JC.inst)+'. Complete aqui contato, responsável e escola. O setor pode ser ajustado.</div>')+CAMPOS.map(c=>campoH(c,d,ro)).join('')+'</div>';
+    if(aba==='dados'){const LST={mat:b.mat,matb:b[JC.instK],ini:fromB(b.ini),fim:fromB(b.fim),setor:b.setor,jor:b.jor,cbo:b.cbo,nome:tc(NM(b)),cpf:b.cpf,nasc:fromB(b.nasc)},d=b._app?Object.assign({},LST,r.dados||{}):Object.assign({},r.dados||{},LST);
+      const ro=b._app?[]:['mat'].concat(b.cpf?['cpf']:[]);
+      h+='<div class="jf-g">'+(b._app?'':'<div class="jf-av in">Os campos de contrato e identificação vêm da relação de '+e_(JC.inst)+'. Você pode corrigir setor, datas do contrato, jornada, CBO, nome e nascimento: a correção vale no painel e fica marcada como ajustada pelo RH. Complete também contato, responsável e escola.'+(b._ed&&b._ed.length?'<br><b>Ajustado pelo RH:</b> '+b._ed.map(x=>({ini:'início do contrato',fim:'término do contrato',jor:'jornada',cbo:'CBO',nome:'nome',nasc:'nascimento',matb:'matrícula '+JC.inst}[x]||x)).join(', ')+'.':'')+'</div>')+CAMPOS.map(c=>campoH(c,d,ro)).join('')+'</div>';
       M.R.insertAdjacentHTML('beforeend',(b._app?'<button class="jf-b dan" data-del>Excluir cadastro</button>':'')+'<button class="jf-b pri" data-s>Salvar dados</button>')}
     else if(aba==='at'){const L=(b._ats||[]).slice().sort((a,c)=>String(c.ini).localeCompare(String(a.ini))),dias=L.reduce((s,a)=>s+(+a.dias||0),0);
       const m30=L.filter(a=>a.ini>=addD(hojeI(),-30)).length;
@@ -989,7 +989,9 @@ async function ficha(k,aba,aviso){if(!PRONTO)await atualizar();const b=BASE.find
     M.C.querySelectorAll('[data-t]').forEach(x=>x.onclick=()=>{aba=x.dataset.t;M.msg('');draw()});
     const S=M.R.querySelector('[data-s]');if(S)S.onclick=async()=>{const d=lerCampos(M.C);d.cpf=(d.cpf||'').replace(/\D/g,'');if(!d.nome)return M.msg('Informe o nome.','#a3301c');
       const ia=idadeI(d.nasc);if(ia!==null&&ia<18&&!d.resp)return M.msg('Jovem menor de 18 anos: informe o responsável.','#a3301c');
-      try{await salvarReg(k,Object.assign({},r,{dados:d}));if(JC.caixa&&!b._app&&d.setor&&d.setor.toUpperCase()!==String(b.setor).toUpperCase()&&typeof salvarSetor==='function'){try{await salvarSetor(b.mat,d.setor)}catch(_){}}
+      const ed={};if(!b._app&&b._o0){const O={ini:fromB(b._o0.ini),fim:fromB(b._o0.fim),jor:b._o0.jor||'',cbo:b._o0.cbo||'',nasc:fromB(b._o0.nasc),nome:tc(b._o0.nome||''),matb:b._o0.matb||''},nz=v=>String(v==null?'':v).trim().toUpperCase();
+        ['ini','fim','jor','cbo','nasc','nome','matb'].forEach(x=>{if(d[x]!=null&&nz(d[x])!==nz(O[x])&&!(x!=='jor'&&x!=='cbo'&&x!=='matb'&&!String(d[x]).trim()))ed[x]=d[x]})}
+      try{await salvarReg(k,Object.assign({},r,{dados:d},b._app?{}:{ed}));if(JC.caixa&&!b._app&&d.setor&&d.setor.toUpperCase()!==String(b.setor).toUpperCase()&&typeof salvarSetor==='function'){try{await salvarSetor(b.mat,d.setor)}catch(_){}}
         await atualizar();ficha(k,'dados','Dados salvos.')}catch(er){M.msg(er.message,'#a3301c')}};
     const DEL=M.R.querySelector('[data-del]');if(DEL)DEL.onclick=async()=>{if(!DEL.dataset.c){DEL.dataset.c=1;DEL.textContent='Confirmar exclusão';return}
       try{await salvarReg(k,Object.assign({},r,{excluido:true}));fechar();await atualizar()}catch(er){M.msg(er.message,'#a3301c')}};
