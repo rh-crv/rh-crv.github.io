@@ -1273,10 +1273,10 @@ const fmPctTxt=pct=>pct===null?"—":(pct*100).toFixed(1).replace(".",",")+"%";
 const fmSaved=p=>{const e=(REG[p.mat]||{})[p.key];return e&&e.form?e.form:null};
 const fmEtapa=p=>p.key==="pr"?"1º período":p.key==="ef90"?"fim dos 90 dias":"fim do contrato";
 function fmPickList(){
-  document.getElementById("fmList").innerHTML=P.slice().sort((a,b)=>a.nome.localeCompare(b.nome,"pt")).map(p=>`<option value="${p.mat} · ${esc(p.nome)}"></option>`).join("");
+  document.getElementById("fmList").innerHTML=P.concat(ENC).slice().sort((a,b)=>a.nome.localeCompare(b.nome,"pt")).map(p=>`<option value="${p.mat} · ${esc(p.nome)}"></option>`).join("");
 }
 function fmLoad(mat){
-  const p=P.find(x=>x.mat===mat);if(!p)return;FMP=p;
+  const p=P.find(x=>x.mat===mat)||ENC.find(x=>x.mat===mat);if(!p)return;FMP=p;
   const s=fmSaved(p);FM=s?{...fmBlank(),...JSON.parse(JSON.stringify(s))}:fmBlank();
   document.getElementById("fmPick").value=`${p.mat} · ${p.nome}`;
   fmRender();
@@ -1314,7 +1314,7 @@ function fmTot(){
     else if(t.name==="fmTipo")FM.tipo=t.value;else if(t.name==="fmRes")FM.resultado=t.value});
   const bind=(id,k)=>document.getElementById(id).addEventListener("input",e=>FM[k]=e.target.value);
   bind("fmG","gestor");bind("fmGC","cargoG");bind("fmCom","coment");bind("fmRec","dataRec");bind("fmVer","verif");bind("fmVerD","dataVerif");
-  document.getElementById("fmPick").addEventListener("change",e=>{const m=parseInt(e.target.value,10);if(m&&P.some(p=>p.mat===m))fmLoad(m);else{const q=e.target.value.trim().toLowerCase();const f=P.filter(p=>p.nome.toLowerCase().includes(q));if(f.length===1)fmLoad(f[0].mat);else if(q)toast("Escolha um nome da lista.")}});
+  document.getElementById("fmPick").addEventListener("change",e=>{const m=parseInt(e.target.value,10);if(m&&P.concat(ENC).some(p=>p.mat===m))fmLoad(m);else{const q=e.target.value.trim().toLowerCase();const f=P.concat(ENC).filter(p=>p.nome.toLowerCase().includes(q));if(f.length===1)fmLoad(f[0].mat);else if(q)toast("Escolha um nome da lista.")}});
   document.getElementById("fmClr").onclick=()=>{if(!FMP)return;FM=fmBlank();fmRender();toast("Formulário limpo. Nada foi apagado do painel.")};
   document.getElementById("fmPdf").onclick=()=>{if(FMP)formPdf([{p:FMP,f:FM}],`Avaliacao_${FMP.mat}_${slug(FMP.nome)}`)};
   document.getElementById("fmXls").onclick=()=>{if(FMP)formXlsx([{p:FMP,f:FM}],`Avaliacao_${FMP.mat}_${slug(FMP.nome)}`)};
@@ -1524,7 +1524,7 @@ window.CRV_PENDENCIAS=function(forcar){
     ["fmPdf","fmXls"].forEach(id=>{const b=document.getElementById(id); if(b) b.hidden=!s;});
     document.querySelectorAll(".fmrh,.fmtipo").forEach(e=>e.style.display=s?"":"none");
   };
-  const marca=()=>document.querySelectorAll(".fmb").forEach(b=>{const p=P.find(x=>x.mat===+b.dataset.m),s=p&&fmSaved(p); b.classList.toggle("semform",!s&&!CANW); const tx=s?"Formulário":"Preencher avaliação"; if(b.textContent!==tx)b.textContent=tx;});
+  const marca=()=>document.querySelectorAll(".fmb").forEach(b=>{const p=P.find(x=>x.mat===+b.dataset.m)||ENC.find(x=>x.mat===+b.dataset.m),s=p&&fmSaved(p); b.classList.toggle("semform",!s&&!CANW); const tx=s?"Formulário":"Preencher avaliação"; if(b.textContent!==tx)b.textContent=tx;});
   new MutationObserver(()=>{ clearTimeout(marca._t); marca._t=setTimeout(marca,60); }).observe(document.body,{childList:true,subtree:true});
   marca();
   /* Todas as áreas respondem pelo app: sem formulário em lote para enviar e sem registrar no RH a decisão em papel.
