@@ -801,15 +801,18 @@ function abrir(pre){
 /* ---------- PDF no modelo ---------- */
 async function pdf(d){
   const J=(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF);if(!J)throw new Error('gerador de PDF indisponível');
+  /* cada documento cabe numa página só, com as assinaturas junto do texto (pedido do RH, 26/10/2026):
+     monta com a letra normal e, se o texto empurrar as assinaturas para outra folha, monta de novo com a letra um pouco menor */
+  const build=K=>{let quebrou=false;
   const doc=new J({unit:'mm',format:'a4'});
   const NAVY=[31,58,104],INK=[40,46,58],MUT=[110,116,128],GREEN=[110,150,60];const L=18,R=192,W=R-L;
   const segs=t=>{const out=[];String(t||'').split(/(\*\*[^*]+\*\*)/).forEach(p=>{if(!p)return;if(/^\*\*[^*]+\*\*$/.test(p))out.push([p.slice(2,-2),1]);else out.push([p,0])});return out};
-  const rich=(S,y,fs=9.6,lh=4.7)=>{doc.setFontSize(fs);const words=[];S.forEach(([t,bd])=>String(t).split(/(\s+)/).forEach(w=>{if(w!=='')words.push({w,bd:!!bd})}));
+  const rich=(S,y,fs=9.6*K,lh=4.7*K)=>{doc.setFontSize(fs);const words=[];S.forEach(([t,bd])=>String(t).split(/(\s+)/).forEach(w=>{if(w!=='')words.push({w,bd:!!bd})}));
     let x=L;let lines=[[]];words.forEach(o=>{if(/\n/.test(o.w)){const n=(o.w.match(/\n/g)||[]).length;for(let k=0;k<n;k++){lines.push([]);}x=L;return}
       doc.setFont('helvetica',o.bd?'bold':'normal');const ww=doc.getTextWidth(o.w);const sp=/^\s+$/.test(o.w);if(sp&&x===L)return;if(x+ww>R&&!sp){lines.push([]);x=L}if(sp&&x===L)return;lines[lines.length-1].push({...o,x});x+=ww});
-    lines.forEach(ln=>{if(y>262){doc.addPage();cab2();y=20}ln.forEach(o=>{doc.setFont('helvetica',o.bd?'bold':'normal');doc.setTextColor(...INK);doc.text(o.w,o.x,y)});y+=lh});return y};
+    lines.forEach(ln=>{if(y>262){quebrou=true;doc.addPage();cab2();y=20}ln.forEach(o=>{doc.setFont('helvetica',o.bd?'bold':'normal');doc.setTextColor(...INK);doc.text(o.w,o.x,y)});y+=lh});return y};
   const cab2=()=>{doc.setFillColor(...NAVY);doc.rect(0,0,210,4,'F')};
-  const sec=(t,y)=>{if(y>255){doc.addPage();cab2();y=20}doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(...NAVY);doc.text(t,L,y);return y+5.6};
+  const sec=(t,y)=>{if(y>255){quebrou=true;doc.addPage();cab2();y=20}doc.setFont('helvetica','bold');doc.setFontSize(10*Math.max(K,.85));doc.setTextColor(...NAVY);doc.text(t,L,y);return y+5.6*K};
   const rodape=()=>{doc.setDrawColor(215,220,228);doc.setLineWidth(0.3);doc.line(L,276,R,276);doc.setFont('helvetica','bold');doc.setFontSize(7.3);doc.setTextColor(...INK);doc.text('CRV INDUSTRIAL LTDA - UNIDADE CAPINÓPOLIS | CNPJ 03.937.452/0004-35',105,280.5,{align:'center'});
     doc.setFont('helvetica','normal');doc.setTextColor(...MUT);doc.text('Rodovia MG-226, s/nº, km 63, Zona Rural, Capinópolis/MG - CEP 38.360-000',105,284.3,{align:'center'});doc.text('Telefone: (34) 3263-8100',105,288,{align:'center'})};
   const lab=(t,v,x,y)=>{doc.setFont('helvetica','bold');doc.text(t,x,y);const w=doc.getTextWidth(t);doc.setFont('helvetica','normal');doc.text(String(v||''),x+w+1.6,y);return x+w+1.6+doc.getTextWidth(String(v||''))};
@@ -823,8 +826,8 @@ async function pdf(d){
     doc.setFillColor(238,241,245);doc.roundedRect(L,52,W,25,2,2,'F');doc.setFontSize(9.6);doc.setTextColor(...INK);
     lab('Colaborador:',d.nome,L+1,58.5);let x=lab('Matrícula:',d.mat,L+1,63.6);lab('CPF:',d.cpf,x+5,63.6);lab('Departamento:',d.dep,L+1,68.7);x=lab('Função:',d.func,L+1,73.8);lab('Admissão:',br(d.adm),x+5,73.8);
     doc.setFontSize(9.8);doc.setTextColor(...INK);x=lab('ASSUNTO:',assunto,L,88);return 97};
-  const assinaturas=y=>{if(y>222){doc.addPage();cab2();y=30}
-    let ys=Math.max(y+22,236);const c1=L+5,c2=118;
+  const assinaturas=y=>{if(y>226){quebrou=true;doc.addPage();cab2();y=30}
+    let ys=Math.max(y+16,236);const c1=L+5,c2=118;
     doc.setDrawColor(...INK);doc.setLineWidth(0.3);doc.line(L,ys,L+78,ys);doc.line(c2-4,ys,R,ys);
     doc.setFont('helvetica','bold');doc.setFontSize(8.8);doc.text('Colaborador',L+39,ys+4.5,{align:'center'});doc.text('Gestão de RH',(c2-4+R)/2,ys+4.5,{align:'center'});
     doc.setFont('helvetica','normal');doc.setFontSize(7.8);doc.text(`${d.nome} | Matrícula: ${d.mat}`,L+39,ys+9,{align:'center'});doc.text('Nome: '+(d.rh||'______________________________________'),(c2-4+R)/2,ys+9,{align:'center'});
@@ -834,17 +837,19 @@ async function pdf(d){
   const ciencia=y=>{y=sec('CIÊNCIA DO COLABORADOR',y+1);return rich([['Declaro que recebi e tomei ciência deste documento. Minha assinatura registra o recebimento e a ciência, sem implicar concordância com todos os fatos descritos.']],y)};
   const ENQT=Object.fromEntries(ENQ);
   const docPenal=()=>{let y=pagina(TIT[d.tipo],d.assunto);
-    y=sec('1. DESCRIÇÃO DA NÃO CONFORMIDADE',y);y=rich(segs(d.desc),y)+2;
-    y=sec('2. ENQUADRAMENTO DISCIPLINAR',y);y=rich(d.enq==='outro'?segs(d.enqO):[[ENQT[d.enq],1]].concat(d.enqC?[[', '+d.enqC+'.']]:[['.']]),y)+2;
-    y=sec('3. PENALIDADE APLICADA',y);y=rich(segs(d.pen),y)+2;
-    y=sec('4. CONDUTA ESPERADA',y);y=rich(segs(d.cond),y)+2;
+    y=sec('1. DESCRIÇÃO DA NÃO CONFORMIDADE',y);y=rich(segs(d.desc),y)+2*K;
+    y=sec('2. ENQUADRAMENTO DISCIPLINAR',y);y=rich(d.enq==='outro'?segs(d.enqO):[[ENQT[d.enq],1]].concat(d.enqC?[[', '+d.enqC+'.']]:[['.']]),y)+2*K;
+    y=sec('3. PENALIDADE APLICADA',y);y=rich(segs(d.pen),y)+2*K;
+    y=sec('4. CONDUTA ESPERADA',y);y=rich(segs(d.cond),y)+2*K;
     y=ciencia(y);assinaturas(y);rodape()};
   const docOri=()=>{let y=pagina('ORIENTAÇÃO DISCIPLINAR',d.oAss||d.assunto);
-    y=sec('1. OBJETIVO DA ORIENTAÇÃO',y);y=rich(segs(d.obj),y)+2;let n=2;
-    (d.topicos||[]).forEach(t=>{y=sec(n+'. '+String(t.t||'').toUpperCase(),y);y=rich(segs(t.x),y)+2;n++});
-    y=sec(n+'. FINALIDADE EDUCATIVA E PREVENTIVA',y);y=rich(segs(d.fin),y)+2;
+    y=sec('1. OBJETIVO DA ORIENTAÇÃO',y);y=rich(segs(d.obj),y)+2*K;let n=2;
+    (d.topicos||[]).forEach(t=>{y=sec(n+'. '+String(t.t||'').toUpperCase(),y);y=rich(segs(t.x),y)+2*K;n++});
+    y=sec(n+'. FINALIDADE EDUCATIVA E PREVENTIVA',y);y=rich(segs(d.fin),y)+2*K;
     y=ciencia(y);assinaturas(y);rodape()};
   if(d.tipo==='ori')docOri();else{docPenal();if(d.junto){doc.addPage();docOri()}}
+  return {doc,quebrou}};
+  let K=1,B=build(K);while(B.quebrou&&K>0.72){K=Math.round((K-0.04)*100)/100;B=build(K)}const doc=B.doc;
   const nome=`${d.tipo==='adv'?'Advertencia':d.tipo==='sus'?'Suspensao':'Orientacao'}${d.junto?' e Orientacao':''} - ${String(d.nome).split(' ')[0]} ${d.mat} - ${br(d.data).split('/').join('-')}.pdf`;
   const bytes=new Uint8Array((await (window.parent.CRV_PDF_LOGOS||window.CRV_PDF_LOGOS||(d=>d))(doc)).output('arraybuffer'));
   const DL=window.claude&&window.claude.use?await window.claude.use('downloads'):null;
