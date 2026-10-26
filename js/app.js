@@ -485,6 +485,7 @@ const CENTRAL_FONTES = ['experiencia', 'ferias', 'crachas', 'onibus', 'sancoes',
 const CENTRAL_VALIDADE = 3 * 3600e3;
 const centralChave = () => 'crv-central-' + (E.perfil ? E.perfil.id || E.perfil.nome : '');
 let centralRodando = false;
+window.CRV_CENTRAL_LIMPAR = () => { try { localStorage.removeItem(centralChave()); } catch(_){} };
 function centralCache(){ try { return JSON.parse(localStorage.getItem(centralChave()) || 'null'); } catch(_) { return null; } }
 // assinatura dos dados das fontes: se algum painel recebeu dados novos, a central é refeita
 const centralAss = () => ['quadro','cartao-convenio','unimed','uniodonto','alojamentos'].concat(CENTRAL_FONTES).map(id => id + ':' + ((E.metas[id] && (E.metas[id].atualizado_em || E.metas[id].referencia)) || '')).join('|');
@@ -971,6 +972,11 @@ async function coletarCentral(){
     try { out.push(...await pendenciasASO()); } catch(e){ console.warn('central aso', e); }
     try { out.push(...await RISCO().pendencias()); } catch(e){ console.warn('central risco', e); }
     try { out.push(...await ONB().pendencias()); } catch(e){ console.warn('central onboarding', e); }
+    // plano de ação da inspeção semanal de Serviços Gerais: ações com prazo vencido
+    try { const sg = E.paineis.find(x => x.id === 'servicos-gerais'); if (sg && podeVer(sg)) { const hj = new Date().toISOString().slice(0, 10);
+      const A = (await window.CRV_REGS('servicos-gerais', 'acoes')).filter(a => !a.excluida && (a.st === 'ab' || a.st === 'and') && a.prazo && a.prazo < hj).sort((a, b) => String(a.prazo).localeCompare(String(b.prazo)));
+      if (A.length) out.push({ id:'sg-acoes', sev:'warn', t:'Plano de ação de Serviços Gerais: ações atrasadas', painel:'', rota:'#/p/servicos-gerais/spa', pnome:'Plano de ação · Serviços Gerais', d:'Não conformidades das inspeções semanais com prazo vencido. Registre a tratativa no plano de ação.',
+        itens: A.map(a => ({ nome:(a.area ? a.area + ' · ' : '') + (a.oc || ''), mat:'', det:`${a.acao || ''} · responsável: ${a.resp || '—'} · prazo ${brD(a.prazo)} (${Math.round((Date.now() - new Date(a.prazo + 'T12:00:00')) / 864e5)} dias de atraso)` })) }); } } catch(e){ console.warn('central serviços gerais', e); }
     try { out.push(...await BASES().pendencias()); } catch(e){ console.warn('central bases', e); }
     try { out.push(...await GESTOR().pendenciasEnvios()); } catch(e){ console.warn('central envios', e); }
     if (ehAdmin()) try { const u = await ultimoBackup(); const d = u && u.em ? Math.floor((Date.now() - new Date(u.em)) / 864e5) : null;

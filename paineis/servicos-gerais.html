@@ -657,7 +657,7 @@ function formInsp(ed){const L0=INS(),areas=[...new Set(L0.map(x=>x.area).filter(
         if(x.acId&&AC_DB[x.acId]){const v=Object.assign({},AC_DB[x.acId],base);await D.collection('acoes').doc(x.acId).set(v);AC_DB[x.acId]=v}
         else{const v=Object.assign(base,{st:'ab',hist:[{em:agora,por:quem(),st:'ab',txt:'Aberta na inspeção de '+br(data)}],criadoPor:quem(),criadoEm:agora});const r=await D.collection('acoes').add(v);x.acId=r.id||('a'+Date.now()+Math.random());AC_DB[x.acId]=v}}
       await D.collection('insp').doc(id).set(Object.assign({},IN_DB[id],{nc:rec.nc}));IN_DB[id].nc=rec.nc;
-      fechar();toast('Inspeção salva'+(rec.nc.length?' · '+rec.nc.length+' ação(ões) no plano':'')+'.');render()}
+      try{window.parent.CRV_CENTRAL_LIMPAR&&window.parent.CRV_CENTRAL_LIMPAR()}catch(_){}fechar();toast('Inspeção salva'+(rec.nc.length?' · '+rec.nc.length+' ação(ões) no plano':'')+'.');render()}
     catch(e){b.disabled=false;msg('Não consegui salvar: '+(e.message||'sem permissão'))}};
 }
 
@@ -704,7 +704,7 @@ function formAcao(a){const nova=!a;a=a||{oc:'',acao:'',resp:'',prazo:'',area:'',
     if(v.st==='ok'&&a.st!=='ok')v.concl=hoje();if(v.st!=='ok')delete v.concl;
     const D=await db();if(!D)return msg('Não dá para salvar nesta visualização.');
     try{if(nova){v.criadoPor=quem();v.criadoEm=agora;const r=await D.collection('acoes').add(v);AC_DB[r.id||('a'+Date.now())]=v}else{await D.collection('acoes').doc(a.id).set(v);AC_DB[a.id]=v}
-      fechar();toast('Plano de ação atualizado.');render()}catch(e){msg('Não consegui salvar: '+(e.message||'sem permissão'))}};
+      try{window.parent.CRV_CENTRAL_LIMPAR&&window.parent.CRV_CENTRAL_LIMPAR()}catch(_){}fechar();toast('Plano de ação atualizado.');render()}catch(e){msg('Não consegui salvar: '+(e.message||'sem permissão'))}};
 }
 /* documentos */
 async function pdfInsp(x){const J=JS();if(!J)throw new Error('PDF indisponível.');const doc=new J({unit:'mm',format:'a4'}),W=210,L=12,R=W-12;x=x||{};
