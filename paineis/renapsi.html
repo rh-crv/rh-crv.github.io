@@ -902,10 +902,12 @@ async function carregar(){const D=await db();if(!D)return;
 /* aplica no BASE: jovens cadastrados no app, complementos e baixas */
 function aplicar(){
   for(let i=BASE.length-1;i>=0;i--)if(BASE[i]._app)BASE.splice(i,1);
+  const REATN=window.JOV_REAT=new Set();BASE.forEach(b=>{delete b._reat});
   BASE.forEach(b=>{if(b._orig===undefined)b._orig={st:b.st,desl:b.desl,setor:b.setor};if(!b._app){if(b._o0===undefined)b._o0={ini:b.ini,fim:b.fim,jor:b.jor,cbo:b.cbo,nasc:b.nasc,nome:b[JC.nomeK],matb:b[JC.instK]};b.ini=b._o0.ini;b.fim=b._o0.fim;b.jor=b._o0.jor;b.cbo=b._o0.cbo;b.nasc=b._o0.nasc;b[JC.nomeK]=b._o0.nome;b[JC.instK]=b._o0.matb;delete b._ed}b.st=b._orig.st;b.desl=b._orig.desl;if(!JC.caixa)b.setor=b._orig.setor;delete b.motivo;delete b._baixa;delete b.comp});
   Object.entries(REG).forEach(([k,r])=>{if(r.excluido)return;let b=BASE.find(x=>chave(x)===k);
     if(!b&&r.novo&&r.dados){const d=r.dados;b={mat:d.mat||'',ini:toB(d.ini),fim:toB(d.fim),jor:d.jor||'',setor:JC.caixa?String(d.setor||'A definir').toUpperCase():(d.setor||''),cbo:d.cbo||'',cpf:String(d.cpf||'').replace(/\D/g,''),st:d.ini&&d.ini>hojeI()?'Stand-by':'Ativo',desl:'',nasc:toB(d.nasc),_app:true};b[JC.nomeK]=JC.caixa?String(d.nome||'').toUpperCase():tc(d.nome);b[JC.instK]=d.matb||'';BASE.push(b)}
     if(!b)return;b.comp=r.dados||{};if(!b._app&&r.ed&&Object.keys(r.ed).length){const E=r.ed;['ini','fim','nasc'].forEach(x=>{if(E[x])b[x]=toB(E[x])});if(E.jor!=null)b.jor=E.jor;if(E.cbo!=null)b.cbo=E.cbo;if(E.nome)b[JC.nomeK]=JC.caixa?String(E.nome).toUpperCase():tc(E.nome);if(E.matb!=null)b[JC.instK]=E.matb;b._ed=Object.keys(E)}if(!JC.caixa&&!b._app&&r.dados&&r.dados.setor)b.setor=r.dados.setor;
+    if(r.reat&&!r.baixa&&b._orig&&b._orig.st==='Desligado'){b.st=b.ini&&fromB(b.ini)>hojeI()?'Stand-by':'Ativo';b.desl='';b._reat=r.reat;REATN.add(String(NM(b)||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim())}
     if(r.baixa&&r.baixa.data){b.motivo=r.baixa.motivo==='Outro'?(r.baixa.obs||'Outro'):r.baixa.motivo;b._baixa=r.baixa;if(r.baixa.data<=hojeI()){b.st='Desligado';b.desl=toB(r.baixa.data)}else b.motivo='Saída programada para '+i2b(r.baixa.data)+' · '+b.motivo}});
   BASE.forEach(b=>{b._ats=ATS.filter(a=>a.chave===chave(b))})}
 async function atualizar(){await carregar();aplicar();PRONTO=true;try{MESES.forEach(m=>{delete m._c})}catch(_){}try{renderBase()}catch(_){}try{render()}catch(_){}}
@@ -978,13 +980,14 @@ async function ficha(k,aba,aviso){if(!PRONTO)await atualizar();const b=BASE.find
        +'<div style="margin-top:14px;overflow:auto"><table class="jf-tb"><thead><tr><th>Período</th><th>Dias</th><th>Tipo</th><th>CID</th><th>Entregue</th><th>Por</th><th></th></tr></thead><tbody>'
        +(L.length?L.map(a=>'<tr><td>'+i2b(a.ini)+(+a.dias>1?' a '+i2b(a.fim):'')+'</td><td>'+e_(a.dias)+'</td><td>'+e_(a.tipo)+(a.obs?'<div style="font-size:12px;color:var(--mut)">'+e_(a.obs)+'</div>':'')+'</td><td>'+e_(a.cid||'–')+'</td><td>'+i2b(a.entregue)+'</td><td>'+e_(String(a.por||'').split(' ')[0])+'</td><td><button class="jf-b dan" data-rmat="'+e_(a._id)+'">Excluir</button></td></tr>').join(''):'<tr><td colspan="7" style="color:var(--mut)">Nenhum atestado registrado no app.</td></tr>')+'</tbody></table></div>'}
     else{const bx=r.baixa||{},jaBase=b.st==='Desligado'&&!r.baixa;
-      h+='<div class="jf-g">'+(jaBase?'<div class="jf-av in">Desligado em '+e_(b.desl)+' conforme a relação de '+e_(JC.inst)+'. Registre aqui o motivo da saída.</div>':'')
+      h+='<div class="jf-g">'+(jaBase?'<div class="jf-av in">Desligado em '+e_(b.desl)+' conforme a relação de '+e_(JC.inst)+'. Registre aqui o motivo da saída. Se o jovem <b>não saiu</b> (desligamento lançado por engano), use <b>Reativar</b>.</div>':'')
+       +(b._reat?'<div class="jf-av ok">Reativado pelo RH'+(b._reat.por?' ('+e_(String(b._reat.por).split(' ')[0])+')':'')+(b._reat.em?' em '+i2b(String(b._reat.em).slice(0,10)):'')+': a relação de '+e_(JC.inst)+' informava desligamento em '+e_(b._orig.desl||'')+', mas o jovem continua no programa.</div>':'')
        +(r.baixa?'<div class="jf-av ok">Saída registrada: '+i2b(bx.data)+' · '+e_(bx.motivo)+(bx.por?' · por '+e_(String(bx.por).split(' ')[0]):'')+'</div>':'')
        +'<div class="jf-c w3"><label>Data de saída *</label><input type="date" data-b="data" value="'+e_(bx.data||(jaBase?fromB(b.desl):'')||hojeI())+'"></div>'
        +'<div class="jf-c w9"><label>Motivo *</label><select data-b="motivo">'+MOTIVOS.map(m=>'<option'+(bx.motivo===m?' selected':'')+'>'+m+'</option>').join('')+'</select></div>'
        +'<div class="jf-c w12"><label>Observação / detalhe do motivo</label><textarea data-b="obs">'+e_(bx.obs||'')+'</textarea></div>'
        +'<div class="jf-av in">O jovem sai dos ativos a partir da data de saída. Data futura fica como saída programada até o dia.</div></div>';
-      M.R.insertAdjacentHTML('beforeend',(r.baixa?'<button class="jf-b" data-desf>Desfazer</button>':'')+'<button class="jf-b pri" data-bx>'+(r.baixa?'Salvar alteração':jaBase?'Registrar motivo':'Desligar do programa')+'</button>')}
+      M.R.insertAdjacentHTML('beforeend',(jaBase?'<button class="jf-b" data-reat>Reativar (não saiu)</button>':'')+(b._reat?'<button class="jf-b" data-dreat>Desfazer reativação</button>':'')+(r.baixa?'<button class="jf-b" data-desf>Desfazer</button>':'')+'<button class="jf-b pri" data-bx>'+(r.baixa?'Salvar alteração':jaBase?'Registrar motivo':'Desligar do programa')+'</button>')}
     M.C.innerHTML=h;
     M.C.querySelectorAll('[data-t]').forEach(x=>x.onclick=()=>{aba=x.dataset.t;M.msg('');draw()});
     const S=M.R.querySelector('[data-s]');if(S)S.onclick=async()=>{const d=lerCampos(M.C);d.cpf=(d.cpf||'').replace(/\D/g,'');if(!d.nome)return M.msg('Informe o nome.','#a3301c');
@@ -1005,6 +1008,8 @@ async function ficha(k,aba,aviso){if(!PRONTO)await atualizar();const b=BASE.find
     const BX=M.R.querySelector('[data-bx]');if(BX)BX.onclick=async()=>{const gb=n=>M.C.querySelector('[data-b='+n+']');const bx={data:gb('data').value,motivo:gb('motivo').value,obs:gb('obs').value.trim(),por:quem(),em:new Date().toISOString()};
       if(!bx.data)return M.msg('Informe a data de saída.','#a3301c');if(bx.motivo==='Outro'&&!bx.obs)return M.msg('Descreva o motivo na observação.','#a3301c');
       try{await salvarReg(k,Object.assign({},r,{baixa:bx}));await atualizar();ficha(k,'bx','Baixa registrada.')}catch(er){M.msg(er.message,'#a3301c')}};
+    const RT=M.R.querySelector('[data-reat]');if(RT)RT.onclick=async()=>{if(!RT.dataset.c){RT.dataset.c=1;RT.textContent='Confirmar: reativar';return}try{await salvarReg(k,Object.assign({},r,{reat:{em:new Date().toISOString(),por:quem(),deslBase:b.desl||''}}));await atualizar();ficha(k,'dados','Jovem reativado: volta para os ativos.')}catch(er){M.msg(er.message,'#a3301c')}};
+    const DR=M.R.querySelector('[data-dreat]');if(DR)DR.onclick=async()=>{if(!DR.dataset.c){DR.dataset.c=1;DR.textContent='Confirmar: desfazer';return}const o=Object.assign({},r);delete o.reat;try{await salvarReg(k,o);await atualizar();ficha(k,'bx','Reativação desfeita.')}catch(er){M.msg(er.message,'#a3301c')}};
     const DF=M.R.querySelector('[data-desf]');if(DF)DF.onclick=async()=>{if(!DF.dataset.c){DF.dataset.c=1;DF.textContent='Confirmar: desfazer';return}const o=Object.assign({},r);delete o.baixa;try{await salvarReg(k,o);await atualizar();ficha(k,'bx','Baixa desfeita.')}catch(er){M.msg(er.message,'#a3301c')}};
   };
   draw();if(aviso)M.msg(aviso,'#1d5c3a')}
