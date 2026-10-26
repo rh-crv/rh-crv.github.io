@@ -134,7 +134,7 @@ async function carregar(){
     const g=d.docs.find(x=>x.id==='geral');CFG_DB=g?g.data():null}catch(e){console.warn(e)}}
   try{const f=window.parent&&window.parent.CRV_QUADRO;if(typeof f==='function'){const q=await f();QD=(q&&q.mapa)||{}}}catch(_){}
 }
-const CFG=()=>Object.assign({setor:'Serviços Gerais',cidade:'Capinópolis - MG',assHE:[],assGR:[],criterios:['Não uso do EPI','Comportamento','Atestado','Falta sem justificativa'],pesoCrit:.25},P0.cfg||{},CFG_DB||{});
+const CFG=()=>{const c=Object.assign({setor:'Serviços Gerais',cidade:'Capinópolis - MG',assHE:[],assGR:[],criterios:['Não uso do EPI','Comportamento','Atestado','Falta sem justificativa'],pesoCrit:.25},P0.cfg||{},CFG_DB||{});c.setor=String(c.setor||'').replace(/^\s*QUALIDADE\s*-\s*/i,'')||'Serviços Gerais';return c};
 /* horas extras: pacote (histórico) + app; um registro do app com o mesmo id substitui o do pacote */
 function HE(){const m={};(P0.he||[]).forEach(x=>m[x.id]=Object.assign({fonte:'hist'},x));Object.entries(HE_DB).forEach(([id,x])=>m[id]=Object.assign({},m[id]||{},x,{id,fonte:'app'}));
   return Object.values(m).filter(x=>!x.excluida).map(x=>{const c=x.ini!=null&&x.fim!=null?((x.fim-x.ini)%1440+1440)%1440-(+x.intervalo||0):null;x.calc=c;x.min=x.qtd!=null?x.qtd:c;return x})}
