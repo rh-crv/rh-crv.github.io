@@ -161,6 +161,9 @@ async function carregarCatalogo(){
   // Onboarding (integração de novos): painel do app, a partir das admissões do Quadro
   if (!E.paineis.some(x => x.id === 'onboarding') && E.perfil && E.perfil.papel === 'admin') { const n = { id:'onboarding', frente:'Gestão de Colaboradores', nome:'Integração de Colaboradores', nivel:'controlado', ordem:12 };
     sb.from('paineis').insert(n).then(() => {}, () => {}); E.paineis.push(n); }
+  // Avaliação de desempenho dos ativos (mesmo formulário da experiência): painel do app
+  if (!E.paineis.some(x => x.id === 'desempenho') && E.perfil && E.perfil.papel === 'admin') { const n = { id:'desempenho', frente:'Gestão de Colaboradores', nome:'Avaliação de Desempenho', nivel:'controlado', ordem:13 };
+    sb.from('paineis').insert(n).then(() => {}, () => {}); E.paineis.push(n); }
   // Risco de saída: painel do app, calculado a partir do Quadro; restrito
   if (!E.paineis.some(x => x.id === 'risco') && E.perfil && E.perfil.papel === 'admin') { const n = { id:'risco', frente:'Gestão de Colaboradores', nome:'Risco de Desligamento', nivel:'restrito', ordem:16 };
     sb.from('paineis').insert(n).then(() => {}, () => {}); E.paineis.push(n); }
@@ -580,6 +583,7 @@ let _risco = null; const RISCO = () => _risco || (_risco = window.CRV_RISCO_INIT
 let _rel = null; const REL = () => _rel || (_rel = window.CRV_REL_INIT(Object.assign(ctxMod(), { NR1, RISCO, BASES })));
 let _bases = null; const BASES = () => _bases || (_bases = window.CRV_BASES_INIT(Object.assign(ctxMod(), { ehAdmin, FRENTES })));
 let _gestor = null; const GESTOR = () => _gestor || (_gestor = window.CRV_GESTOR_INIT(ctxMod()));
+let _des = null; const DES = () => _des || (_des = window.CRV_DES_INIT(ctxMod()));
 let _onb = null; const ONB = () => _onb || (_onb = window.CRV_ONB_INIT(Object.assign(ctxMod(), { RISCO })));
 async function pendenciasDesligamento(){
   const D = await dadosDesligamento(); if (!D) return [];
@@ -647,6 +651,10 @@ async function fichaDados(mat){
     const a = nN(v[4]), b = nN(c.nome), mesmo = !a.length || (a[0] === b[0] && a[a.length - 1] === b[b.length - 1]);
     F.sec.push({ k:'sal', t:'Remuneração', ref:o.ref, resumo: mesmo ? [['Salário', R$(v[0])], ['Função na folha', v[2] || '—'], ['Situação na folha', v[1] || '—']].concat((v[5] || []).map(h => ['Antes (base de ' + brD(h[0]) + ')', R$(h[1])])) : [['Salário', 'não mostrado'], ['Na planilha de salários, a matrícula ' + mat + ' é de', v[4] + (v[1] ? ' (' + v[1].toLowerCase() + ')' : '')]],
       alerta: !mesmo ? 'nome diferente na planilha de salários: conferir a matrícula' : (c.situacao !== 'Desligado' && /DEMITIDO/i.test(v[1]) ? 'consta como demitido na planilha de salários' : '') }); })());
+  // Avaliação de desempenho
+  if ((pd => pd && podeVer(pd))(E.paineis.find(x => x.id === 'desempenho')) && window.CRV_DES_INIT) tarefas.push((async () => { const L = await DES().daPessoa(mat); if (!L.length) return;
+    F.sec.push({ k:'des', t:'Avaliação de desempenho', painel:'desempenho', cab:['Ciclo', 'Data', '% atingido', 'Resultado', 'Avaliador', 'Encaminhamento'], linhas:L.map(a => [a.ciclo, brD(a.data), DES().pctTxt(a.pct), a.faixa, a.aval || '', a.acoes.join('; ')]),
+      alerta: L[0] && /abaixo/i.test(L[0].faixa) ? 'última avaliação de desempenho abaixo do esperado' : '' }); })());
   // Experiência
   if (fPode('experiencia')) tarefas.push((async () => { const d = await window.CRV_DADOS('experiencia'); const R = d && d.dados.RAW; if (!R) return; const r = R.find(x => fMat(x[0]) === mat); if (!r) return;
     const reg = (await window.CRV_REGS('experiencia', 'registros')).find(x => x._id === 'm' + mat) || {};
@@ -1077,6 +1085,7 @@ async function telaPainel(id, acao){
   if (VISTA_QUADRO[id] && (acao === 'vq' || acao === 'vp')) { try { localStorage.setItem('crv-vista-' + id, acao.slice(1)); } catch(_){} try { history.replaceState(null, '', '#/p/' + encodeURIComponent(id)); } catch(_){} acao = ''; }
   if (id === 'risco') return RISCO().tela(p, cfg);
   if (id === 'onboarding') return ONB().tela(p, cfg);
+  if (id === 'desempenho') return DES().tela(p, cfg);
   if (MODELOS[id]) return telaModelo(p, cfg, acao);
   moldura(`<div class="trilha"><button data-ir="#/">Visão Geral</button> › <span>${esc(p.frente)}</span> › <b>${esc(p.nome)}</b></div>
     <div class="cartao vazio"><div class="spinner" style="margin:0 auto"></div><p>Carregando dados...</p></div>`);
