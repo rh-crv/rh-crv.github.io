@@ -798,6 +798,10 @@ function abrir(pre){
   if(!e.mat)setTimeout(()=>g('dM').focus(),60);
 }
 
+/* texto da penalidade quando o documento não traz (ex.: lançado pelo painel de Fadiga ou campo apagado) */
+const penDe=d=>{const n=Math.max(1,parseInt(d.dias,10)||1),nn=String(n).padStart(2,'0')+' ('+(NUM[n]||n)+') '+(n===1?'DIA':'DIAS'),r=String(d.ret||'').trim();
+  return d.tipo==='sus'?`Fica aplicada a penalidade de **SUSPENSÃO DISCIPLINAR DE ${nn}**`+(d.ini?(n===1||!d.fim?`, com início e término em **${br(d.ini)}**`:`, com início em **${br(d.ini)}** e término em **${br(d.fim)}**`):'')+`. O retorno deverá ocorrer ${/^\d{4}-\d{2}-\d{2}$/.test(r)?'em **'+br(r)+'**':r||'no primeiro dia de trabalho após o término da suspensão'}.`
+    :'Diante da não conformidade constatada e considerando a gravidade e os riscos envolvidos, fica aplicada ao colaborador a penalidade de **ADVERTÊNCIA ESCRITA**.'};
 /* ---------- PDF no modelo ---------- */
 async function pdf(d){
   const J=(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF);if(!J)throw new Error('gerador de PDF indisponível');
@@ -839,7 +843,7 @@ async function pdf(d){
   const docPenal=()=>{let y=pagina(TIT[d.tipo],d.assunto);
     y=sec('1. DESCRIÇÃO DA NÃO CONFORMIDADE',y);y=rich(segs(d.desc),y)+2*K;
     y=sec('2. ENQUADRAMENTO DISCIPLINAR',y);y=rich(d.enq==='outro'?segs(d.enqO):[[ENQT[d.enq],1]].concat(d.enqC?[[', '+d.enqC+'.']]:[['.']]),y)+2*K;
-    y=sec('3. PENALIDADE APLICADA',y);y=rich(segs(d.pen),y)+2*K;
+    y=sec('3. PENALIDADE APLICADA',y);y=rich(segs(String(d.pen||'').trim()||penDe(d)),y)+2*K;
     y=sec('4. CONDUTA ESPERADA',y);y=rich(segs(d.cond),y)+2*K;
     y=ciencia(y);assinaturas(y);rodape()};
   const docOri=()=>{let y=pagina('ORIENTAÇÃO DISCIPLINAR',d.oAss||d.assunto);
