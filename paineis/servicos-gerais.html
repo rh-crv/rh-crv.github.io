@@ -90,9 +90,10 @@ tfoot td{font-weight:700;background:#faf7f2;border-top:1px solid var(--line)}
   <div class="comp"><button class="nav" id="mAnt" title="Mês anterior">‹</button><label for="selComp">Mês</label><select id="selComp"></select><button class="nav" id="mProx" title="Próximo mês">›</button></div>
 </div></header>
 <main>
-  <nav class="vtabs" id="vtabs"><button data-v="g" class="on">Visão geral</button><button data-v="h">Horas extras</button><button data-v="b">Gratificação BPP</button><button data-v="m">Mês a mês</button><button data-v="c">Por colaborador</button><button data-v="cfg">Regras, assinaturas e textos</button></nav>
+  <nav class="vtabs" id="vtabs"><button data-v="g" class="on">Visão geral</button><button data-v="h">Horas extras</button><button data-v="a">Abonos</button><button data-v="b">Gratificação BPP</button><button data-v="m">Mês a mês</button><button data-v="c">Por colaborador</button><button data-v="cfg">Regras, assinaturas e textos</button></nav>
   <section id="vG"></section>
   <section id="vH" hidden></section>
+  <section id="vA" hidden></section>
   <section id="vB" hidden></section>
   <section id="vM" hidden></section>
   <section id="vC" hidden></section>
@@ -125,10 +126,10 @@ const P0=(typeof SG!=='undefined'&&SG)||{he:[],heMes:{},grat:{},cfg:{}};
 
 /* ---------- banco ---------- */
 let DB=null;const db=async()=>{if(DB)return DB;try{DB=window.claude&&window.claude.use?await window.claude.use('db'):null}catch(_){DB=null}return DB};
-let HE_DB={},GR_DB={},HM_DB={},CFG_DB=null,QD={};
+let HE_DB={},AB_DB={},GR_DB={},HM_DB={},CFG_DB=null,QD={};
 async function carregar(){
   const D=await db();
-  if(D){try{const [a,b,c,d]=await Promise.all([D.collection('he').get(),D.collection('grat').get(),D.collection('heMes').get(),D.collection('cfg').get()]);
+  if(D){try{const [a,b,c,d,e2]=await Promise.all([D.collection('he').get(),D.collection('grat').get(),D.collection('heMes').get(),D.collection('cfg').get(),D.collection('ab').get().catch(()=>({docs:[]}))]);AB_DB={};(e2.docs||[]).forEach(x=>AB_DB[x.id]=x.data());
     HE_DB={};a.docs.forEach(x=>HE_DB[x.id]=x.data());GR_DB={};b.docs.forEach(x=>GR_DB[x.id]=x.data());HM_DB={};c.docs.forEach(x=>HM_DB[x.id]=x.data());
     const g=d.docs.find(x=>x.id==='geral');CFG_DB=g?g.data():null}catch(e){console.warn(e)}}
   try{const f=window.parent&&window.parent.CRV_QUADRO;if(typeof f==='function'){const q=await f();QD=(q&&q.mapa)||{}}}catch(_){}
@@ -137,6 +138,10 @@ const CFG=()=>Object.assign({setor:'Serviços Gerais',cidade:'Capinópolis - MG'
 /* horas extras: pacote (histórico) + app; um registro do app com o mesmo id substitui o do pacote */
 function HE(){const m={};(P0.he||[]).forEach(x=>m[x.id]=Object.assign({fonte:'hist'},x));Object.entries(HE_DB).forEach(([id,x])=>m[id]=Object.assign({},m[id]||{},x,{id,fonte:'app'}));
   return Object.values(m).filter(x=>!x.excluida).map(x=>{const c=x.ini!=null&&x.fim!=null?((x.fim-x.ini)%1440+1440)%1440-(+x.intervalo||0):null;x.calc=c;x.min=x.qtd!=null?x.qtd:c;return x})}
+/* abonos (pedido do RH, 26/10/2026): mesmo formato das horas extras, coleção 'ab' */
+function AB(){return Object.entries(AB_DB).map(([id,x])=>Object.assign({},x,{id,fonte:'app'})).filter(x=>!x.excluida).map(x=>{const c=x.ini!=null&&x.fim!=null?((x.fim-x.ini)%1440+1440)%1440-(+x.intervalo||0):null;x.calc=c;x.min=x.qtd!=null?x.qtd:c;return x})}
+let K='he';const LS=()=>K==='ab'?AB():HE(),DBK=()=>K==='ab'?AB_DB:HE_DB,VS=()=>K==='ab'?'vA':'vH';
+const TK=()=>K==='ab'?{t:'Abonos',um:'abono',uns:'abonos',lancar:'+ Lançar abonos',doc:'Solicitação de abono de horas',arq:'Abonos',mot:'Ex.: Consulta médica, Declaração de comparecimento, Treinamento externo'}:{t:'Horas extras',um:'hora extra',uns:'horas extras',lancar:'+ Lançar horas extras',doc:'Solicitação de pagamento de horas extras',arq:'Horas extras',mot:'Ex.: Feriado, Serviço Externo - Alojamento'};
 function GR(c){return GR_DB[c]||(P0.grat||{})[c]||null}
 function comps(){const s=new Set([...Object.keys(P0.grat||{}),...Object.keys(GR_DB),...HE().map(x=>x.comp)]);const h=hoje().slice(0,7);s.add(h);s.add(addMes(h,-1));const mx=[...s].filter(Boolean).sort().pop();s.add(addMes(mx,1));s.add(addMes(mx,2));EXTRA.forEach(c=>s.add(c));return [...s].filter(Boolean).sort()}
 const EXTRA=new Set();
@@ -161,8 +166,8 @@ $('selComp').onchange=()=>{COMP=$('selComp').value;render()};
 const irMes=n=>{COMP=addMes(COMP,n);EXTRA.add(COMP);render()};$('mAnt').onclick=()=>irMes(-1);$('mProx').onclick=()=>irMes(1);
 $('vtabs').onclick=e=>{const b=e.target.closest('[data-v]');if(!b)return;V=b.dataset.v;render()};
 function render(){topo();document.querySelectorAll('#vtabs button').forEach(b=>b.classList.toggle('on',b.dataset.v===V));
-  [['g','vG'],['h','vH'],['b','vB'],['m','vM'],['c','vC'],['cfg','vCfg']].forEach(([k,id])=>$(id).hidden=V!==k);
-  if(V==='g')rGeral();if(V==='h')rHE();if(V==='b')rGR();if(V==='m')rMes();if(V==='c')rCol();if(V==='cfg')rCfg()}
+  [['g','vG'],['h','vH'],['a','vA'],['b','vB'],['m','vM'],['c','vC'],['cfg','vCfg']].forEach(([k,id])=>$(id).hidden=V!==k);
+  if(V==='g')rGeral();if(V==='h'){K='he';rHE()}if(V==='a'){K='ab';rHE()}if(V==='b')rGR();if(V==='m')rMes();if(V==='c')rCol();if(V==='cfg')rCfg()}
 
 /* ---------- cálculo da gratificação ----------
    Regras (editáveis em "Assinaturas e textos"): cada ocorrência tira o seu percentual; "uma vez" conta uma vez no período, "por ocorrência" multiplica.
@@ -218,39 +223,39 @@ const normMot=m=>{const t=String(m||'').trim().replace(/\s+/g,' ');if(!t)return 
 
 /* ---------- Horas extras ---------- */
 const FH={q:'',mat:'',mot:'',ano:false};
-function heDoMes(){return HE().filter(x=>FH.ano?x.comp.slice(0,4)===COMP.slice(0,4):x.comp===COMP)}
+function heDoMes(){return LS().filter(x=>FH.ano?x.comp.slice(0,4)===COMP.slice(0,4):x.comp===COMP)}
 function alertasHE(x){const a=[];if(x.qtd!=null&&x.calc!=null&&x.qtd!==x.calc)a.push('Quantidade digitada '+hm(x.qtd)+' e o horário dá '+hm(x.calc));const q=pessoa(x.mat);if(q&&x.adm&&q.adm&&q.adm!==x.adm)a.push('Admissão na planilha '+br(x.adm)+', no Quadro '+br(q.adm));if(!q)a.push('Matrícula fora do Quadro');return a}
 function rHE(){let L=heDoMes();const q=FH.q.trim().toLowerCase();if(q)L=L.filter(x=>(x.nome+' '+x.mat+' '+x.motivo).toLowerCase().includes(q));if(FH.mat)L=L.filter(x=>x.mat===FH.mat);if(FH.mot)L=L.filter(x=>normMot(x.motivo)===FH.mot);
   L.sort((a,b)=>a.data.localeCompare(b.data)||a.nome.localeCompare(b.nome));
   const tot=L.reduce((s,x)=>s+(x.min||0),0),pm={};L.forEach(x=>{pm[x.mat]=pm[x.mat]||{mat:x.mat,nome:x.nome,v:0,n:0};pm[x.mat].v+=x.min||0;pm[x.mat].n++});
   const pl=Object.values(pm).sort((a,b)=>a.nome.localeCompare(b.nome)),fil=FH.mat||FH.mot||FH.ano;
-  let h='<div class="box"><div class="tools"><div><h2 style="margin:0">Horas extras · '+(FH.ano?COMP.slice(0,4):compCap(COMP))+'</h2><p class="sub" style="margin:2px 0 0">'+L.length+' lançamentos · '+pl.length+' pessoas · '+hm(tot)+' horas</p></div><span class="esp"></span>'
-   +'<button class="btn" id="hProx" title="Ir para o próximo mês">Próximo mês ›</button><button class="btn pri" id="hNovo">+ Lançar horas extras</button><button class="btn" id="hXls">Excel</button><button class="btn tea" id="hPdf">Imprimir para assinatura</button></div>';
+  let h='<div class="box"><div class="tools"><div><h2 style="margin:0">'+TK().t+' · '+(FH.ano?COMP.slice(0,4):compCap(COMP))+'</h2><p class="sub" style="margin:2px 0 0">'+L.length+' lançamentos · '+pl.length+' pessoas · '+hm(tot)+' horas</p></div><span class="esp"></span>'
+   +'<button class="btn" id="hProx" title="Ir para o próximo mês">Próximo mês ›</button><button class="btn pri" id="hNovo">'+TK().lancar+'</button><button class="btn" id="hXls">Excel</button><button class="btn tea" id="hPdf">Imprimir para assinatura</button></div>';
   if(fil)h+='<div class="av in">Filtro: '+[FH.ano?'ano inteiro':'',FH.mat?'colaborador '+esc(FH.mat):'',FH.mot?'motivo "'+esc(FH.mot)+'"':''].filter(Boolean).join(' · ')+' <button class="btn sm" id="hLimpa" style="margin-left:8px">Limpar filtro</button></div>';
   const al=L.filter(x=>alertasHE(x).length);if(al.length)h+='<div class="av"><b>'+al.length+' lançamento(s) para conferir</b> (marcados com ⚠). Passe o mouse no ⚠ para ver o motivo; use Editar para corrigir.</div>';
   h+='<div class="tools"><input type="search" id="hQ" placeholder="Buscar nome, matrícula ou motivo" value="'+esc(FH.q)+'"></div>';
   h+='<div class="tab" style="max-height:62vh"><table><thead><tr><th>Data</th><th>Mat.</th><th>Colaborador</th><th>Função</th><th>Admissão</th><th>Motivo</th><th class="c">Início</th><th class="c">Fim</th><th class="n">Horas</th><th></th></tr></thead><tbody>'
-   +(L.map(x=>{const a=alertasHE(x),p=pessoa(x.mat);return '<tr><td>'+br(x.data)+'</td><td>'+esc(x.mat)+'</td><td><b>'+esc(tc(p?p.nome:x.nome))+'</b>'+(x.fonte==='hist'?' <span class="pill p-plu" title="Veio da planilha">planilha</span>':'')+'</td><td class="small">'+esc(tc(p?p.funcao:x.funcao))+'</td><td>'+br(p&&p.adm||x.adm)+'</td><td>'+esc(x.motivo)+'</td><td class="c">'+hmT(x.ini)+'</td><td class="c">'+hmT(x.fim)+'</td><td class="n"><b>'+hm(x.min)+'</b>'+(a.length?' <span title="'+esc(a.join(' · '))+'" style="cursor:help">⚠</span>':'')+'</td><td style="white-space:nowrap"><button class="btn sm" data-ed="'+esc(x.id)+'">Editar</button> <button class="btn sm perigo" data-ex="'+esc(x.id)+'">Excluir</button></td></tr>'}).join('')||'<tr><td colspan="10" class="mut" style="padding:16px">Nenhuma hora extra lançada neste mês. Clique em <b>+ Lançar horas extras</b>.</td></tr>')
+   +(L.map(x=>{const a=alertasHE(x),p=pessoa(x.mat);return '<tr><td>'+br(x.data)+'</td><td>'+esc(x.mat)+'</td><td><b>'+esc(tc(p?p.nome:x.nome))+'</b>'+(x.fonte==='hist'?' <span class="pill p-plu" title="Veio da planilha">planilha</span>':'')+'</td><td class="small">'+esc(tc(p?p.funcao:x.funcao))+'</td><td>'+br(p&&p.adm||x.adm)+'</td><td>'+esc(x.motivo)+'</td><td class="c">'+hmT(x.ini)+'</td><td class="c">'+hmT(x.fim)+'</td><td class="n"><b>'+hm(x.min)+'</b>'+(a.length?' <span title="'+esc(a.join(' · '))+'" style="cursor:help">⚠</span>':'')+'</td><td style="white-space:nowrap"><button class="btn sm" data-ed="'+esc(x.id)+'">Editar</button> <button class="btn sm perigo" data-ex="'+esc(x.id)+'">Excluir</button></td></tr>'}).join('')||'<tr><td colspan="10" class="mut" style="padding:16px">Nenhum lançamento de '+TK().uns+' neste mês. Clique em <b>'+TK().lancar+'</b>.</td></tr>')
    +'</tbody>'+(L.length?'<tfoot><tr><td colspan="8">Total</td><td class="n">'+hm(tot)+'</td><td></td></tr></tfoot>':'')+'</table></div></div>';
   if(pl.length)h+='<div class="box"><h2>Total por colaborador</h2><p class="sub">Para o lançamento na folha. Clique para filtrar os lançamentos da pessoa.</p><div class="tab"><table><thead><tr><th>Mat.</th><th>Colaborador</th><th class="n">Lançamentos</th><th class="n">Horas</th></tr></thead><tbody>'
    +pl.map(p=>'<tr class="go" data-fm="'+esc(p.mat)+'"><td>'+esc(p.mat)+'</td><td>'+esc(tc(p.nome))+'</td><td class="n">'+p.n+'</td><td class="n"><b>'+hm(p.v)+'</b></td></tr>').join('')+'</tbody><tfoot><tr><td colspan="3">Total</td><td class="n">'+hm(tot)+'</td></tr></tfoot></table></div></div>';
-  $('vH').innerHTML=h;
+  $(VS()).innerHTML=h;
   $('hNovo').onclick=()=>formHE();$('hProx').onclick=()=>irMes(1);$('hXls').onclick=()=>xlsHE().catch(e=>toast(e.message));$('hPdf').onclick=()=>pdfHE().catch(e=>toast(e.message));
   const lp=$('hLimpa');if(lp)lp.onclick=()=>{FH.mat='';FH.mot='';FH.ano=false;rHE()};
   const qi=$('hQ');qi.oninput=()=>{FH.q=qi.value;clearTimeout(qi.t);qi.t=setTimeout(()=>{rHE();const n=$('hQ');n.focus();n.setSelectionRange(n.value.length,n.value.length)},250)};
-  $('vH').querySelectorAll('[data-fm]').forEach(r=>r.onclick=()=>{FH.mat=FH.mat===r.dataset.fm?'':r.dataset.fm;rHE()});
-  $('vH').querySelectorAll('[data-ed]').forEach(b=>b.onclick=()=>formHE(HE().find(x=>x.id===b.dataset.ed)));
-  $('vH').querySelectorAll('[data-ex]').forEach(b=>b.onclick=async()=>{if(!b.classList.contains('cf')){b.classList.add('cf');b.textContent='Confirmar';return}
-    const D=await db();if(!D)return toast('Não dá para salvar nesta visualização.');try{await D.collection('he').doc(b.dataset.ex).set(Object.assign({},HE().find(x=>x.id===b.dataset.ex)||{},{excluida:true,excluidaPor:quem(),excluidaEm:new Date().toISOString()}));HE_DB[b.dataset.ex]={excluida:true};toast('Lançamento excluído.');rHE()}catch(e){toast('Não consegui excluir: '+(e.message||'sem permissão'))}});
+  $(VS()).querySelectorAll('[data-fm]').forEach(r=>r.onclick=()=>{FH.mat=FH.mat===r.dataset.fm?'':r.dataset.fm;rHE()});
+  $(VS()).querySelectorAll('[data-ed]').forEach(b=>b.onclick=()=>formHE(LS().find(x=>x.id===b.dataset.ed)));
+  $(VS()).querySelectorAll('[data-ex]').forEach(b=>b.onclick=async()=>{if(!b.classList.contains('cf')){b.classList.add('cf');b.textContent='Confirmar';return}
+    const D=await db();if(!D)return toast('Não dá para salvar nesta visualização.');try{await D.collection(K).doc(b.dataset.ex).set(Object.assign({},LS().find(x=>x.id===b.dataset.ex)||{},{excluida:true,excluidaPor:quem(),excluidaEm:new Date().toISOString()}));DBK()[b.dataset.ex]={excluida:true};toast('Lançamento excluído.');rHE()}catch(e){toast('Não consegui excluir: '+(e.message||'sem permissão'))}});
 }
 /* formulário: várias pessoas de uma vez (mesma data e motivo), horário por pessoa */
-function formHE(ed){const eq=equipe(),mots=[...new Set(HE().map(x=>String(x.motivo||'').trim()).filter(Boolean))].sort();
+function formHE(ed){const eq=equipe(),mots=[...new Set(LS().map(x=>String(x.motivo||'').trim()).filter(Boolean))].sort();
   const w=document.createElement('div');w.className='fundo';
   const d0=ed||{data:'',motivo:'',ini:null,fim:null};
-  w.innerHTML='<div class="jan"><div class="jcab"><h3>'+(ed?'Editar hora extra':'Lançar horas extras')+'<small>'+(ed?'Corrija o que estiver errado e salve.':'Escolha a data, o motivo e as pessoas. O horário padrão vai para todos e pode ser ajustado em cada linha.')+'</small></h3><button class="x" data-x>×</button></div>'
+  w.innerHTML='<div class="jan"><div class="jcab"><h3>'+(ed?'Editar '+TK().um:TK().lancar.slice(2))+'<small>'+(ed?'Corrija o que estiver errado e salve.':'Escolha a data, o motivo e as pessoas. O horário padrão vai para todos e pode ser ajustado em cada linha.')+'</small></h3><button class="x" data-x>×</button></div>'
    +'<div class="jcorpo"><div class="fg">'
    +'<div class="fc w3"><label>Data *</label><input type="date" id="fData" value="'+esc(d0.data)+'"></div>'
-   +'<div class="fc w5"><label>Motivo *</label><input id="fMot" list="dlMot" value="'+esc(d0.motivo)+'" placeholder="Ex.: Feriado, Serviço Externo - Alojamento"><datalist id="dlMot">'+mots.map(m=>'<option value="'+esc(m)+'">').join('')+'</datalist></div>'
+   +'<div class="fc w5"><label>Motivo *</label><input id="fMot" list="dlMot" value="'+esc(d0.motivo)+'" placeholder="'+esc(TK().mot)+'"><datalist id="dlMot">'+mots.map(m=>'<option value="'+esc(m)+'">').join('')+'</datalist></div>'
    +'<div class="fc w2"><label>Início</label><input type="time" id="fIni" value="'+hmT(d0.ini)+'"></div><div class="fc w2"><label>Fim</label><input type="time" id="fFim" value="'+hmT(d0.fim)+'"></div>'
    +(ed?'':'<div class="fc w12"><label>Pessoas * <span style="text-transform:none;font-weight:400">(<a href="#" id="fTodos">marcar todos</a> · <a href="#" id="fNenhum">desmarcar</a>)</span></label><div class="pes" id="fPes">'+eq.map(p=>'<label><input type="checkbox" value="'+esc(p.mat)+'"> '+esc(tc(p.nome))+' <span class="mut small">'+esc(p.mat)+'</span></label>').join('')+'</div></div>'
      +'<div class="fc w4"><label>Outra matrícula</label><div style="display:flex;gap:6px"><input id="fMat" inputmode="numeric" placeholder="Matrícula" style="flex:1"><button class="btn sm" id="fAdd" type="button">Incluir</button></div><span class="small mut" id="fMatInfo"></span></div>')
@@ -259,10 +264,10 @@ function formHE(ed){const eq=equipe(),mots=[...new Set(HE().map(x=>String(x.moti
   document.body.appendChild(w);const g=s=>w.querySelector(s);const fechar=()=>w.remove();w.querySelectorAll('[data-x]').forEach(b=>b.onclick=fechar);
   const SEL=new Map();// mat -> {mat,nome,funcao,adm,ini,fim,intervalo}
   if(ed)SEL.set(ed.mat,{mat:ed.mat,nome:ed.nome,funcao:ed.funcao,adm:ed.adm,ini:ed.ini,fim:ed.fim,intervalo:ed.intervalo||0,qtd:ed.qtd});
-  const linhas=()=>{const ini=toMin(g('#fIni').value),fim=toMin(g('#fFim').value),dt=g('#fData').value,H=HE();
+  const linhas=()=>{const ini=toMin(g('#fIni').value),fim=toMin(g('#fFim').value),dt=g('#fData').value,H=LS();
     g('#fLin').innerHTML=[...SEL.values()].map(p=>{const i=p.ini!=null?p.ini:ini,f=p.fim!=null?p.fim:fim;const c=i!=null&&f!=null?((f-i)%1440+1440)%1440-(+p.intervalo||0):null;
       const dup=dt&&H.some(x=>x.mat===p.mat&&x.data===dt&&(!ed||x.id!==ed.id)&&x.ini!=null&&i!=null&&ov(x.ini,x.min,i,c));
-      return '<tr data-m="'+esc(p.mat)+'"><td>'+esc(p.mat)+'</td><td>'+esc(tc(p.nome))+'</td><td><input type="time" data-k="ini" value="'+hmT(i)+'"></td><td><input type="time" data-k="fim" value="'+hmT(f)+'"></td><td><input type="number" min="0" step="5" data-k="intervalo" value="'+(+p.intervalo||0)+'"></td><td class="n"><b>'+hm(c)+'</b></td><td class="small" style="color:var(--bad)">'+(dup?'Já existe hora extra desta pessoa nesse horário':'')+(c!=null&&c>12*60?' Mais de 12 horas: confira':'')+'</td></tr>'}).join('')||'<tr><td colspan="7" class="mut">Marque as pessoas acima.</td></tr>';
+      return '<tr data-m="'+esc(p.mat)+'"><td>'+esc(p.mat)+'</td><td>'+esc(tc(p.nome))+'</td><td><input type="time" data-k="ini" value="'+hmT(i)+'"></td><td><input type="time" data-k="fim" value="'+hmT(f)+'"></td><td><input type="number" min="0" step="5" data-k="intervalo" value="'+(+p.intervalo||0)+'"></td><td class="n"><b>'+hm(c)+'</b></td><td class="small" style="color:var(--bad)">'+(dup?'Já existe '+TK().um+' desta pessoa nesse horário':'')+(c!=null&&c>12*60?' Mais de 12 horas: confira':'')+'</td></tr>'}).join('')||'<tr><td colspan="7" class="mut">Marque as pessoas acima.</td></tr>';
     g('#fLin').querySelectorAll('input').forEach(inp=>inp.onchange=()=>{const p=SEL.get(inp.closest('tr').dataset.m);const k=inp.dataset.k;p[k]=k==='intervalo'?(+inp.value||0):toMin(inp.value);delete p.qtd;linhas()})};
   const ov=(a,am,b,bm)=>a<b+(bm||0)&&b<a+(am||0);
   ['#fIni','#fFim','#fData'].forEach(s=>g(s).onchange=()=>{if(s!=='#fData')SEL.forEach(p=>{p.ini=null;p.fim=null;delete p.qtd});linhas()});
@@ -284,8 +289,8 @@ function formHE(ed){const eq=equipe(),mots=[...new Set(HE().map(x=>String(x.moti
     msg.className='esp msg';msg.textContent='Salvando…';
     try{const comp=ed?ed.comp:COMP;const agora=new Date().toISOString();
       for(const x of L){const rec={comp,data,mat:x.mat,nome:x.nome,funcao:x.funcao,adm:x.adm,motivo:mot,ini:x.ini,fim:x.fim,intervalo:x.intervalo};if(x.qtd!=null&&ed&&x.ini===ed.ini&&x.fim===ed.fim)rec.qtd=x.qtd;
-        if(ed){rec.alteradoPor=quem();rec.alteradoEm=agora;await D.collection('he').doc(ed.id).set(Object.assign({},rec,{criadoPor:ed.criadoPor||'',criadoEm:ed.criadoEm||''}));HE_DB[ed.id]=rec}
-        else{rec.criadoPor=quem();rec.criadoEm=agora;const r=await D.collection('he').add(rec);HE_DB[r.id||('n'+Date.now()+x.mat)]=rec}}
+        if(ed){rec.alteradoPor=quem();rec.alteradoEm=agora;await D.collection(K).doc(ed.id).set(Object.assign({},rec,{criadoPor:ed.criadoPor||'',criadoEm:ed.criadoEm||''}));DBK()[ed.id]=rec}
+        else{rec.criadoPor=quem();rec.criadoEm=agora;const r=await D.collection(K).add(rec);DBK()[r.id||('n'+Date.now()+x.mat)]=rec}}
       fechar();toast(ed?'Lançamento corrigido.':L.length+' lançamento(s) salvos.');render()}
     catch(e){msg.className='esp msg er';msg.textContent='Não consegui salvar: '+(e.message||'sem permissão');return false}};
 }
@@ -477,7 +482,7 @@ function rCfg(){const c=CFG(),hm0=HM_DB[COMP]||{};
    +'<div class="box"><h2>Regras do desconto da gratificação BPP</h2><p class="sub">Quanto cada ocorrência tira do BPP. "Uma vez no período" desconta uma vez mesmo que aconteça mais de uma vez; "por ocorrência" desconta a cada vez. As automáticas vêm do Absenteísmo e das Sanções. A soma passa de 100%? A pessoa fica com 0.</p><div class="tab"><table id="cReg"><thead><tr><th>Ocorrência</th><th class="n">Desconta (%)</th><th>Como conta</th><th>De onde vem</th></tr></thead><tbody>'
      +REGRAS().map(r=>'<tr data-k="'+r.k+'"><td><b>'+esc(r.nome)+'</b></td><td class="n"><input type="number" min="0" max="100" step="1" data-f="peso" value="'+Math.round(r.peso*100)+'" style="width:70px;border:1px solid var(--line);border-radius:6px;padding:4px 6px;text-align:right"></td><td><select data-f="modo" style="border:1px solid var(--line);border-radius:6px;padding:4px 6px;font:inherit"><option value="uma"'+(r.modo!=='cada'?' selected':'')+'>Uma vez no período</option><option value="cada"'+(r.modo==='cada'?' selected':'')+'>Por ocorrência</option></select></td><td class="small">'+(r.auto?'<span class="pill p-plu">automático</span> '+(r.k==='at'||r.k==='fa'?'Absenteísmo':'Sanções e Absenteísmo'):'marcado à mão na avaliação')+'</td></tr>').join('')
      +'</tbody></table></div><p class="small mut" style="margin:6px 0 0">Férias no período: o painel calcula os dias trabalhados (30 menos os dias de férias que caem no período) e paga proporcional.</p></div>'
-   +ass('assHE','Assinaturas · Horas extras')+ass('assGR','Assinaturas · Gratificação BPP')
+   +ass('assHE','Assinaturas · Horas extras')+ass('assAB','Assinaturas · Abonos (se vazio, usa as das horas extras)')+ass('assGR','Assinaturas · Gratificação BPP')
    +'<div class="box"><h2>Documento de horas extras de '+compNome(COMP)+'</h2><p class="sub">Data e texto que saem no topo. Deixe o texto em branco para o painel montar sozinho com os dias lançados.</p><div class="fg"><div class="fc w3"><label>Data do documento</label><input type="date" id="cEm" value="'+esc(hm0.emissao||'')+'"></div><div class="fc w12"><label>Texto</label><textarea id="cTx" placeholder="'+esc(textoHE(COMP,true))+'">'+esc(hm0.texto||'')+'</textarea></div></div></div>'
    +'<div style="display:flex;gap:8px;align-items:center"><button class="btn pri" id="cOk">Salvar</button><span class="msg" id="cMsg"></span></div>';
   const v=$('vCfg');
@@ -486,15 +491,16 @@ function rCfg(){const c=CFG(),hm0=HM_DB[COMP]||{};
   $('cOk').onclick=async()=>{const D=await db(),m=$('cMsg');if(!D){m.className='msg er';m.textContent='Não dá para salvar nesta visualização.';return}
     const lerA=k=>[...$(k).querySelectorAll('[data-a]')].map(r=>({nome:r.querySelector('[data-f=nome]').value.trim(),cargo:r.querySelector('[data-f=cargo]').value.trim()})).filter(a=>a.nome||a.cargo);
     const regras=[...$('cReg').querySelectorAll('tbody tr')].map(tr=>{const r=REGRAS().find(x=>x.k===tr.dataset.k);return {k:r.k,nome:r.nome,peso:Math.max(0,Math.min(100,+tr.querySelector('[data-f=peso]').value||0))/100,modo:tr.querySelector('[data-f=modo]').value,auto:r.auto||0}});
-    const nc={setor:$('cSet').value.trim(),cidade:$('cCid').value.trim(),assHE:lerA('assHE'),assGR:lerA('assGR'),regras,atualizadoPor:quem(),atualizadoEm:new Date().toISOString()};
+    const nc={setor:$('cSet').value.trim(),cidade:$('cCid').value.trim(),assHE:lerA('assHE'),assAB:lerA('assAB'),assGR:lerA('assGR'),regras,atualizadoPor:quem(),atualizadoEm:new Date().toISOString()};
     try{await D.collection('cfg').doc('geral').set(Object.assign({},CFG_DB||{},nc));CFG_DB=Object.assign({},CFG_DB||{},nc);
       const hmx={emissao:$('cEm').value,texto:$('cTx').value.trim()};await D.collection('heMes').doc(COMP).set(hmx);HM_DB[COMP]=hmx;m.className='msg ok';m.textContent='Salvo.';topo()}catch(e){m.className='msg er';m.textContent='Não consegui salvar: '+(e.message||'sem permissão')}}}
 
 /* ---------- textos e arquivos ---------- */
-function textoHE(c,auto){const hm0=HM_DB[c]||{};if(!auto&&hm0.texto)return hm0.texto;const L=HE().filter(x=>x.comp===c);const ds=[...new Set(L.map(x=>x.data))].sort();
+function textoHE(c,auto){const hm0=HM_DB[c]||{};if(K!=='ab'&&!auto&&hm0.texto)return hm0.texto;const L=LS().filter(x=>x.comp===c);const ds=[...new Set(L.map(x=>x.data))].sort();
   const ms=[...new Set(ds.map(d=>d.slice(0,7)))].map(m=>MESES[+m.slice(5)-1]+'/'+m.slice(0,4));
   const porMes={};ds.forEach(d=>{(porMes[d.slice(0,7)]=porMes[d.slice(0,7)]||[]).push(d)});
   const dias=Object.values(porMes).map(a=>a.map(d=>d.slice(8)).join(', ')+'/'+a[0].slice(5,7)+'/'+a[0].slice(0,4)).join(' e ');
+  if(K==='ab')return 'Solicitamos o abono das horas abaixo relacionadas, referentes aos colaboradores do setor '+CFG().setor.replace(/^.*- */,'')+', no período de '+(ms.join(' e ')||compNome(c))+', conforme os motivos indicados'+(ds.length?', nos dias '+dias:'')+'.';
   return 'Solicitamos o pagamento das horas extras abaixo relacionadas, referentes aos serviços prestados pelos colaboradores do setor '+CFG().setor.replace(/^.*- */,'')+', realizadas no período de '+(ms.join(' e ')||compNome(c))+', em razão de atividades executadas após a jornada de trabalho'+(ds.length?' nos dias '+dias:'')+'.'}
 function dataExtenso(iso){const d=iso||hoje();return CFG().cidade+', '+(+d.slice(8))+' de '+MESES[+d.slice(5,7)-1]+' de '+d.slice(0,4)}
 const JS=()=>(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF);
@@ -509,16 +515,16 @@ function assinaturas(doc,lista,y,W){const n=lista.length;if(!n)return y;const H=
   return y+row*26+10}
 function cabPDF(doc,t1,t2,W){doc.setFillColor(36,65,79);doc.rect(0,0,W,2.2,'F');doc.setFillColor(192,88,47);doc.rect(0,2.2,W,.9,'F');doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(22,48,60);doc.text(t1,10,12);doc.setFont('helvetica','normal');doc.setFontSize(8.8);doc.setTextColor(70,76,88);doc.text(t2,10,17.5)}
 /* horas extras: Excel e PDF */
-function linhasHE(){return HE().filter(x=>x.comp===COMP).sort((a,b)=>a.data.localeCompare(b.data)||a.nome.localeCompare(b.nome)).map(x=>{const p=pessoa(x.mat)||{};return Object.assign({},x,{nome:p.nome||x.nome,funcao:p.funcao||x.funcao,adm:p.adm||x.adm})})}
-async function xlsHE(){const X=XL();if(!X)throw new Error('Excel indisponível.');const L=linhasHE();if(!L.length)throw new Error('Nenhuma hora extra lançada neste mês.');
-  const a=[['CRV INDUSTRIAL · Solicitação de pagamento de horas extras'],[dataExtenso((HM_DB[COMP]||{}).emissao||(P0.heMes&&P0.heMes[COMP]||{}).emissao)],[textoHE(COMP)],['SETOR: '+CFG().setor],[],['DATA','MAT.','COLABORADOR','FUNÇÃO','ADMISSÃO','MOTIVO','HORA INICIAL','HORA FINAL','QUANT. HORAS']];
+function linhasHE(){return LS().filter(x=>x.comp===COMP).sort((a,b)=>a.data.localeCompare(b.data)||a.nome.localeCompare(b.nome)).map(x=>{const p=pessoa(x.mat)||{};return Object.assign({},x,{nome:p.nome||x.nome,funcao:p.funcao||x.funcao,adm:p.adm||x.adm})})}
+async function xlsHE(){const X=XL();if(!X)throw new Error('Excel indisponível.');const L=linhasHE();if(!L.length)throw new Error('Nenhum lançamento de '+TK().uns+' neste mês.');
+  const a=[['CRV INDUSTRIAL · '+TK().doc],[dataExtenso((HM_DB[COMP]||{}).emissao||(P0.heMes&&P0.heMes[COMP]||{}).emissao)],[textoHE(COMP)],['SETOR: '+CFG().setor],[],['DATA','MAT.','COLABORADOR','FUNÇÃO','ADMISSÃO','MOTIVO','HORA INICIAL','HORA FINAL','QUANT. HORAS']];
   L.forEach(x=>a.push([br(x.data),+x.mat,x.nome,x.funcao,br(x.adm),x.motivo,hmT(x.ini),hmT(x.fim),hm(x.min)]));
   const tot=L.reduce((s,x)=>s+(x.min||0),0);a.push(['TOTAL',null,null,null,null,null,null,null,hm(tot)]);
   const ws=X.utils.aoa_to_sheet(a);ws['!cols']=[11,8,38,18,11,30,12,11,13].map(w=>({wch:w}));const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,'Horas extras');
-  await salvarArq('Horas extras Servicos Gerais - '+compCap(COMP).replace('/',' ')+'.xlsx',new Uint8Array(X.write(wb,{bookType:'xlsx',type:'array'})),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}
-async function pdfHE(){const J=JS();if(!J)throw new Error('PDF indisponível.');const L=linhasHE();if(!L.length)throw new Error('Nenhuma hora extra lançada neste mês.');
+  await salvarArq(TK().arq+' Servicos Gerais - '+compCap(COMP).replace('/',' ')+'.xlsx',new Uint8Array(X.write(wb,{bookType:'xlsx',type:'array'})),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}
+async function pdfHE(){const J=JS();if(!J)throw new Error('PDF indisponível.');const L=linhasHE();if(!L.length)throw new Error('Nenhum lançamento de '+TK().uns+' neste mês.');
   const doc=new J({unit:'mm',format:'a4'}),W=210;const em=(HM_DB[COMP]||{}).emissao||(P0.heMes&&P0.heMes[COMP]||{}).emissao||hoje();
-  cabPDF(doc,'Solicitação de pagamento de horas extras','CRV Industrial · '+CFG().setor+' · '+compCap(COMP),W);
+  cabPDF(doc,TK().doc,'CRV Industrial · '+CFG().setor+' · '+compCap(COMP),W);
   doc.setFontSize(9);doc.setTextColor(30,36,48);doc.text(dataExtenso(em),W-10,25,{align:'right'});
   const tx=doc.splitTextToSize(textoHE(COMP),W-20);doc.setFontSize(9.2);doc.text(tx,10,31);let y=31+tx.length*4.3+2;
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.text('SETOR: ',10,y);doc.setFont('helvetica','normal');doc.text(CFG().setor,23,y);y+=3;
@@ -526,11 +532,8 @@ async function pdfHE(){const J=JS();if(!J)throw new Error('PDF indisponível.');
   doc.autoTable({startY:y,head:[['Data','Mat.','Colaborador','Função','Admissão','Motivo','Início','Fim','Horas']],body:L.map(x=>[br(x.data),x.mat,tc(x.nome),tc(x.funcao),br(x.adm),x.motivo,hmT(x.ini),hmT(x.fim),hm(x.min)]),
     foot:[['Total','','','','','','','',hm(tot)]],showFoot:'lastPage',styles:{fontSize:7.6,cellPadding:1.2,lineColor:[225,222,216],lineWidth:.1},headStyles:{fillColor:[36,65,79],fontSize:7.6},footStyles:{fillColor:[246,240,233],textColor:[30,36,48],fontStyle:'bold'},
     columnStyles:{0:{cellWidth:16},1:{cellWidth:11,halign:'center'},2:{cellWidth:44},3:{cellWidth:24},4:{cellWidth:16},5:{cellWidth:'auto'},6:{cellWidth:11,halign:'center'},7:{cellWidth:11,halign:'center'},8:{cellWidth:13,halign:'right',fontStyle:'bold'}},margin:{left:10,right:10,top:20}});
-  y=doc.lastAutoTable.finalY+5;const pm={};L.forEach(x=>{pm[x.mat]=pm[x.mat]||{n:x.nome,v:0,c:0};pm[x.mat].v+=x.min||0;pm[x.mat].c++});const pl=Object.entries(pm).sort((p,q)=>p[1].n.localeCompare(q[1].n));
-  if(y>235){doc.addPage();y=22}doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(22,48,60);doc.text('Total por colaborador',10,y);
-  doc.autoTable({startY:y+2,head:[['Mat.','Colaborador','Lançamentos','Horas']],body:pl.map(([m,p])=>[m,tc(p.n),p.c,hm(p.v)]),foot:[['','Total',L.length,hm(tot)]],showFoot:'lastPage',tableWidth:120,styles:{fontSize:7.6,cellPadding:1.1},headStyles:{fillColor:[192,88,47]},footStyles:{fillColor:[246,240,233],textColor:[30,36,48],fontStyle:'bold'},columnStyles:{0:{cellWidth:14},2:{halign:'center',cellWidth:22},3:{halign:'right',cellWidth:18,fontStyle:'bold'}},margin:{left:10}});
-  assinaturas(doc,CFG().assHE,doc.lastAutoTable.finalY+8,W);rodape(doc,W);
-  await salvarArq('Horas extras Servicos Gerais - '+compCap(COMP).replace('/',' ')+'.pdf',new Uint8Array((await logos(doc)).output('arraybuffer')),'application/pdf')}
+  assinaturas(doc,K==='ab'&&(CFG().assAB||[]).length?CFG().assAB:CFG().assHE,doc.lastAutoTable.finalY+8,W);rodape(doc,W);
+  await salvarArq(TK().arq+' Servicos Gerais - '+compCap(COMP).replace('/',' ')+'.pdf',new Uint8Array((await logos(doc)).output('arraybuffer')),'application/pdf')}
 function rodape(doc,W){const n=doc.internal.getNumberOfPages(),H=doc.internal.pageSize.getHeight();for(let p=1;p<=n;p++){doc.setPage(p);doc.setFont('helvetica','normal');doc.setFontSize(7.2);doc.setTextColor(130,136,148);doc.text('Emitido em '+new Date().toLocaleDateString('pt-BR')+' por '+quem()+' · Página '+p+' de '+n,W-10,H-6,{align:'right'})}}
 /* gratificação: Excel e PDF */
 async function xlsGR(){const X=XL();if(!X)throw new Error('Excel indisponível.');const g=GR(COMP);const t=grTot(g);
@@ -555,7 +558,7 @@ async function pdfGR(){const J=JS();if(!J)throw new Error('PDF indisponível.');
   await salvarArq('Gratificacao BPP Servicos Gerais - '+compCap(COMP).replace('/',' ')+'.pdf',new Uint8Array((await logos(doc)).output('arraybuffer')),'application/pdf')}
 
 /* atalhos do menu do app */
-window.CRV_SG=a=>{if(a==='she'){V='h';render();formHE()}if(a==='sgr'){COMP=hoje().slice(0,7);V='b';render()}};
+window.CRV_SG=a=>{if(a==='she'){V='h';render();formHE()}if(a==='sab'){V='a';render();formHE()}if(a==='sgr'){COMP=hoje().slice(0,7);V='b';render()}};
 carregar().then(render);
 })();
 </script>

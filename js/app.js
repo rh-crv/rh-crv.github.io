@@ -1048,7 +1048,7 @@ const SUBACOES = {
   'cartao-adm':         [{ acao:'novo', nome:'Registrar entrega' }, { acao:'sem', nome:'Créditos da semana' }, { acao:'rel', nome:'Relatório do período' }],
   crachas:  [{ acao:'novo', nome:'Cadastrar crachá de treinamento' }],
   farmacia: [{ acao:'aut', nome:'Autorização de desconto' }, { acao:'hist', nome:'Histórico de autorizações' }],
-  'servicos-gerais': [{ acao:'she', nome:'Lançar horas extras' }, { acao:'sgr', nome:'Gratificação do mês' }]
+  'servicos-gerais': [{ acao:'she', nome:'Lançar horas extras' }, { acao:'sab', nome:'Lançar abonos' }, { acao:'sgr', nome:'Gratificação do mês' }]
 };
 function fecharJanelasAut(w){ try { w.document.querySelectorAll('.aut-fundo,.ent-fundo,.er-fundo,.of-fundo,.nv-fundo,.rl-fundo,.es-fundo,.ds-fundo,.ct-fundo,.jf-fundo,.ft-fundo,.df-fundo').forEach(x => x.remove()); } catch(_){} }
 function executarAcao(acao){
@@ -1074,7 +1074,7 @@ function executarAcao(acao){
   if (acao === 'rel' && w && typeof w.CRV_RELATORIO === 'function') { fecharJanelasAut(w); w.CRV_RELATORIO(); return true; }
   if (acao === 'novo' && w && typeof w.CRV_NOVO === 'function') { fecharJanelasAut(w); w.CRV_NOVO(); return true; }
   if (acao === 'nova' && w && typeof w.CRV_OUV_NOVA === 'function') { fecharJanelasAut(w); w.CRV_OUV_NOVA(); return true; }
-  if ((acao === 'she' || acao === 'sgr') && w && typeof w.CRV_SG === 'function') { w.CRV_SG(acao); return true; }
+  if ((acao === 'she' || acao === 'sab' || acao === 'sgr') && w && typeof w.CRV_SG === 'function') { w.CRV_SG(acao); return true; }
   return false;
 }
 async function telaPainel(id, acao){
