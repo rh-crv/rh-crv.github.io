@@ -685,9 +685,10 @@ function chips(){
   b3.hidden=!act.length;b3.innerHTML=`<span class="lab">Filtros</span>`+act.join("");
   b3.querySelectorAll("button").forEach(b=>b.onclick=()=>{const c=b.dataset.c;if(c==="win")S.q7=0;if(c==="all"){S.q7=0;S.win=null;S.week=null;S.ger="";S.fun="";S.set=null;S.tipo=null}else S[c]=(c==="ger"||c==="fun")?"":null;render()});
   const b4=document.getElementById("stBar");
-  const L=base("win");
+  const q=S.q.trim().toLowerCase(),qf=p=>!q||p.nome.toLowerCase().includes(q)||String(p.mat).includes(q)||p.fun.toLowerCase().includes(q);
+  const L=base("win").filter(qf),fE=p=>(!S.set||p.set===S.set)&&(!S.tipo||p.tipo===S.tipo)&&(S.week===null||wk(p)===S.week)&&(!S.ger||p.ger===S.ger)&&(!S.fun||p.fun===S.fun)&&qf(p),nE=ENC.filter(fE).length;
   b4.innerHTML=`<span class="lab">Prazo</span>`+[[null,"Todos",""],["7","Até 7 dias","var(--crit)"],["15","8 a 15 dias","var(--amber)"],["30","16 a 30 dias","var(--ok)"],["mais","Mais de 30 dias","var(--navy2)"],["ven","Encerrado","var(--gone)"],["att","Pontos de atenção","var(--crit)"],["av","Avaliação recebida","var(--ok)"],["sem","Aguardando avaliação","var(--gone)"],["arEf","Área efetivando","var(--ok)"],["arEn","Área encerrando","var(--crit)"],["encA","RH encerrando","var(--crit)"],["enc","Encerrados","var(--crit)"],["p90","Contrato de 60 dias (pode ir a 90)","var(--amber)"]]
-    .map(([k,l,c])=>{const n=k==="enc"?ENC.length:k?L.filter(p=>inWin(p,k)).length:L.length;return((k==="ven"||k==="mais"||k==="arEf"||k==="arEn"||k==="encA"||k==="enc")&&!n)?"":`<button class="chip${S.win===k?" on":""}" data-k="${k??""}">${c?`<i style="background:${c}"></i>`:""}${l}<span class="c">${n}</span></button>`}).join("");
+    .map(([k,l,c])=>{const n=k==="enc"?nE:k?L.filter(p=>inWin(p,k)).length:L.length;return((k==="ven"||k==="mais"||k==="arEf"||k==="arEn"||k==="encA"||k==="enc")&&!n)?"":`<button class="chip${S.win===k?" on":""}" data-k="${k??""}">${c?`<i style="background:${c}"></i>`:""}${l}<span class="c">${n}</span></button>`}).join("");
   b4.querySelectorAll("button").forEach(b=>b.onclick=()=>{S.win=b.dataset.k||null;S.q7=0;render()});
 }
 function kpis(){
@@ -795,7 +796,7 @@ document.getElementById("fg").onchange=e=>{S.ger=e.target.value;render()};
 const FUNS=[...new Set(P.map(p=>p.fun))].sort((a,b)=>a.localeCompare(b,"pt"));
 document.getElementById("ff").innerHTML=`<option value="">Todas as funções</option>`+FUNS.map(g=>`<option>${esc(g)}</option>`).join("");
 document.getElementById("ff").onchange=e=>{S.fun=e.target.value;render()};
-document.getElementById("q").oninput=e=>{S.q=e.target.value;nominal()};
+document.getElementById("q").oninput=e=>{S.q=e.target.value;nominal();try{chips()}catch(_){}};
 document.getElementById("fo").onchange=e=>{S.ord=e.target.value;nominal()};
 document.querySelectorAll("#qz button").forEach(b=>b.onclick=()=>{S.qz=b.dataset.q;document.querySelectorAll("#qz button").forEach(x=>x.classList.toggle("on",x===b));document.getElementById("copyBox").hidden=true;quinz()});
 document.getElementById("cpAll").onclick=()=>copy(txt(qList()));
@@ -1170,7 +1171,7 @@ document.getElementById("regSave").onclick=async()=>{
   const ed=document.getElementById("regEncD").value,eo=document.getElementById("regEncO").value.trim().slice(0,300),et=document.getElementById("regEncT").value;
   if(encOn&&et){if(!ed){toast("Informe a data do encerramento antecipado.");return}if(pd(ed)>=regP.vf){toast("A data é igual ou depois do fim do contrato: escolha “No vencimento do contrato”.");return}}
   const msg=encOn?(ed?`Contrato encerrado${et?" "+ENCT[et]:""} em ${fdy(pd(ed))}.`:"Marcado como RH encerrando. Informe a data quando concluir."):(regP.enc?"Encerramento desfeito: o contrato voltou para a lista.":aS&&!d?(aS==="efetivando"?"Marcado como Área efetivando.":"Marcado como Área encerrando."):!aS&&regP.area&&!d?"Situação da área removida.":"Avaliação registrada.");
-  if(await regWrite(c=>{if(val)c[key]=val;if(encOn)c.enc={data:ed||"",obs:eo,em:iso(TODAY),...(et?{tipo:et}:{})};else delete c.enc;if(aS)c.area={st:aS,obs:aO,em:(c.area&&c.area.st===aS&&c.area.em)||iso(TODAY)};else delete c.area}))toast(msg);
+  if(await regWrite(c=>{if(val)c[key]={...(c[key]||{}),...val};if(encOn)c.enc={data:ed||"",obs:eo,em:iso(TODAY),...(et?{tipo:et}:{})};else delete c.enc;if(aS)c.area={st:aS,obs:aO,em:(c.area&&c.area.st===aS&&c.area.em)||iso(TODAY)};else delete c.area}))toast(msg);
 };
 document.getElementById("regDel").onclick=async()=>{const key=regP.key;if(await regWrite(c=>{delete c[key]}))toast("Registro apagado.")};
 function refresh(){ALLA.forEach(apply);PX.forEach(apply);splitEnc();buildWeeks();render();if(dlg.open){dlgList=dlgList.filter(p=>P.includes(p));document.getElementById("dlgB").innerHTML=dlgList.length?dlgList.map(rowHTML).join(""):`<div class="empty">Ninguém nesta lista com os filtros atuais.</div>`}}
