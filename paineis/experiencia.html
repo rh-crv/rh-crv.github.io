@@ -157,6 +157,7 @@ dialog::backdrop{background:rgba(10,16,30,.55)}
 .arbox .opts3 label:has(input:checked){border-color:var(--navy2);background:var(--navy2);color:#fff}
 .arbox .opts3 input{accent-color:var(--amber)}
 .arbox input[type=text],.arbox #regAO{width:100%}
+.pzbox{margin-top:16px;padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--card)}.pzbox label{display:flex;flex-direction:column;gap:4px;font:700 13px var(--f-body);color:var(--ink)}.pzbox select{font:400 15px var(--f-body);padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);max-width:220px}
 .encbox{margin-top:16px;padding:12px;border:1px dashed var(--crit);border-radius:8px;background:var(--crit-bg)}
 .encbox .ck{display:flex;gap:8px;align-items:center;font:700 14px var(--f-body);color:var(--crit);cursor:pointer}
 .encbox .ck input{width:16px;height:16px;accent-color:var(--crit)}
@@ -556,6 +557,7 @@ table.fmt td.scn{width:46px;padding:4px}
   <div class="arbox"><div class="fld" style="margin:0">Situação informada pela área<div class="opts3" id="regA"><label><input type="radio" name="regAr" value=""> Nenhuma</label><label><input type="radio" name="regAr" value="efetivando"> Área efetivando</label><label><input type="radio" name="regAr" value="encerrando"> Área encerrando</label></div></div>
     <label class="fld" for="regAO" style="margin-bottom:0">Observação da área<input id="regAO" maxlength="300" placeholder="Ex.: gestor confirmou por e-mail que vai efetivar"></label>
     <p class="sub" style="margin:8px 0 0">Use quando a área já sinalizou o caminho, antes ou junto da avaliação formal. Aparece como etiqueta na lista, nos filtros “Área efetivando” / “Área encerrando” e nas exportações.</p></div>
+  <div class="pzbox"><label for="regPz">Prazo total do contrato (com a prorrogação)<select id="regPz"><option value="40">40 dias</option><option value="60">60 dias</option><option value="70">70 dias</option><option value="80">80 dias</option><option value="90">90 dias</option></select></label><p class="sub" style="margin:6px 0 0">O contrato de experiência pode ser prorrogado uma única vez, até 90 dias no total. Ao mudar aqui, o vencimento final e a linha do tempo acompanham.</p></div>
   <div class="encbox"><label class="ck" for="regEnc"><input type="checkbox" id="regEnc"> RH está encerrando este contrato</label>
     <div class="encf" id="regEncF"><label for="regEncT">Tipo de encerramento<select id="regEncT"><option value="">No vencimento do contrato</option><option value="empresa">Antecipado pela empresa</option><option value="colab">Antecipado a pedido do colaborador</option></select></label><label for="regEncD">Data de encerramento<input type="date" id="regEncD"></label><label for="regEncO">Motivo / observação<input id="regEncO" maxlength="300" placeholder="Ex.: avaliação negativa da área; pedido de desligamento"></label></div><p class="sub" id="regEncI" style="margin:8px 0 0;font-weight:700;color:var(--crit)" hidden></p>
     <p class="sub" style="margin:8px 0 0">Sem data, o contrato fica como <b>RH encerrando</b>. Ao informar a data, ele passa para <b>Encerrado</b>, sai das listas de vencimento e aparece no filtro “Encerrados” e nas exportações.</p></div>
@@ -583,6 +585,9 @@ const DEC={efetivar:["Efetivar","dE"],encerrar:["Encerrar contrato","dX"],prorro
 const MK={pr:"1º período",ef:"Fim do contrato",ef90:"Fim dos 90 dias"};
 function apply(p){
   const rg=REG[p.mat]||null;
+  // prazo total escolhido pelo RH para a prorrogação (40, 60, 70, 80 ou 90 dias; uma prorrogação só)
+  if(p._pz0o===undefined){p._pz0o=p.prazo0;p._vf0o=p.vf0;p._p90o=p.p90b}
+  const pt=rg&&+rg.prazoT;if(pt){p.prazo0=pt;p.vf0=new Date(p.adm.getTime()+(pt-1)*DAY);p.p90b=false}else{p.prazo0=p._pz0o;p.vf0=p._vf0o;p.p90b=p._p90o}
   const ef=rg&&rg.ef;const ext=!!(ef&&ef.decisao==="prorrogar"&&(p.p90b||(ef.venc&&pd(ef.venc)<p.vf0)));
   p.ext=ext;p.vf=ext&&p.p90b?p.d90:p.vf0;p.prazo=ext&&p.p90b?90:p.prazo0;p.p90=p.p90b&&!ext;
   const pend1=p.v1&&p.v1>=TODAY;
@@ -780,9 +785,9 @@ function groups(){
 }
 function timeline(p){
   // contrato encerrado pelo RH com data: a contagem para no dia do encerramento (pedido do RH, 26/10/2026)
-  if(p.enc&&p.enc.data){const tot=p.prazo,E=pd(p.enc.data),de=Math.max(1,Math.min(tot,Math.round((E-p.adm)/DAY)+1)),fut=E>TODAY,el=fut?Math.max(0,Math.min(de,Math.round((TODAY-p.adm)/DAY)+1)):de;
+  if(p.enc&&p.enc.data){const E=pd(p.enc.data),p1=!!(p.v1&&E<=p.v1),tot=p1?Math.round((p.v1-p.adm)/DAY)+1:p.prazo,de=Math.max(1,Math.min(tot,Math.round((E-p.adm)/DAY)+1)),fut=E>TODAY,el=fut?Math.max(0,Math.min(de,Math.round((TODAY-p.adm)/DAY)+1)):de;
     const m=p.v1&&p.v1<=E?Math.round((p.v1-p.adm)/DAY+1)/tot*100:null,tp=p.enc.tipo==="empresa"?" (antecipado pela empresa)":p.enc.tipo==="colab"?" (a pedido do colaborador)":"";
-    return`<div class="tl"><div class="tll"><span>Adm. ${fdy(p.adm)}</span><span class="xe">${fut?`dia ${el} · encerra no dia ${de} de ${tot}`:`encerrado no dia ${de} de ${tot}`}</span></div><div class="tlb"><span class="e" style="width:${el/tot*100}%"></span>${de<tot?`<span class="c" style="left:${de/tot*100}%"></span>`:""}${m?`<span class="m" style="left:calc(${m}% - 1px)" title="1º vencimento ${fdy(p.v1)}"></span>`:""}<span class="x" style="left:calc(${de/tot*100}% - 2px)" title="Encerramento ${fdy(E)}${tp}"></span></div><div class="tll"><span>${p.v1&&p.v1<=E?`1º venc. ${fd(p.v1)} ✓`:p.v1?"antes do 1º vencimento":"1º período concluído"}</span><span class="xe">${fut?"Encerra":"Encerrado"} em ${fdy(E)}</span></div></div>`}
+    return`<div class="tl"><div class="tll"><span>Adm. ${fdy(p.adm)}</span><span class="xe">${fut?`dia ${el} · encerra no dia ${de} de ${tot}`:`encerrado no dia ${de} de ${tot}`}</span></div><div class="tlb"><span class="e" style="width:${el/tot*100}%"></span>${de<tot?`<span class="c" style="left:${de/tot*100}%"></span>`:""}${m?`<span class="m" style="left:calc(${m}% - 1px)" title="1º vencimento ${fdy(p.v1)}"></span>`:""}<span class="x" style="left:calc(${de/tot*100}% - 2px)" title="Encerramento ${fdy(E)}${tp}"></span></div><div class="tll"><span>${p1?"no 1º período (sem prorrogação)":p.v1?`1º venc. ${fd(p.v1)} ✓ · contrato de ${p.prazo} dias`:"1º período concluído"}</span><span class="xe">${fut?"Encerra":"Encerrado"} em ${fdy(E)}</span></div></div>`}
   const tot=p.prazo,el=Math.max(0,Math.min(tot,Math.round((TODAY-p.adm)/DAY)+1));
   const m=p.v1?Math.round((p.v1-p.adm)/DAY+1)/tot*100:null;
   return`<div class="tl"><div class="tll"><span>Adm. ${fdy(p.adm)}</span><span>dia ${el} de ${tot}</span></div><div class="tlb"><span class="e" style="width:${el/tot*100}%"></span>${m?`<span class="m" style="left:calc(${m}% - 1px)" title="1º vencimento ${fdy(p.v1)}"></span>`:""}</div><div class="tll"><span>${p.v1?`1º venc. ${fd(p.v1)}${p.v1<TODAY?" ✓":""}`:"1º período concluído"}</span><span>Final ${fdy(p.vf)}${p.p90?` · até 90d: ${fd(p.d90)}`:""}</span></div></div>`;
@@ -1144,6 +1149,7 @@ function openReg(mat){
   document.getElementById("regH").hidden=!p.hist.length;
   document.getElementById("regDel").hidden=!p.cur;
   const en=p.enc||null;document.getElementById("regEnc").checked=!!en;document.getElementById("regEncD").value=en&&en.data||"";document.getElementById("regEncO").value=en&&en.obs||"";document.getElementById("regEncT").value=en&&en.tipo||"";encInfo();
+  {const s=document.getElementById("regPz");if(![...s.options].some(o=>+o.value===p.prazo0))s.insertAdjacentHTML("afterbegin",`<option value="${p.prazo0}">${p.prazo0} dias</option>`);s.value=String(p.prazo0);}
   document.getElementById("regEncF").style.display=en?"":"none";
   const ar=p.area&&p.area.st||"";document.querySelectorAll('#regA input').forEach(i=>i.checked=i.value===ar);document.getElementById("regAO").value=p.area&&p.area.obs||"";
   if(!reg.open)reg.showModal();
@@ -1155,7 +1161,7 @@ function regErr(e){const c=e&&e.code;toast(c==="invalid_argument"?"Você não te
 async function regWrite(fn){
   if(regBusy||!DBH||!regP)return;regBusy=true;document.getElementById("regSave").disabled=true;
   try{const ref=DBH.doc("registros/m"+regP.mat);const cur={...(REG[regP.mat]||{})};fn(cur);cur.atualizadoEm=new Date().toISOString();
-    const has=Object.keys(MK).some(k=>cur[k])||!!cur.enc||!!cur.area;if(has)await ref.set(cur);else await ref.delete();
+    const has=Object.keys(MK).some(k=>cur[k])||!!cur.enc||!!cur.area||!!cur.prazoT;if(has)await ref.set(cur);else await ref.delete();
     if(has)REG[regP.mat]=cur;else delete REG[regP.mat];refresh();reg.close();return true}
   catch(e){regErr(e);return false}
   finally{regBusy=false;document.getElementById("regSave").disabled=false}
@@ -1173,12 +1179,13 @@ document.getElementById("regO").addEventListener("change",e=>{if(e.target.value=
 document.getElementById("regSave").onclick=async()=>{
   const d=document.querySelector('#regO input:checked'),encOn=document.getElementById("regEnc").checked;
   const aS=(document.querySelector('#regA input:checked')||{}).value||"",aO=document.getElementById("regAO").value.trim().slice(0,300);
-  if(!d&&!encOn&&!regP.enc&&!aS&&!regP.area){toast("Escolha o que a área devolveu, a situação informada pela área ou o encerramento pelo RH.");return}
+  const pz=+document.getElementById("regPz").value,pzMud=pz!==regP.prazo0;
+  if(!d&&!encOn&&!regP.enc&&!aS&&!regP.area&&!pzMud){toast("Escolha o que a área devolveu, a situação informada pela área ou o encerramento pelo RH.");return}
   const key=regP.key,val=d?{decisao:d.value,data:document.getElementById("regD").value||iso(TODAY),obs:document.getElementById("regOb").value.trim().slice(0,2000),venc:iso(regP.data)}:null;
   const ed=document.getElementById("regEncD").value,eo=document.getElementById("regEncO").value.trim().slice(0,300),et=document.getElementById("regEncT").value;
   if(encOn&&et){if(!ed){toast("Informe a data do encerramento antecipado.");return}if(pd(ed)>=regP.vf){toast("A data é igual ou depois do fim do contrato: escolha “No vencimento do contrato”.");return}}
   const msg=encOn?(ed?`Contrato encerrado${et?" "+ENCT[et]:""} em ${fdy(pd(ed))}.`:"Marcado como RH encerrando. Informe a data quando concluir."):(regP.enc?"Encerramento desfeito: o contrato voltou para a lista.":aS&&!d?(aS==="efetivando"?"Marcado como Área efetivando.":"Marcado como Área encerrando."):!aS&&regP.area&&!d?"Situação da área removida.":"Avaliação registrada.");
-  if(await regWrite(c=>{if(val)c[key]={...(c[key]||{}),...val};if(encOn)c.enc={data:ed||"",obs:eo,em:iso(TODAY),...(et?{tipo:et}:{})};else delete c.enc;if(aS)c.area={st:aS,obs:aO,em:(c.area&&c.area.st===aS&&c.area.em)||iso(TODAY)};else delete c.area}))toast(msg);
+  if(await regWrite(c=>{if(pz===regP._pz0o)delete c.prazoT;else c.prazoT=pz;if(val)c[key]={...(c[key]||{}),...val};if(encOn)c.enc={data:ed||"",obs:eo,em:iso(TODAY),...(et?{tipo:et}:{})};else delete c.enc;if(aS)c.area={st:aS,obs:aO,em:(c.area&&c.area.st===aS&&c.area.em)||iso(TODAY)};else delete c.area}))toast(pzMud&&!d&&!encOn&&!aS?`Prazo do contrato alterado para ${pz} dias.`:msg);
 };
 document.getElementById("regDel").onclick=async()=>{const key=regP.key;if(await regWrite(c=>{delete c[key]}))toast("Registro apagado.")};
 function refresh(){ALLA.forEach(apply);PX.forEach(apply);splitEnc();buildWeeks();render();if(dlg.open){dlgList=dlgList.filter(p=>P.includes(p));document.getElementById("dlgB").innerHTML=dlgList.length?dlgList.map(rowHTML).join(""):`<div class="empty">Ninguém nesta lista com os filtros atuais.</div>`}}

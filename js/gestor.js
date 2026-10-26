@@ -75,7 +75,7 @@ async function recortes(chaves){
   // bases auxiliares (lidas uma vez)
   const EXP = {}; let refExp = '';
   try { const d = await window.CRV_DADOS('experiencia'); refExp = d && d.referencia || ''; const R = d && d.dados.RAW || []; const reg = {}; (await window.CRV_REGS('experiencia', 'registros')).forEach(x => reg[x._id] = x);
-    R.forEach(r => { const m = fMat(r[0]); const g = reg['m' + m] || {}; EXP[m] = { v1:r[7] || '', v2:r[8] || '', dias:r[9] || '', dec1:g.pr && g.pr.decisao ? DEC[g.pr.decisao] || g.pr.decisao : '', dec2:g.ef && g.ef.decisao ? DEC[g.ef.decisao] || g.ef.decisao : '', enc:(g.enc && g.enc.data) || (r[17] ? 'sim' : '') }; }); } catch(_){}
+    R.forEach(r => { const m = fMat(r[0]); const g = reg['m' + m] || {}; const pz = +g.prazoT || 0, v2p = pz && /^\d{4}-\d{2}-\d{2}/.test(String(r[6] || '')) ? new Date(new Date(String(r[6]).slice(0, 10) + 'T12:00:00Z').getTime() + (pz - 1) * 864e5).toISOString().slice(0, 10) : ''; EXP[m] = { v1:r[7] || '', v2:v2p || r[8] || '', dias:(v2p ? pz : r[9]) || '', dec1:g.pr && g.pr.decisao ? DEC[g.pr.decisao] || g.pr.decisao : '', dec2:g.ef && g.ef.decisao ? DEC[g.ef.decisao] || g.ef.decisao : '', enc:(g.enc && g.enc.data) || (r[17] ? 'sim' : '') }; }); } catch(_){}
   const FER = {}; let refFer = '';
   try { const d = await window.CRV_DADOS('ferias'); refFer = d && d.referencia || ''; const PR = {}; (await window.CRV_REGS('ferias', 'prog')).forEach(x => { if (x._id) PR[x._id] = x; });
     (d && d.dados.DATA || []).forEach(p => { const m = fMat(p.c);
