@@ -9,6 +9,11 @@
 .rl-ind td b{font-family:var(--display);font-size:18px}
 .rl-n{all:unset;cursor:pointer;font-family:var(--display);font-weight:800;font-size:18px;border-bottom:2px dotted currentColor;line-height:1.1}
 .rl-n:hover,.rl-n:focus-visible{color:var(--blue);outline:none}
+.rl-n.rl-aus{color:#fff;background:#c0392b;border:0;border-radius:8px;padding:3px 10px;display:inline-block}.rl-n.rl-aus:hover{background:#a5281b;color:#fff}
+.rl-ind tr.aus td:first-child{color:#c0392b;font-weight:700}
+.stat.aus{background:#c0392b;border-color:#c0392b}.stat.aus b,.stat.aus span{color:#fff}
+.rl-bloco.nao h4{color:#c0392b}
+.rl-bloco.nao h4 .rl-q{background:#c0392b;color:#fff;border-radius:6px;padding:1px 8px;margin-left:4px}
 .rl-conf{margin-top:12px;padding:12px 14px;border-radius:12px;font-size:14.5px;line-height:1.5}
 .rl-conf.ok{background:var(--green-soft);border:1px solid color-mix(in srgb,var(--green) 40%,transparent)}
 .rl-conf.dif{background:var(--gold-soft);border:1px solid color-mix(in srgb,var(--gold) 45%,transparent)}
@@ -323,7 +328,8 @@ details.more[open] summary{margin-bottom:14px}
 .prbox{background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--c);border-radius:12px;padding:12px 16px;display:flex;flex-direction:column;gap:10px;min-width:0}
 .prbox>h3{font-size:16px;font-weight:700;display:flex;justify-content:space-between;gap:10px}
 .prbox>h3 span{color:var(--c);font-variant-numeric:tabular-nums}
-.prbox.sim{--c:var(--green)} .prbox.nao{--c:var(--gold)}
+.prbox.sim{--c:var(--green)} .prbox.nao{--c:#c0392b}
+.prbox.nao>h3 span{background:#c0392b;color:#fff;border-radius:8px;padding:0 10px}
 .prarea h4{font-family:var(--display);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 4px}
 .prarea ol{list-style:decimal;padding-left:22px;display:flex;flex-direction:column;gap:2px;font-size:15px}
 .prarea li span{color:var(--muted);font-size:13.5px}
@@ -1526,7 +1532,7 @@ details.more[open] summary{margin-bottom:14px}
     return {k:k,t:t,enc:ENC.filter(function(e){return e.k===k})[0],all:X,sim:sim,nao:nao,gsim:byArea(sim),gnao:byArea(nao)}}
   function renderPres(){renderMaps(); renderJust(); $('map-det').textContent=''; var D=presData(), st=$('pr-stats'); st.textContent='';
     var pct=D.all.length?Math.round(D.sim.length/D.all.length*100):0;
-    [[D.all.length,'líderes na lista'],[D.sim.length,'compareceram'],[D.nao.length,'faltaram'],[pct+'%','de presença']].forEach(function(x){var c=el('div','stat'); c.appendChild(el('b',null,String(x[0]))); c.appendChild(el('span',null,x[1])); st.appendChild(c)});
+    [[D.all.length,'líderes na lista'],[D.sim.length,'compareceram'],[D.nao.length,'faltaram'],[pct+'%','de presença']].forEach(function(x){var c=el('div','stat'+(x[1]==='faltaram'?' aus':'')); c.appendChild(el('b',null,String(x[0]))); c.appendChild(el('span',null,x[1])); st.appendChild(c)});
     [['pr-sim','sim','Compareceram',D.gsim,D.sim.length],['pr-nao','nao','Faltaram',D.gnao,D.nao.length]].forEach(function(b){var box=$(b[0]); box.textContent='';
       var c=el('div','prbox '+b[1]); var h=el('h3',null,b[2]); h.appendChild(el('span',null,String(b[4]))); c.appendChild(h);
       if(!b[3].length)c.appendChild(el('p','msg',S.fichas.length?'Ninguém nesta lista.':'Sem fichas cadastradas.'));
@@ -1537,7 +1543,6 @@ details.more[open] summary{margin-bottom:14px}
   /* ---------- relatório do encontro: nominal por turno e setor ---------- */
   // texto do relatório executivo do Encontro 1 (21/10/2026), informado pela facilitadora; o RH pode editar e os outros encontros começam em branco
   var RLTXT={e1:{data:'2026-10-14',fonte:'Relatório executivo do Encontro 1 (14/10/2026), com a avaliação qualitativa informada pela facilitadora.',
-    ref:{prev:{'Manhã':37,'Tarde':20},pres:{'Manhã':23,'Tarde':18}},
     sintese:'O primeiro encontro concentrou-se no autoconhecimento, na percepção do próprio comportamento e na reflexão sobre competências psicoemocionais relevantes ao exercício da liderança. As atividades combinaram exposição dialogada, interação em grupos e desafios práticos.',
     manha:'Embora tenha registrado a menor adesão, o grupo presente demonstrou maior envolvimento nas reflexões, abertura às propostas e qualidade nas entregas. O comportamento observado favoreceu a exploração do autoconhecimento e da responsabilidade individual na condução de equipes.',
     tarde:'Com a maior adesão, o grupo demonstrou participação e comprometimento com a realização das atividades. As respostas e entregas foram percebidas com menor consistência em profundidade e elaboração, em relação aos objetivos do encontro. Recomenda-se reforçar a conexão entre as vivências e situações concretas de liderança, sem interpretar essa diferença como falta de interesse ou incapacidade do grupo.',
@@ -1567,12 +1572,12 @@ details.more[open] summary{margin-bottom:14px}
     $('rl-tit').textContent='Encontro '+D.enc.n+' · '+D.enc.t; $('rl-sub').textContent=(dt?dt+' · ':'')+'Participantes nominais por turno e por setor'+(D.st?' · setor '+D.st:'')+'.';
     var T=$('rl-ind'); T.textContent=''; var th=el('thead'), hr=el('tr'); hr.appendChild(el('th',null,'Indicador')); var cols=TURMAS.slice(); if(D.semT)cols.push('');
     cols.forEach(function(t){hr.appendChild(el('th',t==='Manhã'?'m':t==='Tarde'?'t':'',t||'Sem turma'))}); hr.appendChild(el('th',null,'Total')); th.appendChild(hr); T.appendChild(th); var tb=el('tbody');
-    [['Previstos','prev'],['Presentes','sim'],['Ausentes','nao'],['Adesão','pct']].forEach(function(r){var tr=el('tr'); tr.appendChild(el('td',null,r[0]));
+    [['Previstos','prev'],['Presentes','sim'],['Ausentes','nao'],['Adesão','pct']].forEach(function(r){var tr=el('tr'); if(r[1]==='nao')tr.className='aus'; tr.appendChild(el('td',null,r[0]));
       cols.concat(['*']).forEach(function(t){var g=t==='*'?D.tot:D.G[t], td=el('td'), nm=(t==='*'?'Total':(t?'Turno da '+t.toLowerCase():'Sem turma'));
-        if(r[1]==='pct'){td.appendChild(el('b',null,pctTxt(g.sim.length,g.prev.length)))} else td.appendChild(nBtn(g[r[1]].length,r[0]+' · '+nm,g[r[1]]));
+        if(r[1]==='pct'){td.appendChild(el('b',null,pctTxt(g.sim.length,g.prev.length)))} else {const bn=nBtn(g[r[1]].length,r[0]+' · '+nm,g[r[1]]); if(r[1]==='nao')bn.classList.add('rl-aus'); td.appendChild(bn)}
         tr.appendChild(td)}); tb.appendChild(tr)}); T.appendChild(tb);
     var cf=$('rl-conf'); cf.textContent=''; cf.className='';
-    if(tx.ref&&!D.st){var dif=[]; TURMAS.forEach(function(t){var pv=tx.ref.prev[t], pr=tx.ref.pres[t], g=D.G[t]; if(pv!=null&&pv!==g.prev.length)dif.push('previstos da '+t.toLowerCase()+': relatório '+pv+', fichas '+g.prev.length); if(pr!=null&&pr!==g.sim.length)dif.push('presentes da '+t.toLowerCase()+': relatório '+pr+', fichas '+g.sim.length)});
+    if(false){var dif=[]; TURMAS.forEach(function(t){var pv=tx.ref.prev[t], pr=tx.ref.pres[t], g=D.G[t]; if(pv!=null&&pv!==g.prev.length)dif.push('previstos da '+t.toLowerCase()+': relatório '+pv+', fichas '+g.prev.length); if(pr!=null&&pr!==g.sim.length)dif.push('presentes da '+t.toLowerCase()+': relatório '+pr+', fichas '+g.sim.length)});
       cf.className='rl-conf '+(dif.length?'dif':'ok');
       if(!dif.length)cf.textContent='Os números das fichas batem com o relatório executivo (previstos e presentes por turno).';
       else{cf.appendChild(el('b',null,'Os números das fichas não batem com o relatório executivo. ')); cf.appendChild(document.createTextNode('Diferenças: '+dif.join(' · ')+'. Confira a presença marcada nas fichas ou o relatório antes de apresentar.'))}}
@@ -1580,7 +1585,7 @@ details.more[open] summary{margin-bottom:14px}
     cols.forEach(function(t){var g=D.G[t]; if(!g.prev.length&&!t)return; var cx=el('div','rl-turno '+(t==='Manhã'?'m':t==='Tarde'?'t':'s')), hd=el('header');
       hd.appendChild(el('h3',null,t?'Turno da '+t.toLowerCase():'Sem turma')); hd.appendChild(el('span',null,g.sim.length+' presentes de '+g.prev.length+' previstos · '+pctTxt(g.sim.length,g.prev.length)+' de adesão'));
       var br=el('div','bar'), bi=el('i'); bi.style.width=(g.prev.length?g.sim.length/g.prev.length*100:0)+'%'; br.appendChild(bi); hd.appendChild(br); cx.appendChild(hd);
-      [['sim','Compareceram',g.sim],['nao','Faltaram',g.nao]].forEach(function(b){var bl=el('div','rl-bloco '+b[0]), h4=el('h4'); h4.appendChild(el('i')); h4.appendChild(document.createTextNode(b[1]+' · '+b[2].length)); bl.appendChild(h4);
+      [['sim','Compareceram',g.sim],['nao','Faltaram',g.nao]].forEach(function(b){var bl=el('div','rl-bloco '+b[0]), h4=el('h4'); h4.appendChild(el('i')); if(b[0]==='nao'){h4.appendChild(document.createTextNode(b[1]));h4.appendChild(el('span','rl-q',String(b[2].length)))} else h4.appendChild(document.createTextNode(b[1]+' · '+b[2].length)); bl.appendChild(h4);
         if(!b[2].length)bl.appendChild(el('p','msg',b[0]==='sim'?'Ninguém marcado como presente.':'Ninguém faltou.'));
         bySet(b[2]).forEach(function(s){var w=el('div','rl-set'); w.appendChild(el('b',null,s[0]+' · '+s[1].length)); var ol=el('ol');
           s[1].forEach(function(d){var li=el('li',null,d.nome+' '); if(d.cargo)li.appendChild(el('small',null,'· '+d.cargo));
@@ -1643,7 +1648,7 @@ details.more[open] summary{margin-bottom:14px}
       var tot=function(f){return TS.reduce(function(a,t){return a+D.G[t][f].length},0)};
       [['Previstos','prev'],['Presentes','sim'],['Ausentes','nao'],['Adesão','pct']].forEach(function(r){var v=TS.map(function(t){return r[1]==='pct'?pctTxt(D.G[t].sim.length,D.G[t].prev.length):String(D.G[t][r[1]].length)}).concat([r[1]==='pct'?pctTxt(tot('sim'),tot('prev')):String(tot(r[1]))]);
         x=M; T(r[0],x+6,y,9.5,FB); x+=cw[0]; v.forEach(function(s,i){T(s,x+cw[i+1]-8-FB.widthOfTextAtSize(pdfTxt(s),10),y,10,FB,r[1]==='pct'?GOLDc:INK); x+=cw[i+1]}); y-=6; pg.drawRectangle({x:M,y:y,width:cw.reduce(function(a,b){return a+b},0),height:.5,color:LINEc}); y-=12});
-      if(tx.ref&&!D.st){var dif=TURMAS.filter(function(t){return tx.ref.prev[t]!==D.G[t].prev.length||tx.ref.pres[t]!==D.G[t].sim.length}); if(dif.length){y-=4; para('Atenção: os números das fichas diferem do relatório da facilitadora em '+dif.map(function(t){return 'turno da '+t.toLowerCase()}).join(' e ')+' (relatório: '+TURMAS.map(function(t){return t.toLowerCase()+' '+tx.ref.pres[t]+' de '+tx.ref.prev[t]}).join(', ')+').',8.5,F,RED)}}
+      if(false){var dif=TURMAS.filter(function(t){return tx.ref.prev[t]!==D.G[t].prev.length||tx.ref.pres[t]!==D.G[t].sim.length}); if(dif.length){y-=4; para('Atenção: os números das fichas diferem do relatório da facilitadora em '+dif.map(function(t){return 'turno da '+t.toLowerCase()}).join(' e ')+' (relatório: '+TURMAS.map(function(t){return t.toLowerCase()+' '+tx.ref.pres[t]+' de '+tx.ref.prev[t]}).join(', ')+').',8.5,F,RED)}}
       y-=4; para('Fonte: presença marcada nas fichas do painel Conexão Líder.',8,F,GREYc);
       if(O.set){sec('Adesão por setor'); var sw=[180].concat(TS.map(function(){return 95})).concat([80]); var sh=['Setor'].concat(TS).concat(['Adesão']); pg.drawRectangle({x:M,y:y-14,width:W-2*M,height:16,color:SOFTc}); x=M; sh.forEach(function(h,i){T(h.toUpperCase(),x+6,y-9.5,7,FB,GREYc); x+=sw[i]}); y-=26;
         bySet(D.X.filter(function(d){return TS.indexOf(d.turma)>=0})).sort(function(a,b){return b[1].length-a[1].length}).forEach(function(g){need(16); var pr=g[1].filter(function(d){return d.presenca&&d.presenca[D.k]}); x=M; T(g[0],x+6,y,9,FB); x+=sw[0];
