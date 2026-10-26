@@ -513,8 +513,7 @@ function linhasHE(){return HE().filter(x=>x.comp===COMP).sort((a,b)=>a.data.loca
 async function xlsHE(){const X=XL();if(!X)throw new Error('Excel indisponível.');const L=linhasHE();if(!L.length)throw new Error('Nenhuma hora extra lançada neste mês.');
   const a=[['CRV INDUSTRIAL · Solicitação de pagamento de horas extras'],[dataExtenso((HM_DB[COMP]||{}).emissao||(P0.heMes&&P0.heMes[COMP]||{}).emissao)],[textoHE(COMP)],['SETOR: '+CFG().setor],[],['DATA','MAT.','COLABORADOR','FUNÇÃO','ADMISSÃO','MOTIVO','HORA INICIAL','HORA FINAL','QUANT. HORAS']];
   L.forEach(x=>a.push([br(x.data),+x.mat,x.nome,x.funcao,br(x.adm),x.motivo,hmT(x.ini),hmT(x.fim),hm(x.min)]));
-  const tot=L.reduce((s,x)=>s+(x.min||0),0);a.push(['TOTAL',null,null,null,null,null,null,null,hm(tot)]);a.push([]);a.push(['TOTAL POR COLABORADOR']);a.push(['MAT.','COLABORADOR','QUANT. HORAS']);
-  const pm={};L.forEach(x=>{pm[x.mat]=pm[x.mat]||{n:x.nome,v:0};pm[x.mat].v+=x.min||0});Object.entries(pm).sort((p,q)=>p[1].n.localeCompare(q[1].n)).forEach(([m,p])=>a.push([+m,p.n,hm(p.v)]));
+  const tot=L.reduce((s,x)=>s+(x.min||0),0);a.push(['TOTAL',null,null,null,null,null,null,null,hm(tot)]);
   const ws=X.utils.aoa_to_sheet(a);ws['!cols']=[11,8,38,18,11,30,12,11,13].map(w=>({wch:w}));const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,'Horas extras');
   await salvarArq('Horas extras Servicos Gerais - '+compCap(COMP).replace('/',' ')+'.xlsx',new Uint8Array(X.write(wb,{bookType:'xlsx',type:'array'})),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}
 async function pdfHE(){const J=JS();if(!J)throw new Error('PDF indisponível.');const L=linhasHE();if(!L.length)throw new Error('Nenhuma hora extra lançada neste mês.');
