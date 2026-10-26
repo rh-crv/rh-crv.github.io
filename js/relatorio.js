@@ -8,7 +8,7 @@
 window.CRV_REL_INIT = function(X){
 'use strict';
 const { sb, E, $, esc, normal, brD, fMat, fDias, podeVer, podeEditar, moldura, abrirModal, fecharModal, toast, traduzErro, baixar, cabecalhoPDF, rodapePDF, NR1, RISCO, BASES } = X;
-const TEND = ['Turnover do mês', 'Pedidos de demissão', 'Saídas com até 90 dias de casa', 'Dias de atestado por colaborador', 'Faltas por colaborador', 'Advertências', 'Suspensões', 'Ouvidorias abertas'];
+const TEND = ['Turnover do mês', 'Pedidos de demissão', 'Saídas com até 90 dias de casa', 'Taxa de absenteísmo', 'Atestados', 'Dias de atestado por colaborador', 'Faltas por colaborador', 'Advertências', 'Suspensões', 'Ouvidorias abertas'];
 
 const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 const mesTxt = k => { const [a, m] = k.split('-'); return MESES[+m - 1] + '/' + a; };
@@ -24,6 +24,12 @@ async function calcular(mes){
   let EX = {}, TIP = [];
   try { const q = await window.CRV_DADOS('quadro'); const A = q && q.dados.AXD; if (A) { TIP = A.TIP || []; (A.EXR || []).forEach(r => { EX[fMat(r[0]) + '|' + String(r[1]).slice(0, 7)] = r; }); } } catch(_){}
   const pes = (m, extra) => { const c = M[m] || {}; return [c.nome || m, m, c.funcao || '', c.area || '', extra || '']; };
+  // absenteísmo do sistema (ponto RPE e atestados RFP2186R) quando já carregados; senão, a planilha antiga (CRV_OCORR)
+  let HA = {}, HO = {}; try { HA = await window.CRV_HIST('atest'); } catch(_){} try { HO = await window.CRV_HIST('ocor'); } catch(_){}
+  const usaSis = Object.keys(HA).length > 1 || Object.keys(HO).length > 1;
+  const maxD = H => { let z = ''; Object.keys(H).forEach(m => { if (m === '__ref') return; (H[m] || []).forEach(x => { if (x[0] > z) z = x[0]; }); }); return z; };
+  const ateA = usaSis ? maxD(HA) : '', ateO = usaSis ? maxD(HO) : '';
+  const addDs = (d, n) => { const t = new Date(d + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); };
   const um = async k => {
     const ini = k + '-01', fim = fimMes(k);
     const ativos = mats.filter(m => { const c = M[m]; return c.admissao && c.admissao <= fim && (c.situacao !== 'Desligado' || (c.deslig && c.deslig > fim)); });
@@ -32,19 +38,23 @@ async function calcular(mes){
     const tipo = m => { const r = EX[m + '|' + k]; return r ? (TIP[r[3]] || '') : ''; };
     const ped = sai.filter(m => /pedido/i.test(tipo(m))), s90 = sai.filter(m => M[m].admissao && fDias(M[m].admissao, M[m].deslig) <= 90);
     const O = await window.CRV_OCORR(mats, ini, fim);
-    const absAte = O.abs || '', temAbs = absAte >= ini;
-    let at = 0, fa = 0, adv = 0, sus = 0; const lAt = [], lFa = [], lAdv = [], lSus = [];
-    Object.entries(O.P).forEach(([m, o]) => { if (o.at.length) { at += o.at.length; lAt.push([m, o.at.length]); } if (o.fa.length) { fa += o.fa.length; lFa.push([m, o.fa.length]); }
-      if (o.adv.length) { adv += o.adv.length; lAdv.push([m, o.adv.length]); } if (o.sus.length) { sus += o.sus.length; lSus.push([m, o.sus.length]); } });
+    let absAte = O.abs || '', temAbs = absAte >= ini, fonteAbs = 'planilha';
+    let at = 0, atQ = 0, fa = 0, fj = 0, adv = 0, sus = 0; const lAt = [], lAtQ = [], lFa = [], lFj = [], lAdv = [], lSus = [];
+    if (usaSis) { fonteAbs = 'sistema'; absAte = [ateA, ateO].filter(Boolean).sort()[0] || ''; temAbs = absAte >= ini;
+      Object.keys(HA).forEach(m => { if (m === '__ref') return; let d = 0, q = 0; (HA[m] || []).forEach(x => { const n = Math.max(1, +x[1] || 1), f = addDs(x[0], n - 1); if (f < ini || x[0] > fim) return; const a0 = x[0] > ini ? x[0] : ini, b0 = f < fim ? f : fim; d += Math.round((new Date(b0 + 'T12:00:00Z') - new Date(a0 + 'T12:00:00Z')) / 864e5) + 1; if (x[0] >= ini) q++; }); if (d) { at += d; lAt.push([m, d]); } if (q) { atQ += q; lAtQ.push([m, q]); } });
+      Object.keys(HO).forEach(m => { if (m === '__ref') return; let f = 0, j = 0; (HO[m] || []).forEach(x => { if (x[0] < ini || x[0] > fim) return; if (x[1] === 'f') f++; else if (x[1] === 'j') j++; }); if (f) { fa += f; lFa.push([m, f]); } if (j) { fj += j; lFj.push([m, j]); } });
+    } else Object.entries(O.P).forEach(([m, o]) => { if (o.at.length) { at += o.at.length; lAt.push([m, o.at.length]); } if (o.fa.length) { fa += o.fa.length; lFa.push([m, o.fa.length]); } });
+    Object.entries(O.P).forEach(([m, o]) => { if (o.adv.length) { adv += o.adv.length; lAdv.push([m, o.adv.length]); } if (o.sus.length) { sus += o.sus.length; lSus.push([m, o.sus.length]); } });
+    const diasCob = temAbs ? Math.round((new Date(((absAte < fim ? absAte : fim)) + 'T12:00:00Z') - new Date(ini + 'T12:00:00Z')) / 864e5) + 1 : 0;
     let ouv = [], tr = null;
     try { const o = await window.CRV_DADOS('ouvidorias'); if (o) { (o.dados.RAW || []).forEach(r => ouv.push({ data:r[0], setor:r[1], tipo:r[2] })); (await window.CRV_REGS('ouvidorias', 'casos')).filter(x => !x.excluida).forEach(x => ouv.push({ data:x.abertura, setor:x.area, tipo:x.tipo })); } } catch(_){}
     ouv = ouv.filter(x => String(x.data || '').slice(0, 7) === k);
     try { const t = await window.CRV_DADOS('treinamentos'); const D = t && t.dados.DATA; if (D && +String(k).slice(0, 4) === +D.ano) { const i = +k.slice(5) - 1, metas = (D.metas || []).slice();
-        if (D.ano === 2026 && metas[3] === 235) metas[3] = 220; if (D.ano === 2026 && metas.length > 4) metas[4] = 170; // mesmos ajustes do painel de Treinamentos
+        if (D.ano === 2026) { if (metas[3] === 235) metas[3] = 220; [[4, 180], [5, 250], [6, 300], [7, 240]].forEach(([i2, v]) => { if (metas.length > i2) metas[i2] = v; }); } // mesmos ajustes do painel de Treinamentos
         let real = 0, part = 0, prev = 0; (D.rows || []).forEach(r => { if (r[4] === i) { prev++; if (r[5]) { real++; part += r[6] || 0; } } });
         (await window.CRV_REGS('treinamentos', 'novos')).filter(x => !x.excluido && +x.mes === i).forEach(x => { prev++; if (x.data) { real++; part += parseInt(x.n, 10) || 0; } });
         tr = { real, part, prev, meta: metas[i] != null ? metas[i] : null }; } } catch(_){}
-    return { k, ini, fim, ativos, adm, sai, ped, s90, tipo, temAbs, absAte, at, fa, adv, sus, lAt, lFa, lAdv, lSus, ouv, tr };
+    return { k, ini, fim, ativos, adm, sai, ped, s90, tipo, temAbs, absAte, fonteAbs, diasCob, at, atQ, fa, fj, adv, sus, lAt, lAtQ, lFa, lFj, lAdv, lSus, ouv, tr };
   };
   const A = await um(mes), B = await um(mesAnt(mes));
   out.A = A; out.B = B;
@@ -61,11 +71,16 @@ async function calcular(mes){
   // frequência
   const pLista = (t, L) => () => [t, ['Colaborador', 'Matrícula', 'Função', 'Área', 'Quantidade'], L.sort((a, b) => b[1] - a[1]).map(([m, q]) => pes(m, String(q)))];
   if (A.temAbs) {
+    const taxa = X => X.diasCob ? 100 * (X.at + X.fa + X.fj) / (n(X) * X.diasCob) : null;
+    I('freq', 'Taxa de absenteísmo', taxa(A), B.temAbs ? taxa(B) : null, { pior:'up', d:2, suf:'%', nota:'dias de atestado + faltas + faltas justificadas ÷ (colaboradores × dias do mês)' });
+    if (A.fonteAbs === 'sistema') I('freq', 'Atestados', A.atQ, B.temAbs ? B.atQ : null, { pior:'up', lista:pLista('Atestados (quantidade)', A.lAtQ) });
     I('freq', 'Dias de atestado', A.at, B.temAbs ? B.at : null, { pior:'up', lista:pLista('Dias de atestado', A.lAt) });
     I('freq', 'Dias de atestado por colaborador', A.at / n(A), B.temAbs ? B.at / n(B) : null, { pior:'up', d:2 });
     I('freq', 'Faltas', A.fa, B.temAbs ? B.fa : null, { pior:'up', lista:pLista('Faltas', A.lFa) });
     I('freq', 'Faltas por colaborador', A.fa / n(A), B.temAbs ? B.fa / n(B) : null, { pior:'up', d:2 });
+    if (A.fonteAbs === 'sistema') I('freq', 'Faltas justificadas', A.fj, B.temAbs ? B.fj : null, { pior:'up', lista:pLista('Faltas justificadas', A.lFj) });
     if (A.absAte < A.fim) out.notas.push(`Absenteísmo de ${mesTxt(mes)} só até ${brD(A.absAte)}: o mês ainda não está completo na base.`);
+    out.notas.push(`Absenteísmo ${A.fonteAbs === 'sistema' ? 'do sistema (faltas e faltas justificadas do ponto, atestados do relatório de afastamento)' : 'da planilha do RH'}. Taxa de absenteísmo = (dias de atestado + faltas + faltas justificadas) ÷ (colaboradores ativos × dias do mês cobertos pela base).`);
   } else out.notas.push(`Ainda não há absenteísmo de ${mesTxt(mes)} na base (vai até ${brD(A.absAte) || '—'}).`);
   // disciplina
   I('disc', 'Advertências', A.adv, B.adv, { pior:'up', lista:pLista('Advertências', A.lAdv) });
