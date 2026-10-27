@@ -1056,7 +1056,25 @@ window.CRV_NOVO=()=>{try{go('bas')}catch(_){}novo()};window.CRV_JOV_FICHA=ficha;
 /* botões na aba Base de jovens */
 (function(){const t=document.querySelector('#bas .tools');if(!t)return;
   t.insertAdjacentHTML('beforeend','<button type="button" class="btn2" id="jfNovo" style="background:#5b3f9e;color:#fff;border-color:#5b3f9e">+ Cadastrar jovem</button><button type="button" class="btn2" id="jfDesl" style="background:#a3301c;color:#fff;border-color:#a3301c">Registrar desligamento</button><button type="button" class="btn2" id="jfAts">Atestados</button>');
-  document.getElementById('jfNovo').onclick=novo;document.getElementById('jfDesl').onclick=desl;document.getElementById('jfAts').onclick=listaAt})();
+  document.getElementById('jfNovo').onclick=novo;document.getElementById('jfDesl').onclick=desl;document.getElementById('jfAts').onclick=listaAt;
+  /* idade dos jovens: planilha da RENAPSI (Nome do Jovem e Idade) lida aqui mesmo e guardada no painel */
+  t.insertAdjacentHTML('beforeend','<label class="btn2" style="cursor:pointer" title="Planilha da RENAPSI com as colunas Nome do Jovem e Idade">Carregar idades (planilha)<input type="file" id="jfIdF" accept=".xlsx,.xls" hidden></label><span class="sm" id="jfIdSt"></span>');
+  document.getElementById('jfIdF').onchange=async ev=>{const f=ev.target.files[0];ev.target.value='';if(!f)return;const st=document.getElementById('jfIdSt');st.style.color='';st.textContent='Lendo…';
+    try{const X=window.XLSX||(window.parent&&window.parent.XLSX);if(!X)throw new Error('leitor de Excel indisponível');
+      const u8=new Uint8Array(await f.arrayBuffer());let bs='';for(let i=0;i<u8.length;i+=32768)bs+=String.fromCharCode.apply(null,u8.subarray(i,i+32768));
+      const wb=X.read(bs,{type:'binary'}),R=X.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:false,defval:''});
+      const nk=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
+      const hi=R.findIndex(r=>r.some(c=>nk(c)==='NOME DO JOVEM')&&r.some(c=>nk(c)==='IDADE'));if(hi<0)throw new Error('não achei as colunas "Nome do Jovem" e "Idade"');
+      const H=R[hi].map(nk),iN=H.indexOf('NOME DO JOVEM'),iI=H.indexOf('IDADE'),ref=new Date().toISOString().slice(0,10);
+      const L=R.slice(hi+1).filter(r=>r[iN]&&/\d/.test(String(r[iI]))).map(r=>({k:nk(r[iN]),n:String(r[iN]).trim(),idade:parseInt(String(r[iI]).replace(/\D/g,''),10),ref}));
+      if(!L.length)throw new Error('a planilha não tem nomes com idade');
+      const D=await db();if(!D)throw new Error('o registro do painel não está disponível aqui');
+      for(const x of L){await D.collection('idades').doc(x.k.replace(/[^A-Z0-9]+/g,'_').slice(0,90)).set(Object.assign({},x,{em:new Date().toISOString(),por:quem()}))}
+      const m=Object.assign({},window.REN_IDI||{});L.forEach(x=>m[x.k]=x);window.REN_IDI=m;
+      const ok=BASE.filter(b=>b.st==='Ativo'&&m[nk(NM(b))]).length,fora=L.filter(x=>!BASE.some(b=>nk(NM(b))===x.k)).map(x=>x.n);
+      st.style.color='#1d5c3a';st.textContent='✓ '+L.length+' idades salvas · '+ok+' ativos com idade'+(fora.length?' · fora da base: '+fora.join(', '):'');try{renderBase()}catch(_){}}
+    catch(e){st.style.color='#a3301c';st.textContent='Não consegui carregar: '+(e.message||e)}};
+})();
 atualizar();
 })();
 
