@@ -1185,6 +1185,7 @@ function pdfList(title,L){
     L.slice(p*per,(p+1)*per).forEach((r,i)=>{x=M;if(i%2){doc.setFillColor(242,244,249);doc.rect(M,y-3.6,W_-2*M,5.4,'F')}
       doc.setFont('h','normal');doc.setFontSize(6.9);doc.setTextColor(20,33,61);
       C.forEach(c=>{doc.text(fit(c[2](r),c[1]-2),x+1,y);x+=c[1]});y+=5.4});
+    if(p===np-1){doc.setDrawColor(233,162,59);doc.setLineWidth(.4);doc.line(M,y-3.4,W_-M,y-3.4);doc.setFont('h','bold');doc.setFontSize(7.4);doc.setTextColor(20,33,61);doc.text('Total: '+nf(L.length)+(L.length==1?' colaborador':' colaboradores'),M+1,y+.4)}
     doc.setFontSize(7);doc.setTextColor(93,106,133);doc.text('Gerado em '+new Date().toLocaleDateString('pt-BR')+'  |  Gestão de Pessoas  |  uso interno',M,290);doc.text('Página '+(p+1)+' de '+np,W_-M,290,{align:'right'});
   }
   return doc;
@@ -1387,6 +1388,12 @@ function capaKit(title,sub){
       doc.setFont('h',b?'bold':'normal');doc.setFontSize(fs);
       C.forEach((c,j)=>{const v=r[j],col=c[3]&&c[3](v);col?doc.setTextColor(col[0],col[1],col[2]):doc.setTextColor(20,33,61);if(col)doc.setFont('h','bold');
         const s=fit(typeof v=='number'?nf(v):v,c[1]-3);c[2]?doc.text(s,x+c[1]-1.5,y,{align:'right'}):doc.text(s,x+1.5,y);if(col&&!b)doc.setFont('h','normal');x+=c[1]});y+=rh};
+    // tabela de pessoas sem total: linha final com a quantidade de pessoas e a soma dos valores em R$ (pedido do RH, 27/10/2026)
+    if(!tot&&rows.length&&!o.semTotal){const H=C.map(c=>String(c[0]).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()),iM=H.findIndex(h=>/^mat/.test(h)),iN=H.findIndex(h=>/^(nome|colaborador)/.test(h));
+      if(iM>=0||iN>=0){const nm=s=>{let t2=String(s==null?'':s).replace(/R\$\s*/i,'').replace(/\s/g,'');if(!/^-?[\d.,]+$/.test(t2))return null;if(/,\d{1,2}$/.test(t2))t2=t2.replace(/\./g,'').replace(',','.');const v=parseFloat(t2);return isNaN(v)?null:v};
+        const ks=new Set(rows.map(r=>String(r[iM>=0?iM:iN]||'')).filter(v=>v&&v!=='-')),n=ks.size||rows.length,T=C.map(()=>'');
+        H.forEach((h,j)=>{if(!/(salario|valor|r\$|desconto)/.test(h))return;let s=0,c=0;for(const r of rows){const v=nm(r[j]);if(v!=null){s+=v;c++}}if(c)T[j]='R$ '+s.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})});
+        T[iN>=0?iN:iM]='Total: '+nf(n)+(n==1?' pessoa':' pessoas');tot=T}}
     hd();rows.forEach((r,i)=>row(r,i));if(tot)row(tot,0,1);y+=4;if(o.x==null)k.y=y;return y};
   k.foot=()=>{const np=doc.pages.length;for(let i=0;i<np;i++){const rest=doc.pages.splice(i+1);doc.setFont('h','normal');doc.setFontSize(7);doc.setTextColor(93,106,133);
     doc.text('Gestão de Pessoas  |  CRV Industrial  |  base de '+REF.toLocaleDateString('pt-BR')+'  |  gerado em '+new Date().toLocaleDateString('pt-BR')+'  |  uso interno',M,290);
@@ -2252,6 +2259,10 @@ function rxPdf(imp){const L=rxRows(),C=rxCols();if(!L.length||!C.length)return t
       doc.setFont('h','normal');doc.setFontSize(fs);const LN=C.map((c,j)=>{const s=pt(rxFmt(c,rxVal(c,r)));return s?doc.splitTextToSize(s,CW[j]-1.5):['']}),nl=Math.max(...LN.map(l=>l.length)),lh=fs*0.42,hh=rh+1.6+(nl-1)*lh;
       if(y+hh-1.6>284)head();let x=M;if(i%2){doc.setFillColor(242,244,249);doc.rect(M,y-3.3,W_-2*M,hh,'F')}
       doc.setFont('h','normal');doc.setFontSize(fs);doc.setTextColor(20,33,61);C.forEach((c,j)=>{LN[j].forEach((s,k)=>doc.text(s,x+.8,y+k*lh));x+=CW[j]});y+=hh;i++});
+    {const sj=C.findIndex(c=>c[0]==='sal');let sm=0,sc=0;if(sj>=0)L.forEach(r=>{const v=rxVal(C[sj],r);if(typeof v==='number'){sm+=v;sc++}});if(y>284)head();
+     doc.setDrawColor(233,162,59);doc.setLineWidth(.4);doc.line(M,y-3.2,W_-M,y-3.2);doc.setFont('h','bold');doc.setFontSize(fs+.4);doc.setTextColor(20,33,61);
+     doc.text('Total: '+nf(L.length)+(L.length==1?' colaborador':' colaboradores'),M+.8,y+.6);
+     if(sc){let xs=M;for(let j=0;j<sj;j++)xs+=CW[j];doc.text('R$ '+sm.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}),xs+.8,y+.6)}y+=rh+2}
     return doc.output('arraybuffer')};
   if(imp){try{const u=URL.createObjectURL(new Blob([gera()],{type:'application/pdf'})),w=window.open(u,'_blank');if(w){toast('Relatório aberto em outra aba: use o botão de imprimir do PDF.');return}}catch(_){}toast('O navegador bloqueou a aba nova; o PDF foi baixado para você imprimir.')}
   saveFile(fname(rxTitulo())+'.pdf',gera,'PDF salvo.')}

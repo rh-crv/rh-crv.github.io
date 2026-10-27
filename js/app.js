@@ -1855,7 +1855,11 @@ const PAINEIS_COM_NOVOS = ['rd', 'fadiga', 'treinamentos', 'sancoes'];
 const COLECAO_NOVOS = { sancoes:'documentos', fadiga:['novos','tratativas'] };
 const mascaraCPF = c => { if (!c || !E.perfil || E.perfil.papel !== 'leitor') return c;
   return JSON.parse(JSON.stringify(c).replace(/(\d{3})\.(\d{3})\.(\d{3})-(\d{2})/g, '***.$2.$3-**')); };
-function montarModelo(tpl, conteudo, referencia, p, novos){
+// todo painel recebe o código que põe a linha de total (pessoas e valores) no fim das tabelas dos PDFs
+function montarModelo(){ const h = montarModelo0.apply(null, arguments); try { if (!window.CRV_TOTAIS_PDF) return h;
+  const sc = '<script>(function(){var f=' + window.CRV_TOTAIS_PDF.toString().replace(/<\/script/gi, '<\\/script') + ';var k=0,t=function(){f(window);if(++k<20)setTimeout(t,1500)};t();window.addEventListener("load",function(){f(window)})})();<\/script>';
+  return /<\/body>/i.test(h) ? h.replace(/<\/body>(?![\s\S]*<\/body>)/i, sc + '</body>') : h + sc; } catch(_) { return h; } }
+function montarModelo0(tpl, conteudo, referencia, p, novos){
   conteudo = mascaraCPF(conteudo);
   const nomeOk = n => /^[A-Za-z_$][\w$]*$/.test(n);
   const base = location.href.split('#')[0].replace(/[^/]*$/, '');
