@@ -1053,10 +1053,12 @@ function aplicar(){
   const REATN=window.JOV_REAT=new Set();BASE.forEach(b=>{delete b._reat});
   BASE.forEach(b=>{if(b._orig===undefined)b._orig={st:b.st,desl:b.desl,setor:b.setor};if(!b._app){if(b._o0===undefined)b._o0={ini:b.ini,fim:b.fim,jor:b.jor,cbo:b.cbo,nasc:b.nasc,nome:b[JC.nomeK],matb:b[JC.instK]};b.ini=b._o0.ini;b.fim=b._o0.fim;b.jor=b._o0.jor;b.cbo=b._o0.cbo;b.nasc=b._o0.nasc;b[JC.nomeK]=b._o0.nome;b[JC.instK]=b._o0.matb;delete b._ed}b.st=b._orig.st;b.desl=b._orig.desl;if(!JC.caixa)b.setor=b._orig.setor;delete b.motivo;delete b._baixa;delete b.comp});
   Object.entries(REG).forEach(([k,r])=>{if(r.excluido)return;let b=BASE.find(x=>chave(x)===k);
-    if(!b&&r.novo&&r.dados){const d=r.dados;b={mat:d.mat||'',ini:toB(d.ini),fim:toB(d.fim),jor:d.jor||'',setor:JC.caixa?String(d.setor||'A definir').toUpperCase():(d.setor||''),cbo:d.cbo||'',cpf:String(d.cpf||'').replace(/\D/g,''),st:d.ini&&d.ini>hojeI()?'Stand-by':'Ativo',desl:'',nasc:toB(d.nasc),_app:true};b[JC.nomeK]=JC.caixa?String(d.nome||'').toUpperCase():tc(d.nome);b[JC.instK]=d.matb||'';BASE.push(b)}
+    if(!b&&r.novo&&r.dados){const d=r.dados;b={mat:d.mat||'',ini:toB(d.ini),fim:toB(d.fim),jor:d.jor||'',setor:JC.caixa?String(d.setor||'A definir').toUpperCase():(d.setor||''),cbo:d.cbo||'',cpf:String(d.cpf||'').replace(/\D/g,''),st:d.st0||(d.ini&&d.ini>hojeI()?'Stand-by':'Ativo'),desl:'',nasc:toB(d.nasc),_app:true};b[JC.nomeK]=JC.caixa?String(d.nome||'').toUpperCase():tc(d.nome);b[JC.instK]=d.matb||'';BASE.push(b)}
     if(!b)return;b.comp=r.dados||{};if(!b._app&&r.ed&&Object.keys(r.ed).length){const E=r.ed;['ini','fim','nasc'].forEach(x=>{if(E[x])b[x]=toB(E[x])});if(E.jor!=null)b.jor=E.jor;if(E.cbo!=null)b.cbo=E.cbo;if(E.nome)b[JC.nomeK]=JC.caixa?String(E.nome).toUpperCase():tc(E.nome);if(E.matb!=null)b[JC.instK]=E.matb;b._ed=Object.keys(E)}if(!JC.caixa&&!b._app&&r.dados&&r.dados.setor)b.setor=r.dados.setor;
     if(r.reat&&!r.baixa&&b._orig&&b._orig.st==='Desligado'){b.st=b.ini&&fromB(b.ini)>hojeI()?'Stand-by':'Ativo';b.desl='';b._reat=r.reat;REATN.add(String(NM(b)||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim())}
     if(r.baixa&&r.baixa.data){b.motivo=r.baixa.motivo==='Outro'?(r.baixa.obs||'Outro'):r.baixa.motivo;b._baixa=r.baixa;if(r.baixa.data<=hojeI()){b.st='Desligado';b.desl=toB(r.baixa.data)}else b.motivo='Saída programada para '+i2b(r.baixa.data)+' · '+b.motivo}});
+  /* quem estava só como "a confirmar" (sem matrícula e sem CPF) e já entrou pela planilha não aparece duas vezes */
+  {const NKa=s=>String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().replace(/[^A-Z ]/g," ").replace(/\s+/g," ").trim();const NN=new Set(BASE.filter(b=>b._app).map(b=>NKa(NM(b))));for(let i=BASE.length-1;i>=0;i--){const b=BASE[i];if(!b._app&&!String(b.mat||'').trim()&&!String(b.cpf||'').replace(/\D/g,'')&&NN.has(NKa(NM(b))))BASE.splice(i,1)}}
   BASE.forEach(b=>{b._ats=ATS.filter(a=>a.chave===chave(b))})}
 async function atualizar(){await carregar();aplicar();PRONTO=true;try{MESES.forEach(m=>{delete m._c})}catch(_){}try{renderBase()}catch(_){}try{render()}catch(_){}}
 window.CRV_JOV_ATUALIZAR=atualizar;
@@ -1194,6 +1196,74 @@ window.CRV_JOV_MUD=()=>{const n=BASE.filter(b=>b._app&&b.st==='Ativo').length,d=
 window.CRV_JOV_BTN=b=>{const k=chave(b),r=REG[k]||{};const sai=b.st==='Desligado'?(r.baixa?'':'<button type="button" class="fjb" data-fj="'+e_(k)+'" data-aba="bx" style="color:#a3301c">Informar motivo da saída</button>'):(r.baixa?'':'<button type="button" class="fjb" data-fj="'+e_(k)+'" data-aba="bx">Desligar</button>');
   return '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px"><button type="button" class="fjb" data-fj="'+e_(k)+'">Abrir ficha</button>'+sai+'</div>'};
 window.CRV_NOVO=()=>{try{go('bas')}catch(_){}novo()};window.CRV_JOV_FICHA=ficha;window.CRV_JOV_CHAVE=chave;window.CRV_JOV_REG=k=>REG[k]||{};window.CRV_JOV_AT=listaAt;
+/* ---------- atualizar a base pela planilha da instituição (pedido do RH, 27/10/2026) ----------
+   Lê a relação de jovens enviada pela instituição (CSV ou Excel), cruza pelo CPF (ou pelo nome) com a Base de jovens
+   e grava no painel: datas de contrato atualizadas, jovens que ainda não estavam na base (ativos e os que já saíram)
+   e as saídas com data e motivo. Nada é apagado: o que não está na planilha fica como está. */
+const NKJ=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/[^A-Z ]/g,' ').replace(/\s+/g,' ').trim();
+const C11=v=>{let d=String(v==null?'':v).replace(/\.0+$/,'').replace(/\D/g,'');return d?d.padStart(11,'0'):''};
+const DIJ=v=>{if(v==null||v==='')return '';if(typeof v==='number'&&v>20000&&v<80000)return new Date(Math.round((v-25569)*864e5)).toISOString().slice(0,10);
+  const t=String(v).trim();let m=/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})/.exec(t);if(m){const y=m[3].length===2?'20'+m[3]:m[3];return y+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0')}m=/^(\d{4})-(\d{2})-(\d{2})/.exec(t);return m?m[0]:''};
+const MOTJ=t=>{const n=NKJ(t);if(!n)return['',''];if(/EFETIVA/.test(n))return['Efetivado na CRV',''];if(/INADAPTA|DESEMPENHO/.test(n))return['Desempenho insuficiente ou inadaptação (art. 433, I, CLT)',''];
+  if(/DISCIPLIN/.test(n))return['Falta disciplinar grave (art. 433, II, CLT)',''];if(/TERMINO|FIM DO CONTRATO/.test(n))return['Término do contrato',''];if(/24 ANOS/.test(n))return['Completou 24 anos',''];return['Outro',String(t).trim()]};
+async function lerRelacao(f){const X=window.XLSX||(window.parent&&window.parent.XLSX);if(!X)throw new Error('leitor de planilhas indisponível');let wb;
+  if(/\.csv$/i.test(f.name)){const b=new Uint8Array(await f.arrayBuffer());let t=new TextDecoder('utf-8').decode(b);if(/�/.test(t))t=new TextDecoder('latin1').decode(b);const l1=t.split(/\r?\n/)[0]||'';wb=X.read(t.replace(/^﻿/,''),{type:'string',FS:(l1.match(/;/g)||[]).length>(l1.match(/,/g)||[]).length?';':',',raw:true})}
+  else{const b=new Uint8Array(await f.arrayBuffer());let s='';for(let i=0;i<b.length;i+=32768)s+=String.fromCharCode.apply(null,b.subarray(i,i+32768));wb=X.read(s,{type:'binary'})}
+  const out=[];wb.SheetNames.forEach(sn=>{const A=X.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true,defval:''});let h=-1;
+    for(let i=0;i<Math.min(A.length,20);i++){const H=A[i].map(NKJ);if(H.some(x=>/^NOME/.test(x))&&H.some(x=>/CPF/.test(x))){h=i;break}}if(h<0)return;
+    const H=A[h].map(NKJ),f_=(re,no)=>H.findIndex(x=>re.test(x)&&!(no&&no.test(x)));
+    const cN=f_(/^NOME/,/RESP/),cC=f_(/CPF/),cI=f_(/INICIO|ADMISS/),cD=f_(/DESLIG|RESCIS|SAIDA/,/MOTIVO|PREVIST/),cP=f_(/PREVIST/),cF=f_(/FIM|TERMINO/,/PREVIST|MOTIVO|DESLIG/),cM=f_(/MOTIVO/);
+    for(let r=h+1;r<A.length;r++){const L=A[r],nome=String(L[cN]==null?'':L[cN]).trim();if(!nome)continue;
+      out.push({nome,cpf:C11(cC>=0?L[cC]:''),ini:cI>=0?DIJ(L[cI]):'',fim:(cP>=0?DIJ(L[cP]):'')||(cF>=0?DIJ(L[cF]):''),desl:cD>=0?DIJ(L[cD]):'',temDesl:cD>=0,motivo:cM>=0?String(L[cM]).trim():''})}});
+  return out}
+/* jovens de outra instituição (para a RENAPSI: quem passou para o João Bittar) */
+async function outraInst(){const M=new Map();if(JC.inst!=='RENAPSI')return M;
+  try{const d=await window.parent.CRV_DADOS('jovem');((d&&d.dados.BASE)||[]).forEach(j=>{const c=C11(j.cpf);if(c)M.set(c,b2i(j.ini)||'')})}catch(_){}
+  try{(await window.parent.CRV_REGS('jovem','jovens')).forEach(r=>{if(r.novo&&r.dados){const c=C11(r.dados.cpf);if(c&&!M.has(c))M.set(c,r.dados.ini||'')}})}catch(_){}
+  return M}
+async function importarRelacao(f){if(!PRONTO)await atualizar();let L;try{L=await lerRelacao(f)}catch(e){const M=modal('Atualizar a base',f.name);M.msg('Não consegui ler a planilha: '+(e.message||e),'#a3301c');return}
+  if(!L.length){const M=modal('Atualizar a base',f.name);M.msg('Não achei na planilha uma linha de cabeçalho com nome e CPF.','#a3301c');return}
+  const hj=hojeI(),OI=await outraInst();const QJ=new Map();try{const q=await window.parent.CRV_QUADRO();if(q&&q.mapa)Object.entries(q.mapa).forEach(([m,c])=>{const k=C11(c.cpf);if(k&&!/APRENDI/i.test(c.funcao||''))QJ.set(k,'admitido em '+i2b(String(c.admissao||'').slice(0,10))+' como '+tc(c.funcao||'')+' (mat. '+m+(c.situacao==='Desligado'?', desligado':'')+')')})}catch(_){}const porC=new Map(),porN=new Map();BASE.forEach(b=>{const c=C11(b.cpf);if(c)porC.set(c,b);porN.set(NKJ(NM(b)),b)});
+  const P=[];const vistos=new Set();
+  L.sort((a,b)=>String(a.ini).localeCompare(String(b.ini)));
+  L.forEach(x=>{let b=(x.cpf&&porC.get(x.cpf))||porN.get(NKJ(x.nome));if(b&&chave(b)==='cpf')b=null;/* sem matrícula nem CPF: entra como novo pelo CPF da planilha */const k=b?chave(b):(x.cpf?'cpf'+x.cpf:'');if(!k||vistos.has(k+'|'+x.ini))return;vistos.add(k+'|'+x.ini);
+    const tr=OI.get(x.cpf);const transf=tr&&x.ini&&tr>x.ini&&(!x.fim||x.fim>=tr)&&!x.desl?tr:'';
+    const o={x,b,k,ed:{},baixa:null,novo:!b,transf,diverg:''};
+    if(b){const bi=fromB(b.ini),bf=fromB(b.fim);if(x.ini&&x.ini!==bi)o.ed.ini=x.ini;if(x.fim&&x.fim!==bf)o.ed.fim=x.fim}
+    const r=REG[k]||{};const jaBx=r.baixa&&r.baixa.data;
+    if(x.desl){const [m,obs]=MOTJ(x.motivo);if(!jaBx&&!(b&&b.st==='Desligado'&&fromB(b.desl)===x.desl&&b.motivo))o.baixa={data:x.desl,motivo:m||'Outro',obs:obs||(m?'':'motivo não informado na planilha')}}
+    else if(transf){if(!jaBx)o.baixa={data:transf,motivo:'Outro',obs:'Passou para o Instituto João Bittar (contrato lá desde '+i2b(transf)+'). A planilha da RENAPSI não traz a data de saída: considerada a data de início no João Bittar.',transf:1}}
+    else if(x.fim&&x.fim<hj){if(!jaBx&&!(b&&b.st==='Desligado'))o.baixa={data:x.fim,motivo:'Término do contrato',obs:'Fim do contrato pela planilha da instituição'}}
+    else if(!b&&!x.temDesl&&x.fim&&x.fim>=hj){o.conf=1;const q=QJ.get(x.cpf);o.nota='Contrato previsto até '+i2b(x.fim)+', mas não está na lista atual de jovens do painel e a planilha não traz data de saída'+(q?'. Na Base Geral: '+q:'')+'. Confirme com a instituição.'}
+    else if(b&&b.st==='Desligado')o.diverg='Na base está desligado, mas a planilha não traz saída e o contrato vai até '+i2b(x.fim);
+    P.push(o)});
+  const nv=P.filter(o=>o.novo),at=P.filter(o=>!o.novo&&Object.keys(o.ed).length),bx=P.filter(o=>o.baixa&&!o.baixa.transf),tf=P.filter(o=>o.baixa&&o.baixa.transf),dv=P.filter(o=>o.diverg);
+  const fora=BASE.filter(b=>!P.some(o=>o.k===chave(b))).length;
+  const nvC=nv.filter(o=>o.conf).length,nvA=nv.filter(o=>!o.baixa&&!o.conf).length,nvD=nv.length-nvA-nvC;
+  const M=modal('Atualizar a base pela planilha da instituição',f.name+' · '+L.length+' linhas · '+JC.inst);
+  const li=(t,A,fn)=>A.length?'<details style="margin:6px 0"><summary style="cursor:pointer"><b>'+t+'</b> ('+A.length+')</summary><ul style="margin:6px 0 0 18px;font-size:13px">'+A.map(o=>'<li>'+e_(tc(o.x.nome))+' · '+fn(o)+'</li>').join('')+'</ul></details>':'';
+  M.C.innerHTML='<div class="jf-av in">Cruzamento pelo CPF (e pelo nome, quando o CPF não está na base). Nada é apagado: os '+fora+' jovens da base que não estão na planilha continuam como estão.</div>'
+    +'<ul style="font-size:14px;margin:10px 0 10px 18px"><li><b>'+nv.length+'</b> jovens que ainda não estavam na base: '+nvA+' ativos, '+nvD+' que já saíram'+(nvC?' e '+nvC+' a confirmar':'')+'</li><li><b>'+at.length+'</b> com início ou término do contrato atualizado</li><li><b>'+bx.length+'</b> saídas registradas (data e motivo da planilha'+(JC.inst==='RENAPSI'?' ou fim do contrato já passado':'')+')</li>'+(tf.length?'<li><b>'+tf.length+'</b> passaram para o João Bittar</li>':'')+(dv.length?'<li style="color:#a3301c"><b>'+dv.length+'</b> divergências para conferir</li>':'')+'</ul>'
+    +li('Novos na base',nv.filter(o=>!o.conf),o=>'contrato '+i2b(o.x.ini)+' a '+i2b(o.x.fim)+(o.baixa?' · saiu em '+i2b(o.baixa.data):' · ativo'))+li('Entram como "A confirmar"',nv.filter(o=>o.conf),o=>e_(o.nota))
+    +li('Datas de contrato atualizadas',at,o=>Object.entries(o.ed).map(([c,v])=>(c==='ini'?'início ':'término ')+i2b(fromB(o.b[c]))+' → '+i2b(v)).join(' · '))
+    +li('Saídas',bx,o=>i2b(o.baixa.data)+' · '+e_(o.baixa.motivo==='Outro'?o.baixa.obs:o.baixa.motivo))
+    +(tf.length?'<label style="display:flex;gap:8px;align-items:flex-start;margin:8px 0;font-size:13.5px"><input type="checkbox" id="jiTf" checked><span>Registrar a saída da RENAPSI dos '+tf.length+' jovens que passaram para o João Bittar, na data de início lá (a planilha da RENAPSI não traz a data de saída deles).</span></label>'+li('Passaram para o João Bittar',tf,o=>'RENAPSI desde '+i2b(o.x.ini)+' · João Bittar desde '+i2b(o.baixa.data)):'')
+    +(dv.length?li('Divergências (não muda nada; confira na ficha)',dv,o=>e_(o.diverg)):'');
+  M.R.insertAdjacentHTML('beforeend','<button class="jf-b" data-c>Cancelar</button><button class="jf-b pri" data-s>Atualizar a base</button>');
+  M.R.querySelector('[data-c]').onclick=fechar;
+  M.R.querySelector('[data-s]').onclick=async()=>{const bt=M.R.querySelector('[data-s]');bt.disabled=true;bt.textContent='Gravando…';const ftf=M.C.querySelector('#jiTf');const comTf=!ftf||ftf.checked;let n=0;
+    try{for(const o of P){const r0=Object.assign({},REG[o.k]||{});let mud=false;
+        if(o.novo){r0.novo=true;r0.dados=Object.assign({},r0.dados||{},{nome:JC.caixa?String(o.x.nome).toUpperCase():tc(o.x.nome),cpf:o.x.cpf,ini:o.x.ini,fim:o.x.fim,mat:'',matb:'',setor:'',jor:'',cbo:'',nasc:'',origem:'planilha '+f.name},o.conf?{st0:'A confirmar',nota:o.nota}:{});r0.criadoEm=r0.criadoEm||new Date().toISOString();r0.por=r0.por||quem();mud=true}
+        else if(Object.keys(o.ed).length){r0.ed=Object.assign({},r0.ed||{},o.ed);mud=true}
+        if(o.baixa&&(!o.baixa.transf||comTf)){const bx=Object.assign({},o.baixa,{por:quem(),em:new Date().toISOString(),fonte:f.name});delete bx.transf;r0.baixa=bx;mud=true}
+        if(mud){await salvarReg(o.k,r0);n++}}
+      await atualizar();M.C.innerHTML='<div class="jf-av ok">Base atualizada: '+n+' jovens gravados. Já aparecem na Base de jovens, com a situação e o período do contrato.</div>';bt.remove();JMUD=true}
+    catch(er){bt.disabled=false;bt.textContent='Atualizar a base';M.msg('Parou em '+n+' jovens: '+(er.message||er),'#a3301c')}}}
+setTimeout(()=>{const t=document.querySelector('#bas .tools');if(!t||document.getElementById('jiRel'))return;
+  t.insertAdjacentHTML('beforeend','<label class="btn2" id="jiRel" style="cursor:pointer;background:#1d7a88;color:#fff;border-color:#1d7a88" title="Relação de jovens enviada pela instituição (CSV ou Excel)">Atualizar pela planilha da instituição<input type="file" accept=".xlsx,.xls,.csv" hidden></label>');
+  t.querySelector('#jiRel input').onchange=ev=>{const f=ev.target.files[0];ev.target.value='';if(f)importarRelacao(f)}},0);
+window.CRV_JOV_IMPORTAR=importarRelacao;
+
 /* botões na aba Base de jovens */
 (function(){const t=document.querySelector('#bas .tools');if(!t)return;
   t.insertAdjacentHTML('beforeend','<button type="button" class="btn2" id="jfNovo" style="background:#5b3f9e;color:#fff;border-color:#5b3f9e">+ Cadastrar jovem</button><button type="button" class="btn2" id="jfDesl" style="background:#a3301c;color:#fff;border-color:#a3301c">Registrar desligamento</button><button type="button" class="btn2" id="jfAts">Atestados</button>');
