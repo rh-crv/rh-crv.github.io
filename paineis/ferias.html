@@ -1280,7 +1280,8 @@ function saidasRows(incSaiu){
     s.parts.forEach(q=>{ if(q.k==='done'&&!incSaiu) return; if(de&&q.inicio<de) return; if(ate&&q.inicio>ate) return; out.push({x,s,q}); }); });
   return out.sort((a,b)=>a.q.inicio.localeCompare(b.q.inicio)||a.x.person.d.localeCompare(b.x.person.d,'pt-BR')||a.x.person.n.localeCompare(b.x.person.n,'pt-BR'));
 }
-function buildPdfSaidas(incSaiu){
+const ASSH=78;
+function buildPdfSaidas(incSaiu,ass){
   const rows=saidasRows(incSaiu); const doc=new MiniPDF(); const M=30, BOT=548; const desc=[faixaTxt(),pdfFilterDesc()].filter(Boolean).join(' · '); doc.title=`Saídas de férias - ${desc}`;
   const cols=[{t:'Contrato',w:46},{t:'Colaborador / Função',w:180},{t:'Seção / Setor',w:130},{t:'Início',w:58},{t:'Fim',w:58},{t:'Dias',w:32,al:'right'},{t:'Abono',w:36,al:'right'},{t:'Retorno',w:60},{t:'Parcela',w:42},{t:'Situação',w:60},{t:'Observação',w:80}];
   let y=0, first=true;
@@ -1304,11 +1305,15 @@ function buildPdfSaidas(incSaiu){
     const cells=[[[String(p.c),false,8,'#15213a']],[[p.n,true,8.2,'#15213a'],[`${p.f} · Adm. ${fmtS(p.a)}`,false,6.8,'#6c788e']],[[p.d,false,7.4,'#15213a'],[p.dp,false,6.6,'#6c788e']],
       [[fmtS(q.inicio),true,8,'#15213a']],[[fmtS(q.fim),false,8,'#15213a']],[[String(q.dias),true,8,'#15213a']],[[q.abono?String(q.abono):'-',false,8,'#15213a']],[[fmtS(addDays(q.fim,1)),false,8,'#15213a']],[[q.n>1?`${q.i+1} de ${q.n}`:'Única',false,7.6,'#45536c']],[[sl,true,7.6,sc]],[[r.s.g.obs||'',false,6.8,'#45536c']]];
     const lay=cellLayout(cols,cells,26), RH=lay.RH;
-    if(y+RH>BOT){ header(); groupHead(mLong(mk)+' (continuação)', rows.filter(z=>z.q.inicio.slice(0,7)===mk).length); }
+    /* a última linha vai junto com o total e a assinatura: se não couberem, passam todos para a folha seguinte */
+    if(r===rows[rows.length-1]&&ass&&y+RH+26+ASSH<=BOT===false&&y+RH<=BOT){ header(); groupHead(mLong(mk)+' (continuação)', rows.filter(z=>z.q.inicio.slice(0,7)===mk).length); }
+    else if(y+RH>BOT){ header(); groupHead(mLong(mk)+' (continuação)', rows.filter(z=>z.q.inicio.slice(0,7)===mk).length); }
     doc.rect(M,y,3,RH,sc);
     drawCells(doc,cols,lay,M,y);
     doc.line(M,y+RH,M+782,y+RH,'#d8dee9',0.4); y+=RH; });
-  if(rows.length){ if(y+22>BOT) header(); const ppl=new Set(rows.map(r=>r.x.person.c)).size; doc.rect(M,y+4,782,18,'#eef1f5'); doc.text(`Total: ${ppl} pessoa${ppl!==1?'s':''}  ·  ${rows.length} saída${rows.length!==1?'s':''}  ·  ${rows.reduce((a,r)=>a+r.q.dias,0)} dias de férias  ·  ${rows.reduce((a,r)=>a+(r.q.abono||0),0)} dias de abono`,M+6,y+16.5,{size:8.8,bold:true,color:'#15213a'}); }
+  if(rows.length){ if(y+22+(ass?ASSH:0)>BOT) header(); const ppl=new Set(rows.map(r=>r.x.person.c)).size; doc.rect(M,y+4,782,18,'#eef1f5'); doc.text(`Total: ${ppl} pessoa${ppl!==1?'s':''}  ·  ${rows.length} saída${rows.length!==1?'s':''}  ·  ${rows.reduce((a,r)=>a+r.q.dias,0)} dias de férias  ·  ${rows.reduce((a,r)=>a+(r.q.abono||0),0)} dias de abono`,M+6,y+16.5,{size:8.8,bold:true,color:'#15213a'}); }
+  if(rows.length&&ass){ const yy=y+22+42, x0=M+782-260; doc.line(x0,yy,x0+260,yy,'#15213a',0.8); doc.text(ass.nome,x0+130,yy+12,{size:9,bold:true,color:'#15213a',align:'center'}); doc.text([ass.funcao,'Matrícula '+ass.mat].filter(Boolean).join(' · '),x0+130,yy+23,{size:7.8,color:'#45536c',align:'center'});
+    doc.text('Data: ____/____/________',M,yy+12,{size:8.5,color:'#45536c'}); }
   const N=doc.pages.length;
   doc.pages.forEach((ops,i)=>{ doc.cur=ops; doc.line(M,566,842-M,566,'#d8dee9',0.5); doc.text(`Gestão de Pessoas · Painel de Férias · CRV Industrial · emitido em ${HOJE.toLocaleDateString('pt-BR')}`,M,578,{size:7.5,color:'#6c788e'}); doc.text(`Página ${i+1} de ${N}`,842-M,578,{size:7.5,color:'#6c788e',align:'right'}); });
   return {bytes:doc.output(), rows};
@@ -1331,6 +1336,10 @@ function pdfSync(){
     (!DL?`<div class="warn bad">O download de arquivos não está disponível nesta visualização do painel.</div>`:'');
   $('pdfGo').disabled=!rows.length||!DL;
 }
+/* assinatura da coordenadora (matrícula 334) na relação para o Departamento Pessoal: nome e função vêm do Quadro */
+const MAT_COORD='334';
+async function assCoord(){ try{ const f=window.parent&&window.parent.CRV_QUADRO; const q=typeof f==='function'?await f():null; const c=q&&q.mapa&&q.mapa[MAT_COORD];
+  if(c&&c.nome) return {nome:String(c.nome).trim(),funcao:String(c.funcao||'').trim(),mat:MAT_COORD}; }catch(_){} return {nome:'',funcao:'',mat:MAT_COORD}; }
 /* botão próprio: relação de quem vai sair de férias, para enviar ao Departamento Pessoal */
 function abrirDP(){ lastFocus=document.activeElement; $('pdfMsg').textContent=''; document.querySelector('input[name=pTipo][value=saidas]').checked=true; $('pdfTipoFs').hidden=true;
   $('pdfT').textContent='Relação para o Departamento Pessoal'; $('pdfT').nextElementSibling.textContent='Quem vai sair de férias no mês ou entre as datas escolhidas. Usa também os filtros de setor, seção e gerência da tela.';
@@ -1358,7 +1367,7 @@ $('pdfGo').onclick=async()=>{
   $('pdfGo').disabled=true; $('pdfMsg').textContent='Gerando…';
   try{
     const tipo=document.querySelector('input[name=pTipo]:checked').value;
-    const {bytes}= tipo==='form' ? buildPdf(scope,$('pdfPrazo').value,$('pdfSemProg').checked) : buildPdfSaidas($('pdfSaiu').checked);
+    const {bytes}= tipo==='form' ? buildPdf(scope,$('pdfPrazo').value,$('pdfSemProg').checked) : buildPdfSaidas($('pdfSaiu').checked, await assCoord());
     const area=((onlySel&&SEL.size)?'Selecionados':($('fDep').value||$('fDp').value||$('fGer').value||'Geral')).normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Za-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,60);
     const fx=tipo==='saidas'&&faixaTxt()?'_'+faixaTxt().replace(/^saídas (em )?/,'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,40):'';
     const name=`${tipo==='form'?'Ferias':'Saidas_Ferias'}_${area}${fx}_${iso(HOJE)}.pdf`;
