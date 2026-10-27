@@ -1951,7 +1951,14 @@ function montarModelo0(tpl, conteudo, referencia, p, novos){
 function escolherPacotes(esperado){
   const inp = document.createElement('input');
   inp.type = 'file'; inp.multiple = !esperado; inp.accept = '.json,.zip,.xlsx,.xls,application/json,application/zip,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel';
-  inp.onchange = () => inp.files.length && carregarPacotes([...inp.files], esperado);
+  inp.onchange = async () => { if (!inp.files.length) return; let fs = [...inp.files];
+    /* planilha de acidentes de trabalho aberta no painel da Unimed: vai para a aba Acidente de trabalho */
+    const fr = document.getElementById('modelo-frame'), w = fr && fr.contentWindow;
+    if (w && typeof w.CRV_ACID_IMP === 'function' && window.XLSX) { const resto = [];
+      for (const f of fs) { let ac = false; if (/\.(xlsx|xls|csv)$/i.test(f.name)) { try { const wb = XLSX.read(await f.arrayBuffer(), { type:'array', sheetRows:6 }); const A = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header:1, defval:'' }); const t = A.map(r => r.join(' ')).join(' ').toLowerCase(); ac = /agente causador|parte do corpo/.test(t) && /colaborador|nome/.test(t); } catch(_){} }
+        if (ac) w.CRV_ACID_IMP(f); else resto.push(f); }
+      fs = resto; if (!fs.length) return; }
+    carregarPacotes(fs, esperado); };
   inp.click();
 }
 

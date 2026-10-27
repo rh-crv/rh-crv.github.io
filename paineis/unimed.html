@@ -1138,7 +1138,7 @@ function render(){if(!sec)return;const T=ativos(),anos=[...new Set(T.map(a=>(a.d
     return `<div class="tile"><h3 style="margin:0 0 8px;font-size:15px">${t}</h3>${E.length?E.map(([k,v])=>`<div class="ac-bar" data-agr="${esc(t)}" data-agv="${esc(k)}"><span>${esc(k)}</span><span style="background:#eef1f5;border-radius:5px;overflow:hidden"><i style="width:${v.length/mx2*100}%"></i></span><b style="text-align:right">${v.length}</b></div>`).join('')+(tot>10?`<p style="margin:4px 0 0;font-size:12px;color:var(--mut)">Mostrando os 10 maiores de ${tot}.</p>`:''):'<p style="color:var(--mut);margin:0">Sem dados.</p>'}</div>`}).join('')}</div>
   <div class="tile">${tabela(L)}</div>
   <p class="foot">Os atendimentos marcados como acidente de trabalho saem da coparticipação descontada do titular na fatura em que a Unimed cobrou e aparecem identificados no Desconto em folha e na Utilização. Só a utilização do próprio colaborador (titular) entra; a dos dependentes segue a regra normal.</p>`;
-  $('ac-novo').onclick=()=>form(null);$('ac-imp').onclick=importar;$('ac-exp').onclick=exportar;$('ac-aut').onclick=()=>autoriz(MES);
+  $('ac-novo').onclick=()=>form(null);$('ac-imp').onclick=()=>importar();$('ac-exp').onclick=exportar;$('ac-aut').onclick=()=>autoriz(MES);
   $('ac-ano').onchange=e=>{F.ano=e.target.value;render()};$('ac-dep').onchange=e=>{F.dep=e.target.value;render()};
   const q=$('ac-q');q.oninput=()=>{F.q=q.value;clearTimeout(q._t);q._t=setTimeout(()=>{render();const e=$('ac-q');e.focus();e.setSelectionRange(F.q.length,F.q.length)},250)};
   sec.querySelectorAll('[data-ak]').forEach(b=>b.onclick=()=>{const k=b.dataset.ak;if(k==='ano'||k==='val')lista(doAno,doAno.length+' ocorrência(s)','Acidentes de trabalho · '+(F.ano||'todos os anos'));if(k==='mes')lista(noMes,noMes.length+' ocorrência(s)','Acidentes neste mês');if(k==='cat'){const v=doAno.filter(a=>a.cat||a.catEmit==='Sim');lista(v,v.length+' ocorrência(s)','Acidentes com CAT emitida')}if(k==='af'){const v=doAno.filter(a=>(+a.dias||0)>0||a.afast==='sim');lista(v,v.length+' ocorrência(s)','Acidentes com afastamento')}if(k==='nv')lista(NV.map(x=>x.a),'Colaboradores com atendimentos novos depois do acidente','Novos atendimentos a conferir')});
@@ -1199,8 +1199,8 @@ function form(a0){const ed=!!a0;const a=Object.assign({data:'',cat:'',local:'',p
 }
 
 /* ---------- importar a lista de acidentes (planilha do SESMT) ---------- */
-function importar(){if(!ADB)return toast('Não dá para salvar nesta visualização.');const inp=document.createElement('input');inp.type='file';inp.accept='.xlsx,.xls,.csv';
-  inp.onchange=async()=>{const fl=inp.files[0];if(!fl)return;let A;try{const X=XL();const wb=X.read(new Uint8Array(await fl.arrayBuffer()),{type:'array',cellDates:false,raw:false});A=X.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:false,defval:''})}catch(e){return toast('Não consegui ler a planilha.')}
+function importar(arq){if(!ADB)return toast('Não dá para salvar nesta visualização.');const inp=document.createElement('input');inp.type='file';inp.accept='.xlsx,.xls,.csv';
+  inp.onchange=async()=>{const fl=arq||inp.files[0];if(!fl)return;let A;try{const X=XL();const wb=X.read(new Uint8Array(await fl.arrayBuffer()),{type:'array',cellDates:false,raw:false});A=X.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:false,defval:''})}catch(e){return toast('Não consegui ler a planilha.')}
     const hi=A.findIndex(r=>r.some(c=>/^mat/i.test(String(c).trim()))&&r.some(c=>/colaborador|nome/i.test(String(c))));if(hi<0)return toast('Não encontrei as colunas Mat. e Colaborador na planilha.');
     const H=A[hi].map(c=>norm(String(c).trim())),col=re=>H.findIndex(h=>re.test(h));
     const C={dig:col(/digita/),dt:col(/afastamento|data do acidente|^data/),dias:col(/^dias/),mat:col(/^mat/),nome:col(/colaborador|nome/),dep:col(/departamento/),fun:col(/funcao/),diag:col(/diagnostico/),tipo:col(/^tipo/),cat:col(/^cat/),loc:col(/local de ocorr/),at:col(/local de atend/),parte:col(/parte do corpo/),ag:col(/agente/)};
@@ -1235,7 +1235,8 @@ function importar(){if(!ADB)return toast('Não dá para salvar nesta visualizaç
           else{const id='ac'+Date.now().toString(36)+(n%1000).toString(36)+Math.random().toString(36).slice(2,5);Object.assign(dd,{cat:'',obs:'',eventos:[],vistos:[],docs:[],por:q,em:agora});await ADB.collection('acidentes').doc(id).set(dd);AC.L.push(Object.assign({id},dd))}n++}catch(e){f++}
         if(n%10===0)b.textContent='Importando… '+n+'/'+L.length}
       aplicar();setMes(MES);render();w.remove();toast(n+' ocorrência(s) importada(s)'+(f?' · '+f+' com erro':'')+'.')}};
-  inp.click()}
+  if(arq)inp.onchange();else inp.click()}
+window.CRV_ACID_IMP=f=>{window.tab('x');importar(f)};
 
 /* ---------- exportar ---------- */
 const JS=()=>(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF);
