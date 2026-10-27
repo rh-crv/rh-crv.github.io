@@ -10,7 +10,7 @@
 .rl-n{all:unset;cursor:pointer;font-family:var(--display);font-weight:800;font-size:18px;border-bottom:2px dotted currentColor;line-height:1.1}
 .rl-n:hover,.rl-n:focus-visible{color:var(--blue);outline:none}
 .rl-n.rl-aus{color:#fff;background:#c0392b;border:0;border-radius:8px;padding:3px 10px;display:inline-block}.rl-n.rl-aus:hover{background:#a5281b;color:#fff}
-.rl-ind tr.aus td:first-child{color:#c0392b;font-weight:700}
+.rl-ind tr.aus td{color:#c0392b;font-weight:700}
 .stat.aus{background:#c0392b;border-color:#c0392b}.stat.aus b,.stat.aus span{color:#fff}
 .rl-bloco.nao h4{color:#c0392b}
 .rl-bloco.nao h4 .rl-q{background:#c0392b;color:#fff;border-radius:6px;padding:1px 8px;margin-left:4px}
@@ -1647,7 +1647,7 @@ details.more[open] summary{margin-bottom:14px}
       pg.drawRectangle({x:M,y:y-14,width:cw.reduce(function(a,b){return a+b},0),height:16,color:SOFTc}); var x=M; hdrs.forEach(function(h,i){T(h.toUpperCase(),x+(i?cw[i]-8-FB.widthOfTextAtSize(pdfTxt(h.toUpperCase()),7):6),y-9.5,7,FB,GREYc); x+=cw[i]}); y-=26;
       var tot=function(f){return TS.reduce(function(a,t){return a+D.G[t][f].length},0)};
       [['Previstos','prev'],['Presentes','sim'],['Ausentes','nao'],['Adesão','pct']].forEach(function(r){var v=TS.map(function(t){return r[1]==='pct'?pctTxt(D.G[t].sim.length,D.G[t].prev.length):String(D.G[t][r[1]].length)}).concat([r[1]==='pct'?pctTxt(tot('sim'),tot('prev')):String(tot(r[1]))]);
-        x=M; T(r[0],x+6,y,9.5,FB); x+=cw[0]; v.forEach(function(s,i){T(s,x+cw[i+1]-8-FB.widthOfTextAtSize(pdfTxt(s),10),y,10,FB,r[1]==='pct'?GOLDc:INK); x+=cw[i+1]}); y-=6; pg.drawRectangle({x:M,y:y,width:cw.reduce(function(a,b){return a+b},0),height:.5,color:LINEc}); y-=12});
+        x=M; T(r[0],x+6,y,9.5,FB,r[1]==='nao'?RED:INK); x+=cw[0]; v.forEach(function(s,i){T(s,x+cw[i+1]-8-FB.widthOfTextAtSize(pdfTxt(s),10),y,10,FB,r[1]==='pct'?GOLDc:r[1]==='nao'?RED:INK); x+=cw[i+1]}); y-=6; pg.drawRectangle({x:M,y:y,width:cw.reduce(function(a,b){return a+b},0),height:.5,color:LINEc}); y-=12});
       if(false){var dif=TURMAS.filter(function(t){return tx.ref.prev[t]!==D.G[t].prev.length||tx.ref.pres[t]!==D.G[t].sim.length}); if(dif.length){y-=4; para('Atenção: os números das fichas diferem do relatório da facilitadora em '+dif.map(function(t){return 'turno da '+t.toLowerCase()}).join(' e ')+' (relatório: '+TURMAS.map(function(t){return t.toLowerCase()+' '+tx.ref.pres[t]+' de '+tx.ref.prev[t]}).join(', ')+').',8.5,F,RED)}}
       y-=4; para('Fonte: presença marcada nas fichas do painel Conexão Líder.',8,F,GREYc);
       if(O.set){sec('Adesão por setor'); var sw=[180].concat(TS.map(function(){return 95})).concat([80]); var sh=['Setor'].concat(TS).concat(['Adesão']); pg.drawRectangle({x:M,y:y-14,width:W-2*M,height:16,color:SOFTc}); x=M; sh.forEach(function(h,i){T(h.toUpperCase(),x+6,y-9.5,7,FB,GREYc); x+=sw[i]}); y-=26;
@@ -1658,7 +1658,7 @@ details.more[open] summary{margin-bottom:14px}
         [['sim','Compareceram',GRN,g.sim],['nao','Faltaram',RED,g.nao]].forEach(function(b){if(!O[b[0]])return; need(30); pg.drawCircle({x:M+4,y:y+3,size:3.2,color:b[2]}); T(b[1]+' · '+b[3].length,M+12,y,9.5,FB,b[2]); y-=15;
           if(!b[3].length){para(b[0]==='sim'?'Ninguém marcado como presente.':'Ninguém faltou.',9,F,GREYc,12); y-=4}
           bySet(b[3]).forEach(function(s){need(28); T(s[0]+' · '+s[1].length,M+12,y,8.8,FB,BLU); y-=13;
-            s[1].forEach(function(d,i){need(13); var j=b[0]==='nao'?jOf(d,D.k):null; T((i+1)+'.',M+16,y,8.6,F,GREYc); T(d.nome,M+32,y,8.6,FB); var nx=M+32+FB.widthOfTextAtSize(pdfTxt(d.nome),8.6)+6;
+            s[1].forEach(function(d,i){need(13); var j=b[0]==='nao'?jOf(d,D.k):null; T((i+1)+'.',M+16,y,8.6,F,b[0]==='nao'?RED:GREYc); T(d.nome,M+32,y,8.6,FB,b[0]==='nao'?RED:INK); var nx=M+32+FB.widthOfTextAtSize(pdfTxt(d.nome),8.6)+6;
               var rest=[d.cargo,b[0]==='nao'?(j&&j.motivo?'Motivo: '+j.motivo:'Sem justificativa'):''].filter(Boolean).join('  ·  '); if(rest){var mw=W-M-nx; var r=pdfTxt(rest); while(r.length>1&&F.widthOfTextAtSize(r,8.2)>mw)r=r.slice(0,-1); T(r,nx,y,8.2,F,GREYc)} y-=12}); y-=4}); y-=4})});
       if(O.av&&RLCAMPOS.some(function(c){return tx[c[0]]})){sec('Avaliação da facilitadora (leitura qualitativa)'); para('Leitura qualitativa do relatório executivo; não corresponde a uma pontuação padronizada de desempenho.',8.5,F,GREYc); y-=4;
         RLCAMPOS.forEach(function(c){if(!tx[c[0]])return; need(34); T(c[1],M,y,10,FB,c[0]==='recs'?GRN:NAVYc); y-=14;
