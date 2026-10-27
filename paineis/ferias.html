@@ -491,7 +491,7 @@ body.has-sel .wrap>.foot{margin-bottom:90px}
       <div class="small" id="pdfInfo" style="color:var(--fg-2)"></div>
       <fieldset class="fs"><legend>Tipo de PDF</legend>
         <label class="chk" style="padding:0"><input type="radio" name="pTipo" value="form" checked> Formulário para a área preencher as datas</label>
-        <label class="chk" style="padding:0"><input type="radio" name="pTipo" value="saidas"> Lista das saídas já programadas (por mês)</label>
+        <label class="chk" style="padding:0"><input type="radio" name="pTipo" value="saidas"> Relação de quem vai sair de férias (para o Departamento Pessoal)</label>
       </fieldset>
       <div id="pdfForm" style="display:grid;gap:12px">
       <fieldset class="fs"><legend>Quais períodos incluir</legend>
@@ -502,7 +502,11 @@ body.has-sel .wrap>.foot{margin-bottom:90px}
       <label class="chk" style="padding:0;white-space:normal;align-items:flex-start"><input type="checkbox" id="pdfAq" style="margin-top:3px"> Incluir também quem ainda está em período de aquisição (ainda não tem férias vencidas para tirar)</label>
       <div class="fld"><label for="pdfPrazo">Devolver ao RH até (opcional)</label><input type="date" id="pdfPrazo"></div>
       </div>
-      <label class="chk" id="pdfSaiuL" style="padding:0" hidden><input type="checkbox" id="pdfSaiu"> Incluir quem já saiu e voltou</label>
+      <div id="pdfSaiBox" hidden style="display:grid;gap:10px"><fieldset class="fs"><legend>Saídas de férias entre</legend>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end"><div class="fld"><label for="pdfMes">Mês</label><select id="pdfMes"></select></div><div class="fld"><label for="pdfDe">De</label><input type="date" id="pdfDe"></div><div class="fld"><label for="pdfAte">Até</label><input type="date" id="pdfAte"></div></div>
+        <div class="small" style="color:var(--fg-2)">Escolha um mês ou um intervalo de datas. Entra quem começa as férias dentro do período.</div></fieldset>
+      <label class="chk" id="pdfSaiuL" style="padding:0"><input type="checkbox" id="pdfSaiu"> Incluir quem já saiu e voltou</label>
+      <button type="button" class="btn" id="pdfSaiXls" style="justify-self:start">Baixar esta relação em Excel</button></div>
       <div id="pdfWarn"></div>
       <div class="small" id="pdfMsg" aria-live="polite"></div>
     </div>
@@ -1263,24 +1267,26 @@ function buildPdf(scope, prazo, semProg){
   doc.text('Responsável pela área (nome e assinatura)',M,y+11,{size:8,color:'#45536c'}); doc.text('Data',M+360,y+11,{size:8,color:'#45536c'});
   // rodapés
   const N=doc.pages.length;
-  doc.pages.forEach((ops,i)=>{ doc.cur=ops; doc.line(M,566,842-M,566,'#d8dee9',0.5); doc.text('Painel de Férias · RH CRV Industrial',M,578,{size:7.5,color:'#6c788e'}); doc.text(`Página ${i+1} de ${N}`,842-M,578,{size:7.5,color:'#6c788e',align:'right'}); });
+  doc.pages.forEach((ops,i)=>{ doc.cur=ops; doc.line(M,566,842-M,566,'#d8dee9',0.5); doc.text(`Gestão de Pessoas · Painel de Férias · CRV Industrial · emitido em ${HOJE.toLocaleDateString('pt-BR')}`,M,578,{size:7.5,color:'#6c788e'}); doc.text(`Página ${i+1} de ${N}`,842-M,578,{size:7.5,color:'#6c788e',align:'right'}); });
   return {bytes:doc.output(), rows};
 }
 // ---------- PDF: lista de saídas programadas ----------
+function faixaSai(){ const de=($('pdfDe')||{}).value||'', ate=($('pdfAte')||{}).value||''; return {de,ate}; }
+function faixaTxt(){ const {de,ate}=faixaSai(); if(!de&&!ate) return ''; const m=($('pdfMes')||{}).value; if(m){ const [yy,mm]=m.split('-'); return `saídas em ${MESES_L[+mm-1]} de ${yy}`; } return 'saídas '+(de&&ate?`de ${fmtS(de)} a ${fmtS(ate)}`:de?`a partir de ${fmtS(de)}`:`até ${fmtS(ate)}`); }
 function saidasRows(incSaiu){
-  const set=new Set(people()), out=[];
+  const set=new Set(people()), out=[]; const {de,ate}=faixaSai();
   PERIODS.filter(x=>set.has(x.person)).forEach(x=>{ const s=progState(x); if(!s||s.k==='ret') return;
-    s.parts.forEach(q=>{ if(q.k==='done'&&!incSaiu) return; out.push({x,s,q}); }); });
+    s.parts.forEach(q=>{ if(q.k==='done'&&!incSaiu) return; if(de&&q.inicio<de) return; if(ate&&q.inicio>ate) return; out.push({x,s,q}); }); });
   return out.sort((a,b)=>a.q.inicio.localeCompare(b.q.inicio)||a.x.person.d.localeCompare(b.x.person.d,'pt-BR')||a.x.person.n.localeCompare(b.x.person.n,'pt-BR'));
 }
 function buildPdfSaidas(incSaiu){
-  const rows=saidasRows(incSaiu); const doc=new MiniPDF(); const M=30, BOT=548; const desc=pdfFilterDesc(); doc.title=`Saídas de férias - ${desc}`;
+  const rows=saidasRows(incSaiu); const doc=new MiniPDF(); const M=30, BOT=548; const desc=[faixaTxt(),pdfFilterDesc()].filter(Boolean).join(' · '); doc.title=`Saídas de férias - ${desc}`;
   const cols=[{t:'Contrato',w:46},{t:'Colaborador / Função',w:180},{t:'Seção / Setor',w:130},{t:'Início',w:58},{t:'Fim',w:58},{t:'Dias',w:32,al:'right'},{t:'Abono',w:36,al:'right'},{t:'Retorno',w:60},{t:'Parcela',w:42},{t:'Situação',w:60},{t:'Observação',w:80}];
   let y=0, first=true;
   const mLong=k=>{ const [yy,m]=k.split('-'); return `${MESES_L[+m-1]} de ${yy}`; };
   const tableHead=()=>{ doc.rect(M,y,782,20,'#24508f'); let x=M; cols.forEach(c=>{ doc.text(c.t.toUpperCase(),c.al==='right'?x+c.w-5:x+5,y+13,{size:6.8,bold:true,color:'#ffffff',align:c.al==='right'?'right':'left'}); x+=c.w; }); y+=20; };
   const header=()=>{ doc.addPage(); const lh=26, lw=lh*LOGOJ.w/LOGOJ.h; doc.image(M,22,lw,lh);
-    doc.text('Saídas de Férias Programadas',M+lw+14,36,{size:15,bold:true,color:'#1a3c6e'});
+    doc.text('Relação de Saídas de Férias · Departamento Pessoal',M+lw+14,36,{size:15,bold:true,color:'#1a3c6e'});
     doc.text(fit(desc,false,9.5,430),M+lw+14,50,{size:9.5,color:'#45536c'});
     doc.text(`Emitido em ${HOJE.toLocaleDateString('pt-BR')}`,842-M,34,{size:8.5,color:'#6c788e',align:'right'});
     doc.line(M,60,842-M,60,'#24508f',1.2); y=70;
@@ -1301,20 +1307,23 @@ function buildPdfSaidas(incSaiu){
     doc.rect(M,y,3,RH,sc);
     drawCells(doc,cols,lay,M,y);
     doc.line(M,y+RH,M+782,y+RH,'#d8dee9',0.4); y+=RH; });
+  if(rows.length){ if(y+22>BOT) header(); const ppl=new Set(rows.map(r=>r.x.person.c)).size; doc.rect(M,y+4,782,18,'#eef1f5'); doc.text(`Total: ${ppl} pessoa${ppl!==1?'s':''}  ·  ${rows.length} saída${rows.length!==1?'s':''}  ·  ${rows.reduce((a,r)=>a+r.q.dias,0)} dias de férias  ·  ${rows.reduce((a,r)=>a+(r.q.abono||0),0)} dias de abono`,M+6,y+16.5,{size:8.8,bold:true,color:'#15213a'}); }
   const N=doc.pages.length;
-  doc.pages.forEach((ops,i)=>{ doc.cur=ops; doc.line(M,566,842-M,566,'#d8dee9',0.5); doc.text('Painel de Férias · RH CRV Industrial',M,578,{size:7.5,color:'#6c788e'}); doc.text(`Página ${i+1} de ${N}`,842-M,578,{size:7.5,color:'#6c788e',align:'right'}); });
+  doc.pages.forEach((ops,i)=>{ doc.cur=ops; doc.line(M,566,842-M,566,'#d8dee9',0.5); doc.text(`Gestão de Pessoas · Painel de Férias · CRV Industrial · emitido em ${HOJE.toLocaleDateString('pt-BR')}`,M,578,{size:7.5,color:'#6c788e'}); doc.text(`Página ${i+1} de ${N}`,842-M,578,{size:7.5,color:'#6c788e',align:'right'}); });
   return {bytes:doc.output(), rows};
 }
 // ---------- tela de PDF ----------
 let DL=null;
 function pdfSync(){
   const scope=document.querySelector('input[name=pScope]:checked').value, tipo=document.querySelector('input[name=pTipo]:checked').value;
-  $('pdfForm').hidden=tipo!=='form'; $('pdfSaiuL').hidden=tipo!=='saidas';
+  $('pdfForm').hidden=tipo!=='form'; $('pdfSaiBox').hidden=tipo!=='saidas';
+  if(tipo==='saidas'&&!$('pdfMes').dataset.ok){ const ms=new Set(); PERIODS.forEach(x=>{ const st=progState(x); if(st) st.parts.forEach(q=>ms.add(q.inicio.slice(0,7))); }); const L=[...ms].sort();
+    $('pdfMes').innerHTML='<option value="">Todos / intervalo</option>'+L.map(m=>{ const [yy,mm]=m.split('-'); return `<option value="${m}">${MESES_L[+mm-1]} de ${yy}</option>`; }).join(''); $('pdfMes').dataset.ok=1; }
   let rows, ppl;
   if(tipo==='form'){ const sp=$('pdfSemProg').checked; rows=pdfRows(scope,sp); ppl=new Set(rows.map(x=>x.person.c)).size; const fora=sp?pdfRows(scope,false).length-rows.length:0;
     $('pdfInfo').innerHTML=`Filtros atuais: <b>${esc(pdfFilterDesc())}</b><br>O PDF terá <b>${ppl}</b> colaborador${ppl!==1?'es':''} e <b>${rows.length}</b> período${rows.length!==1?'s':''}, agrupados por setor e seção.${rows.some(x=>!x.adquirido)?`<br><b>${rows.filter(x=>!x.adquirido).length}</b> colaborador${rows.filter(x=>!x.adquirido).length!==1?'es':''} em período de aquisição incluído${rows.filter(x=>!x.adquirido).length!==1?'s':''}.`:''}${fora?`<br><b>${fora}</b> período${fora!==1?'s':''} de quem já está de férias ou agendado ficaram de fora.`:''}`; }
   else { rows=saidasRows($('pdfSaiu').checked); ppl=new Set(rows.map(r=>r.x.person.c)).size;
-    $('pdfInfo').innerHTML=`Filtros atuais: <b>${esc(pdfFilterDesc())}</b><br>O PDF terá <b>${rows.length}</b> saída${rows.length!==1?'s':''} de <b>${ppl}</b> colaborador${ppl!==1?'es':''}, agrupadas por mês.`; }
+    $('pdfInfo').innerHTML=`Filtros atuais: <b>${esc([faixaTxt()||'todas as datas',pdfFilterDesc()].join(' · '))}</b><br>A relação terá <b>${rows.length}</b> saída${rows.length!==1?'s':''} de <b>${ppl}</b> colaborador${ppl!==1?'es':''}, agrupadas por mês.`; $('pdfSaiXls').disabled=!rows.length||!DL; }
   const noArea=tipo==='form'&&!(onlySel&&SEL.size)&&!$('fDep').value&&!$('fGer').value&&!$('fDp').value;
   $('pdfWarn').innerHTML = (noArea?`<div class="warn mid">Nenhum setor, seção ou gerência selecionado. Para enviar a uma área, feche esta janela e escolha nos filtros.</div>`:'') +
     (!rows.length?`<div class="warn bad">Não há ${tipo==='form'?'períodos':'saídas registradas'} para incluir com esses filtros.</div>`:'') +
@@ -1323,6 +1332,16 @@ function pdfSync(){
 }
 $('btnPdf').addEventListener('click',()=>{ lastFocus=document.activeElement; $('pdfMsg').textContent=''; pdfSync(); $('ovPdf').hidden=false; setTimeout(()=>$('pdfGo').focus(),0); });
 document.querySelectorAll('input[name=pScope],input[name=pTipo],#pdfSaiu,#pdfSemProg,#pdfAq').forEach(r=>r.addEventListener('change',pdfSync));
+$('pdfMes').addEventListener('change',()=>{ const m=$('pdfMes').value; if(m){ const [yy,mm]=m.split('-').map(Number); $('pdfDe').value=m+'-01'; $('pdfAte').value=iso(new Date(yy,mm,0)); } else { $('pdfDe').value=''; $('pdfAte').value=''; } pdfSync(); });
+['pdfDe','pdfAte'].forEach(id=>$(id).addEventListener('change',()=>{ $('pdfMes').value=''; pdfSync(); }));
+$('pdfSaiXls').onclick=async()=>{ if(!DL) return; const rows=saidasRows($('pdfSaiu').checked); if(!rows.length) return;
+  const KL={now:'De férias',fut:'Programado',done:'Já saiu'};
+  const R=rows.map(r=>{ const p=r.x.person,q=r.q; return [p.c,p.n,p.f,p.d,p.dp,D(p.a),D(q.inicio),D(q.fim),q.dias,q.abono||0,D(addDays(q.fim,1)),q.n>1?`${q.i+1} de ${q.n}`:'Única',q.late?'Após o prazo':KL[q.k],D(r.x.de),D(r.x.ate),r.s.g.obs||'']; });
+  const ppl=new Set(rows.map(r=>r.x.person.c)).size; R.push([`Total: ${ppl} pessoa${ppl!==1?'s':''} · ${rows.length} saída${rows.length!==1?'s':''}`,'','','','','','','',rows.reduce((a,r)=>a+r.q.dias,0),rows.reduce((a,r)=>a+(r.q.abono||0),0),'','','','','','']);
+  try{ $('pdfMsg').textContent='Confirme o download na janela que abrir.';
+    const bytes=buildXlsx([{name:'Saídas de férias',head:['Contrato','Colaborador','Função','Seção','Setor','Admissão','Início das férias','Fim das férias','Dias de férias','Dias de abono','Retorno','Parcela','Situação','Período aquisitivo de','Período aquisitivo até','Observação'],widths:[10,36,28,30,18,12,13,13,9,9,12,9,14,13,13,34],rows:R}]);
+    await DL.save({filename:`Saidas_Ferias_${(faixaTxt()||'todas').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9]+/g,'_').slice(0,40)}_${iso(HOJE)}.xlsx`,data:bytes}); $('pdfMsg').textContent='Excel salvo.'; }
+  catch(e){ const c=e&&e.code; $('pdfMsg').textContent=c==='declined'?'Download cancelado.':'Não foi possível gerar o Excel agora.'; } };
 const closePdf=()=>{ $('ovPdf').hidden=true; if(lastFocus&&document.contains(lastFocus)) lastFocus.focus(); };
 $('pdfCancel').onclick=closePdf;
 $('ovPdf').addEventListener('click',e=>{ if(e.target===$('ovPdf')) closePdf(); });
@@ -1334,7 +1353,8 @@ $('pdfGo').onclick=async()=>{
     const tipo=document.querySelector('input[name=pTipo]:checked').value;
     const {bytes}= tipo==='form' ? buildPdf(scope,$('pdfPrazo').value,$('pdfSemProg').checked) : buildPdfSaidas($('pdfSaiu').checked);
     const area=((onlySel&&SEL.size)?'Selecionados':($('fDep').value||$('fDp').value||$('fGer').value||'Geral')).normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Za-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,60);
-    const name=`${tipo==='form'?'Ferias':'Saidas_Ferias'}_${area}_${iso(HOJE)}.pdf`;
+    const fx=tipo==='saidas'&&faixaTxt()?'_'+faixaTxt().replace(/^saídas (em )?/,'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,40):'';
+    const name=`${tipo==='form'?'Ferias':'Saidas_Ferias'}_${area}${fx}_${iso(HOJE)}.pdf`;
     $('pdfMsg').textContent='Confirme o download na janela que abrir.';
     await DL.save({filename:name,data:bytes});
     closePdf(); toast('PDF salvo. Abra o arquivo para imprimir ou enviar.');
