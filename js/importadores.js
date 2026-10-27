@@ -53,6 +53,8 @@ function detectar(wb, nomeArq){
   if (R.slice(0, 4).some(r => (r || []).map(s).some(x => /^Dados Cadastrais dos/i.test(x))) && R.some(r => s((r || [])[0]) === 'DEPENDENTES')) return { tipo:'hist', h:'dep', R };
   if (h.includes('Data da Transferência') && h.includes('Novo Departamento')) return { tipo:'hist', h:'depto', R };
   if (h.includes('Data Alteração') && h.includes('Cargo Novo')) return { tipo:'hist', h:'cargo', R };
+  // relação de jovens da RENAPSI com a idade (Nome do Jovem, Cidade, Estado, CNPJ, Idade, Carga Horária, Início e Fim do Contrato)
+  if (h.includes('Nome do Jovem') && h.includes('Idade')) return { tipo:'renIdade', R };
   // salários da folha (Código, Nome, CPF, Situação, Função, Admissão, Salário): painel restrito, só a equipe RH vê
   { const im = h.findIndex(x => /^(c[oó]digo|matr[ií]cula)$/i.test(x)), is = h.findIndex(x => /^sal[aá]rio/i.test(x));
     if (im >= 0 && is >= 0 && h.filter(Boolean).length <= 15 && !h.includes('EMPRESA')) return { tipo:'salario', R, im, is }; }
@@ -345,6 +347,14 @@ async function ler(f){
       
       out.push({ pac, rotulo:`${T} de ${br(pac.faixa[0])} a ${br(pac.faixa[1])}: ${pac.n.linhas} lançamentos de ${pac.n.pessoas} pessoas (${pac.tipos ? (l => l.length > 1 ? l.slice(0, -1).join(', ') + ' e ' + l[l.length - 1] : l[0] || 'nenhuma ocorrência')(['f', 'j', 's', 'm', 'p', 'o'].filter(t => pac.tipos.includes(t)).map(t => ({ f:'faltas', j:'faltas justificadas', s:'suspensões', m:'licença-maternidade', p:'licença-paternidade', o:'outras' })[t])) + ' do período; os outros tipos já carregados ficam como estão' : 'faltas, faltas justificadas, suspensões e licenças'}; ${pac.n.atestados} atestados ficam de fora)` + (pac.n.nomeDiferente ? ` · ${pac.n.nomeDiferente} com nome diferente do Quadro (fora)` : '') + (pac.n.foraDoQuadro ? ` · ${pac.n.foraDoQuadro} ${pac.hist === 'ocor' ? 'matrículas fora do Quadro' : 'sem cadastro no Quadro nem nome igual na CRV'}` : '') + (pac.n.ligados != null ? ` · ${pac.n.ligados} estão hoje na CRV (aparecem na ficha deles)` : '') }); return out; }
     out.push({ pac, rotulo:`${T}: ${pac.n.linhas} ${det.h === 'dep' ? 'dependentes' : 'registros'} de ${pac.n.pessoas} ${det.h === 'dep' ? 'colaboradores' : 'pessoas'}` + (pac.n.anuladas ? ` · ${pac.n.anuladas} anuladas fora` : '') + (pac.n.nomeDiferente ? ` · ${pac.n.nomeDiferente} com nome diferente do Quadro (fora)` : '') });
+    return out;
+  }
+  if (det.tipo === 'renIdade') { // idade informada pela RENAPSI: entra no painel da RENAPSI para quem não tem data de nascimento
+    const H = det.R[0].map(s), iN = H.indexOf('Nome do Jovem'), iI = H.indexOf('Idade'), iIn = H.findIndex(x => /^in[ií]cio/i.test(x)), iF = H.findIndex(x => /^fim/i.test(x));
+    const nk = v => s(v).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/\s+/g, ' ').trim();
+    const itens = det.R.slice(1).filter(r => r && s(r[iN]) && /\d/.test(s(r[iI]))).map(r => ({ k:nk(r[iN]), n:sp(r[iN]), idade:parseInt(s(r[iI]).replace(/\D/g, ''), 10), ini:iIn >= 0 ? iso(r[iIn]) : '', fim:iF >= 0 ? iso(r[iF]) : '', ref:REF }));
+    if (!itens.length) throw new Error('não achei nomes e idades na planilha');
+    out.push({ pac:{ renIdade:true, painel:'renapsi', referencia:REF, itens }, rotulo:`Idade dos jovens RENAPSI: ${itens.length} jovens (idade informada em ${REF.split('-').reverse().join('/')})` });
     return out;
   }
   if (det.tipo === 'salario') { // fica no painel restrito "salarios": o banco só entrega para a equipe RH

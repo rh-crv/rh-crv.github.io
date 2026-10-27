@@ -2019,6 +2019,8 @@ async function carregarPacotes(arquivos, esperado){
           try {
             if (i.zip) { const q = await enviarZip(i.f, i.painel, t => st.textContent = t); st.innerHTML = `<span style="color:var(--cane)">✓ ${q} arquivos</span>`; ok++; continue; }
             if (i.pac.hist) { const n2 = await salvarHistorico(i.pac); st.innerHTML = `<span style="color:var(--cane)">✓ ${n2} pessoas</span>`; ok++; if (['depto', 'cargo'].includes(i.pac.hist) || /^(ocor|atest)/.test(i.pac.hist)) { clearTimeout(window._gerT); window._gerT = setTimeout(() => GESTOR().gerar(true).catch(() => {}), 4000); } continue; }
+            if (i.pac.renIdade) { const quem = E.perfil.nome; const L = i.pac.itens.map(x => { const id = x.k.replace(/[^A-Z0-9]+/g, '_').slice(0, 90); return { painel:'renapsi', caminho:'idades/' + id, colecao:'idades', doc_id:id, dados:Object.assign({}, x, { em:new Date().toISOString(), por:quem }), atualizado_por:quem }; });
+              const { error } = await sb.from('registros').upsert(L, { onConflict:'painel,caminho' }); if (error) throw error; st.innerHTML = `<span style="color:var(--cane)">✓ ${L.length} idades</span>`; ok++; continue; }
             if (i.pac.entr) { const n2 = await salvarEntrevistas(i.pac.itens); st.innerHTML = `<span style="color:var(--cane)">✓ ${n2} entrevistas</span>`; ok++; continue; }
             if (i.pac.estab) { const n2 = await salvarEstabilidade(i.pac.itens); st.innerHTML = `<span style="color:var(--cane)">✓ ${n2} de estabilidade</span>`; ok++; continue; }
             await salvarPacote(i.pac, i.f, t => st.textContent = t);
