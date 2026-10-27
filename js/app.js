@@ -1529,7 +1529,9 @@ async function telaModelo(p, cfg, acao){
   const sel = vq ? vistaDe(p.id) : '';
   const nomeV = p.id === 'admissoes' ? 'Admissões' : 'Desligamentos';
   moldura((vq ? `<div class="vista-seg" role="tablist"><button data-vq="q" class="${sel === 'q' ? 'on' : ''}">Todas as empresas e anos</button><button data-vq="p" class="${sel === 'p' ? 'on' : ''}">${nomeV} 2026 · acompanhamento</button></div>` : '') +
+    (podeImportar() && podeEditar(p) && !SEM_PACOTE.includes(p.id) ? `<div class="cartao" id="imp-barra" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:10px 14px;margin-bottom:10px;border-left:4px solid #1d7a88"><div style="flex:1;min-width:220px;font-size:13.5px"><b>Atualizar a planilha deste painel</b><br><small style="color:var(--mut)">${['cartao-convenio','cartao-alimentacao','cartao-premium','cartao-adm','sysprocard','sysprocard-credito'].includes(p.id) ? 'Carregue a planilha exportada da Sysprocard. O painel compara com o Quadro e mostra quem ainda está sem cartão.' : 'Carregue a planilha nova do sistema. Os lançamentos feitos no app são mantidos.'}</small></div><button class="btn prim" id="imp-painel">Importar planilha${['cartao-convenio','cartao-alimentacao','cartao-premium','cartao-adm','sysprocard','sysprocard-credito'].includes(p.id) ? ' da Sysprocard' : ''}</button></div>` : '') +
     `<div id="modelo-area" class="cartao vazio"><div class="spinner" style="margin:0 auto"></div><p>Abrindo o painel…</p></div>`);
+  { const bi = document.getElementById('imp-painel'); if (bi) bi.onclick = () => escolherPacotes(PAC_DE[p.id] || p.id); }
   if (vq) document.querySelectorAll('.vista-seg [data-vq]').forEach(b => b.onclick = () => { try { localStorage.setItem('crv-vista-' + p.id, b.dataset.vq); } catch(_){} telaModelo(p, cfg); });
   if (vq && sel === 'q') return telaVistaQuadro(p, vq, acao);
   const meta = { set innerHTML(v){}, set textContent(v){} };   // informações do painel ficam só em Administração
