@@ -148,6 +148,7 @@ function render(){
   if(O.length)K.push(['O','Outros valores',nf(O.length),brl(soma(O,'valor')),'var(--vin)']);
   K.push(['desc','Descontos / abatimentos',nf(Dc.length),Dc.length?brl(soma(Dc,'desc'))+' abatidos':'nenhum no mês','var(--amb)'],
     ['liq','Total a descontar em folha',brl(soma(R,'liq')),'mensalidades '+brl(soma(R,'valor'))+(soma(R,'desc')?' − abatimentos '+brl(soma(R,'desc')):''),'var(--ver2)']);
+  const IN=R.filter(r=>r.mov==='inc'),EX=R.filter(r=>r.mov==='exc');if(IN.length||EX.length)K.push(['mov','Inclusões e exclusões',nf(IN.length)+' / '+nf(EX.length),'inclusões novas / exclusões no mês','var(--vin)']);
   if(DS.length)K.push(['ds','Conferir situação',nf(DS.length),'desligado(s) ou fora do Quadro','var(--bad)']);
   $('kpis').innerHTML=K.map(k=>`<button class="kpi" type="button" data-k="${k[0]}" style="--c:${k[4]}"><div class="l">${k[1]}</div><div class="v">${k[2]}</div><div class="s">${k[3]}</div></button>`).join('');
   /* leitura do mês: só o que os dados mostram */
@@ -163,13 +164,15 @@ function render(){
 }
 function porCC(R){const m=new Map();R.forEach(r=>{const k=ccKey(r);const o=m.get(k)||{n:k,cc:r.cc,ccd:r.ccd,q:0,f:0,i:0,v:0,d:0,l:0};o.q++;r.tipo==='F'?o.f++:r.tipo==='I'?o.i++:0;o.v+=+r.valor||0;o.d+=+r.desc||0;o.l+=r.liq;m.set(k,o)});
   return [...m.values()].sort((a,b)=>b.v-a.v||a.n.localeCompare(b.n))}
+const movTxt=r=>r.mov==='inc'?'Inclusão nova em '+br(r.movData):r.mov==='exc'?'Exclusão em '+br(r.movData):'';
+const br=s=>s?String(s).slice(0,10).split('-').reverse().join('/'):'';
 const tipoPill=t=>`<span class="pill ${(TIPOS[t]||TIPOS.O).c}">${t==='F'?'Familiar':t==='I'?'Individual':'Outro'}</span>`;
 const sitTxt=r=>r.sit==='Ativo'?'':`<div><span class="pill p-bad">${esc(r.sit)}${r.deslig?' em '+r.deslig.slice(0,10).split('-').reverse().join('/'):''}</span></div>`;
 function vN(){const R=filtrados(),T=doMes(MES);const ccs=[...new Set(T.map(ccKey))].sort();
   $('vN').innerHTML=`<div class="fbar"><input id="fq" placeholder="Buscar nome, matrícula, função ou centro de custo" value="${esc(FQ)}"><select id="ft"><option value="">Todos os tipos</option><option value="F" ${FT==='F'?'selected':''}>Familiar</option><option value="I" ${FT==='I'?'selected':''}>Individual</option><option value="O" ${FT==='O'?'selected':''}>Outro</option></select>
     <select id="fcc"><option value="">Todos os centros de custo</option>${ccs.map(c=>`<option ${FCC===c?'selected':''}>${esc(c)}</option>`).join('')}</select>${FQ||FT||FCC?'<button class="btn sm" id="flimpa" type="button">Limpar filtros</button>':''}</div>
   ${T.length?`<div class="tw"><table><thead><tr><th>Mat.</th><th>Nome</th><th>Centro de custo</th><th>Tipo</th><th class="n">Mensalidade</th><th class="n">Desconto</th><th class="n">A descontar</th><th>Obs.</th><th></th></tr></thead><tbody>
-    ${R.map(r=>`<tr class="cl" data-p="${esc(r.mat)}"><td>${esc(r.mat)}</td><td><b>${esc(r.nome)}</b><div class="sm">${esc(r.funcao)}</div>${sitTxt(r)}${r.difNome?`<div class="sm" style="color:var(--bad)">Na lista: ${esc(r.nome0||'')}</div>`:''}</td><td>${r.cc?`<b>${esc(r.cc)}</b><div class="sm">${esc(r.ccd)}</div>`:'<span class="sm">—</span>'}</td><td>${tipoPill(r.tipo)}</td><td class="n">${brl(r.valor)}</td><td class="n">${+r.desc?brl(r.desc):'<span class="sm">—</span>'}</td><td class="n"><b>${brl(r.liq)}</b></td><td><span class="sm">${esc(r.obs||'')}</span></td><td class="n"><button class="btn sm" type="button" data-ed="${esc(r.id)}">Editar</button></td></tr>`).join('')}</tbody>
+    ${R.map(r=>`<tr class="cl" data-p="${esc(r.mat)}"><td>${esc(r.mat)}</td><td><b>${esc(r.nome)}</b><div class="sm">${esc(r.funcao)}</div>${sitTxt(r)}${r.difNome?`<div class="sm" style="color:var(--bad)">Na lista: ${esc(r.nome0||'')}</div>`:''}</td><td>${r.cc?`<b>${esc(r.cc)}</b><div class="sm">${esc(r.ccd)}</div>`:'<span class="sm">—</span>'}</td><td>${tipoPill(r.tipo)}</td><td class="n">${brl(r.valor)}</td><td class="n">${+r.desc?brl(r.desc):'<span class="sm">—</span>'}</td><td class="n"><b>${brl(r.liq)}</b></td><td>${r.mov?`<span class="pill ${r.mov==='inc'?'p-f':'p-bad'}">${esc(movTxt(r))}</span>`:''}<div><span class="sm">${esc(r.obs||'')}</span></div></td><td class="n"><button class="btn sm" type="button" data-ed="${esc(r.id)}">Editar</button></td></tr>`).join('')}</tbody>
     <tfoot><tr><td colspan="4">Total: ${nf(R.length)} ${R.length===1?'pessoa':'pessoas'}</td><td class="n">${brl(soma(R,'valor'))}</td><td class="n">${brl(soma(R,'desc'))}</td><td class="n">${brl(soma(R,'liq'))}</td><td colspan="2"></td></tr></tfoot></table></div>`
     :`<div class="vazio">Nenhum sócio lançado em ${mesCap(MES).toLowerCase()}.<br>Use <b>Importar planilha do mês</b>, <b>Copiar do mês anterior</b> ou <b>+ Lançar sócio</b>.</div>`}`;
   const fq=$('fq');fq.oninput=()=>{FQ=fq.value;const p=fq.selectionStart;vN();const n=$('fq');n.focus();n.setSelectionRange(p,p)};
@@ -211,7 +214,9 @@ function form(x){const ed=!!x;x=x||{mes:MES,tipo:'F',valor:TIPOS.F.v,desc:0};
     <label class="c3">Mensalidade (R$)<input id="iVal" inputmode="decimal" value="${esc(String(x.valor??'').replace('.',','))}"></label>
     <label class="c3">Desconto / abatimento (R$)<input id="iDesc" inputmode="decimal" placeholder="0,00" value="${+x.desc?esc(String(x.desc).replace('.',',')):''}"></label>
     <label class="c3">A descontar em folha<input id="iLiq" disabled></label>
-    <label class="c6">Observação (motivo do desconto, combinado etc.)<input id="iObs" value="${esc(x.obs||'')}"></label></div>`,
+    <label class="c6">Observação (motivo do desconto, combinado etc.)<input id="iObs" value="${esc(x.obs||'')}"></label>
+    <label class="c3">Movimentação no clube<select id="iMov"><option value="">Sem movimentação</option><option value="inc" ${x.mov==='inc'?'selected':''}>Inclusão nova</option><option value="exc" ${x.mov==='exc'?'selected':''}>Exclusão</option></select></label>
+    <label class="c3">Data da inclusão / exclusão<input type="date" id="iMovD" value="${esc(x.movData||'')}"></label></div>`,
     `${ed?'<button class="btn perigo" type="button" id="iDel">Excluir</button>':''}<button class="btn" type="button" data-x2>Cancelar</button><button class="btn pri" type="button" id="iOk">Salvar</button>`);
   const g=s=>w.querySelector(s),num=s=>{const t=String(s||'').replace(/R\$\s*/,'').trim();if(!t)return 0;const v=parseFloat(/,/.test(t)?t.replace(/\./g,'').replace(',','.'):t);return isNaN(v)?NaN:v};
   const liq=()=>{const v=num(g('#iVal').value),d=num(g('#iDesc').value);g('#iLiq').value=isNaN(v)||isNaN(d)?'':brl(v-d)};
@@ -225,7 +230,8 @@ function form(x){const ed=!!x;x=x||{mes:MES,tipo:'F',valor:TIPOS.F.v,desc:0};
     if(!m)return msg('Informe a matrícula.');const nome=p?p.nome:(g('#iNome')&&g('#iNome').value.trim())||'';if(!nome)return msg('Informe o nome (matrícula fora do Quadro).');
     if(isNaN(v)||v<0)return msg('Mensalidade inválida.');if(isNaN(d)||d<0)return msg('Desconto inválido.');if(d>v)return msg('O desconto não pode ser maior que a mensalidade.');
     const id=ed?x.id:mes+'_'+m;if(!ed&&L.some(y=>y.id===id))return msg('Esta matrícula já está lançada em '+mesCap(mes).toLowerCase()+'. Use Editar.');
-    const o={mes,mat:m,nome,tipo:g('#iTipo').value,valor:+v.toFixed(2),desc:+d.toFixed(2),obs:g('#iObs').value.trim(),em:new Date().toISOString(),por:quem()};
+    const mov=g('#iMov').value,movData=g('#iMovD').value;if(mov&&!movData)return msg('Informe a data da '+(mov==='inc'?'inclusão':'exclusão')+'.');
+    const o={mes,mat:m,nome,tipo:g('#iTipo').value,valor:+v.toFixed(2),desc:+d.toFixed(2),obs:g('#iObs').value.trim(),mov,movData:mov?movData:'',em:new Date().toISOString(),por:quem()};
     try{await DB.collection('lanc').doc(id).set(o);toast('Lançamento salvo');MES=mes;w.remove()}catch(e){msg('Não consegui salvar: '+(e.message||'sem permissão'))}};
 }
 
@@ -258,8 +264,8 @@ async function importar(file){const X=XL();if(!X)return toast('Leitor de Excel i
       MES=mes;toast(nf(R.length)+' lançamentos importados em '+mesCap(mes).toLowerCase());w.remove()}catch(e){b.disabled=false;b.textContent='Importar';w.querySelector('#mMsg').textContent='Não consegui importar: '+(e.message||'sem permissão')}};
 }
 async function copiar(){const ant=addMes(MES,-1),A=L.filter(x=>x.mes===ant);if(!A.length)return toast('Não há lançamentos em '+mesCap(ant).toLowerCase()+' para copiar.');
-  const ja=new Set(L.filter(x=>x.mes===MES).map(x=>mat0(x.mat))),N=A.filter(x=>!ja.has(mat0(x.mat))),desl=N.filter(x=>pes(x.mat)&&pes(x.mat).situacao==='Desligado');
-  const w=modal('Copiar de '+mesCap(ant).toLowerCase()+' para '+mesCap(MES).toLowerCase(),`<p style="margin-top:0">${nf(N.length)} sócio(s) de ${mesCap(ant).toLowerCase()} ainda não estão em ${mesCap(MES).toLowerCase()}. Entram com o mesmo tipo e mensalidade, <b>sem</b> o desconto do mês anterior.</p>
+  const ja=new Set(L.filter(x=>x.mes===MES).map(x=>mat0(x.mat))),N=A.filter(x=>!ja.has(mat0(x.mat))&&x.mov!=='exc'),exN=A.filter(x=>x.mov==='exc').length,desl=N.filter(x=>pes(x.mat)&&pes(x.mat).situacao==='Desligado');
+  const w=modal('Copiar de '+mesCap(ant).toLowerCase()+' para '+mesCap(MES).toLowerCase(),`<p style="margin-top:0">${nf(N.length)} sócio(s) de ${mesCap(ant).toLowerCase()} ainda não estão em ${mesCap(MES).toLowerCase()}. Entram com o mesmo tipo e mensalidade, <b>sem</b> o desconto e sem a marcação de inclusão do mês anterior.${exN?' '+exN+' com exclusão marcada em '+mesCap(ant).toLowerCase()+' ficam de fora.':''}</p>
     ${desl.length?`<div class="ck"><label><input type="checkbox" id="cpDs" checked> Deixar de fora ${desl.length} desligado(s): ${desl.map(x=>esc(pes(x.mat).nome)).join(', ')}</label></div>`:''}`,
     `<button class="btn" type="button" data-x2>Cancelar</button><button class="btn pri" type="button" id="cpOk" ${N.length?'':'disabled'}>Copiar</button>`);
   w.querySelector('[data-x2]').onclick=()=>w.remove();
@@ -286,15 +292,15 @@ function exportar(){const R=filtrados(),fil=FQ||FT||FCC;
   w.querySelector('#xP').onclick=()=>{const o=op();if(nada(o))return;pdf(R,o).then(()=>w.remove(),e=>w.querySelector('#mMsg').textContent=e.message)}}
 const arq=()=>'Capinopolis Clube - '+mesCap(MES).replace('/',' ');
 async function xls(R,o){o=Object.assign({},o);if(o.t)o.c=true;const X=XL();if(!X)throw new Error('Excel indisponível.');if(!R.length)throw new Error('Nada para exportar.');const wb=X.utils.book_new();const RN=R.slice().sort((a,b)=>a.nome.localeCompare(b.nome));
-  if(o.d){const a=[['CAPINÓPOLIS CLUBE · RELATÓRIO DE DESCONTO · '+mesCap(MES).toUpperCase()],[],['MATRÍCULA','NOME','MENSALIDADE','DESCONTO','VALOR A DESCONTAR']];
-    RN.forEach(r=>a.push([+r.mat||r.mat,r.nome,r.valor,+r.desc||0,r.liq]));a.push(['TOTAL: '+RN.length+(RN.length===1?' pessoa':' pessoas'),'',soma(RN,'valor'),soma(RN,'desc'),soma(RN,'liq')]);
-    const ws=X.utils.aoa_to_sheet(a);ws['!cols']=[12,44,15,13,18].map(x=>({wch:x}));for(let i=3;i<a.length;i++)['C','D','E'].forEach(c=>{const k=c+(i+1);if(ws[k])ws[k].z='"R$" #,##0.00'});X.utils.book_append_sheet(wb,ws,'Desconto',{semTotal:true})}
+  if(o.d){const a=[['CAPINÓPOLIS CLUBE · RELATÓRIO DE DESCONTO · '+mesCap(MES).toUpperCase()],[],['MATRÍCULA','NOME','MENSALIDADE','DESCONTO','VALOR A DESCONTAR','MOVIMENTAÇÃO']];
+    RN.forEach(r=>a.push([+r.mat||r.mat,r.nome,r.valor,+r.desc||0,r.liq,movTxt(r)]));a.push(['TOTAL: '+RN.length+(RN.length===1?' pessoa':' pessoas'),'',soma(RN,'valor'),soma(RN,'desc'),soma(RN,'liq'),'']);
+    const ws=X.utils.aoa_to_sheet(a);ws['!cols']=[12,44,15,13,18,26].map(x=>({wch:x}));for(let i=3;i<a.length;i++)['C','D','E'].forEach(c=>{const k=c+(i+1);if(ws[k])ws[k].z='"R$" #,##0.00'});X.utils.book_append_sheet(wb,ws,'Desconto',{semTotal:true})}
   if(o.t){const a=[['CAPINÓPOLIS CLUBE · LANÇAMENTO DA NOTA · '+mesCap(MES).toUpperCase()],[],['MATRÍCULA','NOME','CENTRO DE CUSTO','VALOR TOTAL']];
     RN.forEach(r=>a.push([+r.mat||r.mat,r.nome,r.cc?(r.cc+' - '+r.ccd):'',r.valor]));a.push(['TOTAL: '+RN.length+(RN.length===1?' pessoa':' pessoas'),'','',soma(RN,'valor')]);
     const ws=X.utils.aoa_to_sheet(a);ws['!cols']=[12,44,40,16].map(x=>({wch:x}));for(let i=3;i<a.length;i++){const k='D'+(i+1);if(ws[k])ws[k].z='"R$" #,##0.00'}X.utils.book_append_sheet(wb,ws,'Lançamento da nota',{semTotal:true})}
-  if(o.n){const a=[['CRV INDUSTRIAL · CAPINÓPOLIS CLUBE · '+mesCap(MES).toUpperCase()],[],['MAT','NOME','FUNÇÃO','CENTRO DE CUSTO','DEPARTAMENTO','TIPO','VALOR MENSALIDADE','DESCONTO','VALOR A DESCONTAR','SITUAÇÃO','OBS']];
-    R.forEach(r=>a.push([+r.mat,r.nome,r.funcao,r.cc,r.ccd,r.tipo==='F'?'CONTR. FAMILIAR':r.tipo==='I'?'CONTR. INDIVIDUAL':'OUTRO',r.valor,+r.desc||0,r.liq,r.sit,r.obs||'']));
-    const ws=X.utils.aoa_to_sheet(a);ws['!cols']=[8,40,26,10,30,17,14,12,15,14,30].map(x=>({wch:x}));for(let i=3;i<a.length;i++)['G','H','I'].forEach(c=>{const k=c+(i+1);if(ws[k])ws[k].z='"R$" #,##0.00'});X.utils.book_append_sheet(wb,ws,'Lançamentos')}
+  if(o.n){const a=[['CRV INDUSTRIAL · CAPINÓPOLIS CLUBE · '+mesCap(MES).toUpperCase()],[],['MAT','NOME','FUNÇÃO','CENTRO DE CUSTO','DEPARTAMENTO','TIPO','VALOR MENSALIDADE','DESCONTO','VALOR A DESCONTAR','SITUAÇÃO','MOVIMENTAÇÃO','OBS']];
+    R.forEach(r=>a.push([+r.mat,r.nome,r.funcao,r.cc,r.ccd,r.tipo==='F'?'CONTR. FAMILIAR':r.tipo==='I'?'CONTR. INDIVIDUAL':'OUTRO',r.valor,+r.desc||0,r.liq,r.sit,movTxt(r),r.obs||'']));
+    const ws=X.utils.aoa_to_sheet(a);ws['!cols']=[8,40,26,10,30,17,14,12,15,14,26,30].map(x=>({wch:x}));for(let i=3;i<a.length;i++)['G','H','I'].forEach(c=>{const k=c+(i+1);if(ws[k])ws[k].z='"R$" #,##0.00'});X.utils.book_append_sheet(wb,ws,'Lançamentos')}
   if(o.c){const C=porCC(R);const a=[['CAPINÓPOLIS CLUBE · RATEIO POR CENTRO DE CUSTO · '+mesCap(MES).toUpperCase()],[],['CENTRO DE CUSTO','DEPARTAMENTO','SÓCIOS','FAMILIAR','INDIVIDUAL','VALOR DA NOTA']];
     C.forEach(c=>a.push([c.cc||'—',c.ccd||c.n,c.q,c.f,c.i,+c.v.toFixed(2)]));
     a.push(['TOTAL: '+R.length+' pessoas',C.length+' centros de custo',R.length,R.filter(r=>r.tipo==='F').length,R.filter(r=>r.tipo==='I').length,soma(R,'valor')]);
@@ -309,9 +315,9 @@ async function pdf(R,o){o=Object.assign({},o);if(o.t)o.c=true;const J=JS();if(!J
   let y=25;const st={fontSize:8,cellPadding:1.6,lineColor:[225,230,226],lineWidth:.15},hs={fillColor:[31,107,74],textColor:255,fontStyle:'bold'};
   const RN=R.slice().sort((a,b)=>a.nome.localeCompare(b.nome)),fsP={fillColor:[238,241,239],textColor:[20,33,30],fontStyle:'bold',halign:'right'};let sec=0;
   const titulo=t=>{if(sec++){doc.addPage();y=16}doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(18,63,45);doc.text(t,10,y);y+=3};
-  if(o.d){titulo('Relatório de desconto');doc.autoTable({startY:y,head:[['Matrícula','Nome','Mensalidade','Desconto','Valor a descontar']],body:RN.map(r=>[r.mat,r.nome,brl(r.valor),+r.desc?brl(r.desc):'-',brl(r.liq)]),
-    foot:[[{content:'Total: '+RN.length+(RN.length===1?' pessoa':' pessoas'),colSpan:2,styles:{halign:'left'}},brl(soma(RN,'valor')),brl(soma(RN,'desc')),brl(soma(RN,'liq'))]],showFoot:'lastPage',footStyles:fsP,styles:st,headStyles:hs,
-    columnStyles:{0:{cellWidth:22},2:{halign:'right',cellWidth:28},3:{halign:'right',cellWidth:24},4:{halign:'right',cellWidth:32}},margin:{left:10,right:10}});y=doc.lastAutoTable.finalY+8}
+  if(o.d){titulo('Relatório de desconto');doc.autoTable({startY:y,head:[['Matrícula','Nome','Mensalidade','Desconto','Valor a descontar','Movimentação']],body:RN.map(r=>[r.mat,r.nome,brl(r.valor),+r.desc?brl(r.desc):'-',brl(r.liq),movTxt(r)]),
+    foot:[[{content:'Total: '+RN.length+(RN.length===1?' pessoa':' pessoas'),colSpan:2,styles:{halign:'left'}},brl(soma(RN,'valor')),brl(soma(RN,'desc')),brl(soma(RN,'liq')),'']],showFoot:'lastPage',footStyles:fsP,styles:st,headStyles:hs,
+    columnStyles:{0:{cellWidth:20},2:{halign:'right',cellWidth:24},3:{halign:'right',cellWidth:21},4:{halign:'right',cellWidth:27},5:{cellWidth:38}},margin:{left:10,right:10}});y=doc.lastAutoTable.finalY+8}
   if(o.t){titulo('Lançamento da nota');doc.autoTable({startY:y,head:[['Matrícula','Nome','Centro de custo','Valor total']],body:RN.map(r=>[r.mat,r.nome,r.cc?r.cc+' - '+r.ccd:'-',brl(r.valor)]),
     foot:[[{content:'Total: '+RN.length+(RN.length===1?' pessoa':' pessoas'),colSpan:3,styles:{halign:'left'}},brl(soma(RN,'valor'))]],showFoot:'lastPage',footStyles:fsP,styles:st,headStyles:{fillColor:[29,122,136],textColor:255,fontStyle:'bold'},
     columnStyles:{0:{cellWidth:22},3:{halign:'right',cellWidth:30}},margin:{left:10,right:10}});y=doc.lastAutoTable.finalY+8}
@@ -332,7 +338,7 @@ $('fImp').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)importar
 $('bCopia').onclick=()=>DB?copiar():toast('Sem conexão com os dados.');$('bExp').onclick=exportar;
 $('kpis').onclick=e=>{const b=e.target.closest('[data-k]');if(!b)return;const R=doMes(MES),k=b.dataset.k,mc=mesCap(MES).toLowerCase();
   const M={tot:['Sócios em '+mc,R],F:['Contribuição familiar · '+mc,R.filter(r=>r.tipo==='F')],I:['Contribuição individual · '+mc,R.filter(r=>r.tipo==='I')],O:['Outros valores · '+mc,R.filter(r=>r.tipo!=='F'&&r.tipo!=='I')],
-    desc:['Com desconto / abatimento · '+mc,R.filter(r=>+r.desc>0)],liq:['Total a descontar · '+mc,R],ds:['Conferir situação · '+mc,R.filter(r=>r.sit!=='Ativo')]}[k];
+    desc:['Com desconto / abatimento · '+mc,R.filter(r=>+r.desc>0)],mov:['Inclusões e exclusões · '+mc,R.filter(r=>r.mov)],liq:['Total a descontar · '+mc,R],ds:['Conferir situação · '+mc,R.filter(r=>r.sit!=='Ativo')]}[k];
   if(M)gaveta(M[0],nf(M[1].length)+' pessoa(s) · '+brl(soma(M[1],'liq'))+' a descontar',M[1])};
 document.addEventListener('click',e=>{if(e.target.closest('.ovl,.mod'))return;const ed=e.target.closest('[data-ed]');if(ed){e.stopPropagation();return form(L.find(x=>x.id===ed.dataset.ed))}
   const ms=e.target.closest('[data-mes]');if(ms){MES=ms.dataset.mes;TAB='n';render();return}
