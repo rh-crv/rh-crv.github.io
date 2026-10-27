@@ -57,7 +57,8 @@ const fmtNum = n => Number(n||0).toLocaleString('pt-BR');
 const iniciais = n => String(n||'?').split(/\s+/).filter(Boolean).slice(0,2).map(p=>p[0]).join('').toUpperCase();
 const usuarioParaEmail = u => normal(u).replace(/\s+/g,'.').replace(/[^a-z0-9._-]/g,'') + '@' + CFG.DOMINIO_LOGIN;
 const ehAdmin = () => E.perfil?.papel === 'admin';   // administradora principal: importa bases, mexe na estrutura, usuários e configurações
-const ehRH = () => ['admin', 'rh'].includes(E.perfil?.papel);   // equipe RH: vê tudo e lança tudo, sem importar bases nem mudar estrutura
+const ehRH = () => ['admin', 'rh'].includes(E.perfil?.papel);
+const podeImportar = () => E.perfil?.papel === 'admin' || (!!E.perfil?.importa && ['rh', 'editor'].includes(E.perfil?.papel));   // atualiza as bases dos painéis (planilhas)   // equipe RH: vê tudo e lança tudo, sem importar bases nem mudar estrutura
 /* menu do gestor: mesmas frentes e cores do app, só com o que ele vê da equipe */
 const GESTOR_MENU = [
   ['Gestão de Colaboradores', [['eq', 'Equipe'], ['mov', 'Admissões e saídas'], ['pv', 'Quadro x previsto'], ['exp', 'Período de experiência'], ['nov', 'Novos colaboradores']]],
@@ -78,6 +79,7 @@ function toast(msg, erro=false){
 }
 
 function traduzErro(e){
+  { const m0 = String((e && (e.message || e.error_description || e.details)) || e || '').toLowerCase(); if (m0.includes('importa') && (m0.includes('column') || m0.includes('coluna'))) return 'Falta preparar o banco para liberar a importação de planilhas: rode o arquivo 09_importar_planilhas.sql no Supabase (SQL Editor).'; }
   const m = (e?.message || String(e||'')).toLowerCase();
   if (m.includes('invalid login')) return 'Usuário ou senha incorretos.';
   if (m.includes('already registered') || m.includes('already been registered') || m.includes('duplicate key')) return 'Esse usuário já existe. Escolha outro nome de usuário.';
@@ -346,6 +348,7 @@ function moldura(conteudo){
         </div>
         ${temQuadro ? `<button class="lat-item ${h.startsWith('#/ficha')?'ativo':''}" data-ir="#/ficha"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2.5"/><path d="M5.5 17c.6-1.8 2-2.7 3.5-2.7s2.9.9 3.5 2.7M14 9h4M14 13h4"/></svg><span>Perfil do Colaborador</span></button>` : ''}
         ${temQuadro ? `<button class="lat-item ${h==='#/consulta'?'ativo':''}" data-ir="#/consulta"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="6"/><path d="M20 20l-5.6-5.6M8 10h4M10 8v4"/></svg><span>Consulta de Candidatos</span></button>` : ''}
+        ${podeImportar() && !ehAdmin() ? `<button class="lat-item ${h==='#/importar'?'ativo':''}" data-ir="#/importar"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg><span>Importar planilhas</span></button>` : ''}
         ${ehRH() ? `<button class="lat-item ${h==='#/relatorio'?'ativo':''}" data-ir="#/relatorio"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 17v-3M12 17v-6M15 17v-2"/></svg><span>Relatórios Gerenciais</span></button>` : ''}
         <div class="lat-busca"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="lat-q" type="search" placeholder="Buscar painel ou ação" autocomplete="off" aria-label="Buscar painel"></div>
         <div class="lat-sec">Frentes</div>
@@ -430,6 +433,7 @@ function rota(){
   if (E.perfil.papel === 'gestor') return h === '#/conta' ? telaConta() : GESTOR().tela(h.startsWith('#/eq/') ? h.slice(5) : '');
   if (h.startsWith('#/p/')) { const [id, acao] = h.slice(4).split('/'); return telaPainel(decodeURIComponent(id), acao || ''); }
   if (h === '#/admin' && ehAdmin()) return telaAdmin();
+  if (h === '#/importar' && podeImportar()) return telaImportar();
   if (h === '#/central') return telaCentral();
   if (h === '#/ficha' || h.startsWith('#/ficha/')) return telaFicha(h.split('/')[2] || '');
   if (h === '#/consulta') return telaConsulta();
@@ -2202,7 +2206,7 @@ async function adminUsuarios(){
     <p style="color:var(--mut);margin-top:0;font-size:13px"><b>Administrador principal</b> faz tudo: importa bases, cria e tira painéis, cadastra usuários e muda configurações · <b>Equipe RH</b> vê todos os painéis (inclusive restritos) e faz todos os lançamentos, mas não importa bases nem mexe na estrutura · <b>Editor</b> vê e atualiza as frentes liberadas · <b>Leitor</b> só consulta as frentes liberadas · <b>Gestor de área</b> vê só a própria equipe (experiência, férias, frequência, novos e crachás), sem acesso aos painéis. Painéis <span class="selo restrito">restrito</span> são só de administradores.</p>
     ${data.map((u,i)=>`<div class="linha-u ${u.ativo?'':'inativo'}">
       <div class="av" style="background:${PALETA[i%PALETA.length]}">${esc(iniciais(u.nome))}</div>
-      <div class="info"><b>${esc(u.nome)}</b> ${u.ativo?'':'<small>(desativado)</small>'}<br><small>@${esc(u.usuario)} · ${esc(nomePapel(u.papel))}${u.papel==='admin'?' · todas as frentes':u.papel==='rh'?' · todos os painéis, só lançamentos':(u.paineis_ver||[]).length||(u.paineis_editar||[]).length?` · ${u.frentes?.length ? esc(u.frentes.join(', ')) + ' + ' : ''}painéis: ${esc([...(u.paineis_ver||[]), ...(u.paineis_editar||[])].map(id => (E.paineis.find(x => x.id === id) || {}).nome || id).join(', '))}`:u.papel==='gestor'?` · ${(u.areas||[]).filter(k=>GESTOR().chaveOk(k)).length ? esc((u.areas||[]).filter(k=>GESTOR().chaveOk(k)).map(k=>(k[0]==='a'?'setor ':'depto. ')+GESTOR().nomeChave(k)).join(', ')) : 'nenhum setor vinculado'}`:` · ${u.frentes?.length ? esc(u.frentes.join(', ')) : 'nenhuma frente liberada'}`}</small></div>
+      <div class="info"><b>${esc(u.nome)}</b> ${u.ativo?'':'<small>(desativado)</small>'}<br><small>@${esc(u.usuario)} · ${esc(nomePapel(u.papel))}${u.importa && u.papel !== 'admin' ? ' · importa planilhas' : ''}${u.papel==='admin'?' · todas as frentes':u.papel==='rh'?' · todos os painéis'+(u.importa?'':', só lançamentos'):(u.paineis_ver||[]).length||(u.paineis_editar||[]).length?` · ${u.frentes?.length ? esc(u.frentes.join(', ')) + ' + ' : ''}painéis: ${esc([...(u.paineis_ver||[]), ...(u.paineis_editar||[])].map(id => (E.paineis.find(x => x.id === id) || {}).nome || id).join(', '))}`:u.papel==='gestor'?` · ${(u.areas||[]).filter(k=>GESTOR().chaveOk(k)).length ? esc((u.areas||[]).filter(k=>GESTOR().chaveOk(k)).map(k=>(k[0]==='a'?'setor ':'depto. ')+GESTOR().nomeChave(k)).join(', ')) : 'nenhum setor vinculado'}`:` · ${u.frentes?.length ? esc(u.frentes.join(', ')) : 'nenhuma frente liberada'}`}</small></div>
       <button class="btn peq borda" data-edit="${esc(u.user_id)}">Editar</button>
       <button class="btn peq borda" data-senha="${esc(u.user_id)}">Nova senha</button>
     </div>`).join('')}`;
@@ -2233,10 +2237,11 @@ function formUsuario(u, todos){
       <div class="campo oculto" id="u-areas-box"><label>Setor(es) que o gestor vê</label><input id="u-areas-q" type="search" placeholder="Filtrar setores" style="margin-bottom:6px">
         <div class="checks gs-areas" id="u-areas"><small style="color:var(--mut)">Carregando as áreas do Quadro…</small></div>
         <small style="color:var(--mut)">Marque o setor inteiro (coluna Setor da planilha do Quadro) ou, em "escolher departamentos", só os departamentos que ele cuida. Dá para marcar mais de um. O gestor vê só as pessoas desses setores, sem CPF, salário, saúde ou ocorrências sensíveis.</small></div>
+      <div class="campo" id="u-imp-box"><label><input type="checkbox" id="u-imp" ${u?.importa?'checked':''}> Pode importar planilhas (atualizar as bases dos painéis, como Quadro e cartões Convênio)</label><small style="color:var(--mut)">Para Equipe RH ou Editor. A pessoa ganha o item "Importar planilhas" no menu e atualiza só os painéis em que pode lançar. Apagar bases continua só com o administrador.</small></div>
       ${!novo ? `<div class="campo"><label><input type="checkbox" id="u-ativo" ${u.ativo?'checked':''}> Usuário ativo (desmarque para bloquear o acesso)</label></div>` : ''}`,
     pe: `<button class="btn borda" id="u-c">Cancelar</button><button class="btn prim" id="u-ok">${novo?'Criar usuário':'Salvar'}</button>`,
     aoAbrir: m => {
-      const atualizaFrentes = () => { const pp = $('#u-papel').value; $('#u-frentes-box').classList.toggle('oculto', pp === 'admin' || pp === 'gestor' || pp === 'rh'); $('#u-pain-box').classList.toggle('oculto', pp === 'admin' || pp === 'gestor' || pp === 'rh'); $('#u-areas-box').classList.toggle('oculto', pp !== 'gestor'); };
+      const atualizaFrentes = () => { const pp = $('#u-papel').value; $('#u-frentes-box').classList.toggle('oculto', pp === 'admin' || pp === 'gestor' || pp === 'rh'); $('#u-pain-box').classList.toggle('oculto', pp === 'admin' || pp === 'gestor' || pp === 'rh'); $('#u-areas-box').classList.toggle('oculto', pp !== 'gestor'); $('#u-imp-box').classList.toggle('oculto', !['rh', 'editor'].includes(pp)); };
       $('#u-papel').onchange = atualizaFrentes; atualizaFrentes();
       m.querySelectorAll('[data-pe]').forEach(i => i.onchange = () => { if (i.checked) m.querySelector(`[data-pv="${i.dataset.pe}"]`).checked = true; });
       m.querySelectorAll('[data-pv]').forEach(i => i.onchange = () => { if (!i.checked) m.querySelector(`[data-pe="${i.dataset.pv}"]`).checked = false; });
@@ -2264,7 +2269,9 @@ function formUsuario(u, todos){
         const semPain = papel === 'admin' || papel === 'gestor' || papel === 'rh';
         const pe = semPain ? [] : [...m.querySelectorAll('[data-pe]:checked')].map(x => x.dataset.pe), pv = semPain ? [] : [...m.querySelectorAll('[data-pv]:checked')].map(x => x.dataset.pv).filter(id => !pe.includes(id));
         const comPain = o => (pv.length || pe.length || (u && u.paineis_ver !== undefined)) ? Object.assign(o, { paineis_ver:pv, paineis_editar:pe }) : o;
-        const comAreas = o => comPain((papel === 'gestor' || (u && u.areas !== undefined)) ? Object.assign(o, { areas:ar }) : o);
+        const imp = ['rh', 'editor'].includes(papel) && $('#u-imp').checked;
+        const comImp = o => (imp || (u && u.importa !== undefined)) ? Object.assign(o, { importa:imp }) : o;
+        const comAreas = o => comImp(comPain((papel === 'gestor' || (u && u.areas !== undefined)) ? Object.assign(o, { areas:ar }) : o));
         if (!nome) return erro('Informe o nome.');
         bt.disabled = true; bt.textContent = 'Salvando...';
         try {
@@ -2327,6 +2334,19 @@ function formSenha(u){
   });
 }
 
+/* Importar planilhas: usuários do RH liberados pelo administrador atualizam as bases dos painéis em que podem lançar */
+function telaImportar(){
+  moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Gestão de Pessoas · CRV Industrial</div><h1>Importar planilhas</h1><div class="ini-data">Atualize as bases dos painéis com as planilhas do sistema (Quadro, cartões Convênio, Alimentação e Premium, férias, atestados e outras)</div></div></section>
+    <section class="cartao"><div class="cartao-cab"><h3>Carregar planilhas</h3><button class="btn prim" id="im-lote">Escolher planilhas ou arquivos de dados</button></div>
+      <p style="color:var(--mut);margin-top:0;font-size:13px">Pode escolher várias de uma vez: o app reconhece cada planilha e mostra para qual painel ela vai antes de salvar. Os lançamentos feitos no app (avaliações, programações, fichas) são mantidos.</p>
+      <div class="tabela-env" style="max-height:none"><table class="tab"><thead><tr><th>Painel</th><th>Frente</th><th>Dados atuais</th><th></th></tr></thead><tbody>
+      ${E.paineis.filter(p => podeEditar(p) && p.id !== 'curriculos').slice().sort((a, b) => a.frente.localeCompare(b.frente, 'pt-BR') || a.nome.localeCompare(b.nome, 'pt-BR')).map(p => { const m = E.metas[p.id];
+        return `<tr data-id="${esc(p.id)}" style="cursor:default"><td><b>${esc(p.nome)}</b></td><td>${esc(p.frente)}</td><td>${m ? `${m.linhas == null ? 'dados de ' + fmtRef(m.referencia) : fmtNum(m.linhas) + ' linhas'}<br><small style="color:var(--mut)">atualizado ${new Date(m.atualizado_em).toLocaleDateString('pt-BR')}${m.atualizado_por ? ' por ' + esc(m.atualizado_por) : ''}</small>` : '—'}</td>
+          <td><button class="btn peq prim im-1">${m ? 'Atualizar' : 'Carregar'}</button></td></tr>`; }).join('')}
+      </tbody></table></div></section>`);
+  $('#im-lote').onclick = () => escolherPacotes(null);
+  document.querySelectorAll('tr[data-id] .im-1').forEach(b => b.onclick = () => escolherPacotes(b.closest('tr').dataset.id));
+}
 function adminPaineis(){
   const c = $('#admin-corpo');
   const frentes = frentesExistentes();
