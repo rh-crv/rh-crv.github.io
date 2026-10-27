@@ -110,7 +110,9 @@ function converterQuadro(R, antigo, REF){
   const porCPF = new Map(); recs.forEach(o => { const k = chave(o); if (!porCPF.has(k)) porCPF.set(k, []); porCPF.get(k).push(o); });
   const ativos = recs.filter(o => o.ec === '5' && o.sit === 'ATIVO').sort((a, b) => a.mat - b.mat);
   const dem = recs.filter(o => o.sit === 'DEMITIDO').sort((a, b) => (a.resc || '0000').localeCompare(b.resc || '0000') || (+a.ec - +b.ec) || (a.mat - b.mat));
-  const pid = new Map(); ativos.concat(dem).forEach(o => { const k = chave(o); if (!pid.has(k)) pid.set(k, pid.size); });
+  // ativos das outras empresas do grupo (APFO 6, CAPFO 16): só o essencial, para cruzamentos por CPF (ex.: aproveitamento de jovens aprendizes)
+  const outrosAt = recs.filter(o => o.ec !== '5' && o.sit !== 'DEMITIDO').sort((a, b) => (+a.ec - +b.ec) || (a.mat - b.mat));
+  const pid = new Map(); ativos.concat(dem).concat(outrosAt).forEach(o => { const k = chave(o); if (!pid.has(k)) pid.set(k, pid.size); });
   const dd = (a, b) => Math.round((new Date(a + 'T12:00:00') - new Date(b + 'T12:00:00')) / 864e5);
   const D = [], X = [], PID = []; let ovr = 0;
   for (const o of ativos) {
@@ -156,7 +158,8 @@ function converterQuadro(R, antigo, REF){
   const CPFM = {}; recs.forEach(o => { if (o.ec === '5' && o.cpf) CPFM[String(o.mat)] = o.cpf; });
   // CPF de cada pessoa (todas as empresas), na mesma ordem do identificador de pessoa: permite buscar ex-colaboradores pelo CPF
   const CPFP = []; pid.forEach((i, k) => { CPFP[i] = /^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(k) ? k : ''; });
-  Object.assign(dados, { D, X, DM, PID, CPFM, CPFP });
+  const OUTAT = outrosAt.map(o => [o.mat, o.nome, o.fun, o.sec, o.area, o.ges, o.adm, o.emp, o.ccd, pid.get(chave(o)), o.sit]);
+  Object.assign(dados, { D, X, DM, PID, CPFM, CPFP, OUTAT });
   // faixa de desconto do plano de saúde: só a faixa (1, 2 ou 3) fica guardada, não o salário
   let nFx = 0;
   if (hSal) { const FX = {};

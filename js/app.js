@@ -167,6 +167,9 @@ async function carregarCatalogo(){
   // Comunicação de Justa Causa (restrita ao RH): ao lado das Sanções Disciplinares
   if (!E.paineis.some(x => x.id === 'justa-causa') && E.perfil && E.perfil.papel === 'admin') { const sa = E.paineis.find(x => x.id === 'sancoes'); const n = { id:'justa-causa', frente:'Ocorrências e Relações Trabalhistas', nome:'Comunicação de Justa Causa', nivel:'restrito', ordem:Math.round(sa ? +sa.ordem : 60) + 1 };
     const { error:eJ } = await sb.from('paineis').insert(n); if (eJ) console.warn('painel justa-causa', eJ); E.paineis.push(n); }
+  // Aproveitamento pós-programa (Jovem Aprendiz): ao lado dos painéis do João Bittar e da RENAPSI
+  if (!E.paineis.some(x => x.id === 'aprendiz-pos') && E.perfil && E.perfil.papel === 'admin') { const rj = E.paineis.find(x => x.id === 'renapsi') || E.paineis.find(x => x.id === 'jovem'); const n = { id:'aprendiz-pos', frente:(rj && rj.frente) || 'Programa Jovem Aprendiz', nome:'Aproveitamento pós-programa', nivel:'controlado', ordem:Math.round(rj ? +rj.ordem : 50) + 1 };
+    const { error:eA } = await sb.from('paineis').insert(n); if (eA) console.warn('painel aprendiz-pos', eA); E.paineis.push(n); }
   if (!E.paineis.some(x => x.id === 'desempenho') && E.perfil && E.perfil.papel === 'admin') { const n = { id:'desempenho', frente:'Gestão de Colaboradores', nome:'Avaliação de Desempenho', nivel:'controlado', ordem:13 };
     sb.from('paineis').insert(n).then(() => {}, () => {}); E.paineis.push(n); }
   // Risco de saída: painel do app, calculado a partir do Quadro; restrito
@@ -600,6 +603,7 @@ let _rel = null; const REL = () => _rel || (_rel = window.CRV_REL_INIT(Object.as
 let _bases = null; const BASES = () => _bases || (_bases = window.CRV_BASES_INIT(Object.assign(ctxMod(), { ehAdmin, FRENTES })));
 let _gestor = null; const GESTOR = () => _gestor || (_gestor = window.CRV_GESTOR_INIT(ctxMod()));
 let _des = null; const DES = () => _des || (_des = window.CRV_DES_INIT(ctxMod()));
+let _apos = null; const APOS = () => _apos || (_apos = window.CRV_APOS_INIT(ctxMod()));
 let _jc = null; const JC = () => _jc || (_jc = window.CRV_JC_INIT(Object.assign(ctxMod(), { logo: () => LOGO_DATAURL })));
 let _onb = null; const ONB = () => _onb || (_onb = window.CRV_ONB_INIT(Object.assign(ctxMod(), { RISCO })));
 async function pendenciasDesligamento(){
@@ -1117,6 +1121,7 @@ async function telaPainel(id, acao){
   if (id === 'onboarding') return ONB().tela(p, cfg);
   if (id === 'desempenho') return DES().tela(p, cfg);
   if (id === 'justa-causa') return JC().tela(p, cfg, acao);
+  if (id === 'aprendiz-pos') return APOS().tela(p, cfg);
   if (MODELOS[id]) return telaModelo(p, cfg, acao);
   moldura(`<div class="trilha"><button data-ir="#/">Visão Geral</button> › <span>${esc(p.frente)}</span> › <b>${esc(p.nome)}</b></div>
     <div class="cartao vazio"><div class="spinner" style="margin:0 auto"></div><p>Carregando dados...</p></div>`);
