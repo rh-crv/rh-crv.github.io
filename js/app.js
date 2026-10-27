@@ -165,8 +165,8 @@ async function carregarCatalogo(){
     sb.from('paineis').insert(n).then(() => {}, () => {}); E.paineis.push(n); }
   // Avaliação de desempenho dos ativos (mesmo formulário da experiência): painel do app
   // Comunicação de Justa Causa (restrita ao RH): ao lado das Sanções Disciplinares
-  if (!E.paineis.some(x => x.id === 'justa-causa') && E.perfil && E.perfil.papel === 'admin') { const sa = E.paineis.find(x => x.id === 'sancoes'); const n = { id:'justa-causa', frente:'Ocorrências e Relações Trabalhistas', nome:'Comunicação de Justa Causa', nivel:'restrito', ordem:(sa ? sa.ordem : 60) + 0.5 };
-    sb.from('paineis').insert(n).then(() => {}, () => {}); E.paineis.push(n); }
+  if (!E.paineis.some(x => x.id === 'justa-causa') && E.perfil && E.perfil.papel === 'admin') { const sa = E.paineis.find(x => x.id === 'sancoes'); const n = { id:'justa-causa', frente:'Ocorrências e Relações Trabalhistas', nome:'Comunicação de Justa Causa', nivel:'restrito', ordem:Math.round(sa ? +sa.ordem : 60) + 1 };
+    const { error:eJ } = await sb.from('paineis').insert(n); if (eJ) console.warn('painel justa-causa', eJ); E.paineis.push(n); }
   if (!E.paineis.some(x => x.id === 'desempenho') && E.perfil && E.perfil.papel === 'admin') { const n = { id:'desempenho', frente:'Gestão de Colaboradores', nome:'Avaliação de Desempenho', nivel:'controlado', ordem:13 };
     sb.from('paineis').insert(n).then(() => {}, () => {}); E.paineis.push(n); }
   // Risco de saída: painel do app, calculado a partir do Quadro; restrito
@@ -199,10 +199,10 @@ async function carregarCatalogo(){
     { id:'cartao-premium',     frente:'Gestão de Benefícios', nome:'Cartão Premium',     nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.3 },
     { id:'cartao-adm',         frente:'Gestão de Benefícios', nome:'Cartão Convênio ADM', nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.4 },
     { id:'servicos-gerais',    frente:'Horas Extras e Gratificações', nome:'Serviços Gerais — Extras e Gratificações', nivel:'controlado', ordem:90 },
-    { id:'clube',              frente:'Gestão de Benefícios', nome:'Capinópolis Clube', nivel:'controlado', ordem:((E.paineis.find(x => x.id === 'uniodonto') || {}).ordem || 45) + 0.5 }
+    { id:'clube',              frente:'Gestão de Benefícios', nome:'Capinópolis Clube', nivel:'controlado', ordem:Math.round(+(E.paineis.find(x => x.id === 'uniodonto') || {}).ordem || 45) + 1 }
   ].filter(n => !E.paineis.some(x => x.id === n.id));
   if (NOVOS.length && E.perfil && E.perfil.papel === 'admin') {
-    await sb.from('paineis').insert(NOVOS.map((n, i) => ({ ...n, ordem: (n.id.startsWith('cartao-') || n.id === 'sysprocard-credito') ? (sp ? sp.ordem : 40) + 1 + i : n.ordem })));
+    const { error:eN } = await sb.from('paineis').insert(NOVOS.map((n, i) => ({ ...n, ordem: Math.round((n.id.startsWith('cartao-') || n.id === 'sysprocard-credito') ? (sp ? +sp.ordem : 40) + 1 + i : +n.ordem) }))); if (eN) console.warn('painéis novos', eN);
     const r2 = await sb.from('paineis').select('*').order('ordem');
     if (!r2.error) E.paineis = (r2.data || []).filter(x => x.id !== 'absenteismo-gestao' && x.id !== 'salarios'); E.paineis.forEach(x => { if (window.CRV_NOMES && window.CRV_NOMES[x.id]) x.nome = window.CRV_NOMES[x.id]; if (x.id === 'absenteismo') x.nome = String(x.nome || '').replace(/\s*·\s*Controle RH\s*$/i, ''); });
   }
