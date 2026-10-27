@@ -274,14 +274,24 @@ async function salvarArq(nome,bytes,tipo){const DL=window.claude&&window.claude.
   const u=URL.createObjectURL(new Blob([bytes],{type:tipo}));const a=document.createElement('a');a.href=u;a.download=nome;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),3000)}
 const logos=doc=>{try{return (window.parent.CRV_PDF_LOGOS||(d=>d))(doc)}catch(_){return doc}};
 function exportar(){const R=filtrados(),fil=FQ||FT||FCC;
-  const w=modal('Exportar · '+mesCap(MES),`<div class="ck"><label><input type="checkbox" id="xN" checked> Lista nominal (${nf(R.length)} pessoas${fil?', com os filtros da tela':''})</label><label><input type="checkbox" id="xC" checked> Resumo por centro de custo</label></div>`,
+  const w=modal('Exportar · '+mesCap(MES),`<p class="sm" style="margin-top:0">${nf(R.length)} pessoas${fil?', com os filtros da tela':''}. Marque o que deve sair:</p><div class="ck">
+    <label><input type="checkbox" id="xD" checked> <span><b>Relatório de desconto</b> · matrícula, nome, mensalidade, desconto e valor a descontar (sem centro de custo)</span></label>
+    <label><input type="checkbox" id="xT"> <span><b>Lançamento da nota</b> · matrícula, nome, centro de custo e valor total (sem desconto)</span></label>
+    <label><input type="checkbox" id="xN"> <span>Lista nominal completa (com função, tipo, centro de custo e descontos)</span></label>
+    <label><input type="checkbox" id="xC"> <span>Resumo por centro de custo</span></label></div>`,
     `<button class="btn" type="button" data-x2>Cancelar</button><button class="btn" type="button" id="xX">Excel</button><button class="btn pri" type="button" id="xP">PDF</button>`);
   w.querySelector('[data-x2]').onclick=()=>w.remove();
-  const op=()=>({n:w.querySelector('#xN').checked,c:w.querySelector('#xC').checked});
-  w.querySelector('#xX').onclick=()=>{const o=op();if(!o.n&&!o.c)return;xls(R,o).then(()=>w.remove(),e=>w.querySelector('#mMsg').textContent=e.message)};
-  w.querySelector('#xP').onclick=()=>{const o=op();if(!o.n&&!o.c)return;pdf(R,o).then(()=>w.remove(),e=>w.querySelector('#mMsg').textContent=e.message)}}
+  const op=()=>({d:w.querySelector('#xD').checked,t:w.querySelector('#xT').checked,n:w.querySelector('#xN').checked,c:w.querySelector('#xC').checked});const nada=o=>!o.d&&!o.t&&!o.n&&!o.c;
+  w.querySelector('#xX').onclick=()=>{const o=op();if(nada(o))return;xls(R,o).then(()=>w.remove(),e=>w.querySelector('#mMsg').textContent=e.message)};
+  w.querySelector('#xP').onclick=()=>{const o=op();if(nada(o))return;pdf(R,o).then(()=>w.remove(),e=>w.querySelector('#mMsg').textContent=e.message)}}
 const arq=()=>'Capinopolis Clube - '+mesCap(MES).replace('/',' ');
-async function xls(R,o){const X=XL();if(!X)throw new Error('Excel indisponível.');if(!R.length)throw new Error('Nada para exportar.');const wb=X.utils.book_new();
+async function xls(R,o){const X=XL();if(!X)throw new Error('Excel indisponível.');if(!R.length)throw new Error('Nada para exportar.');const wb=X.utils.book_new();const RN=R.slice().sort((a,b)=>a.nome.localeCompare(b.nome));
+  if(o.d){const a=[['CAPINÓPOLIS CLUBE · RELATÓRIO DE DESCONTO · '+mesCap(MES).toUpperCase()],[],['MATRÍCULA','NOME','MENSALIDADE','DESCONTO','VALOR A DESCONTAR']];
+    RN.forEach(r=>a.push([+r.mat||r.mat,r.nome,r.valor,+r.desc||0,r.liq]));a.push(['TOTAL: '+RN.length+(RN.length===1?' pessoa':' pessoas'),'',soma(RN,'valor'),soma(RN,'desc'),soma(RN,'liq')]);
+    const ws=X.utils.aoa_to_sheet(a);ws['!cols']=[12,44,15,13,18].map(x=>({wch:x}));for(let i=3;i<a.length;i++)['C','D','E'].forEach(c=>{const k=c+(i+1);if(ws[k])ws[k].z='"R$" #,##0.00'});X.utils.book_append_sheet(wb,ws,'Desconto',{semTotal:true})}
+  if(o.t){const a=[['CAPINÓPOLIS CLUBE · LANÇAMENTO DA NOTA · '+mesCap(MES).toUpperCase()],[],['MATRÍCULA','NOME','CENTRO DE CUSTO','VALOR TOTAL']];
+    RN.forEach(r=>a.push([+r.mat||r.mat,r.nome,r.cc?(r.cc+' - '+r.ccd):'',r.valor]));a.push(['TOTAL: '+RN.length+(RN.length===1?' pessoa':' pessoas'),'','',soma(RN,'valor')]);
+    const ws=X.utils.aoa_to_sheet(a);ws['!cols']=[12,44,40,16].map(x=>({wch:x}));for(let i=3;i<a.length;i++){const k='D'+(i+1);if(ws[k])ws[k].z='"R$" #,##0.00'}X.utils.book_append_sheet(wb,ws,'Lançamento da nota',{semTotal:true})}
   if(o.n){const a=[['CRV INDUSTRIAL · CAPINÓPOLIS CLUBE · '+mesCap(MES).toUpperCase()],[],['MAT','NOME','FUNÇÃO','CENTRO DE CUSTO','DEPARTAMENTO','TIPO','VALOR MENSALIDADE','DESCONTO','VALOR A DESCONTAR','SITUAÇÃO','OBS']];
     R.forEach(r=>a.push([+r.mat,r.nome,r.funcao,r.cc,r.ccd,r.tipo==='F'?'CONTR. FAMILIAR':r.tipo==='I'?'CONTR. INDIVIDUAL':'OUTRO',r.valor,+r.desc||0,r.liq,r.sit,r.obs||'']));
     const ws=X.utils.aoa_to_sheet(a);ws['!cols']=[8,40,26,10,30,17,14,12,15,14,30].map(x=>({wch:x}));for(let i=3;i<a.length;i++)['G','H','I'].forEach(c=>{const k=c+(i+1);if(ws[k])ws[k].z='"R$" #,##0.00'});X.utils.book_append_sheet(wb,ws,'Lançamentos')}
@@ -289,21 +299,30 @@ async function xls(R,o){const X=XL();if(!X)throw new Error('Excel indisponível.
     C.forEach(c=>a.push([c.cc||'—',c.ccd||c.n,c.q,c.f,c.i,+c.v.toFixed(2),+c.d.toFixed(2),+c.l.toFixed(2)]));
     a.push(['TOTAL: '+R.length+' pessoas',C.length+' centros de custo',R.length,R.filter(r=>r.tipo==='F').length,R.filter(r=>r.tipo==='I').length,soma(R,'valor'),soma(R,'desc'),soma(R,'liq')]);
     const ws=X.utils.aoa_to_sheet(a);ws['!cols']=[22,34,9,10,11,15,13,15].map(x=>({wch:x}));for(let i=3;i<a.length;i++)['F','G','H'].forEach(c=>{const k=c+(i+1);if(ws[k])ws[k].z='"R$" #,##0.00'});X.utils.book_append_sheet(wb,ws,'Por centro de custo')}
-  await salvarArq(arq()+'.xlsx',new Uint8Array(X.write(wb,{bookType:'xlsx',type:'array'})),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}
+  await salvarArq(arq()+sufx(o)+'.xlsx',new Uint8Array(X.write(wb,{bookType:'xlsx',type:'array'})),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}
+const sufx=o=>{const k=[o.d&&'Desconto',o.t&&'Lancamento da nota',o.n&&'Lista',o.c&&'Centros de custo'].filter(Boolean);return k.length===1?' - '+k[0]:''};
 async function pdf(R,o){const J=JS();if(!J)throw new Error('PDF indisponível.');if(!R.length)throw new Error('Nada para exportar.');
   const doc=new J({unit:'mm',format:'a4'}),W=210;
   doc.setFillColor(18,63,45);doc.rect(0,0,W,2.2,'F');doc.setFillColor(201,138,23);doc.rect(0,2.2,W,.9,'F');
   doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(18,63,45);doc.text('Capinópolis Clube · '+mesCap(MES),10,13);
-  doc.setFont('helvetica','normal');doc.setFontSize(8.8);doc.setTextColor(80,90,86);doc.text('CRV Industrial · Gestão de Benefícios · desconto em folha'+(FQ||FT||FCC?' · filtros aplicados':''),10,18.5);
+  doc.setFont('helvetica','normal');doc.setFontSize(8.8);doc.setTextColor(80,90,86);doc.text('CRV Industrial · Gestão de Benefícios'+(FQ||FT||FCC?' · filtros aplicados':''),10,18.5);
   let y=25;const st={fontSize:8,cellPadding:1.6,lineColor:[225,230,226],lineWidth:.15},hs={fillColor:[31,107,74],textColor:255,fontStyle:'bold'};
-  if(o.n){doc.autoTable({startY:y,head:[['Mat.','Nome','Centro de custo','Tipo','Mensalidade','Desconto','A descontar']],body:R.map(r=>[r.mat,r.nome+(r.sit!=='Ativo'?' ('+r.sit+')':''),(r.cc?r.cc+' · ':'')+r.ccd,r.tipo==='F'?'Familiar':r.tipo==='I'?'Individual':'Outro',brl(r.valor),+r.desc?brl(r.desc):'-',brl(r.liq)]),
+  const RN=R.slice().sort((a,b)=>a.nome.localeCompare(b.nome)),fsP={fillColor:[238,241,239],textColor:[20,33,30],fontStyle:'bold',halign:'right'};let sec=0;
+  const titulo=t=>{if(sec++){doc.addPage();y=16}doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(18,63,45);doc.text(t,10,y);y+=3};
+  if(o.d){titulo('Relatório de desconto');doc.autoTable({startY:y,head:[['Matrícula','Nome','Mensalidade','Desconto','Valor a descontar']],body:RN.map(r=>[r.mat,r.nome,brl(r.valor),+r.desc?brl(r.desc):'-',brl(r.liq)]),
+    foot:[[{content:'Total: '+RN.length+(RN.length===1?' pessoa':' pessoas'),colSpan:2,styles:{halign:'left'}},brl(soma(RN,'valor')),brl(soma(RN,'desc')),brl(soma(RN,'liq'))]],showFoot:'lastPage',footStyles:fsP,styles:st,headStyles:hs,
+    columnStyles:{0:{cellWidth:22},2:{halign:'right',cellWidth:28},3:{halign:'right',cellWidth:24},4:{halign:'right',cellWidth:32}},margin:{left:10,right:10}});y=doc.lastAutoTable.finalY+8}
+  if(o.t){titulo('Lançamento da nota');doc.autoTable({startY:y,head:[['Matrícula','Nome','Centro de custo','Valor total']],body:RN.map(r=>[r.mat,r.nome,r.cc?r.cc+' - '+r.ccd:'-',brl(r.valor)]),
+    foot:[[{content:'Total: '+RN.length+(RN.length===1?' pessoa':' pessoas'),colSpan:3,styles:{halign:'left'}},brl(soma(RN,'valor'))]],showFoot:'lastPage',footStyles:fsP,styles:st,headStyles:{fillColor:[29,122,136],textColor:255,fontStyle:'bold'},
+    columnStyles:{0:{cellWidth:22},3:{halign:'right',cellWidth:30}},margin:{left:10,right:10}});y=doc.lastAutoTable.finalY+8}
+  if(o.n){titulo('Lista nominal');doc.autoTable({startY:y,head:[['Mat.','Nome','Centro de custo','Tipo','Mensalidade','Desconto','A descontar']],body:R.map(r=>[r.mat,r.nome+(r.sit!=='Ativo'?' ('+r.sit+')':''),(r.cc?r.cc+' · ':'')+r.ccd,r.tipo==='F'?'Familiar':r.tipo==='I'?'Individual':'Outro',brl(r.valor),+r.desc?brl(r.desc):'-',brl(r.liq)]),
     foot:[[{content:'Total: '+R.length+(R.length===1?' pessoa':' pessoas'),colSpan:4,styles:{halign:'left'}},brl(soma(R,'valor')),brl(soma(R,'desc')),brl(soma(R,'liq'))]],showFoot:'lastPage',footStyles:{fillColor:[238,241,239],textColor:[20,33,30],fontStyle:'bold',halign:'right'},styles:st,headStyles:hs,columnStyles:{0:{cellWidth:13},4:{halign:'right',cellWidth:22},5:{halign:'right',cellWidth:19},6:{halign:'right',cellWidth:22}},margin:{left:10,right:10}});y=doc.lastAutoTable.finalY+8}
-  if(o.c){const C=porCC(R);if(y>230){doc.addPage();y=16}doc.setFont('helvetica','bold');doc.setFontSize(10.5);doc.setTextColor(18,63,45);doc.text('Rateio por centro de custo',10,y);y+=3;
+  if(o.c){const C=porCC(R);titulo('Rateio por centro de custo');
     doc.autoTable({startY:y,head:[['Centro de custo','Departamento','Sócios','Familiar','Individual','A descontar']],body:C.map(c=>[c.cc||'—',c.ccd||c.n,c.q,c.f,c.i,brl(c.l)]),
       foot:[['Total: '+R.length+' pessoas',C.length+' centros de custo',R.length,R.filter(r=>r.tipo==='F').length,R.filter(r=>r.tipo==='I').length,brl(soma(R,'liq'))]],showFoot:'lastPage',
       styles:st,headStyles:{fillColor:[29,122,136],textColor:255,fontStyle:'bold'},footStyles:{fillColor:[238,241,239],textColor:[20,33,30],fontStyle:'bold'},columnStyles:{2:{halign:'right'},3:{halign:'right'},4:{halign:'right'},5:{halign:'right'}},margin:{left:10,right:10}})}
-  const n=doc.getNumberOfPages();for(let i=1;i<=n;i++){doc.setPage(i);doc.setFontSize(7.5);doc.setTextColor(120);doc.text('Gerado em '+new Date().toLocaleDateString('pt-BR')+' por '+(quem()||'Gestão de Pessoas')+' · página '+i+' de '+n,10,290)}
-  const out=await logos(doc);await salvarArq(arq()+'.pdf',new Uint8Array((out||doc).output('arraybuffer')),'application/pdf')}
+  const n=doc.getNumberOfPages();for(let i=1;i<=n;i++){doc.setPage(i);doc.setFontSize(7.5);doc.setTextColor(120);doc.text('Gestão de Pessoas · gerado em '+new Date().toLocaleDateString('pt-BR')+(quem()?' por '+quem():'')+' · página '+i+' de '+n,10,290)}
+  const out=await logos(doc);await salvarArq(arq()+sufx(o)+'.pdf',new Uint8Array((out||doc).output('arraybuffer')),'application/pdf')}
 
 /* ---------- eventos ---------- */
 $('mes').onchange=e=>{MES=e.target.value;render()};$('mAnt').onclick=()=>{MES=addMes(MES,-1);render()};$('mProx').onclick=()=>{MES=addMes(MES,1);render()};
