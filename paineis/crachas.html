@@ -560,6 +560,7 @@ svg .hit:hover,svg .hitv:hover{fill:var(--brand-2);fill-opacity:.08}
       <div id="delBox" class="confirm" hidden><span>Excluir este registro de treinamento? Não dá para desfazer.</span><span style="display:flex;gap:8px"><button class="btn" type="button" id="delNo">Cancelar</button><button class="btn danger" type="button" id="delYes">Excluir</button></span></div>
       <div class="dfoot">
         <button class="btn danger" type="button" id="btnDel" hidden>Excluir</button>
+        <button class="btn" type="button" id="dDocs" hidden>Documentos do treinamento</button>
         <span style="display:flex;gap:10px;margin-left:auto"><button class="btn" type="button" id="dCancel">Cancelar</button><button class="btn primary" type="submit" id="btnSave">Salvar</button></span>
       </div>
     </form>
@@ -967,8 +968,8 @@ function renderNominal(rows) {
           <div><div class="k">Total em treinamento</div><div class="v">${p.list.reduce((s,r)=>s+(r.diasEm||0),0)} dias</div></div>
         </div>
         ${p.pzs.length ? `<div class="pfi"><span class="k">Pendências do T&amp;D</span>${p.pzs.map(x => `<div><span class="tp tp-${x.tipo}">${PTIPO[x.tipo].lbl}</span><span><b>${esc(x.motivo)}</b><br><small>${esc(x.acao)}</small></span></div>`).join("")}</div>` : ""}
-        <div class="hist"><table><thead><tr><th class="nosort">Função em treinamento</th><th class="nosort">Início</th><th class="nosort">Término</th><th class="nosort r">Dias</th><th class="nosort">Crachá</th><th class="nosort">Resultado</th><th class="nosort">Observações</th></tr></thead><tbody>
-          ${p.list.map(r => `<tr data-id="${esc(r.id)}"><td><b>${esc(r.funcaoTrein||"—")}</b></td><td class="num">${br(r.inicio)}</td><td class="num">${br(r.fim)}</td><td class="r num">${r.diasEm ?? "—"}<span class="mini">de ${r.dur ?? "—"}</span></td><td><span class="pill p-${r.st}">${ST[r.st]}</span></td><td><span class="pill r-${esc(r.resultado||"")}">${RES[r.resultado||""]||esc(r.resultado)}</span></td><td class="obs">${esc(r.obs||"—")}</td></tr>`).join("")}
+        <div class="hist"><table><thead><tr><th class="nosort">Função em treinamento</th><th class="nosort">Início</th><th class="nosort">Término</th><th class="nosort r">Dias</th><th class="nosort">Crachá</th><th class="nosort">Resultado</th><th class="nosort">Observações</th><th class="nosort">Documentos</th></tr></thead><tbody>
+          ${p.list.map(r => `<tr data-id="${esc(r.id)}"><td><b>${esc(r.funcaoTrein||"—")}</b></td><td class="num">${br(r.inicio)}</td><td class="num">${br(r.fim)}</td><td class="r num">${r.diasEm ?? "—"}<span class="mini">de ${r.dur ?? "—"}</span></td><td><span class="pill p-${r.st}">${ST[r.st]}</span></td><td><span class="pill r-${esc(r.resultado||"")}">${RES[r.resultado||""]||esc(r.resultado)}</span></td><td class="obs">${esc(r.obs||"—")}</td><td>${(() => { const L = docsDe(r.id), pe = L.filter(d => { const x = assSt(d); return x.ok < x.n; }).length; return `<button class="btn doc-open" type="button" data-doc="${esc(r.id)}">Documentos${L.length ? " (" + L.length + ")" : ""}</button>${pe ? `<span class="mini" style="color:#7a5200">${pe} aguardando assinatura</span>` : ""}`; })()}</td></tr>`).join("")}
         </tbody></table></div>
       </div>
     </details>`;
@@ -1077,6 +1078,7 @@ function openForm(id) {
   $("#dTitle").textContent = r ? "Editar crachá de treinamento" : "Novo crachá de treinamento";
   $("#fErr").hidden = true; $("#delBox").hidden = true;
   $("#btnDel").hidden = !r || !canWrite;
+  $("#dDocs").hidden = !r; $("#dDocs").onclick = () => { const i = editing; closeForm(); abrirDocs(i); };
   $("#btnSave").disabled = !canWrite;
   iMat.value = r?.mat || ""; iNome.value = r?.nome || ""; iNome.dataset.auto = r ? "0" : "1";
   iFT.value = r?.funcaoTrein || ""; iIni.value = r?.inicio || iso(today);
@@ -1394,6 +1396,177 @@ $("#btnExport").onclick = () => {
       rows: pz.slice().sort((a,b) => a.r.gerencia.localeCompare(b.r.gerencia, "pt-BR")).map(x => [x.r.gerencia, x.r.mat, x.r.nome, x.r.funcaoTrein||"", PTIPO[x.tipo].lbl, x.motivo, x.acao, x.prazo ? br(x.prazo) : ""]) }
   ], `crachas-treinamento-${iso(today)}`);
 };
+
+/* ---------- Documentos do treinamento com crachá (pedido do RH, 27/10/2026) ----------
+   Modelos de "Documentos Treinamento e Desenvolvimento 2026": conclusão APTO, NÃO APTO, renovação do período,
+   desistência e registro mensal de acompanhamento. Preenchidos a partir do crachá, com controle de quem já assinou.
+   Coleção 'docs_trein' (um documento por registro). */
+const DOCT = {
+  apto:   { t:"Termo de conclusão de treinamento e aptidão para classificação", c:"Apto", cor:"var(--ok)" },
+  napto:  { t:"Termo de avaliação de treinamento — não apto", c:"Não apto", cor:"var(--bad)" },
+  renova: { t:"Termo de evolução e solicitação de renovação do período de treinamento", c:"Renovação", cor:"#b5731a" },
+  desist: { t:"Termo de desistência do período de treinamento", c:"Desistência", cor:"#6b7a90" },
+  mensal: { t:"Registro mensal de acompanhamento de treinamento", c:"Registro mensal", cor:"#2f6fa8" }
+};
+const ASSN = { col:"Colaborador — ciente", mon:"Monitor avaliador", lid:"Liderança responsável", rh:"Gestão de Pessoas / RH" };
+const assDe = t => t === "mensal" ? ["col","mon"] : ["col","mon","lid","rh"];
+const EVO = ["Evolução satisfatória, porém necessita de maior tempo de prática","Evolução parcial nos aspectos técnicos","Necessidade de maior acompanhamento operacional","Necessidade de reforço em procedimentos de segurança","Necessidade de desenvolvimento em aspectos específicos da atividade"];
+const MOTD = ["Decisão pessoal","Não possui interesse em continuar na atividade","Não se identificou com a atividade","Dificuldade relacionada à atividade","Solicitação de retorno à atividade anterior"];
+const SITD = ["Desistência manifestada pelo colaborador","Solicitação de encerramento"];
+const TACO = ["Observação","Demonstração","Prática supervisionada","Reforço","Avaliação prática"];
+let DOCS = [];
+const docsDe = id => DOCS.filter(d => d.crachaId === id && !d.excluido).sort((a,b) => String(b.data||"").localeCompare(String(a.data||"")));
+const quemDoc = () => { try { return (window.parent && window.parent.CRV_QUEM) || ""; } catch { return ""; } };
+const assSt = d => { const k = assDe(d.tipo), ok = k.filter(x => d.ass && d.ass[x] && d.ass[x].ok).length; return { ok, n:k.length, txt: ok === k.length ? "Assinado" : `Faltam ${k.length - ok} de ${k.length} assinaturas` }; };
+(function iniDocs(){ const t = setInterval(() => { if (!db) return; clearInterval(t);
+  db.collection("docs_trein").onSnapshot(s => { DOCS = s.docs.map(x => ({ id:x.id, ...x.data() })); try { render(); } catch {} }, () => {}); }, 400); })();
+const stDoc = document.createElement("style");
+stDoc.textContent = `.dc-ovl{position:fixed;inset:0;background:rgba(10,16,30,.5);z-index:60;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:24px 12px}
+.dc-m{background:var(--surface,#fff);color:var(--ink,#14213d);border-radius:14px;max-width:860px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+.dc-h{display:flex;gap:12px;align-items:flex-start;padding:16px 18px;border-bottom:1px solid var(--line,#e3e7ee)}.dc-h h3{margin:0;font-size:17px;flex:1}.dc-h small{display:block;font-weight:400;color:var(--mut,#5d6a85);font-size:12.5px;margin-top:2px}
+.dc-b{padding:14px 18px}.dc-f{display:flex;gap:8px;align-items:center;padding:12px 18px;border-top:1px solid var(--line,#e3e7ee)}.dc-f .msg{flex:1;font-size:13px}
+.dc-tp{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px}.dc-tp button{text-align:left;border:1px solid var(--line,#d6dce6);border-left:4px solid var(--c);background:#fff;border-radius:10px;padding:9px 10px;font:inherit;font-weight:700;font-size:13px;cursor:pointer}.dc-tp button.on{background:#f3f6fb;outline:2px solid var(--c)}
+.dc-g{display:grid;grid-template-columns:repeat(12,1fr);gap:8px 10px}.dc-g label{display:flex;flex-direction:column;gap:3px;font-size:11.5px;font-weight:700;color:var(--mut,#5d6a85);text-transform:uppercase;letter-spacing:.03em}
+.dc-g input,.dc-g textarea,.dc-g select{font:inherit;font-size:14px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--ink,#14213d);border:1px solid var(--line,#cfd6e4);border-radius:8px;padding:7px 9px;background:#fff}
+.w3{grid-column:span 3}.w4{grid-column:span 4}.w6{grid-column:span 6}.w8{grid-column:span 8}.w12{grid-column:span 12}@media(max-width:640px){.dc-g>*{grid-column:span 12!important}}
+.dc-s{grid-column:span 12;margin:10px 0 0;font-size:12.5px;font-weight:800;color:var(--ink,#14213d);text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--line,#e3e7ee);padding-bottom:4px}
+.dc-ck{grid-column:span 12;display:flex;flex-wrap:wrap;gap:6px}.dc-ck label{flex-direction:row;align-items:center;gap:6px;text-transform:none;letter-spacing:0;font-weight:600;font-size:13px;color:var(--ink,#14213d);border:1px solid var(--line,#d6dce6);border-radius:999px;padding:5px 10px;cursor:pointer}
+.dc-as{grid-column:span 12;display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px}.dc-as>div{border:1px solid var(--line,#d6dce6);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:5px}.dc-as b{font-size:12px}.dc-as .ok{display:flex;gap:6px;align-items:center;font-size:12.5px}
+.dc-tb{width:100%;border-collapse:collapse;font-size:13px}.dc-tb td,.dc-tb th{border-bottom:1px solid var(--line,#e3e7ee);padding:6px;text-align:left;vertical-align:top}.dc-tb input{width:100%;border:1px solid var(--line,#d6dce6);border-radius:6px;padding:5px;font:inherit;font-size:12.5px}
+.dc-l{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}.dc-l>div{display:flex;gap:10px;align-items:center;border:1px solid var(--line,#e3e7ee);border-left:4px solid var(--c);border-radius:10px;padding:8px 10px}.dc-l .i{flex:1;font-size:13px}.dc-l .i small{display:block;color:var(--mut,#5d6a85)}
+.dc-pill{display:inline-block;border-radius:99px;padding:1px 8px;font-size:11.5px;font-weight:700}.dc-pill.ok{background:#e3f4ea;color:#1d5c3a}.dc-pill.pe{background:#fff2d9;color:#7a5200}
+.doc-open{margin-top:4px;font-size:11.5px!important;padding:3px 8px!important}`;
+document.head.appendChild(stDoc);
+function abrirDocs(id, novoTipo, edDoc){
+  const r0 = recs.find(x => x.id === id); if (!r0) return; const r = derive(r0);
+  const b = base && base[String(r.mat)], cad = b ? { funcao:b[1], depto:b[2], gerencia:(b[3]||"").trim() || r.gerencia } : { funcao:r.funcao || "", depto:r.depto || "", gerencia:r.gerencia };
+  const w = document.createElement("div"); w.className = "dc-ovl"; document.body.appendChild(w); const fechar = () => w.remove();
+  w.addEventListener("mousedown", e => { if (e.target === w) fechar(); });
+  const lista = () => { const L = docsDe(id);
+    w.innerHTML = `<div class="dc-m"><div class="dc-h"><h3>Documentos do treinamento · ${esc(r.nome)}<small>Mat. ${esc(r.mat)} · ${esc(r.funcaoTrein || "")} · ${br(r.inicio)} a ${br(r.fim)}</small></h3><button class="btn ghost" data-x type="button">✕</button></div>
+      <div class="dc-b">${L.length ? `<div class="dc-l">${L.map(d => { const s = assSt(d); return `<div style="--c:${DOCT[d.tipo].cor}"><div class="i"><b>${esc(DOCT[d.tipo].c)}</b> · ${br(d.data)}<small>${esc(DOCT[d.tipo].t)}</small></div><span class="dc-pill ${s.ok === s.n ? "ok" : "pe"}">${s.txt}</span><button class="btn" type="button" data-ed="${esc(d.id)}">Abrir</button><button class="btn" type="button" data-pdf="${esc(d.id)}">PDF</button></div>`; }).join("")}</div>` : '<p style="margin-top:0;color:var(--mut,#5d6a85)">Nenhum documento deste treinamento ainda.</p>'}
+        <div class="dc-s" style="margin-bottom:8px">Novo documento</div><div class="dc-tp">${Object.entries(DOCT).map(([k,o]) => `<button type="button" data-nv="${k}" style="--c:${o.cor}">${esc(o.c)}<br><small style="font-weight:400;color:var(--mut,#5d6a85)">${esc(o.t)}</small></button>`).join("")}</div>
+        <p style="font-size:12.5px;color:var(--mut,#5d6a85);margin:0">Os dados do colaborador e do crachá já entram preenchidos. Depois de imprimir e colher as assinaturas, marque no documento quem já assinou.</p></div></div>`;
+    w.querySelector("[data-x]").onclick = fechar;
+    w.querySelectorAll("[data-nv]").forEach(x => x.onclick = () => form(x.dataset.nv, null));
+    w.querySelectorAll("[data-ed]").forEach(x => x.onclick = () => form(null, DOCS.find(d => d.id === x.dataset.ed)));
+    w.querySelectorAll("[data-pdf]").forEach(x => x.onclick = () => pdfDoc(DOCS.find(d => d.id === x.dataset.pdf)).catch(e => toast("Não consegui gerar o PDF: " + (e.message || e))));
+  };
+  const form = (tipo, d) => { tipo = d ? d.tipo : tipo; const D0 = d ? d.dados : {}, A0 = d ? (d.ass || {}) : {};
+    const base0 = { nome:r.nome, mat:r.mat, setor:[cad.gerencia, cad.depto].filter(Boolean).join(" · "), funcao:cad.funcao || "", ft:r.funcaoTrein || "", ini:r.inicio || "", fim:r.fim || "", venc:r.fim || "", monitor:"", lideranca:"" };
+    const v = k => esc(D0[k] != null ? D0[k] : base0[k] != null ? base0[k] : "");
+    const ck = (nm, ops, sel) => `<div class="dc-ck">${ops.map(o => `<label><input type="checkbox" name="${nm}" value="${esc(o)}" ${(sel || []).includes(o) ? "checked" : ""}> ${esc(o)}</label>`).join("")}</div>`;
+    const rd = (nm, ops, sel) => `<div class="dc-ck">${ops.map(o => `<label><input type="radio" name="${nm}" value="${esc(o)}" ${sel === o ? "checked" : ""}> ${esc(o)}</label>`).join("")}</div>`;
+    let esp = "";
+    if (tipo === "apto") esp = `<div class="dc-s">Resultado</div><div class="w12" style="font-size:13.5px">O monitor registra que o colaborador <b>foi considerado APTO</b> para classificação na função.</div><label class="w12">Considerações do monitor<textarea data-k="cons" rows="3">${v("cons")}</textarea></label>`;
+    if (tipo === "napto") esp = `<div class="dc-s">Resultado</div><div class="w12" style="font-size:13.5px">O monitor registra que o colaborador <b>não foi considerado apto</b> para exercer/assumir a atividade avaliada.</div><label class="w12">Descrição objetiva dos pontos identificados e orientações realizadas *<textarea data-k="pontos" rows="4">${v("pontos")}</textarea></label>`;
+    if (tipo === "renova") esp = `<div class="dc-s">Resultado do acompanhamento</div>${ck("evo", EVO, D0.evo)}<label class="w12">Outro<input data-k="evoOutro" value="${v("evoOutro")}"></label>
+      <label class="w12">Evolução observada / pontos que ainda necessitam de desenvolvimento *<textarea data-k="evolucao" rows="3">${v("evolucao")}</textarea></label>
+      <div class="dc-s">Período solicitado</div><label class="w3">Período adicional (dias) *<input type="number" min="1" data-k="dias" value="${v("dias")}"></label><label class="w3">Novo período de<input type="date" data-k="nde" value="${v("nde")}"></label><label class="w3">até<input type="date" data-k="nate" value="${v("nate")}"></label><label class="w3">Nova avaliação<input type="date" data-k="naval" value="${v("naval")}"></label>`;
+    if (tipo === "desist") esp = `<div class="dc-s">Motivo informado pelo colaborador</div>${ck("mot", MOTD, D0.mot)}<label class="w12">Outro motivo<input data-k="motOutro" value="${v("motOutro")}"></label>
+      <label class="w12">Relato / observações<textarea data-k="relato" rows="3">${v("relato")}</textarea></label>
+      <div class="dc-s">Registro da situação</div><label class="w4">Encerrado/interrompido a partir de *<input type="date" data-k="aPartir" value="${v("aPartir")}"></label><div class="w8"></div>${ck("sit", SITD, D0.sit)}<label class="w12">Outro<input data-k="sitOutro" value="${v("sitOutro")}"></label>`;
+    if (tipo === "mensal") { const lin = (D0.lin && D0.lin.length ? D0.lin : [{}, {}, {}]);
+      esp = `<label class="w4">Equipamento / máquina<input data-k="equip" value="${v("equip")}"></label><label class="w4">Mês / ano<input data-k="mes" placeholder="Ex.: 10/2026" value="${v("mes")}"></label><label class="w4">Horas previstas<input data-k="horas" value="${v("horas")}"></label>
+      <div class="dc-s">Registro diário do treinamento</div><div class="w12"><table class="dc-tb"><thead><tr><th style="width:120px">Data</th><th style="width:110px">Turno / horário</th><th>Atividade / conteúdo</th><th>Evolução observada</th><th>Orientações / pontos a reforçar</th></tr></thead><tbody id="dcLin">${lin.map(l => `<tr><td><input type="date" data-l="data" value="${esc(l.data || "")}"></td><td><input data-l="turno" value="${esc(l.turno || "")}"></td><td><input data-l="ativ" value="${esc(l.ativ || "")}"></td><td><input data-l="evo" value="${esc(l.evo || "")}"></td><td><input data-l="ori" value="${esc(l.ori || "")}"></td></tr>`).join("")}</tbody></table><button class="btn" type="button" id="dcAdd" style="margin-top:6px">+ Linha</button> <span style="font-size:12px;color:var(--mut,#5d6a85)">Linhas em branco saem em branco no PDF para preencher à mão.</span></div>
+      <div class="dc-s">Tipo de acompanhamento</div>${ck("taco", TACO, D0.taco)}
+      <div class="dc-s">Fechamento mensal — monitor</div><label class="w3">Período de<input type="date" data-k="pde" value="${v("pde")}"></label><label class="w3">até<input type="date" data-k="pate" value="${v("pate")}"></label><div class="w6"></div>
+      <label class="w12">Frequência</label>${rd("freq", ["Regular","Irregular","Necessita verificação"], D0.freq)}<label class="w12">Evolução</label>${rd("evm", ["Satisfatória","Em desenvolvimento","Abaixo do esperado"], D0.evm)}
+      <label class="w12">Principais evoluções / pontos a desenvolver<textarea data-k="pontosM" rows="2">${v("pontosM")}</textarea></label><label class="w12">Recomendação</label>${rd("rec", ["Prosseguir","Intensificar acompanhamento","Avaliar aptidão"], D0.rec)}<label class="w12">Outra recomendação<input data-k="recOutro" value="${v("recOutro")}"></label>`; }
+    const ks = assDe(tipo);
+    w.innerHTML = `<div class="dc-m"><div class="dc-h"><h3>${esc(DOCT[tipo].t)}<small>Gestão de Pessoas — Treinamento e Desenvolvimento</small></h3><button class="btn ghost" data-x type="button">✕</button></div>
+      <div class="dc-b"><div class="dc-g">
+        <label class="w3">Data do documento<input type="date" data-k="data" value="${esc(d ? d.data : iso(today))}"></label><div class="w9" style="grid-column:span 9"></div>
+        <div class="dc-s">Identificação do colaborador</div>
+        <label class="w8">Nome<input data-k="nome" value="${v("nome")}"></label><label class="w4">Matrícula<input data-k="mat" value="${v("mat")}"></label>
+        <label class="w6">Setor / frente<input data-k="setor" value="${v("setor")}"></label><label class="w6">Função atual<input data-k="funcao" value="${v("funcao")}"></label>
+        <label class="w12">Função / atividade em treinamento<input data-k="ft" value="${v("ft")}"></label>
+        <div class="dc-s">Período de treinamento</div>
+        <label class="w3">Início<input type="date" data-k="ini" value="${v("ini")}"></label><label class="w3">Término<input type="date" data-k="fim" value="${v("fim")}"></label><label class="w3">Vencimento do crachá<input type="date" data-k="venc" value="${v("venc")}"></label><div class="w3" style="grid-column:span 3"></div>
+        <label class="w6">Monitor responsável *<input data-k="monitor" value="${v("monitor")}"></label><label class="w6">Liderança responsável<input data-k="lideranca" value="${v("lideranca")}"></label>
+        ${esp}
+        <div class="dc-s">Assinaturas · marque quem já assinou o documento impresso</div>
+        <div class="dc-as">${ks.map(k => { const a = A0[k] || {}; const nmDef = k === "col" ? (D0.nome || r.nome) : k === "rh" ? quemDoc() : ""; return `<div data-as="${k}"><b>${ASSN[k]}</b><input data-a="nome" placeholder="Nome de quem assina" value="${esc(a.nome || nmDef)}"><span class="ok"><input type="checkbox" data-a="ok" ${a.ok ? "checked" : ""}> Assinou</span><input type="date" data-a="data" value="${esc(a.data || "")}"></div>`; }).join("")}</div>
+        ${tipo !== "mensal" && !d ? `<div class="dc-s">Crachá</div><label class="w12" style="flex-direction:row;align-items:center;gap:8px;text-transform:none;font-size:13px;color:var(--ink,#14213d)"><input type="checkbox" id="dcUpd" checked> ${tipo === "apto" ? "Atualizar o resultado do treinamento para <b>&nbsp;Classificado</b>" : tipo === "napto" ? "Atualizar o resultado do treinamento para <b>&nbsp;Não classificado</b>" : tipo === "renova" ? "Prorrogar o crachá até a nova data (até)" : "Marcar o treinamento como <b>&nbsp;Desistiu</b> e encerrar o crachá"}</label>` : ""}
+      </div></div>
+      <div class="dc-f">${d ? '<button class="btn danger" type="button" id="dcDel">Excluir</button>' : ""}<span class="msg" id="dcMsg"></span><button class="btn" type="button" id="dcVolta">Voltar</button><button class="btn" type="button" id="dcPdf">Salvar e gerar PDF</button><button class="btn primary" type="button" id="dcSalvar">Salvar</button></div></div>`;
+    w.querySelector("[data-x]").onclick = fechar; w.querySelector("#dcVolta").onclick = lista;
+    const g = s => w.querySelector(s);
+    if (tipo === "renova") { const upd = () => { const dd = +g('[data-k="dias"]').value || 0, de = g('[data-k="nde"]'), ate = g('[data-k="nate"]'); if (!de.value && g('[data-k="fim"]').value) de.value = iso(new Date(pd(g('[data-k="fim"]').value).getTime() + DAY)); if (dd && de.value) ate.value = iso(new Date(pd(de.value).getTime() + (dd - 1) * DAY)); }; g('[data-k="dias"]').oninput = upd; }
+    if (tipo === "mensal") g("#dcAdd").onclick = () => g("#dcLin").insertAdjacentHTML("beforeend", '<tr><td><input type="date" data-l="data"></td><td><input data-l="turno"></td><td><input data-l="ativ"></td><td><input data-l="evo"></td><td><input data-l="ori"></td></tr>');
+    const del = g("#dcDel"); if (del) del.onclick = async () => { if (!del.dataset.c) { del.dataset.c = 1; del.textContent = "Confirmar exclusão"; return; } try { await db.collection("docs_trein").doc(d.id).update({ excluido:true, excluidoEm:new Date().toISOString(), excluidoPor:quemDoc() }); toast("Documento excluído"); lista(); } catch (e) { g("#dcMsg").textContent = "Sem permissão para excluir."; } };
+    const salvar = async pdf => { const msg = t => { g("#dcMsg").style.color = "var(--bad,#a3301c)"; g("#dcMsg").textContent = t; };
+      const dados = {}; w.querySelectorAll("[data-k]").forEach(i => dados[i.dataset.k] = i.value.trim());
+      ["evo","mot","sit","taco"].forEach(n => { const L = [...w.querySelectorAll(`input[name="${n}"]:checked`)].map(i => i.value); if (L.length || D0[n]) dados[n] = L; });
+      ["freq","evm","rec"].forEach(n => { const x = w.querySelector(`input[name="${n}"]:checked`); if (x) dados[n] = x.value; });
+      if (tipo === "mensal") dados.lin = [...w.querySelectorAll("#dcLin tr")].map(tr => { const o = {}; tr.querySelectorAll("[data-l]").forEach(i => o[i.dataset.l] = i.value.trim()); return o; });
+      if (!dados.nome || !dados.monitor) return msg("Preencha o nome e o monitor responsável.");
+      if (tipo === "napto" && !dados.pontos) return msg("Descreva os pontos identificados e as orientações.");
+      if (tipo === "renova" && (!dados.evolucao || !+dados.dias)) return msg("Preencha a evolução observada e o período adicional (dias).");
+      if (tipo === "desist" && !dados.aPartir) return msg("Informe a partir de quando o treinamento foi encerrado.");
+      const ass = {}; w.querySelectorAll("[data-as]").forEach(x => { const ok = x.querySelector('[data-a="ok"]').checked; ass[x.dataset.as] = { nome:x.querySelector('[data-a="nome"]').value.trim(), ok, data: ok ? (x.querySelector('[data-a="data"]').value || iso(today)) : x.querySelector('[data-a="data"]').value }; });
+      const agora = new Date().toISOString(), rec = { crachaId:id, mat:String(r.mat), nome:dados.nome, tipo, data:dados.data || iso(today), dados, ass, atualizadoEm:agora, atualizadoPor:quemDoc() };
+      try { let did = d && d.id; if (did) await db.collection("docs_trein").doc(did).update(rec); else { did = "d" + Date.now().toString(36); await db.collection("docs_trein").doc(did).set({ ...rec, criadoEm:agora, criadoPor:quemDoc() }); }
+        const up = g("#dcUpd"); if (up && up.checked) { const u = tipo === "apto" ? { resultado:"CLASSIFICADO" } : tipo === "napto" ? { resultado:"NAO_CLASSIFICADO" } : tipo === "desist" ? { resultado:"DESISTIU", encerrado:true } : (tipo === "renova" && dados.nate ? { fim:dados.nate } : null);
+          if (u) { const ob = (r0.obs ? r0.obs + " · " : "") + DOCT[tipo].c + " em " + br(rec.data) + (tipo === "renova" ? " (renovado até " + br(dados.nate) + ")" : ""); await db.collection("treinamentos").doc(id).update({ ...u, obs:ob, atualizadoEm:agora }); } }
+        toast("Documento salvo"); const dd = { id:did, ...rec }; if (pdf) await pdfDoc(dd); lista(); }
+      catch (e) { msg("Não consegui salvar: " + (e.message || "sem permissão")); } };
+    g("#dcSalvar").onclick = () => salvar(false); g("#dcPdf").onclick = () => salvar(true);
+  };
+  if (edDoc) form(null, edDoc); else if (novoTipo) form(novoTipo, null); else lista();
+}
+async function pdfDoc(d){
+  await ensurePdfLib(); const logo = await getLogo(); const { jsPDF } = window.jspdf; const t0 = d.tipo;
+  const montar = K => { const doc = new jsPDF({ unit:"mm", format:"a4" }), W = 210, L = 16, R = W - 16, CW = R - L, D = d.dados || {}, t = d.tipo;
+  const NAVY = [31,58,104], INK = [30,36,48], MUT = [100,108,120];
+  const tx = s => pdfTxt(s == null ? "" : String(s));
+  let y = 12; if (logo) { try { doc.addImage(logo, "PNG", L, y, 34, 11); } catch {} }
+  doc.setFont("helvetica","bold"); doc.setFontSize(12.5); doc.setTextColor(...NAVY); const tl = doc.splitTextToSize(tx(DOCT[t].t.toUpperCase()), CW - 80); doc.text(tl, L + 40, y + 5); y += Math.max(15, 6.5 + tl.length * 5.4);
+  doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(...MUT); doc.text("GESTÃO DE PESSOAS — TREINAMENTO E DESENVOLVIMENTO", L + 40, y - 2); doc.setDrawColor(110,150,60); doc.setLineWidth(.6); doc.line(L, y + 1, R, y + 1); y += 6;
+  const par = (s, fs = 9.2) => { fs *= K; doc.setFont("helvetica","normal"); doc.setFontSize(fs); doc.setTextColor(...INK); const l = doc.splitTextToSize(tx(s), CW); doc.text(l, L, y); y += l.length * fs * .42 + 2 * K; };
+  const sec = s => { if (y > 262) { doc.addPage(); y = 18; } y += 1.2 * K; doc.setFont("helvetica","bold"); doc.setFontSize(9.6 * K); doc.setTextColor(...NAVY); doc.text(tx(s), L, y); y += 4.6 * K; };
+  const kv = rows => { doc.autoTable({ startY:y, body:rows, theme:"plain", styles:{ fontSize:8.8 * K, cellPadding:1.1 * K, textColor:INK }, columnStyles:{ 0:{ fontStyle:"bold", cellWidth:52 }, 2:{ fontStyle:"bold", cellWidth:38 } }, margin:{ left:L, right:16 }, semTotal:true }); y = doc.lastAutoTable.finalY + 3 * K; };
+  const box = (lab, on) => { doc.setDrawColor(60); doc.setLineWidth(.25); doc.rect(L, y - 2.9, 3, 3); if (on) { doc.setFont("helvetica","bold"); doc.text("X", L + .55, y - .4); } doc.setFont("helvetica","normal"); doc.setFontSize(9 * K); doc.setTextColor(...INK); const l = doc.splitTextToSize(tx(lab), CW - 6); doc.text(l, L + 5, y); y += l.length * 3.9 * K + .8 * K; };
+  const linhas = (s, n) => { if (s) { par(s); return; } doc.setDrawColor(170); doc.setLineWidth(.2); for (let i = 0; i < n; i++) { doc.line(L, y + 2, R, y + 2); y += 6.2 * K; } y += 1; };
+  const intro = { apto:"Pelo presente instrumento, registra-se a conclusão do período de treinamento do colaborador abaixo identificado, bem como o resultado da avaliação realizada pelo monitor responsável.", napto:"Pelo presente instrumento, registra-se o resultado da avaliação realizada ao término do período de treinamento do colaborador abaixo identificado.", desist:"Pelo presente instrumento, registra-se a manifestação do colaborador abaixo identificado referente à sua decisão de não dar continuidade ao período de treinamento para a atividade/função indicada." }[t];
+  if (intro) par(intro);
+  sec("IDENTIFICAÇÃO DO COLABORADOR"); kv([["Nome:", D.nome || "", "Matrícula:", D.mat || ""], ["Setor/Frente:", D.setor || "", "Função atual:", D.funcao || ""], [t === "mensal" ? "Atividade / função em treinamento:" : "Função/atividade em treinamento:", D.ft || "", t === "mensal" ? "Equipamento / máquina:" : "", t === "mensal" ? (D.equip || "") : ""], ["Monitor responsável:", D.monitor || "", "Liderança:", D.lideranca || ""]]);
+  if (t === "mensal") { sec("CONTROLE DO PERÍODO"); kv([["Mês / ano:", D.mes || "", "Horas previstas:", D.horas || ""], ["Início:", br(D.ini).replace("—",""), "Vencimento do crachá:", br(D.venc).replace("—","")]]); }
+  else { sec("PERÍODO DE TREINAMENTO"); kv([["Início:", br(D.ini).replace("—",""), "Término:", br(D.fim).replace("—","")], ["Vencimento do crachá:", br(D.venc).replace("—",""), "", ""]]); }
+  if (t === "apto") { sec("RESULTADO DA AVALIAÇÃO"); par("Após acompanhamento do desenvolvimento do colaborador durante o período estabelecido para treinamento, considerando os aspectos técnicos, operacionais, comportamentais e de segurança aplicáveis à atividade, o monitor responsável registra que o colaborador:"); doc.setFont("helvetica","bold"); doc.setFontSize(10.5); doc.setTextColor(30,110,70); doc.text("FOI CONSIDERADO APTO", L, y); y += 5; par("Resultado deste documento: APTO PARA CLASSIFICAÇÃO, conforme os critérios internos estabelecidos para a função.");
+    sec("CONSIDERAÇÕES DO MONITOR"); linhas(D.cons, 3); sec("ENCAMINHAMENTO"); par("Diante do resultado da avaliação, registra-se a conclusão do período de treinamento e a indicação do colaborador para classificação na função, observados os procedimentos internos da empresa."); }
+  if (t === "napto") { sec("RESULTADO DA AVALIAÇÃO"); par("Após o período de treinamento e acompanhamento realizado, o monitor responsável registra que, nesta avaliação, o colaborador:"); box("NÃO FOI CONSIDERADO APTO PARA EXERCER/ASSUMIR A ATIVIDADE AVALIADA.", true);
+    sec("DESCRIÇÃO OBJETIVA DOS PONTOS IDENTIFICADOS E ORIENTAÇÕES REALIZADAS PELO MONITOR"); linhas(D.pontos, 4); sec("ENCAMINHAMENTO"); par("Diante do resultado da avaliação, o colaborador permanece não apto para a atividade avaliada, devendo seguir as orientações definidas pela liderança e/ou Gestão de Pessoas quanto à continuidade ou encerramento do processo de treinamento."); par("Observação: O presente documento registra o resultado da avaliação realizada na data indicada, considerando as condições e evidências observadas durante o período de treinamento.", 8.6); }
+  if (t === "renova") { sec("RESULTADO DO ACOMPANHAMENTO"); par("Após o acompanhamento realizado durante o período de treinamento, o monitor registra que o colaborador apresenta:"); EVO.forEach(e => box(e + ";", (D.evo || []).includes(e))); box("Outro: " + (D.evoOutro || "_________________"), !!D.evoOutro);
+    sec("EVOLUÇÃO OBSERVADA / PONTOS QUE AINDA NECESSITAM DE DESENVOLVIMENTO"); linhas(D.evolucao, 3); sec("JUSTIFICATIVA PARA RENOVAÇÃO"); par("Considerando a evolução apresentada pelo colaborador e os pontos ainda em desenvolvimento, o monitor responsável solicita a renovação do período de treinamento, possibilitando a continuidade do acompanhamento e da prática necessária para nova avaliação.");
+    sec("PERÍODO SOLICITADO"); kv([["Período adicional sugerido:", D.dias ? D.dias + " dias" : "_____ dias", "Nova avaliação:", D.naval ? br(D.naval) : ""], ["Novo período previsto:", D.nde ? br(D.nde) + " até " + br(D.nate) : "De ________ até ________", "", ""]]); }
+  if (t === "desist") { sec("MANIFESTAÇÃO DO COLABORADOR"); par("O colaborador declara que, nesta data, manifesta sua decisão de não prosseguir com o período de treinamento para a atividade acima indicada."); par("Motivo informado pelo colaborador:"); MOTD.forEach(m => box(m, (D.mot || []).includes(m))); box("Outro motivo: " + (D.motOutro || ""), !!D.motOutro);
+    sec("RELATO / OBSERVAÇÕES"); linhas(D.relato, 3); sec("ORIENTAÇÕES REALIZADAS"); par("O colaborador foi orientado quanto às consequências administrativas decorrentes da interrupção do processo de treinamento, bem como quanto aos procedimentos internos aplicáveis ao seu caso.");
+    sec("REGISTRO DA SITUAÇÃO"); par("Fica registrado que o processo de treinamento será encerrado/interrompido a partir de: " + (D.aPartir ? br(D.aPartir) : "____/____/________")); SITD.forEach(s => box(s, (D.sit || []).includes(s))); box("Outro: " + (D.sitOutro || "_________________"), !!D.sitOutro); }
+  if (t === "mensal") { sec("REGISTRO DIÁRIO DO TREINAMENTO"); par("Preencher no próprio dia da atividade. Registrar o conteúdo efetivamente treinado, evolução, orientações e pontos a reforçar. O colaborador e o monitor assinam e datam cada registro no dia do treinamento.", 8.4);
+    const LN = (D.lin || []).filter(l => Object.values(l).some(Boolean)); const body = LN.map(l => [br(l.data).replace("—",""), l.turno || "", l.ativ || "", l.evo || "", l.ori || ""]); while (body.length < Math.max(10, LN.length)) body.push(["","","","",""]);
+    doc.autoTable({ startY:y, head:[["Data","Turno / horário","Atividade / conteúdo","Evolução observada","Orientações / pontos a reforçar"]], body:body.map(x => x.map(tx)), theme:"grid", styles:{ fontSize:8, cellPadding:1.4, minCellHeight:6.5, lineColor:[190,190,190], lineWidth:.2 }, headStyles:{ fillColor:NAVY }, columnStyles:{ 0:{ cellWidth:20 }, 1:{ cellWidth:24 } }, margin:{ left:L, right:16 }, semTotal:true }); y = doc.lastAutoTable.finalY + 4; if (y + 112 > 285) { doc.addPage(); y = 20; }
+    sec("TIPO DE ACOMPANHAMENTO"); TACO.forEach(o => box(o, (D.taco || []).includes(o)));
+    sec("FECHAMENTO MENSAL — MONITOR"); kv([["Período avaliado:", (D.pde ? br(D.pde) : "____/____/____") + " a " + (D.pate ? br(D.pate) : "____/____/____"), "", ""], ["Frequência:", D.freq || "Regular / Irregular / Necessita verificação", "", ""], ["Evolução:", D.evm || "Satisfatória / Em desenvolvimento / Abaixo do esperado", "", ""], ["Principais evoluções / pontos:", D.pontosM || "", "", ""], ["Recomendação:", D.rec || D.recOutro || "Prosseguir / Intensificar acompanhamento / Avaliar aptidão", "", ""]]); }
+  sec(t === "mensal" ? "CIÊNCIA DO FECHAMENTO" : t === "desist" ? "CIÊNCIA" : "CIÊNCIA E RESPONSABILIDADES");
+  if (t === "renova") par("Declaro estar ciente das informações registradas neste documento, dos pontos que necessitam de desenvolvimento e da continuidade do período de treinamento.");
+  if (t === "desist") par("Declaro estar ciente das informações registradas neste documento e de que minha manifestação de desistência foi formalmente registrada.");
+  if (t === "mensal") par("A assinatura do colaborador registra ciência da atividade/orientação realizada na data. A assinatura do monitor registra o acompanhamento efetivamente realizado.", 8.6);
+  const ks = assDe(t), A = d.ass || {}, alt = ks.length > 2 ? 34 : 22; if (y + alt + 14 > 285) { doc.addPage(); y = 24; }
+  y += 12 * K; const cw = (CW - 12) / 2;
+  ks.forEach((k, i) => { const x = L + (i % 2) * (cw + 12), yy = y + Math.floor(i / 2) * 20; doc.setDrawColor(40); doc.setLineWidth(.3); doc.line(x, yy, x + cw, yy);
+    doc.setFont("helvetica","bold"); doc.setFontSize(8.6); doc.setTextColor(...INK); doc.text(tx(ASSN[k].toUpperCase()), x + cw / 2, yy + 4, { align:"center" });
+    doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(...MUT); const nm = (A[k] && A[k].nome) || (k === "col" ? D.nome : k === "mon" ? D.monitor : k === "lid" ? D.lideranca : ""); if (nm) doc.text(tx(nm), x + cw / 2, yy + 8, { align:"center" }); });
+  doc.setFontSize(7.5); doc.setTextColor(...MUT); doc.text(tx("Capinópolis/MG, " + br(d.data) + " · documento gerado pelo app Gestão de Pessoas CRV"), L, 290);
+  return doc; };
+  let doc = montar(1); if (t0 !== "mensal") for (const K of [.93,.86,.8,.74]) { if (doc.getNumberOfPages() <= 1) break; doc = montar(K); }
+  const D = d.dados || {}, t = t0;
+  const nome = `${DOCT[t].c} - ${String(D.nome || "").split(" ")[0]} ${D.mat || ""} - ${br(d.data).split("/").join("-")}.pdf`;
+  const out = await (window.parent && window.parent.CRV_PDF_LOGOS ? window.parent.CRV_PDF_LOGOS(doc) : doc);
+  const blob = (out || doc).output("blob"); if (downloads) await downloads.save({ filename:nome, data:blob }); else { const u = URL.createObjectURL(blob), a = document.createElement("a"); a.href = u; a.download = nome; a.click(); setTimeout(() => URL.revokeObjectURL(u), 4000); }
+}
+document.addEventListener("click", e => { const b = e.target.closest && e.target.closest(".doc-open"); if (!b) return; e.preventDefault(); e.stopPropagation(); abrirDocs(b.dataset.doc); }, true);
+window.CRV_DOCS_TREIN = abrirDocs;
 
 /* ---------- Dados ---------- */
 render();
