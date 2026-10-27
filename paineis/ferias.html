@@ -376,6 +376,7 @@ body.has-sel .wrap>.foot{margin-bottom:90px}
     <label class="chk"><input type="checkbox" id="fAf" checked> Incluir afastados</label>
     <button class="btn" id="btnLimpar" type="button">Limpar</button>
     <button class="btn" id="btnSel" type="button">Selecionar pessoas</button>
+    <button class="btn primary" id="btnDP" type="button" style="background:#1c7f53;border-color:#1c7f53">Imprimir relação para o Departamento Pessoal</button>
     <button class="btn primary" id="btnPdf" type="button">Gerar PDF</button>
     <button class="btn primary" id="btnXls" type="button">Exportar Excel</button>
   </div>
@@ -489,7 +490,7 @@ body.has-sel .wrap>.foot{margin-bottom:90px}
     <div class="dlg-h"><h3 id="pdfT">Gerar PDF</h3><div class="small">Para imprimir ou enviar. Usa os filtros que estão na tela.</div></div>
     <div class="dlg-b">
       <div class="small" id="pdfInfo" style="color:var(--fg-2)"></div>
-      <fieldset class="fs"><legend>Tipo de PDF</legend>
+      <fieldset class="fs" id="pdfTipoFs"><legend>Tipo de PDF</legend>
         <label class="chk" style="padding:0"><input type="radio" name="pTipo" value="form" checked> Formulário para a área preencher as datas</label>
         <label class="chk" style="padding:0"><input type="radio" name="pTipo" value="saidas"> Relação de quem vai sair de férias (para o Departamento Pessoal)</label>
       </fieldset>
@@ -1330,7 +1331,13 @@ function pdfSync(){
     (!DL?`<div class="warn bad">O download de arquivos não está disponível nesta visualização do painel.</div>`:'');
   $('pdfGo').disabled=!rows.length||!DL;
 }
-$('btnPdf').addEventListener('click',()=>{ lastFocus=document.activeElement; $('pdfMsg').textContent=''; pdfSync(); $('ovPdf').hidden=false; setTimeout(()=>$('pdfGo').focus(),0); });
+/* botão próprio: relação de quem vai sair de férias, para enviar ao Departamento Pessoal */
+function abrirDP(){ lastFocus=document.activeElement; $('pdfMsg').textContent=''; document.querySelector('input[name=pTipo][value=saidas]').checked=true; $('pdfTipoFs').hidden=true;
+  $('pdfT').textContent='Relação para o Departamento Pessoal'; $('pdfT').nextElementSibling.textContent='Quem vai sair de férias no mês ou entre as datas escolhidas. Usa também os filtros de setor, seção e gerência da tela.';
+  pdfSync(); if(!$('pdfMes').value&&!$('pdfDe').value&&!$('pdfAte').value){ const cur=iso(HOJE).slice(0,7); const o=[...$('pdfMes').options].find(x=>x.value>=cur); if(o){ $('pdfMes').value=o.value; $('pdfMes').dispatchEvent(new Event('change')); } }
+  $('ovPdf').hidden=false; setTimeout(()=>$('pdfMes').focus(),0); }
+$('btnDP').addEventListener('click',abrirDP); window.CRV_FER_DP=abrirDP;
+$('btnPdf').addEventListener('click',()=>{ lastFocus=document.activeElement; $('pdfMsg').textContent=''; $('pdfTipoFs').hidden=false; $('pdfT').textContent='Gerar PDF'; $('pdfT').nextElementSibling.textContent='Para imprimir ou enviar. Usa os filtros que estão na tela.'; document.querySelector('input[name=pTipo][value=form]').checked=true; pdfSync(); $('ovPdf').hidden=false; setTimeout(()=>$('pdfGo').focus(),0); });
 document.querySelectorAll('input[name=pScope],input[name=pTipo],#pdfSaiu,#pdfSemProg,#pdfAq').forEach(r=>r.addEventListener('change',pdfSync));
 $('pdfMes').addEventListener('change',()=>{ const m=$('pdfMes').value; if(m){ const [yy,mm]=m.split('-').map(Number); $('pdfDe').value=m+'-01'; $('pdfAte').value=iso(new Date(yy,mm,0)); } else { $('pdfDe').value=''; $('pdfAte').value=''; } pdfSync(); });
 ['pdfDe','pdfAte'].forEach(id=>$(id).addEventListener('change',()=>{ $('pdfMes').value=''; pdfSync(); }));
