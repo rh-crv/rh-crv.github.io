@@ -1080,6 +1080,7 @@ const SUBACOES = {
   'cartao-adm':         [{ acao:'novo', nome:'Registrar entrega' }, { acao:'sem', nome:'Créditos da semana' }, { acao:'rel', nome:'Relatório do período' }],
   crachas:  [{ acao:'novo', nome:'Cadastrar crachá de treinamento' }],
   clube:    [{ acao:'novo', nome:'Lançar sócio' }],
+  unimed:   [{ acao:'acid', nome:'Acidente de trabalho' }],
   ferias:   [{ acao:'fdp', nome:'Relação para o Departamento Pessoal' }],
   farmacia: [{ acao:'aut', nome:'Autorização de desconto' }, { acao:'hist', nome:'Histórico de autorizações' }],
   'servicos-gerais': [{ acao:'she', nome:'Lançar horas extras' }, { acao:'sab', nome:'Lançar abonos' }, { acao:'sgr', nome:'Gratificação do mês' }, { acao:'sin', nome:'Nova inspeção semanal' }, { acao:'spa', nome:'Plano de ação' }]
@@ -1097,6 +1098,7 @@ function executarAcao(acao){
   if (acao === 'atj' && w && typeof w.CRV_JOV_AT === 'function') { fecharJanelasAut(w); w.CRV_JOV_AT(); return true; }
   if (acao === 'ctr' && w && typeof w.CRV_CONTRATACAO === 'function') { fecharJanelasAut(w); w.CRV_CONTRATACAO(); return true; }
   if (acao === 'jcn' && E.painelAberto === 'justa-causa' && typeof window.CRV_JC_NOVA === 'function') { window.CRV_JC_NOVA(); return true; }
+  if (acao === 'acid' && w && typeof w.CRV_ACID === 'function') { w.CRV_ACID(); return true; }
   if (acao === 'fdp' && w && typeof w.CRV_FER_DP === 'function') { w.CRV_FER_DP(); return true; }
   if (acao === 'grel' && w && typeof w.CRV_GERREL === 'function') { fecharJanelasAut(w); w.CRV_GERREL(); return true; }
   if (acao === 'hcol' && w && typeof w.CRV_HISTCOL === 'function') { fecharJanelasAut(w); w.CRV_HISTCOL(); return true; }
