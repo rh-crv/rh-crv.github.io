@@ -195,7 +195,8 @@ async function carregarCatalogo(){
     { id:'cartao-convenio',    frente:'Gestão de Benefícios', nome:'Cartão Convênio',    nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.2 },
     { id:'cartao-premium',     frente:'Gestão de Benefícios', nome:'Cartão Premium',     nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.3 },
     { id:'cartao-adm',         frente:'Gestão de Benefícios', nome:'Cartão Convênio ADM', nivel:'controlado', ordem:(sp ? sp.ordem : 40) + 0.4 },
-    { id:'servicos-gerais',    frente:'Horas Extras e Gratificações', nome:'Serviços Gerais — Extras e Gratificações', nivel:'controlado', ordem:90 }
+    { id:'servicos-gerais',    frente:'Horas Extras e Gratificações', nome:'Serviços Gerais — Extras e Gratificações', nivel:'controlado', ordem:90 },
+    { id:'clube',              frente:'Gestão de Benefícios', nome:'Capinópolis Clube', nivel:'controlado', ordem:((E.paineis.find(x => x.id === 'uniodonto') || {}).ordem || 45) + 0.5 }
   ].filter(n => !E.paineis.some(x => x.id === n.id));
   if (NOVOS.length && E.perfil && E.perfil.papel === 'admin') {
     await sb.from('paineis').insert(NOVOS.map((n, i) => ({ ...n, ordem: (n.id.startsWith('cartao-') || n.id === 'sysprocard-credito') ? (sp ? sp.ordem : 40) + 1 + i : n.ordem })));
@@ -548,7 +549,8 @@ const DCK = [
   { k:'conv',   n:'Cartão Convênio', acao:'Bloquear o cartão',  painel:'cartao-convenio' },
   { k:'unimed', n:'Unimed',          acao:'Excluir do plano',   painel:'unimed' },
   { k:'odonto', n:'Uniodonto',       acao:'Excluir do plano',   painel:'uniodonto' },
-  { k:'aloj',   n:'Alojamento',      acao:'Liberar o leito',    painel:'alojamentos' }
+  { k:'aloj',   n:'Alojamento',      acao:'Liberar o leito',    painel:'alojamentos' },
+  { k:'clube',  n:'Capinópolis Clube', acao:'Excluir do clube (parar o desconto)', painel:'clube' }
 ];
 const brD = s => s ? String(s).slice(0, 10).split('-').reverse().join('/') : '';
 async function dadosDesligamento(){
@@ -565,6 +567,8 @@ async function dadosDesligamento(){
     else if (U && U.P) { refs.unimed = d.referencia; U.P.filter(r => r[8] >= 0).forEach(r => add(r[0], r[1], 'unimed', r[11] && r[11].length ? `Titular + ${r[11].length} dependente${r[11].length > 1 ? 's' : ''}` : 'Titular', refs.unimed)); } }
   if (pode('uniodonto')) { const d = await window.CRV_DADOS('uniodonto'); const U = d && d.dados.DATA; if (U && U.T) { refs.odonto = d.referencia; U.T.forEach(t => add(t[5] || t[1], t[2], 'odonto', t[7] && t[7].length ? `Titular + ${t[7].length} dependente${t[7].length > 1 ? 's' : ''}` : 'Titular', refs.odonto)); } }
   if (pode('alojamentos')) { const d = await window.CRV_DADOS('alojamentos'); const A = d && d.dados.DATA; if (A && A.people) { refs.aloj = d.referencia; A.people.filter(x => x.t === 'c' && x.m).forEach(x => { const h = A.houses && A.houses[x.h]; add(x.m, x.n, 'aloj', h ? `${h.n}${x.q ? ', quarto ' + x.q : ''}` : 'Alojado', refs.aloj); }); } }
+  { const pc = E.paineis.find(x => x.id === 'clube'); if (pc && podeVer(pc)) { const R = (await window.CRV_REGS('clube', 'lanc')).filter(x => !x.excluida && x.mes); const mx = R.reduce((a, x) => x.mes > a ? x.mes : a, '');
+    if (mx) { refs.clube = mx + '-01'; R.filter(x => x.mes === mx).forEach(x => add(x.mat, x.nome, 'clube', (x.tipo === 'F' ? 'Contribuição familiar' : x.tipo === 'I' ? 'Contribuição individual' : 'Sócio') + ' · lista de ' + mx.slice(5, 7) + '/' + mx.slice(0, 4), refs.clube)); } } }
   const { data } = await todasLinhas((a, z) => sb.from('registros').select('doc_id,dados').eq('painel', 'quadro').eq('colecao', 'deslig_check').order('caminho').range(a, z));
   const OK = {}; (data || []).forEach(r => { OK[r.doc_id] = (r.dados && r.dados.ok) || {}; });
   const L = [...P.values()].map(x => { x.ok = OK[x.mat] || {}; x.pend = Object.keys(x.b).filter(k => !x.ok[k]); return x; })
@@ -648,6 +652,9 @@ async function fichaDados(mat){
       B.push(['Uniodonto', t ? 'Titular' : 'Sem plano', t && t[7] && t[7].length ? t[7].length + ' dependente' + (t[7].length > 1 ? 's' : '') + ': ' + t[7].map(x => x[1]).join(', ') : '', brD(d.referencia)]); } }
     if (fPode('alojamentos')) { const d = await window.CRV_DADOS('alojamentos'); const A = d && d.dados.DATA; if (A) { const x = (A.people || []).find(y => y.t === 'c' && fMat(y.m) === mat);
       B.push(['Alojamento', x ? 'Alojado' : 'Não alojado', x ? ((A.houses[x.h] || {}).n || '') + (x.q ? ', quarto ' + x.q : '') : '', brD(d.referencia)]); } }
+    { const pc = E.paineis.find(x => x.id === 'clube'); if (pc && podeVer(pc)) { const R = (await window.CRV_REGS('clube', 'lanc')).filter(x => !x.excluida && x.mes); const mx = R.reduce((a, x) => x.mes > a ? x.mes : a, '');
+      if (mx) { const x = R.find(y => y.mes === mx && fMat(y.mat) === mat), v = x ? (+x.valor || 0) - (+x.desc || 0) : 0;
+        B.push(['Capinópolis Clube', x ? 'Ativo · sócio ' + (x.tipo === 'F' ? 'familiar' : x.tipo === 'I' ? 'individual' : '(outro valor)') : 'Não sócio', x ? 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits:2 }) + ' a descontar' + (+x.desc ? ' (desconto de R$ ' + (+x.desc).toLocaleString('pt-BR', { minimumFractionDigits:2 }) + ')' : '') : '', mx.slice(5, 7) + '/' + mx.slice(0, 4)]); } } }
     if (B.length) F.sec.push({ k:'ben', t:'Benefícios e alojamento', cab:['Benefício', 'Situação', 'Detalhe', 'Base de'], linhas:B, alerta: c.situacao === 'Desligado' && B.some(b => /Titular|Ativo|Alojado/.test(b[1]) && !/Alimenta|Premium/.test(b[0])) ? 'Desligado com benefício ativo' : '' });
   })());
   // Remuneração: só a equipe RH (a planilha de salários fica num painel restrito)
@@ -1057,6 +1064,7 @@ const SUBACOES = {
   'cartao-premium':     [{ acao:'rel', nome:'Relatório de conferência' }],
   'cartao-adm':         [{ acao:'novo', nome:'Registrar entrega' }, { acao:'sem', nome:'Créditos da semana' }, { acao:'rel', nome:'Relatório do período' }],
   crachas:  [{ acao:'novo', nome:'Cadastrar crachá de treinamento' }],
+  clube:    [{ acao:'novo', nome:'Lançar sócio' }],
   farmacia: [{ acao:'aut', nome:'Autorização de desconto' }, { acao:'hist', nome:'Histórico de autorizações' }],
   'servicos-gerais': [{ acao:'she', nome:'Lançar horas extras' }, { acao:'sab', nome:'Lançar abonos' }, { acao:'sgr', nome:'Gratificação do mês' }, { acao:'sin', nome:'Nova inspeção semanal' }, { acao:'spa', nome:'Plano de ação' }]
 };
@@ -1475,7 +1483,8 @@ async function registrar(painel, acao, detalhe){
    ===================================================================== */
 const MODELOS_LISTA = ['quadro','admissoes','rescisoes','experiencia','fat','curriculos','perfil','absenteismo','absenteismo-gestao',
   'ferias','sancoes','sysprocard','unimed','uniodonto','farmacia','jovem','renapsi','treinamentos','crachas','pesquisas','lideres',
-  'conexao','rd','fadiga','processos','ouvidorias','recepcao','alojamentos','onibus','gratificacao','servicos-gerais'];
+  'conexao','rd','fadiga','processos','ouvidorias','recepcao','alojamentos','onibus','gratificacao','servicos-gerais','clube'];
+const SEM_PACOTE = ['clube'];
 const MODELOS = Object.fromEntries(MODELOS_LISTA.map(id => [id, `paineis/${id}.html`]));
 // painéis que usam o mesmo arquivo de painel
 ['cartao-alimentacao','cartao-convenio','cartao-premium'].forEach(id => MODELOS[id] = 'paineis/cartoes.html');
@@ -1512,7 +1521,8 @@ async function telaModelo(p, cfg, acao){
   if (!area) return;
   if (pac.error) { area.innerHTML = `<div class="erro">${esc(traduzErro(pac.error))}</div>`; return; }
   if (tpl.erro) { area.innerHTML = `<div class="erro">${esc(tpl.erro.message)}</div>`; return; }
-  const d = pac.data;
+  let d = pac.data;
+  if (!d && SEM_PACOTE.includes(p.id)) d = { referencia:'', conteudo:{ dados:{} } }; // painéis só com lançamentos no app
   if (!d) {
     area.innerHTML = `${svg('planilha')}<h3>${esc(p.nome)}: ainda sem dados</h3>
       <p>${ehAdmin() ? 'Carregue o arquivo de dados em <b>Administração → Painéis e frentes</b>.' : 'O RH ainda não carregou os dados deste painel.'}</p>`;

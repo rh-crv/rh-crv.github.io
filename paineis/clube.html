@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Capinópolis Clube</title>
+<style>
+:root{--bg:#f3f5f2;--card:#fff;--ink:#1d2622;--mut:#5f6b66;--line:#e1e6e2;--trk:#ecefec;
+ --ver:#1f6b4a;--ver2:#123f2d;--verbg:#e4f2ea;--amb:#c98a17;--ambbg:#fcf3dd;--tea:#1d7a88;--teabg:#e2f2f4;--vin:#8a2f45;--vinbg:#f7e8ec;--azu:#3a5d9c;--azubg:#e9eef8;
+ --ok:#2f7a55;--okbg:#e5f2eb;--bad:#b42318;--badbg:#fdecea}
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{background:linear-gradient(115deg,var(--ver2),var(--ver) 55%,var(--tea));color:#fff;position:relative}
+header:after{content:"";position:absolute;left:0;right:0;bottom:0;height:4px;background:linear-gradient(90deg,var(--amb),var(--vin),var(--tea))}
+.hin{max-width:1280px;margin:0 auto;padding:16px 18px 20px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.logo{background:#fff;border-radius:10px;padding:6px 10px;display:flex}.logo img{height:40px;display:block}
+.ttl{flex:1;min-width:240px}.ttl .eb{font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.8;font-weight:700}
+.ttl h1{margin:2px 0 0;font-size:21px}.ttl small{display:block;opacity:.85;font-size:12.5px;margin-top:2px}
+.comp{display:flex;gap:8px;align-items:center;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:6px 10px}
+.comp label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;opacity:.85}
+.comp .nav{border:0;background:rgba(255,255,255,.16);color:#fff;border-radius:7px;width:28px;height:28px;font-size:18px;line-height:1;cursor:pointer}
+.comp select{font:inherit;font-weight:700;border:0;border-radius:7px;padding:5px 8px;background:#fff;color:var(--ver2)}
+.btn{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:8px 13px;font:600 13px inherit;font-family:inherit;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:#bfc8c2}.btn.pri{background:var(--ver);border-color:var(--ver);color:#fff}.btn.amb{background:var(--amb);border-color:var(--amb);color:#fff}
+.btn.sm{padding:4px 9px;font-size:12px}.btn.perigo{color:var(--bad);border-color:#efc2bb}.btn.perigo.conf{background:var(--bad);color:#fff}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+main{max-width:1280px;margin:0 auto;padding:16px 18px 40px}
+.acts{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:14px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;border-left:4px solid var(--c,var(--ver));text-align:left;font:inherit;color:inherit;cursor:pointer}
+.kpi:hover{box-shadow:0 2px 10px rgba(0,0,0,.06)}
+.kpi .l{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--mut)}.kpi .v{font-size:24px;font-weight:700;line-height:1.15;margin-top:2px}.kpi .s{font-size:12px;color:var(--mut)}
+.leit{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin-bottom:14px}
+.leit>div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;border-top:3px solid var(--c)}
+.leit .k{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--c)}.leit p{margin:4px 0 0;font-size:13.5px}
+.vtabs{display:flex;gap:4px;margin:0 0 12px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.vtabs button{border:0;background:none;padding:9px 15px;font:600 14px inherit;font-family:inherit;color:var(--mut);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px}
+.vtabs button.on{color:var(--ver2);border-bottom-color:var(--amb)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px}
+.fbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.fbar input,.fbar select{border:1px solid var(--line);border-radius:8px;padding:7px 10px;font:inherit;background:#fff}
+.fbar input{min-width:220px;flex:1}
+.tw{overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--mut);padding:7px 9px;border-bottom:2px solid var(--line);white-space:nowrap}
+td{padding:7px 9px;border-top:1px solid var(--line);vertical-align:top}td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tbody tr.cl{cursor:pointer}tbody tr.cl:hover{background:#f6f8f6}
+tfoot td{font-weight:700;background:#f4f6f4;border-top:2px solid var(--line)}
+.sm{font-size:11.5px;color:var(--mut)}
+.pill{display:inline-block;border-radius:99px;padding:2px 9px;font-size:11.5px;font-weight:700;white-space:nowrap}
+.p-f{background:var(--verbg);color:var(--ver)}.p-i{background:var(--teabg);color:var(--tea)}.p-o{background:var(--azubg);color:var(--azu)}.p-bad{background:var(--badbg);color:var(--bad)}.p-amb{background:var(--ambbg);color:#8a5d00}
+.bar{display:grid;grid-template-columns:minmax(150px,1.3fr) 2fr auto;gap:10px;align-items:center;padding:5px 4px;cursor:pointer;border-radius:6px}.bar:hover{background:#f6f8f6}
+.bar .t{height:11px;background:var(--trk);border-radius:6px;overflow:hidden;display:flex}.bar .t i{display:block;height:100%}
+.bar .lb{font-size:13px}.bar .lb small{display:block;color:var(--mut);font-size:11.5px}.bar .vv{font-size:13px;font-weight:700;text-align:right;white-space:nowrap}
+.evo{display:flex;gap:10px;align-items:flex-end;height:190px;padding:10px 4px 0;border-bottom:1px solid var(--line);overflow-x:auto}
+.evo button{flex:1;min-width:56px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;border:0;background:none;cursor:pointer;font:inherit;height:100%}
+.evo button i{display:block;width:70%;border-radius:6px 6px 0 0;background:linear-gradient(180deg,var(--tea),var(--ver))}.evo button.on i{background:linear-gradient(180deg,var(--amb),#a8700f)}
+.evo button b{font-size:12px}.evo button span{font-size:11px;color:var(--mut)}
+.vazio{padding:28px;text-align:center;color:var(--mut)}
+.ovl{position:fixed;inset:0;background:rgba(15,25,20,.45);z-index:50;display:flex;justify-content:flex-end}
+.drw{background:var(--card);width:min(720px,100%);height:100%;overflow:auto;padding:18px;box-shadow:-10px 0 30px rgba(0,0,0,.2)}
+.drw h3{margin:0 0 2px;font-size:18px}.drw .sub{color:var(--mut);font-size:13px;margin-bottom:12px}
+.mod{position:fixed;inset:0;background:rgba(15,25,20,.45);z-index:60;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:30px 12px}
+.mbox{background:var(--card);border-radius:14px;width:min(620px,100%);box-shadow:0 20px 50px rgba(0,0,0,.25)}
+.mbox .mh{padding:15px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}.mbox .mh h3{margin:0;flex:1;font-size:17px}
+.mbox .mb{padding:14px 18px}.mbox .mf{padding:12px 18px;border-top:1px solid var(--line);display:flex;gap:8px;align-items:center}.mbox .mf .msg{flex:1;font-size:13px;color:var(--bad)}
+.fg{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}.fg label{display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--mut)}
+.fg input,.fg select,.fg textarea{font:inherit;font-size:14px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#fff}
+.c2{grid-column:span 2}.c3{grid-column:span 3}.c4{grid-column:span 4}.c6{grid-column:span 6}@media(max-width:600px){.fg>*{grid-column:span 6!important}}
+.pes{grid-column:span 6;border:1px dashed var(--line);border-radius:10px;padding:9px 11px;font-size:13px;background:#fafbfa}
+.ck{display:flex;flex-direction:column;gap:6px}.ck label{display:flex;gap:8px;align-items:center;font-size:13.5px;cursor:pointer}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ver2);color:#fff;padding:10px 16px;border-radius:10px;z-index:80;font-size:13.5px;box-shadow:0 8px 24px rgba(0,0,0,.2)}
+.foot{color:var(--mut);font-size:12px;margin-top:6px}
+.aviso{background:var(--ambbg);border:1px solid #eed7a4;border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:12px}
+</style>
+</head>
+<body>
+<header><div class="hin">
+  <span class="logo"><img alt="CRV Industrial" src="__CRV_BASE__img/logo-crv.png"></span>
+  <div class="ttl"><div class="eb">Gestão de Benefícios</div><h1>Capinópolis Clube</h1><small>Sócios do mês, desconto em folha e rateio por centro de custo</small></div>
+  <div class="comp"><label for="mes">Mês</label><button class="nav" id="mAnt" type="button" title="Mês anterior">‹</button><select id="mes"></select><button class="nav" id="mProx" type="button" title="Próximo mês">›</button></div>
+</div></header>
+<main>
+  <div id="banner" class="aviso" hidden></div>
+  <div class="acts">
+    <button class="btn pri" id="bNovo" type="button">+ Lançar sócio</button>
+    <button class="btn" id="bImp" type="button">Importar planilha do mês</button>
+    <button class="btn" id="bCopia" type="button">Copiar do mês anterior</button>
+    <span style="flex:1"></span>
+    <button class="btn amb" id="bExp" type="button">Exportar (Excel / PDF)</button>
+    <input type="file" id="fImp" accept=".xlsx,.xls,.csv" hidden>
+  </div>
+  <div class="kpis" id="kpis"></div>
+  <div class="leit" id="leit"></div>
+  <div class="vtabs" id="tabs"><button data-t="n" class="on">Lista nominal</button><button data-t="c">Por centro de custo</button><button data-t="e">Evolução mensal</button></div>
+  <section id="vN" class="card"></section>
+  <section id="vC" class="card" hidden></section>
+  <section id="vE" class="card" hidden></section>
+  <p class="foot" id="foot"></p>
+</main>
+<div class="toast" id="toast" hidden></div>
+<script>/*__CRV_DADOS__*/</script>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const brl=v=>'R$ '+(+v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const nf=v=>(+v||0).toLocaleString('pt-BR');
+const norm=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+const MESES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const mesCap=c=>{const t=MESES[+c.slice(5,7)-1]+'/'+c.slice(0,4);return t.charAt(0).toUpperCase()+t.slice(1)};
+const addMes=(c,n)=>{let y=+c.slice(0,4),m=+c.slice(5,7)-1+n;y+=Math.floor(m/12);m=((m%12)+12)%12;return y+'-'+String(m+1).padStart(2,'0')};
+const hojeMes=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')};
+const quem=()=>{try{return (window.parent&&window.parent.CRV_QUEM)||''}catch(_){return ''}};
+const toast=t=>{const e=$('toast');e.textContent=t;e.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>e.hidden=true,3200)};
+const mat0=m=>String(m==null?'':m).replace(/\D/g,'').replace(/^0+(?=\d)/,'');
+const TIPOS={F:{n:'Contribuição familiar',c:'p-f',v:130},I:{n:'Contribuição individual',c:'p-i',v:85},O:{n:'Outro',c:'p-o',v:0}};
+const tipoDe=s=>{const t=norm(s);return /famil/.test(t)?'F':/indiv/.test(t)?'I':t?'O':''};
+
+/* ---------- dados: lançamentos no banco do app (coleção 'lanc', um por pessoa e mês) ---------- */
+let DB=null,L=[],QD={},QREF='',CFG={F:130,I:85},MES=hojeMes(),TAB='n',FQ='',FT='',FCC='';
+async function carregar(){
+  try{const f=window.parent&&window.parent.CRV_QUADRO;if(typeof f==='function'){const q=await f();QD=(q&&q.mapa)||{};QREF=(q&&q.referencia)||''}}catch(_){}
+  try{DB=window.claude&&window.claude.use?await window.claude.use('db'):null}catch(_){DB=null}
+  if(!DB){$('banner').hidden=false;$('banner').textContent='Abra este painel pelo app Gestão de Pessoas para ver e lançar os sócios.';return}
+  try{const c=await DB.collection('cfg').get();const g=(c.docs||[]).find(x=>x.id==='geral');if(g)CFG=Object.assign(CFG,g.data()||{});TIPOS.F.v=+CFG.F||130;TIPOS.I.v=+CFG.I||85}catch(_){}
+  DB.collection('lanc').onSnapshot(s=>{L=(s.docs||[]).map(x=>Object.assign({id:x.id},x.data())).filter(x=>!x.excluida);
+    if(!L.some(x=>x.mes===MES)){const ms=meses();if(ms.length&&!carregar.ok)MES=ms[0]}carregar.ok=1;render()},()=>{$('banner').hidden=false;$('banner').textContent='A conexão com os dados foi interrompida. Reabra o painel.'});
+}
+const meses=()=>[...new Set(L.map(x=>x.mes))].sort().reverse();
+const pes=m=>QD[mat0(m)]||null;
+/* linha completa: lançamento + Quadro (centro de custo pela matrícula) */
+function linha(x){const p=pes(x.mat)||{};const v=+x.valor||0,d=+x.desc||0;
+  return Object.assign({},x,{nomeQ:p.nome||'',nome:p.nome||x.nome||'',funcao:p.funcao||'',cc:p.cc||'',ccd:p.ccd||p.setor||'',sit:p.nome?(p.situacao||'Ativo'):'Não encontrado no Quadro',deslig:p.deslig||'',liq:+(v-d).toFixed(2),
+    difNome:!!(p.nome&&x.nome0&&norm(p.nome)!==norm(x.nome0))})}
+const doMes=m=>L.filter(x=>x.mes===m).map(linha).sort((a,b)=>a.nome.localeCompare(b.nome));
+const ccKey=r=>r.cc?(r.cc+' · '+r.ccd):'Sem centro de custo';
+function filtrados(){const q=norm(FQ);return doMes(MES).filter(r=>(!q||norm(r.nome+' '+r.mat+' '+r.ccd+' '+r.cc+' '+r.funcao).includes(q))&&(!FT||r.tipo===FT)&&(!FCC||ccKey(r)===FCC))}
+const soma=(R,k)=>+R.reduce((s,r)=>s+(+r[k]||0),0).toFixed(2);
+
+/* ---------- tela ---------- */
+function render(){
+  const ms=meses();if(!ms.includes(MES))ms.unshift(MES);ms.sort().reverse();
+  $('mes').innerHTML=[...new Set([addMes(hojeMes(),1),hojeMes()].concat(ms))].sort().reverse().map(m=>`<option value="${m}" ${m===MES?'selected':''}>${mesCap(m)}${L.some(x=>x.mes===m)?'':' (sem lançamentos)'}</option>`).join('');
+  const R=doMes(MES),F=R.filter(r=>r.tipo==='F'),I=R.filter(r=>r.tipo==='I'),O=R.filter(r=>r.tipo!=='F'&&r.tipo!=='I'),Dc=R.filter(r=>+r.desc>0),DS=R.filter(r=>r.sit==='Desligado'||r.sit==='Não encontrado no Quadro');
+  const ant=doMes(addMes(MES,-1));
+  const K=[['tot','Sócios no mês',nf(R.length),ant.length?((R.length-ant.length>=0?'+':'')+(R.length-ant.length)+' em relação a '+mesCap(addMes(MES,-1)).toLowerCase()):'titulares lançados','var(--ver)'],
+    ['F','Contribuição familiar',nf(F.length),brl(soma(F,'valor')),'var(--tea)'],
+    ['I','Contribuição individual',nf(I.length),brl(soma(I,'valor')),'var(--azu)']];
+  if(O.length)K.push(['O','Outros valores',nf(O.length),brl(soma(O,'valor')),'var(--vin)']);
+  K.push(['desc','Descontos / abatimentos',nf(Dc.length),Dc.length?brl(soma(Dc,'desc'))+' abatidos':'nenhum no mês','var(--amb)'],
+    ['liq','Total a descontar em folha',brl(soma(R,'liq')),'mensalidades '+brl(soma(R,'valor'))+(soma(R,'desc')?' − abatimentos '+brl(soma(R,'desc')):''),'var(--ver2)']);
+  if(DS.length)K.push(['ds','Conferir situação',nf(DS.length),'desligado(s) ou fora do Quadro','var(--bad)']);
+  $('kpis').innerHTML=K.map(k=>`<button class="kpi" type="button" data-k="${k[0]}" style="--c:${k[4]}"><div class="l">${k[1]}</div><div class="v">${k[2]}</div><div class="s">${k[3]}</div></button>`).join('');
+  /* leitura do mês: só o que os dados mostram */
+  const cc=porCC(R);const top=cc[0];
+  const entr=R.filter(r=>ant.length&&!ant.some(a=>mat0(a.mat)===mat0(r.mat))),sai=ant.filter(a=>!R.some(r=>mat0(r.mat)===mat0(a.mat)));
+  $('leit').innerHTML=R.length?`<div style="--c:var(--ver)"><div class="k">Onde estamos</div><p><b>${nf(R.length)} sócios</b> em ${mesCap(MES).toLowerCase()}, ${brl(soma(R,'liq'))} a descontar em folha, em ${nf(cc.length)} centro${cc.length>1?'s':''} de custo.</p></div>
+    <div style="--c:${DS.length?'var(--bad)':'var(--amb)'}"><div class="k">Ponto de atenção</div><p>${DS.length?`<b>${nf(DS.length)}</b> lançado${DS.length>1?'s':''} que ${DS.length>1?'estão':'está'} desligado${DS.length>1?'s':''} ou fora do Quadro: conferir antes de enviar o desconto.`:R.some(r=>r.difNome)?'Há nome diferente do Quadro na matrícula lançada: conferir a matrícula.':'Todos os lançados estão ativos no Quadro'+(QREF?' de '+String(QREF).slice(0,10).split('-').reverse().join('/'):'')+'.'}</p></div>
+    <div style="--c:var(--tea)"><div class="k">O que acompanhar</div><p>${ant.length?`Em relação a ${mesCap(addMes(MES,-1)).toLowerCase()}: ${nf(entr.length)} entrada${entr.length===1?'':'s'} e ${nf(sai.length)} saída${sai.length===1?'':'s'}.`:'Primeiro mês lançado: a partir do próximo, o painel compara entradas e saídas.'}${top?` Maior centro: ${esc(top.n)} (${nf(top.q)}).`:''}</p></div>`:'';
+  $('vN').hidden=TAB!=='n';$('vC').hidden=TAB!=='c';$('vE').hidden=TAB!=='e';
+  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===TAB));
+  if(TAB==='n')vN();if(TAB==='c')vC(R);if(TAB==='e')vE();
+  $('foot').textContent='Centro de custo e situação pela matrícula, no Quadro de Colaboradores do app'+(QREF?' ('+String(QREF).slice(0,10).split('-').reverse().join('/')+')':'')+'. Valor a descontar = mensalidade − desconto/abatimento.';
+}
+function porCC(R){const m=new Map();R.forEach(r=>{const k=ccKey(r);const o=m.get(k)||{n:k,cc:r.cc,ccd:r.ccd,q:0,f:0,i:0,v:0,d:0,l:0};o.q++;r.tipo==='F'?o.f++:r.tipo==='I'?o.i++:0;o.v+=+r.valor||0;o.d+=+r.desc||0;o.l+=r.liq;m.set(k,o)});
+  return [...m.values()].sort((a,b)=>b.l-a.l||a.n.localeCompare(b.n))}
+const tipoPill=t=>`<span class="pill ${(TIPOS[t]||TIPOS.O).c}">${t==='F'?'Familiar':t==='I'?'Individual':'Outro'}</span>`;
+const sitTxt=r=>r.sit==='Ativo'?'':`<div><span class="pill p-bad">${esc(r.sit)}${r.deslig?' em '+r.deslig.slice(0,10).split('-').reverse().join('/'):''}</span></div>`;
+function vN(){const R=filtrados(),T=doMes(MES);const ccs=[...new Set(T.map(ccKey))].sort();
+  $('vN').innerHTML=`<div class="fbar"><input id="fq" placeholder="Buscar nome, matrícula, função ou centro de custo" value="${esc(FQ)}"><select id="ft"><option value="">Todos os tipos</option><option value="F" ${FT==='F'?'selected':''}>Familiar</option><option value="I" ${FT==='I'?'selected':''}>Individual</option><option value="O" ${FT==='O'?'selected':''}>Outro</option></select>
+    <select id="fcc"><option value="">Todos os centros de custo</option>${ccs.map(c=>`<option ${FCC===c?'selected':''}>${esc(c)}</option>`).join('')}</select>${FQ||FT||FCC?'<button class="btn sm" id="flimpa" type="button">Limpar filtros</button>':''}</div>
+  ${T.length?`<div class="tw"><table><thead><tr><th>Mat.</th><th>Nome</th><th>Centro de custo</th><th>Tipo</th><th class="n">Mensalidade</th><th class="n">Desconto</th><th class="n">A descontar</th><th>Obs.</th><th></th></tr></thead><tbody>
+    ${R.map(r=>`<tr class="cl" data-p="${esc(r.mat)}"><td>${esc(r.mat)}</td><td><b>${esc(r.nome)}</b><div class="sm">${esc(r.funcao)}</div>${sitTxt(r)}${r.difNome?`<div class="sm" style="color:var(--bad)">Na lista: ${esc(r.nome0||'')}</div>`:''}</td><td>${r.cc?`<b>${esc(r.cc)}</b><div class="sm">${esc(r.ccd)}</div>`:'<span class="sm">—</span>'}</td><td>${tipoPill(r.tipo)}</td><td class="n">${brl(r.valor)}</td><td class="n">${+r.desc?brl(r.desc):'<span class="sm">—</span>'}</td><td class="n"><b>${brl(r.liq)}</b></td><td><span class="sm">${esc(r.obs||'')}</span></td><td class="n"><button class="btn sm" type="button" data-ed="${esc(r.id)}">Editar</button></td></tr>`).join('')}</tbody>
+    <tfoot><tr><td colspan="4">Total: ${nf(R.length)} ${R.length===1?'pessoa':'pessoas'}</td><td class="n">${brl(soma(R,'valor'))}</td><td class="n">${brl(soma(R,'desc'))}</td><td class="n">${brl(soma(R,'liq'))}</td><td colspan="2"></td></tr></tfoot></table></div>`
+    :`<div class="vazio">Nenhum sócio lançado em ${mesCap(MES).toLowerCase()}.<br>Use <b>Importar planilha do mês</b>, <b>Copiar do mês anterior</b> ou <b>+ Lançar sócio</b>.</div>`}`;
+  const fq=$('fq');fq.oninput=()=>{FQ=fq.value;const p=fq.selectionStart;vN();const n=$('fq');n.focus();n.setSelectionRange(p,p)};
+  $('ft').onchange=e=>{FT=e.target.value;vN()};$('fcc').onchange=e=>{FCC=e.target.value;vN()};if($('flimpa'))$('flimpa').onclick=()=>{FQ=FT=FCC='';vN()};
+}
+function vC(R){const C=porCC(R),mx=Math.max(1,...C.map(c=>c.l));
+  $('vC').innerHTML=C.length?`<p class="sm" style="margin-top:0">Rateio do desconto pelo centro de custo da matrícula. Clique em um centro para ver quem são.</p>
+    ${C.map(c=>`<div class="bar" data-cc="${esc(c.n)}"><div class="lb"><b>${esc(c.cc||'—')}</b> ${esc(c.ccd||c.n)}<small>${nf(c.q)} sócio${c.q>1?'s':''}${c.f?' · '+c.f+' familiar':''}${c.i?' · '+c.i+' individual':''}</small></div><div class="t"><i style="width:${c.l/mx*100}%;background:linear-gradient(90deg,var(--ver),var(--tea))"></i></div><div class="vv">${brl(c.l)}</div></div>`).join('')}
+    <div class="tw" style="margin-top:12px"><table><thead><tr><th>Centro de custo</th><th>Departamento</th><th class="n">Sócios</th><th class="n">Familiar</th><th class="n">Individual</th><th class="n">Mensalidades</th><th class="n">Descontos</th><th class="n">A descontar</th></tr></thead><tbody>
+    ${C.map(c=>`<tr class="cl" data-cc="${esc(c.n)}"><td><b>${esc(c.cc||'—')}</b></td><td>${esc(c.ccd||c.n)}</td><td class="n">${c.q}</td><td class="n">${c.f}</td><td class="n">${c.i}</td><td class="n">${brl(c.v)}</td><td class="n">${c.d?brl(c.d):'—'}</td><td class="n"><b>${brl(c.l)}</b></td></tr>`).join('')}</tbody>
+    <tfoot><tr><td colspan="2">Total: ${nf(C.length)} centros de custo · ${nf(R.length)} pessoas</td><td class="n">${R.length}</td><td class="n">${R.filter(r=>r.tipo==='F').length}</td><td class="n">${R.filter(r=>r.tipo==='I').length}</td><td class="n">${brl(soma(R,'valor'))}</td><td class="n">${brl(soma(R,'desc'))}</td><td class="n">${brl(soma(R,'liq'))}</td></tr></tfoot></table></div>`
+    :`<div class="vazio">Sem lançamentos em ${mesCap(MES).toLowerCase()}.</div>`}
+function vE(){const ms=meses().slice().reverse();const D=ms.map(m=>{const R=doMes(m);return {m,q:R.length,l:soma(R,'liq'),d:soma(R,'desc')}});const mx=Math.max(1,...D.map(x=>x.l));
+  $('vE').innerHTML=D.length?`<p class="sm" style="margin-top:0">Total a descontar por mês. Clique em um mês para abri-lo.</p><div class="evo">${D.map(x=>`<button type="button" data-mes="${x.m}" class="${x.m===MES?'on':''}"><b>${brl(x.l).replace('R$ ','')}</b><i style="height:${Math.max(4,x.l/mx*130)}px"></i><span>${MESES[+x.m.slice(5,7)-1].slice(0,3)}/${x.m.slice(2,4)}</span></button>`).join('')}</div>
+    <div class="tw" style="margin-top:12px"><table><thead><tr><th>Mês</th><th class="n">Sócios</th><th class="n">Entradas</th><th class="n">Saídas</th><th class="n">Descontos</th><th class="n">A descontar</th></tr></thead><tbody>
+    ${D.slice().reverse().map(x=>{const a=doMes(addMes(x.m,-1)),R=doMes(x.m);const e=a.length?R.filter(r=>!a.some(y=>mat0(y.mat)===mat0(r.mat))).length:'—',s=a.length?a.filter(y=>!R.some(r=>mat0(r.mat)===mat0(y.mat))).length:'—';return `<tr class="cl" data-mes="${x.m}"><td><b>${mesCap(x.m)}</b></td><td class="n">${x.q}</td><td class="n">${e}</td><td class="n">${s}</td><td class="n">${x.d?brl(x.d):'—'}</td><td class="n"><b>${brl(x.l)}</b></td></tr>`}).join('')}</tbody></table></div>`:'<div class="vazio">Ainda sem meses lançados.</div>'}
+
+/* ---------- gaveta: quem está por trás do número ---------- */
+function gaveta(tit,sub,R){const w=document.createElement('div');w.className='ovl';
+  w.innerHTML=`<div class="drw"><div style="display:flex;gap:10px;align-items:flex-start"><div style="flex:1"><h3>${esc(tit)}</h3><div class="sub">${sub}</div></div><button class="btn sm" type="button" data-x>Fechar</button></div>
+  ${R.length?`<div class="tw"><table><thead><tr><th>Mat.</th><th>Nome</th><th>Centro de custo</th><th>Tipo</th><th class="n">A descontar</th></tr></thead><tbody>${R.map(r=>`<tr class="cl" data-p="${esc(r.mat)}"><td>${esc(r.mat)}</td><td><b>${esc(r.nome)}</b>${sitTxt(r)}${+r.desc?`<div class="sm">Desconto de ${brl(r.desc)}${r.obs?' · '+esc(r.obs):''}</div>`:''}</td><td>${esc(r.cc||'—')}<div class="sm">${esc(r.ccd)}</div></td><td>${tipoPill(r.tipo)}</td><td class="n">${brl(r.liq)}</td></tr>`).join('')}</tbody>
+  <tfoot><tr><td colspan="4">Total: ${nf(R.length)} ${R.length===1?'pessoa':'pessoas'}</td><td class="n">${brl(soma(R,'liq'))}</td></tr></tfoot></table></div>`:'<div class="vazio">Ninguém nesta lista.</div>'}</div>`;
+  document.body.appendChild(w);w.addEventListener('click',e=>{if(e.target===w||e.target.closest('[data-x]'))w.remove();const p=e.target.closest('[data-p]');if(p){w.remove();pessoa(p.dataset.p)}})}
+function pessoa(m){const H=L.filter(x=>mat0(x.mat)===mat0(m)).map(linha).sort((a,b)=>b.mes.localeCompare(a.mes));const p=pes(m)||{},r0=H[0]||{};
+  const w=document.createElement('div');w.className='ovl';
+  w.innerHTML=`<div class="drw"><div style="display:flex;gap:10px;align-items:flex-start"><div style="flex:1"><h3>${esc(p.nome||r0.nome||'')}</h3><div class="sub">Mat. ${esc(mat0(m))} · ${esc(p.funcao||'')}${p.cc?' · CC '+esc(p.cc)+' '+esc(p.ccd||''):''} · ${esc(p.nome?(p.situacao||'Ativo'):'não encontrado no Quadro')}</div></div><button class="btn sm" type="button" data-x>Fechar</button></div>
+  <div class="tw"><table><thead><tr><th>Mês</th><th>Tipo</th><th class="n">Mensalidade</th><th class="n">Desconto</th><th class="n">A descontar</th><th>Obs.</th><th></th></tr></thead><tbody>${H.map(r=>`<tr><td><b>${mesCap(r.mes)}</b></td><td>${tipoPill(r.tipo)}</td><td class="n">${brl(r.valor)}</td><td class="n">${+r.desc?brl(r.desc):'—'}</td><td class="n"><b>${brl(r.liq)}</b></td><td class="sm">${esc(r.obs||'')}</td><td><button class="btn sm" type="button" data-ed="${esc(r.id)}">Editar</button></td></tr>`).join('')}</tbody>
+  <tfoot><tr><td colspan="4">Total: ${nf(H.length)} ${H.length===1?'mês':'meses'}</td><td class="n">${brl(soma(H,'liq'))}</td><td colspan="2"></td></tr></tfoot></table></div></div>`;
+  document.body.appendChild(w);w.addEventListener('click',e=>{if(e.target===w||e.target.closest('[data-x]'))w.remove();const b=e.target.closest('[data-ed]');if(b){w.remove();form(L.find(x=>x.id===b.dataset.ed))}})}
+
+/* ---------- lançar / editar ---------- */
+function modal(tit,corpo,rodape){const w=document.createElement('div');w.className='mod';w.innerHTML=`<div class="mbox"><div class="mh"><h3>${tit}</h3><button class="btn sm" type="button" data-x>✕</button></div><div class="mb">${corpo}</div><div class="mf"><span class="msg" id="mMsg"></span>${rodape}</div></div>`;
+  document.body.appendChild(w);w.addEventListener('mousedown',e=>{if(e.target===w)w.remove()});w.querySelector('[data-x]').onclick=()=>w.remove();return w}
+function form(x){const ed=!!x;x=x||{mes:MES,tipo:'F',valor:TIPOS.F.v,desc:0};
+  const w=modal(ed?'Editar lançamento':'Lançar sócio · '+mesCap(MES),`<div class="fg">
+    <label class="c2">Matrícula<input id="iMat" inputmode="numeric" value="${esc(x.mat||'')}" ${ed?'disabled':''}></label><label class="c4">Mês<select id="iMes" ${ed?'disabled':''}>${[...new Set([addMes(hojeMes(),1),hojeMes(),MES].concat(meses()))].sort().reverse().map(m=>`<option value="${m}" ${m===x.mes?'selected':''}>${mesCap(m)}</option>`).join('')}</select></label>
+    <div class="pes" id="iPes">Digite a matrícula: nome, função e centro de custo vêm do Quadro.</div>
+    <label class="c3">Tipo<select id="iTipo">${Object.entries(TIPOS).map(([k,o])=>`<option value="${k}" ${x.tipo===k?'selected':''}>${o.n}${o.v?' ('+brl(o.v)+')':''}</option>`).join('')}</select></label>
+    <label class="c3">Mensalidade (R$)<input id="iVal" inputmode="decimal" value="${esc(String(x.valor??'').replace('.',','))}"></label>
+    <label class="c3">Desconto / abatimento (R$)<input id="iDesc" inputmode="decimal" placeholder="0,00" value="${+x.desc?esc(String(x.desc).replace('.',',')):''}"></label>
+    <label class="c3">A descontar em folha<input id="iLiq" disabled></label>
+    <label class="c6">Observação (motivo do desconto, combinado etc.)<input id="iObs" value="${esc(x.obs||'')}"></label></div>`,
+    `${ed?'<button class="btn perigo" type="button" id="iDel">Excluir</button>':''}<button class="btn" type="button" data-x2>Cancelar</button><button class="btn pri" type="button" id="iOk">Salvar</button>`);
+  const g=s=>w.querySelector(s),num=s=>{const t=String(s||'').replace(/R\$\s*/,'').trim();if(!t)return 0;const v=parseFloat(/,/.test(t)?t.replace(/\./g,'').replace(',','.'):t);return isNaN(v)?NaN:v};
+  const liq=()=>{const v=num(g('#iVal').value),d=num(g('#iDesc').value);g('#iLiq').value=isNaN(v)||isNaN(d)?'':brl(v-d)};
+  const look=()=>{const m=mat0(g('#iMat').value),p=pes(m);g('#iPes').innerHTML=!m?'Digite a matrícula: nome, função e centro de custo vêm do Quadro.':p?`<b>${esc(p.nome)}</b> · ${esc(p.funcao||'')}<br><span class="sm">Centro de custo <b>${esc(p.cc||'—')}</b> ${esc(p.ccd||'')} · ${esc(p.situacao||'Ativo')}</span>${p.situacao==='Desligado'?'<br><span class="pill p-bad">Desligado no Quadro</span>':''}`:'<span style="color:var(--bad)">Matrícula não encontrada no Quadro.</span> <input id="iNome" placeholder="Nome (obrigatório)" style="margin-top:6px;width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 9px;font:inherit">'};
+  g('#iMat').oninput=look;g('#iTipo').onchange=()=>{const t=g('#iTipo').value;if(TIPOS[t].v)g('#iVal').value=String(TIPOS[t].v).replace('.',',');liq()};g('#iVal').oninput=liq;g('#iDesc').oninput=liq;look();liq();
+  if(ed&&!pes(x.mat)&&g('#iNome'))g('#iNome').value=x.nome||'';
+  g('[data-x2]').onclick=()=>w.remove();
+  const del=g('#iDel');if(del)del.onclick=async()=>{if(!del.classList.contains('conf')){del.classList.add('conf');del.textContent='Confirmar exclusão';return}
+    try{await DB.collection('lanc').doc(x.id).delete();toast('Lançamento excluído');w.remove()}catch(e){g('#mMsg').textContent='Sem permissão para excluir.'}};
+  g('#iOk').onclick=async()=>{const msg=t=>g('#mMsg').textContent=t;const m=mat0(g('#iMat').value),mes=g('#iMes').value,p=pes(m),v=num(g('#iVal').value),d=num(g('#iDesc').value);
+    if(!m)return msg('Informe a matrícula.');const nome=p?p.nome:(g('#iNome')&&g('#iNome').value.trim())||'';if(!nome)return msg('Informe o nome (matrícula fora do Quadro).');
+    if(isNaN(v)||v<0)return msg('Mensalidade inválida.');if(isNaN(d)||d<0)return msg('Desconto inválido.');if(d>v)return msg('O desconto não pode ser maior que a mensalidade.');
+    const id=ed?x.id:mes+'_'+m;if(!ed&&L.some(y=>y.id===id))return msg('Esta matrícula já está lançada em '+mesCap(mes).toLowerCase()+'. Use Editar.');
+    const o={mes,mat:m,nome,tipo:g('#iTipo').value,valor:+v.toFixed(2),desc:+d.toFixed(2),obs:g('#iObs').value.trim(),em:new Date().toISOString(),por:quem()};
+    try{await DB.collection('lanc').doc(id).set(o);toast('Lançamento salvo');MES=mes;w.remove()}catch(e){msg('Não consegui salvar: '+(e.message||'sem permissão'))}};
+}
+
+/* ---------- importar a planilha do mês (MAT, NOME, VALOR, TIPO) ---------- */
+const XL=()=>window.XLSX||(window.parent&&window.parent.XLSX);
+async function importar(file){const X=XL();if(!X)return toast('Leitor de Excel indisponível.');
+  const buf=new Uint8Array(await file.arrayBuffer());let bin='';for(let i=0;i<buf.length;i+=32768)bin+=String.fromCharCode.apply(null,buf.subarray(i,i+32768));
+  const wb=X.read(bin,{type:'binary'});const ws=wb.Sheets[wb.SheetNames[0]];const A=X.utils.sheet_to_json(ws,{header:1,raw:true,defval:''});
+  let h=-1,cM=-1,cN=-1,cV=-1,cT=-1,cD=-1;
+  for(let r=0;r<Math.min(A.length,15)&&h<0;r++){const H=A[r].map(norm);const im=H.findIndex(x=>/^mat/.test(x)),iv=H.findIndex(x=>/^valor|mensal/.test(x));if(im>=0&&iv>=0){h=r;cM=im;cV=iv;cN=H.findIndex(x=>/^nome|colaborador/.test(x));cT=H.findIndex(x=>/^tipo/.test(x));cD=H.findIndex(x=>/^desc|abat/.test(x))}}
+  if(h<0)return toast('Não achei as colunas MAT e VALOR na planilha.');
+  const nb=v=>{if(typeof v==='number')return v;const t=String(v).replace(/R\$\s*/i,'').replace(/\s/g,'');if(!t)return 0;return parseFloat(/,/.test(t)?t.replace(/\./g,'').replace(',','.'):t)};
+  const R=[];for(let r=h+1;r<A.length;r++){const row=A[r],m=mat0(row[cM]);if(!m)continue;const v=nb(row[cV]);if(isNaN(v))continue;
+    const tp=cT>=0?tipoDe(row[cT]):'';R.push({mat:m,nome:cN>=0?String(row[cN]).trim():'',valor:+v.toFixed(2),desc:cD>=0?(+nb(row[cD])||0):0,tipo:tp||(Math.abs(v-TIPOS.F.v)<.01?'F':Math.abs(v-TIPOS.I.v)<.01?'I':'O')})}
+  if(!R.length)return toast('Nenhuma linha com matrícula e valor.');
+  const fora=R.filter(x=>!pes(x.mat)),dif=R.filter(x=>pes(x.mat)&&x.nome&&norm(pes(x.mat).nome)!==norm(x.nome)),desl=R.filter(x=>pes(x.mat)&&pes(x.mat).situacao==='Desligado');
+  const ja=doMes(MES).length,tot=R.reduce((s,x)=>s+x.valor-(x.desc||0),0);
+  const w=modal('Importar planilha · '+esc(file.name),`<div class="fg"><label class="c3">Mês dos lançamentos<select id="imMes">${[...new Set([addMes(hojeMes(),1),hojeMes(),MES].concat(meses()))].sort().reverse().map(m=>`<option value="${m}" ${m===MES?'selected':''}>${mesCap(m)}</option>`).join('')}</select></label></div>
+    <p style="margin:12px 0 6px"><b>${nf(R.length)} pessoas</b> · total ${brl(tot)} · ${R.filter(x=>x.tipo==='F').length} familiar, ${R.filter(x=>x.tipo==='I').length} individual${R.filter(x=>x.tipo==='O').length?', '+R.filter(x=>x.tipo==='O').length+' outro':''}.</p>
+    ${fora.length?`<p class="aviso" style="margin:6px 0">${fora.length} matrícula(s) fora do Quadro: ${fora.map(x=>esc(x.mat+' '+x.nome)).join('; ')}. Entram com o nome da planilha.</p>`:''}
+    ${dif.length?`<p class="aviso" style="margin:6px 0">Nome diferente do Quadro na mesma matrícula: ${dif.map(x=>esc(x.mat+': planilha "'+x.nome+'" × Quadro "'+pes(x.mat).nome+'"')).join('; ')}. Confira antes de importar.</p>`:''}
+    ${desl.length?`<p class="aviso" style="margin:6px 0">${desl.length} desligado(s) no Quadro: ${desl.map(x=>esc(x.mat+' '+pes(x.mat).nome)).join('; ')}.</p>`:''}
+    ${!fora.length&&!dif.length&&!desl.length?'<p class="sm">Todas as matrículas conferem com o Quadro (nome e situação ativa).</p>':''}
+    <div class="ck" style="margin-top:8px"><label><input type="checkbox" id="imSub" ${ja?'checked':''}> Substituir os lançamentos que já existem no mês escolhido${ja?' ('+ja+' hoje em '+mesCap(MES).toLowerCase()+')':''}</label></div>`,
+    `<button class="btn" type="button" data-x2>Cancelar</button><button class="btn pri" type="button" id="imOk">Importar ${nf(R.length)} lançamentos</button>`);
+  w.querySelector('[data-x2]').onclick=()=>w.remove();
+  w.querySelector('#imOk').onclick=async()=>{const b=w.querySelector('#imOk');b.disabled=true;b.textContent='Importando…';const mes=w.querySelector('#imMes').value;
+    try{if(w.querySelector('#imSub').checked){const ant=L.filter(x=>x.mes===mes&&!R.some(r=>r.mat===mat0(x.mat)));for(const x of ant)await DB.collection('lanc').doc(x.id).delete()}
+      for(const x of R){const p=pes(x.mat);await DB.collection('lanc').doc(mes+'_'+x.mat).set({mes,mat:x.mat,nome:p?p.nome:x.nome,nome0:x.nome,tipo:x.tipo,valor:x.valor,desc:x.desc||0,obs:'',em:new Date().toISOString(),por:quem(),origem:file.name})}
+      MES=mes;toast(nf(R.length)+' lançamentos importados em '+mesCap(mes).toLowerCase());w.remove()}catch(e){b.disabled=false;b.textContent='Importar';w.querySelector('#mMsg').textContent='Não consegui importar: '+(e.message||'sem permissão')}};
+}
+async function copiar(){const ant=addMes(MES,-1),A=L.filter(x=>x.mes===ant);if(!A.length)return toast('Não há lançamentos em '+mesCap(ant).toLowerCase()+' para copiar.');
+  const ja=new Set(L.filter(x=>x.mes===MES).map(x=>mat0(x.mat))),N=A.filter(x=>!ja.has(mat0(x.mat))),desl=N.filter(x=>pes(x.mat)&&pes(x.mat).situacao==='Desligado');
+  const w=modal('Copiar de '+mesCap(ant).toLowerCase()+' para '+mesCap(MES).toLowerCase(),`<p style="margin-top:0">${nf(N.length)} sócio(s) de ${mesCap(ant).toLowerCase()} ainda não estão em ${mesCap(MES).toLowerCase()}. Entram com o mesmo tipo e mensalidade, <b>sem</b> o desconto do mês anterior.</p>
+    ${desl.length?`<div class="ck"><label><input type="checkbox" id="cpDs" checked> Deixar de fora ${desl.length} desligado(s): ${desl.map(x=>esc(pes(x.mat).nome)).join(', ')}</label></div>`:''}`,
+    `<button class="btn" type="button" data-x2>Cancelar</button><button class="btn pri" type="button" id="cpOk" ${N.length?'':'disabled'}>Copiar</button>`);
+  w.querySelector('[data-x2]').onclick=()=>w.remove();
+  w.querySelector('#cpOk').onclick=async()=>{const fora=w.querySelector('#cpDs')&&w.querySelector('#cpDs').checked;let n=0;
+    try{for(const x of N){if(fora&&desl.includes(x))continue;const p=pes(x.mat);await DB.collection('lanc').doc(MES+'_'+mat0(x.mat)).set({mes:MES,mat:mat0(x.mat),nome:p?p.nome:x.nome,tipo:x.tipo,valor:x.valor,desc:0,obs:'',em:new Date().toISOString(),por:quem(),origem:'copiado de '+ant});n++}
+      toast(n+' sócios copiados');w.remove()}catch(e){w.querySelector('#mMsg').textContent='Não consegui copiar: '+(e.message||'sem permissão')}};
+}
+
+/* ---------- exportar: Excel e PDF com a logo ---------- */
+const JS=()=>(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF);
+async function salvarArq(nome,bytes,tipo){const DL=window.claude&&window.claude.use?await window.claude.use('downloads').catch(()=>null):null;if(DL)return DL.save({filename:nome,data:bytes});
+  const u=URL.createObjectURL(new Blob([bytes],{type:tipo}));const a=document.createElement('a');a.href=u;a.download=nome;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),3000)}
+const logos=doc=>{try{return (window.parent.CRV_PDF_LOGOS||(d=>d))(doc)}catch(_){return doc}};
+function exportar(){const R=filtrados(),fil=FQ||FT||FCC;
+  const w=modal('Exportar · '+mesCap(MES),`<div class="ck"><label><input type="checkbox" id="xN" checked> Lista nominal (${nf(R.length)} pessoas${fil?', com os filtros da tela':''})</label><label><input type="checkbox" id="xC" checked> Resumo por centro de custo</label></div>`,
+    `<button class="btn" type="button" data-x2>Cancelar</button><button class="btn" type="button" id="xX">Excel</button><button class="btn pri" type="button" id="xP">PDF</button>`);
+  w.querySelector('[data-x2]').onclick=()=>w.remove();
+  const op=()=>({n:w.querySelector('#xN').checked,c:w.querySelector('#xC').checked});
+  w.querySelector('#xX').onclick=()=>{const o=op();if(!o.n&&!o.c)return;xls(R,o).then(()=>w.remove(),e=>w.querySelector('#mMsg').textContent=e.message)};
+  w.querySelector('#xP').onclick=()=>{const o=op();if(!o.n&&!o.c)return;pdf(R,o).then(()=>w.remove(),e=>w.querySelector('#mMsg').textContent=e.message)}}
+const arq=()=>'Capinopolis Clube - '+mesCap(MES).replace('/',' ');
+async function xls(R,o){const X=XL();if(!X)throw new Error('Excel indisponível.');if(!R.length)throw new Error('Nada para exportar.');const wb=X.utils.book_new();
+  if(o.n){const a=[['CRV INDUSTRIAL · CAPINÓPOLIS CLUBE · '+mesCap(MES).toUpperCase()],[],['MAT','NOME','FUNÇÃO','CENTRO DE CUSTO','DEPARTAMENTO','TIPO','VALOR MENSALIDADE','DESCONTO','VALOR A DESCONTAR','SITUAÇÃO','OBS']];
+    R.forEach(r=>a.push([+r.mat,r.nome,r.funcao,r.cc,r.ccd,r.tipo==='F'?'CONTR. FAMILIAR':r.tipo==='I'?'CONTR. INDIVIDUAL':'OUTRO',r.valor,+r.desc||0,r.liq,r.sit,r.obs||'']));
+    const ws=X.utils.aoa_to_sheet(a);ws['!cols']=[8,40,26,10,30,17,14,12,15,14,30].map(x=>({wch:x}));for(let i=3;i<a.length;i++)['G','H','I'].forEach(c=>{const k=c+(i+1);if(ws[k])ws[k].z='"R$" #,##0.00'});X.utils.book_append_sheet(wb,ws,'Lançamentos')}
+  if(o.c){const C=porCC(R);const a=[['CAPINÓPOLIS CLUBE · RATEIO POR CENTRO DE CUSTO · '+mesCap(MES).toUpperCase()],[],['CENTRO DE CUSTO','DEPARTAMENTO','SÓCIOS','FAMILIAR','INDIVIDUAL','MENSALIDADES','DESCONTOS','A DESCONTAR']];
+    C.forEach(c=>a.push([c.cc||'—',c.ccd||c.n,c.q,c.f,c.i,+c.v.toFixed(2),+c.d.toFixed(2),+c.l.toFixed(2)]));
+    a.push(['TOTAL: '+R.length+' pessoas',C.length+' centros de custo',R.length,R.filter(r=>r.tipo==='F').length,R.filter(r=>r.tipo==='I').length,soma(R,'valor'),soma(R,'desc'),soma(R,'liq')]);
+    const ws=X.utils.aoa_to_sheet(a);ws['!cols']=[22,34,9,10,11,15,13,15].map(x=>({wch:x}));for(let i=3;i<a.length;i++)['F','G','H'].forEach(c=>{const k=c+(i+1);if(ws[k])ws[k].z='"R$" #,##0.00'});X.utils.book_append_sheet(wb,ws,'Por centro de custo')}
+  await salvarArq(arq()+'.xlsx',new Uint8Array(X.write(wb,{bookType:'xlsx',type:'array'})),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}
+async function pdf(R,o){const J=JS();if(!J)throw new Error('PDF indisponível.');if(!R.length)throw new Error('Nada para exportar.');
+  const doc=new J({unit:'mm',format:'a4'}),W=210;
+  doc.setFillColor(18,63,45);doc.rect(0,0,W,2.2,'F');doc.setFillColor(201,138,23);doc.rect(0,2.2,W,.9,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(18,63,45);doc.text('Capinópolis Clube · '+mesCap(MES),10,13);
+  doc.setFont('helvetica','normal');doc.setFontSize(8.8);doc.setTextColor(80,90,86);doc.text('CRV Industrial · Gestão de Benefícios · desconto em folha'+(FQ||FT||FCC?' · filtros aplicados':''),10,18.5);
+  let y=25;const st={fontSize:8,cellPadding:1.6,lineColor:[225,230,226],lineWidth:.15},hs={fillColor:[31,107,74],textColor:255,fontStyle:'bold'};
+  if(o.n){doc.autoTable({startY:y,head:[['Mat.','Nome','Centro de custo','Tipo','Mensalidade','Desconto','A descontar']],body:R.map(r=>[r.mat,r.nome+(r.sit!=='Ativo'?' ('+r.sit+')':''),(r.cc?r.cc+' · ':'')+r.ccd,r.tipo==='F'?'Familiar':r.tipo==='I'?'Individual':'Outro',brl(r.valor),+r.desc?brl(r.desc):'-',brl(r.liq)]),
+    foot:[[{content:'Total: '+R.length+(R.length===1?' pessoa':' pessoas'),colSpan:4,styles:{halign:'left'}},brl(soma(R,'valor')),brl(soma(R,'desc')),brl(soma(R,'liq'))]],showFoot:'lastPage',footStyles:{fillColor:[238,241,239],textColor:[20,33,30],fontStyle:'bold',halign:'right'},styles:st,headStyles:hs,columnStyles:{0:{cellWidth:13},4:{halign:'right',cellWidth:22},5:{halign:'right',cellWidth:19},6:{halign:'right',cellWidth:22}},margin:{left:10,right:10}});y=doc.lastAutoTable.finalY+8}
+  if(o.c){const C=porCC(R);if(y>230){doc.addPage();y=16}doc.setFont('helvetica','bold');doc.setFontSize(10.5);doc.setTextColor(18,63,45);doc.text('Rateio por centro de custo',10,y);y+=3;
+    doc.autoTable({startY:y,head:[['Centro de custo','Departamento','Sócios','Familiar','Individual','A descontar']],body:C.map(c=>[c.cc||'—',c.ccd||c.n,c.q,c.f,c.i,brl(c.l)]),
+      foot:[['Total: '+R.length+' pessoas',C.length+' centros de custo',R.length,R.filter(r=>r.tipo==='F').length,R.filter(r=>r.tipo==='I').length,brl(soma(R,'liq'))]],showFoot:'lastPage',
+      styles:st,headStyles:{fillColor:[29,122,136],textColor:255,fontStyle:'bold'},footStyles:{fillColor:[238,241,239],textColor:[20,33,30],fontStyle:'bold'},columnStyles:{2:{halign:'right'},3:{halign:'right'},4:{halign:'right'},5:{halign:'right'}},margin:{left:10,right:10}})}
+  const n=doc.getNumberOfPages();for(let i=1;i<=n;i++){doc.setPage(i);doc.setFontSize(7.5);doc.setTextColor(120);doc.text('Gerado em '+new Date().toLocaleDateString('pt-BR')+' por '+(quem()||'Gestão de Pessoas')+' · página '+i+' de '+n,10,290)}
+  const out=await logos(doc);await salvarArq(arq()+'.pdf',new Uint8Array((out||doc).output('arraybuffer')),'application/pdf')}
+
+/* ---------- eventos ---------- */
+$('mes').onchange=e=>{MES=e.target.value;render()};$('mAnt').onclick=()=>{MES=addMes(MES,-1);render()};$('mProx').onclick=()=>{MES=addMes(MES,1);render()};
+$('tabs').onclick=e=>{const b=e.target.closest('[data-t]');if(b){TAB=b.dataset.t;render()}};
+$('bNovo').onclick=()=>DB?form(null):toast('Sem conexão com os dados.');$('bImp').onclick=()=>DB?$('fImp').click():toast('Sem conexão com os dados.');
+$('fImp').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)importar(f).catch(er=>toast('Não consegui ler a planilha: '+(er.message||er)))};
+$('bCopia').onclick=()=>DB?copiar():toast('Sem conexão com os dados.');$('bExp').onclick=exportar;
+$('kpis').onclick=e=>{const b=e.target.closest('[data-k]');if(!b)return;const R=doMes(MES),k=b.dataset.k,mc=mesCap(MES).toLowerCase();
+  const M={tot:['Sócios em '+mc,R],F:['Contribuição familiar · '+mc,R.filter(r=>r.tipo==='F')],I:['Contribuição individual · '+mc,R.filter(r=>r.tipo==='I')],O:['Outros valores · '+mc,R.filter(r=>r.tipo!=='F'&&r.tipo!=='I')],
+    desc:['Com desconto / abatimento · '+mc,R.filter(r=>+r.desc>0)],liq:['Total a descontar · '+mc,R],ds:['Conferir situação · '+mc,R.filter(r=>r.sit!=='Ativo')]}[k];
+  if(M)gaveta(M[0],nf(M[1].length)+' pessoa(s) · '+brl(soma(M[1],'liq'))+' a descontar',M[1])};
+document.addEventListener('click',e=>{if(e.target.closest('.ovl,.mod'))return;const ed=e.target.closest('[data-ed]');if(ed){e.stopPropagation();return form(L.find(x=>x.id===ed.dataset.ed))}
+  const ms=e.target.closest('[data-mes]');if(ms){MES=ms.dataset.mes;TAB='n';render();return}
+  const cc=e.target.closest('[data-cc]');if(cc){const R=doMes(MES).filter(r=>ccKey(r)===cc.dataset.cc);return gaveta(cc.dataset.cc,nf(R.length)+' pessoa(s) · '+brl(soma(R,'liq'))+' a descontar em '+mesCap(MES).toLowerCase(),R)}
+  const p=e.target.closest('tr[data-p]');if(p)pessoa(p.dataset.p)});
+window.CRV_NOVO=()=>DB?form(null):toast('Sem conexão com os dados.');
+render();carregar();
+})();
+</script>
+</body></html>
