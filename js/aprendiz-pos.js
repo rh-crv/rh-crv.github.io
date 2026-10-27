@@ -38,21 +38,28 @@ async function baseColab(){
   const Q = await window.CRV_DADOS('quadro'); if (!Q || !Q.dados) return null;
   const { D = [], DM = [], PID = [], CPFP = [], CPFM = {}, OUTAT = null } = Q.dados; const XX = Q.dados.X || [];
   const P = new Map(); const add = (c, o) => { const k = cpfN(c); if (!k) return; if (!P.has(k)) P.set(k, []); P.get(k).push(o); };
-  D.forEach((r, i) => add((PID[i] != null && CPFP[PID[i]]) || CPFM[String(r[0])] || (XX[i] && XX[i][11]) || '', { emp:'5', mat:String(r[0]), nome:r[1], funcao:r[2] || '', depto:r[13] || r[3] || '', setor:r[3] || '', adm:String(r[9] || '').slice(0, 10), sit:r[8] || 'Ativo', saida:'' }));
+  /* confere se a lista de CPFs por pessoa (CPFP) está alinhada com os desligados: compara com o CPF por matrícula da CRV (CPFM) */
+  let ok = 0, tot = 0; DM.forEach(r => { if (!/\(5\)/.test(String(r[21]))) return; const a = CPFM[String(r[0])]; if (!a || r[26] == null) return; tot++; if (cpfN(a) === cpfN(CPFP[r[26]])) ok++; });
+  const cpfpOk = !tot || ok / tot >= .95;
+  D.forEach((r, i) => add((XX[i] && XX[i][11]) || CPFM[String(r[0])] || (PID[i] != null && CPFP[PID[i]]) || '', { emp:'5', mat:String(r[0]), nome:r[1], funcao:r[2] || '', depto:r[13] || r[3] || '', setor:r[3] || '', adm:String(r[9] || '').slice(0, 10), sit:r[8] || 'Ativo', saida:'' }));
   DM.forEach(r => { const ec = (/\((\d+)\)/.exec(String(r[21])) || [])[1]; if (!EMPS.includes(ec)) return;
-    add((r[26] != null && CPFP[r[26]]) || (ec === '5' ? CPFM[String(r[0])] : '') || '', { emp:ec, mat:String(r[0]), nome:r[1], funcao:r[2] || '', depto:r[13] || r[3] || '', setor:r[3] || '', adm:String(r[9] || '').slice(0, 10), sit:'Desligado', saida:String(r[20] || '').slice(0, 10) }); });
+    const c = ec === '5' ? (CPFM[String(r[0])] || (cpfpOk && r[26] != null ? CPFP[r[26]] : '')) : (cpfpOk && r[26] != null ? CPFP[r[26]] : '');
+    add(c || '', { emp:ec, mat:String(r[0]), nome:r[1], funcao:r[2] || '', depto:r[13] || r[3] || '', setor:r[3] || '', adm:String(r[9] || '').slice(0, 10), sit:'Desligado', saida:String(r[20] || '').slice(0, 10) }); });
   (OUTAT || []).forEach(r => { const ec = (/\((\d+)\)/.exec(String(r[7])) || [])[1]; if (!EMPS.includes(ec)) return;
-    add(CPFP[r[9]] || '', { emp:ec, mat:String(r[0]), nome:r[1], funcao:r[2] || '', depto:r[8] || r[3] || '', setor:r[3] || '', adm:String(r[6] || '').slice(0, 10), sit:/AFAST/.test(String(r[10])) ? 'Afastado' : 'Ativo', saida:'' }); });
+    add(cpfpOk ? CPFP[r[9]] || '' : '', { emp:ec, mat:String(r[0]), nome:r[1], funcao:r[2] || '', depto:r[8] || r[3] || '', setor:r[3] || '', adm:String(r[6] || '').slice(0, 10), sit:/AFAST/.test(String(r[10])) ? 'Afastado' : 'Ativo', saida:'' }); });
   P.forEach(L => L.sort((a, b) => String(a.adm).localeCompare(String(b.adm))));
-  return { P, ref:Q.referencia || '', temOutros: Array.isArray(OUTAT) };
+  return { P, ref:Q.referencia || '', temOutros: Array.isArray(OUTAT), cpfpOk, alin:tot ? Math.round(100 * ok / tot) : 100 };
 }
 const chaveReg = h => h.emp + '|' + h.mat + '|' + h.adm;
 /* cruzamento */
-function cruzar(J, B, V){
+function cruzar(J, B, V, incluiBase){
   const hj = hoje(), grupos = new Map(), pess = [];
   J.rows.forEach((r, i) => { const c = cpfN(r.cpf); const k = cpfOk(c) ? c : 'x' + i; if (!grupos.has(k)) grupos.set(k, []); grupos.get(k).push(r); });
-  grupos.forEach((L, k) => { L.sort((a, b) => String(a.fim || '').localeCompare(String(b.fim || ''))); const u = L[L.length - 1];
-    const p = { k, cpf:k[0] === 'x' ? cpfN(u.cpf) : k, cpfRaw:u.cpf, nome:u.nome, origem:u.origem || '', ini:L.map(x => x.ini).filter(Boolean).sort()[0] || '', fim:u.fim || '', setorA:u.setor || '', matA:u.mat || '', contratos:L.length, origens:[...new Set(L.map(x => x.origem).filter(Boolean))] };
+  /* aprendizes contratados direto pelo grupo: vêm da própria Base Geral (registro com função de aprendiz), se não estiverem nas planilhas */
+  if (incluiBase) B.P.forEach((L, c) => { if (grupos.has(c)) return; const A = L.filter(x => ehApr(x.funcao)); if (!A.length) return; A.sort((a, b) => String(a.adm).localeCompare(String(b.adm)));
+    const u = A[A.length - 1]; grupos.set(c, A.map(x => ({ nome:x.nome, cpf:c, origem:'CRV', ini:x.adm, fim:x.saida || '', setor:x.depto, mat:x.mat, base:true, emp:x.emp }))); });
+  grupos.forEach((L, k) => { L.sort((a, b) => String(a.ini || '').localeCompare(String(b.ini || '')) || String(a.fim || '').localeCompare(String(b.fim || ''))); const u = L[L.length - 1]; // o contrato mais recente (pelo início) define o fim do programa
+    const p = { k, cpf:k[0] === 'x' ? cpfN(u.cpf) : k, cpfRaw:u.cpf, nome:u.nome, origem:u.origem || '', motivo:u.motivo || '', daBase:!!u.base, empA:u.emp || '', ini:L.map(x => x.ini).filter(Boolean).sort()[0] || '', fim:u.fim || '', setorA:u.setor || '', matA:u.mat || '', contratos:L.length, origens:[...new Set(L.map(x => x.origem).filter(Boolean))] };
     p.anoFim = p.fim ? p.fim.slice(0, 4) : ''; p.concl = !!p.fim && p.fim <= hj;
     const regs = k[0] === 'x' ? [] : (B.P.get(k) || []); p.regs = regs;
     const nonApr = regs.filter(x => !ehApr(x.funcao)); const depois = p.fim ? nonApr.filter(x => x.adm && x.adm > p.fim) : []; const antes = p.fim ? nonApr.filter(x => x.adm && x.adm <= p.fim) : [];
@@ -65,6 +72,7 @@ function cruzar(J, B, V){
     else if (nomeDif && nonApr.length) { p.st = 'conf'; p.mot = 'CPF igual, nome muito diferente (base: ' + regs[0].nome + ')'; }
     else if (depois.length > 1) { p.st = 'conf'; p.mot = 'Mesmo CPF com ' + depois.length + ' contratações depois do programa'; }
     else if (depois.length === 1) { p.st = 'cont'; p.h = depois[0]; }
+    else if (/efetiva/i.test(p.motivo) && !depois.length && !antes.length) { p.st = 'conf'; p.mot = 'Saiu do programa por "' + p.motivo + '", mas o CPF não aparece em outra função na Base Geral'; }
     else if (antes.length) { p.st = 'conf'; p.mot = 'Admissão em outra função antes do término do contrato de aprendiz (' + antes.map(x => brD(x.adm) + ', ' + x.funcao).join('; ') + ')'; }
     p.cand = nonApr;
     if (p.h) { const h = p.h; const ativo = regs.find(x => x.sit !== 'Desligado' && !ehApr(x.funcao) && x.adm >= h.adm);
@@ -74,39 +82,61 @@ function cruzar(J, B, V){
   return pess;
 }
 
-/* ---------- importar a planilha de jovens ---------- */
-function lerPlanilha(wb){
+/* ---------- importar as planilhas de jovens (uma ou várias de uma vez; cada arquivo com a sua origem) ---------- */
+function lerPlanilha(wb, nomeArq){
   const out = [], avisos = [];
   wb.SheetNames.forEach(sn => { const A = window.XLSX.utils.sheet_to_json(wb.Sheets[sn], { header:1, raw:true, defval:'' });
     let h = -1; for (let i = 0; i < Math.min(A.length, 20); i++) { const H = A[i].map(x => normal(x)); if (H.some(x => /^nome|aprendiz|jovem/.test(x)) && H.some(x => /cpf/.test(x))) { h = i; break; } }
-    if (h < 0) return; const H = A[h].map(x => normal(x)); const f = re => H.findIndex(x => re.test(x));
-    const cN = f(/^nome|^aprendiz|^jovem/), cC = f(/cpf/), cO = f(/origem|instituic|programa|contrata|empresa|entidade/), cI = f(/inicio|admiss|entrada/), cF = f(/termino|fim|final|encerr|deslig|saida/), cS = f(/setor|depart|area|lotac/), cM = f(/^mat/);
+    if (h < 0) return; const H = A[h].map(x => normal(x)); const f = (re, nao) => H.findIndex(x => re.test(x) && !(nao && nao.test(x)));
+    const cN = f(/^nome|^aprendiz|^jovem/), cC = f(/cpf/), cO = f(/origem|instituic|programa|entidade/), cI = f(/inicio|admiss|entrada/), cS = (k => k >= 0 ? k : f(/^setor/) >= 0 ? f(/^setor/) : f(/setor|depart|area|lotac/))(f(/descricao do centro/)), cM = f(/^mat/);
+    const cFr = f(/deslig|rescis|saida|termino real|data termino\//, /motivo|previst/), cFp = f(/previst/), cF0 = f(/termino|fim|final|encerr/, /previst|motivo/), cMo = f(/motivo/);
     const oAba = origDe(sn);
+    const fmtBase = H.some(x => /situacao do func/.test(x)) && H.some(x => /^empresa/.test(x)); // exportação da Base Geral (aprendizes registrados no grupo)
     for (let r = h + 1; r < A.length; r++) { const L = A[r]; const nome = String(L[cN] == null ? '' : L[cN]).trim(); if (!nome) continue;
-      out.push({ nome:nome.toUpperCase(), cpf:cC >= 0 ? String(L[cC]).trim() : '', origem:(cO >= 0 && origDe(L[cO])) || oAba || '', ini:cI >= 0 ? dIso(L[cI]) : '', fim:cF >= 0 ? dIso(L[cF]) : '', setor:cS >= 0 ? String(L[cS]).trim() : '', mat:cM >= 0 ? String(L[cM]).trim() : '', aba:sn }); }
-    avisos.push(sn + ': colunas ' + [['nome', cN], ['CPF', cC], ['origem', cO], ['início', cI], ['término', cF], ['setor', cS]].map(([n, c]) => n + (c >= 0 ? ' ✓' : ' ✗')).join(', ')); });
+      const real = cFr >= 0 ? dIso(L[cFr]) : '', prev = cFp >= 0 ? dIso(L[cFp]) : '', f0 = cF0 >= 0 && cF0 !== cFr ? dIso(L[cF0]) : '';
+      out.push({ nome:nome.toUpperCase(), cpf:cC >= 0 ? String(L[cC]).trim() : '', origem:(cO >= 0 && origDe(L[cO])) || oAba || '', ini:cI >= 0 ? dIso(L[cI]) : '', fim:real || f0 || prev, fimPrev:prev || f0, saiuAntes:!!real && !!prev,
+        motivo:cMo >= 0 ? String(L[cMo]).trim() : '', fmtBase, setor:cS >= 0 ? String(L[cS]).trim() : '', mat:cM >= 0 ? String(L[cM]).trim() : '', arq:nomeArq }); }
+    avisos.push(nomeArq + (wb.SheetNames.length > 1 ? ' / ' + sn : '') + ': ' + [['nome', cN], ['CPF', cC], ['origem', cO], ['início', cI], ['término', cFr >= 0 ? cFr : cF0 >= 0 ? cF0 : cFp], ['setor', cS], ['motivo de saída', cMo]].map(([n, c]) => n + (c >= 0 ? ' ✓' : ' ✗')).join(', ')); });
   return { rows:out, avisos };
 }
+async function lerArquivo(fl){
+  if (/\.csv$/i.test(fl.name)) { const b = new Uint8Array(await fl.arrayBuffer()); let t = new TextDecoder('utf-8').decode(b); if (/�/.test(t)) t = new TextDecoder('latin1').decode(b);
+    const l1 = t.split(/\r?\n/)[0] || ''; const FS = (l1.match(/;/g) || []).length > (l1.match(/,/g) || []).length ? ';' : ',';
+    return window.XLSX.read(t.replace(/^﻿/, ''), { type:'string', FS, raw:true }); }
+  return window.XLSX.read(new Uint8Array(await fl.arrayBuffer()), { type:'array', cellDates:false });
+}
+/* sugestão de origem pelo próprio dado: CPFs que já estão nos painéis do João Bittar e da RENAPSI */
+async function cpfsPaineis(){ const o = { 'João Bittar':new Set(), 'RENAPSI':new Set() };
+  try { const d = await window.CRV_DADOS('jovem'); ((d && d.dados.BASE) || []).forEach(j => { const c = cpfN(j.cpf); if (c) o['João Bittar'].add(c); }); } catch(_){}
+  try { const d = await window.CRV_DADOS('renapsi'); ((d && d.dados.MESES) || []).forEach(m => (m.jovens || []).forEach(j => { const c = cpfN(j.cpf); if (c) o['RENAPSI'].add(c); })); } catch(_){}
+  return o; }
 function importar(onOk){
-  const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.xlsx,.xls,.csv';
-  inp.onchange = async () => { const fl = inp.files[0]; if (!fl) return;
-    let R; try { const wb = window.XLSX.read(new Uint8Array(await fl.arrayBuffer()), { type:'array', cellDates:false }); R = lerPlanilha(wb); } catch(e){ return toast('Não consegui ler a planilha: ' + (e.message || e), true); }
-    if (!R.rows.length) return toast('Não achei na planilha uma linha de cabeçalho com nome e CPF.', true);
-    const semO = R.rows.filter(r => !r.origem).length, inv = R.rows.filter(r => !cpfOk(cpfN(r.cpf))).length, semF = R.rows.filter(r => !r.fim).length;
-    abrirModal({ titulo:'Importar planilha de jovens aprendizes', largo:true, corpo:`<p style="margin-top:0"><b>${esc(fl.name)}</b> · ${nf(R.rows.length)} linhas de jovens.</p>
-      <ul style="margin:0 0 10px 18px;font-size:13.5px">${ORIG.map(o => `<li>${o}: <b>${R.rows.filter(r => r.origem === o).length}</b></li>`).join('')}${semO ? `<li style="color:var(--coral)">Sem origem identificada: <b>${semO}</b></li>` : ''}
-        <li>CPF vazio ou inválido: <b>${inv}</b> (vão para "A conferir")</li><li>Sem data de término: <b>${semF}</b></li></ul>
-      ${semO ? `<label style="display:flex;gap:8px;align-items:center;font-size:13.5px">Origem para as ${semO} linhas sem origem: <select id="ap-o"><option value="">Deixar sem origem</option>${ORIG.map(o => `<option>${o}</option>`).join('')}</select></label>` : ''}
-      <p class="nr-fonte">${R.avisos.map(esc).join('<br>')}</p><p class="nr-fonte">A importação substitui a lista de jovens anterior. As validações já feitas em "A conferir" ficam guardadas pelo CPF.</p><p class="nr-msg" id="ap-m"></p>`,
-      pe:`<span style="flex:1"></span><button class="btn borda" id="ap-x">Cancelar</button><button class="btn prim" id="ap-ok">Importar ${nf(R.rows.length)} jovens</button>`,
+  const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.xlsx,.xls,.csv'; inp.multiple = true;
+  inp.onchange = async () => { const fls = [...inp.files]; if (!fls.length) return;
+    const ARQ = []; for (const fl of fls) { try { const R = lerPlanilha(await lerArquivo(fl), fl.name); if (R.rows.length) ARQ.push(Object.assign({ fl }, R)); else toast(fl.name + ': não achei cabeçalho com nome e CPF.', true); } catch(e){ toast('Não consegui ler ' + fl.name + ': ' + (e.message || e), true); } }
+    if (!ARQ.length) return;
+    const CP = await cpfsPaineis();
+    ARQ.forEach(a => { const tem = a.rows.some(r => r.origem); const cs = a.rows.map(r => cpfN(r.cpf)); a.bate = { 'João Bittar':cs.filter(c => CP['João Bittar'].has(c)).length, 'RENAPSI':cs.filter(c => CP['RENAPSI'].has(c)).length };
+      const rb = CP['João Bittar'].size ? a.bate['João Bittar'] / CP['João Bittar'].size : 0, rr = CP['RENAPSI'].size ? a.bate['RENAPSI'] / CP['RENAPSI'].size : 0; a.cob = { 'João Bittar':Math.round(rb * 100), 'RENAPSI':Math.round(rr * 100) };
+      a.sug = tem ? '' : Math.max(rb, rr) >= .5 ? (rb >= rr ? 'João Bittar' : 'RENAPSI') : a.rows.some(r => r.fmtBase) ? 'CRV' : ''; });
+    abrirModal({ titulo:'Importar planilhas de jovens aprendizes', largo:true, corpo:ARQ.map((a, i) => { const semO = a.rows.filter(r => !r.origem).length, inv = a.rows.filter(r => !cpfOk(cpfN(r.cpf))).length, semF = a.rows.filter(r => !r.fim).length;
+        return `<div class="cartao" style="margin-bottom:10px"><p style="margin:0 0 6px"><b>${esc(a.fl.name)}</b> · ${nf(a.rows.length)} jovens · CPF vazio ou inválido: ${inv} · sem data de término: ${semF}${a.rows.some(r => r.saiuAntes) ? ' · ' + a.rows.filter(r => r.saiuAntes).length + ' saíram antes do previsto' : ''}</p>
+          ${semO ? `<label style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13.5px"><b>Origem deste arquivo:</b> <select data-o="${i}"><option value="">Escolha…</option>${ORIG.map(o => `<option ${a.sug === o ? 'selected' : ''}>${o}</option>`).join('')}</select>
+            <span class="nr-fonte" style="margin:0">${a.bate['João Bittar'] || a.bate['RENAPSI'] ? `${a.bate['João Bittar']} CPFs batem com os jovens do painel do João Bittar (${a.cob['João Bittar']}% dos jovens do painel) e ${a.bate['RENAPSI']} com os do painel da RENAPSI (${a.cob['RENAPSI']}%)${a.sug ? ' (sugestão: ' + a.sug + ')' : ''}` : a.sug === 'CRV' ? 'arquivo no formato da Base Geral (aprendizes registrados no grupo): sugestão CRV' : 'a planilha não diz a origem; escolha'}</span></label>`
+          : `<p class="nr-fonte" style="margin:0">${ORIG.map(o => o + ': ' + a.rows.filter(r => r.origem === o).length).join(' · ')}</p>`}
+          <p class="nr-fonte" style="margin:4px 0 0">${a.avisos.map(esc).join('<br>')}</p></div>`; }).join('') +
+        `<p class="nr-fonte">Cada origem importada substitui a lista anterior dessa mesma origem; as outras origens continuam. As validações já feitas em "A conferir" ficam guardadas pelo CPF.</p><p class="nr-msg" id="ap-m"></p>`,
+      pe:`<span style="flex:1"></span><button class="btn borda" id="ap-x">Cancelar</button><button class="btn prim" id="ap-ok">Importar ${nf(ARQ.reduce((s, a) => s + a.rows.length, 0))} jovens</button>`,
       aoAbrir: m => { m.querySelector('#ap-x').onclick = fecharModal;
-        m.querySelector('#ap-ok').onclick = async () => { const b = m.querySelector('#ap-ok'); b.disabled = true; b.textContent = 'Importando…';
-          const od = m.querySelector('#ap-o') ? m.querySelector('#ap-o').value : ''; const rows = R.rows.map(r => Object.assign({}, r, { origem:r.origem || od }));
-          try { const ant = (await window.CRV_REGS(PAINEL, 'jovens')).filter(x => /^b\d+$/.test(x._id)).length; const N = Math.ceil(rows.length / 300);
-            for (let i = 0; i < Math.max(N, ant); i++) await salvar('jovens', 'b' + i, { rows:rows.slice(i * 300, i * 300 + 300) });
-            await salvar('jovens', 'meta', { arquivo:fl.name, n:rows.length, em:new Date().toISOString(), por:quem() });
+        m.querySelector('#ap-ok').onclick = async () => { const msg = m.querySelector('#ap-m');
+          const rows = []; for (let i = 0; i < ARQ.length; i++) { const sel = m.querySelector(`[data-o="${i}"]`); const od = sel ? sel.value : ''; if (sel && !od) { msg.textContent = 'Escolha a origem de ' + ARQ[i].fl.name + '.'; return; } ARQ[i].rows.forEach(r => rows.push(Object.assign({}, r, { origem:r.origem || od }))); }
+          const b = m.querySelector('#ap-ok'); b.disabled = true; b.textContent = 'Importando…';
+          try { const J0 = await lerJovens(); const novas = new Set(rows.map(r => r.origem)); const todas = J0.rows.filter(r => !novas.has(r.origem)).concat(rows);
+            const ant = (await window.CRV_REGS(PAINEL, 'jovens')).filter(x => /^b\d+$/.test(x._id)).length; const N = Math.ceil(todas.length / 300);
+            for (let i = 0; i < Math.max(N, ant); i++) await salvar('jovens', 'b' + i, { rows:todas.slice(i * 300, i * 300 + 300) });
+            await salvar('jovens', 'meta', { arquivo:ARQ.map(a => a.fl.name).join(', '), n:todas.length, em:new Date().toISOString(), por:quem(), origens:[...new Set(todas.map(r => r.origem))] });
             fecharModal(); toast(nf(rows.length) + ' jovens importados. Cruzamento refeito.'); onOk && onOk(); }
-          catch(e){ b.disabled = false; b.textContent = 'Importar'; m.querySelector('#ap-m').textContent = traduzErro(e); } }; } }); };
+          catch(e){ b.disabled = false; b.textContent = 'Importar'; msg.textContent = traduzErro(e); } }; } }); };
   inp.click();
 }
 
@@ -124,14 +154,14 @@ const CSS = `.ap-g2{display:grid;grid-template-columns:repeat(auto-fit,minmax(30
 .ap-cf{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.ap-cf select{max-width:300px}`;
 async function tela(p){
   if (!document.getElementById('ap-css')) { const s = document.createElement('style'); s.id = 'ap-css'; s.textContent = CSS; document.head.appendChild(s); }
-  const pode = podeEditar(p); const F = { or:'', emp:'', sit:'', dep:'', ano:'', aba:'n', q:'' }; let J = null, B = null, V = {}, PS = [];
+  const pode = podeEditar(p); const F = { or:'', emp:'', sit:'', dep:'', ano:'', aba:'n', q:'' }; let J = null, B = null, V = {}, PS = [], CFG = {};
   E.painelAberto = p.id;
   moldura(`<div class="trilha"><button data-ir="#/">Visão Geral</button> › <span>${esc(p.frente)}</span> › <b>${esc(p.nome)}</b></div>
     <section class="ini-topo capa" style="${(c => c ? '--c1:' + c[0] + ';--c2:' + c[1] : '')((window.CRV_CAPA || {})[p.frente])}"><div><div class="ini-eyebrow">${esc(p.frente)}</div><h1>Aproveitamento pós-programa</h1><div class="ini-data" id="ap-sub">Jovens aprendizes contratados depois do programa, em outra função · empresas 5, 6 e 16 · cruzamento pelo CPF</div></div>
       <div class="dk-acoes">${pode ? '<button class="btn prim" id="ap-imp">Importar planilha de jovens</button>' : ''}<button class="btn borda" id="ap-exp">Exportar</button></div></section>
     <div id="ap-corpo"><div class="cartao vazio"><div class="spinner" style="margin:0 auto"></div></div></div>`);
   document.querySelector('.trilha [data-ir]').onclick = () => location.hash = '#/';
-  const carregar = async () => { try { [J, B, V] = await Promise.all([lerJovens(), baseColab(), lerValid()]); } catch(e){ console.warn(e); } PS = J && B ? cruzar(J, B, V) : []; desenhar(); };
+  const carregar = async () => { try { [J, B, V] = await Promise.all([lerJovens(), baseColab(), lerValid()]); try { CFG = (await window.CRV_REGS(PAINEL, 'cfg')).find(x => x._id === 'geral') || {}; } catch(_){ CFG = {}; } } catch(e){ console.warn(e); } PS = J && B ? cruzar(J, B, V, CFG.crvBase !== false) : []; desenhar(); };
   if (pode) $('#ap-imp').onclick = () => importar(carregar);
   $('#ap-exp').onclick = () => exportar();
   const base = () => PS.filter(x => (!F.or || x.origem === F.or) && (!F.ano || x.anoFim === F.ano));
@@ -141,20 +171,20 @@ async function tela(p){
   function lista(t, L, sub){ abrirModal({ titulo:t, largo:true, corpo:`<p style="margin-top:0;color:var(--mut)">${sub || ''}</p>${tabCont(L)}`, pe:'<span style="flex:1"></span><button class="btn prim" id="ap-f">Fechar</button>', aoAbrir: m => { m.querySelector('#ap-f').onclick = fecharModal; } }); }
   const sitPill = x => x.situacao === 'Desligado' ? `<span class="ap-pill ap-de">Desligado${x.saida ? ' em ' + esc(brD(x.saida)) : ''}</span>` : x.situacao === 'Afastado' ? '<span class="ap-pill ap-af">Afastado</span>' : '<span class="ap-pill ap-at">Ativo</span>';
   const tabCont = L => L.length ? `<div style="overflow:auto"><table class="ap-tb"><thead><tr><th>Mat. atual</th><th>Nome</th><th>CPF</th><th>Origem</th><th>Período como aprendiz</th><th>Setor (aprendiz)</th><th>Empresa</th><th>Admissão</th><th>Função</th><th>Departamento</th><th>Situação</th></tr></thead><tbody>
-    ${L.map(x => `<tr><td>${esc((x.atual || x.h).mat)}</td><td><b>${esc(x.nome)}</b>${x.valid ? '<div class="nr-fonte" style="margin:0">validado por ' + esc(x.valid.por || '') + '</div>' : ''}</td><td style="white-space:nowrap">${esc(cpfF(x.cpf))}</td><td>${esc(x.origem || "—")}</td><td style="white-space:nowrap">${esc(brD(x.ini))} a<br>${esc(brD(x.fim))}</td><td>${esc(x.setorA || '—')}</td><td>${esc(EMPN[x.h.emp])}</td><td>${esc(brD(x.h.adm))}<div class="nr-fonte" style="margin:0">${esc(tempoTxt(x.tempo))} após o fim</div></td><td>${esc(x.h.funcao)}</td><td>${esc(x.h.depto)}</td><td>${sitPill(x)}</td></tr>`).join('')}</tbody>
+    ${L.map(x => `<tr><td>${esc((x.atual || x.h).mat)}</td><td><b>${esc(x.nome)}</b>${x.valid ? '<div class="nr-fonte" style="margin:0">validado por ' + esc(x.valid.por || '') + '</div>' : ''}</td><td style="white-space:nowrap">${esc(cpfF(x.cpf))}</td><td>${esc(x.origens && x.origens.length > 1 ? x.origens.join(' → ') : x.origem || '—')}${x.daBase ? '<div class="nr-fonte" style="margin:0">pela Base Geral</div>' : ''}</td><td style="white-space:nowrap">${esc(brD(x.ini))} a<br>${esc(brD(x.fim))}</td><td>${esc(x.setorA || '—')}</td><td>${esc(EMPN[x.h.emp])}</td><td>${esc(brD(x.h.adm))}<div class="nr-fonte" style="margin:0">${esc(tempoTxt(x.tempo))} após o fim</div></td><td>${esc(x.h.funcao)}</td><td>${esc(x.h.depto)}</td><td>${sitPill(x)}</td></tr>`).join('')}</tbody>
     <tfoot><tr><td colspan="11">Total: ${nf(L.length)} ${L.length === 1 ? 'pessoa' : 'pessoas'}</td></tr></tfoot></table></div>` : '<div class="cartao vazio"><h3>Ninguém nesta lista</h3></div>';
   const barras = (titulo, L, chave, cor) => { const m = new Map(); L.forEach(x => { const k = chave(x) || '—'; m.set(k, (m.get(k) || []).concat([x])); }); const A = [...m.entries()].sort((a, b) => b[1].length - a[1].length).slice(0, 12), mx = Math.max(1, ...A.map(a => a[1].length));
     return `<div class="cartao"><h3 style="margin:0 0 8px;font-size:15px">${titulo}</h3>${A.length ? A.map(([k, v]) => `<div class="ap-bar" data-bk="${esc(titulo)}" data-bv="${esc(k)}"><span>${esc(k)}</span><span class="t"><i style="width:${v.length / mx * 100}%;background:${cor}"></i></span><b>${v.length}</b></div>`).join('') : '<p class="nr-fonte">Sem contratados no recorte.</p>'}${m.size > 12 ? `<p class="nr-fonte">Mostrando os 12 maiores de ${m.size}.</p>` : ''}</div>`; };
   function desenhar(){
     const c = $('#ap-corpo'); if (!c) return;
     if (!B) { c.innerHTML = '<div class="cartao vazio"><h3>Sem a Base Geral de Colaboradores</h3><p>O cruzamento usa o Quadro Geral (ativos e desligados das empresas 5, 6 e 16). Carregue o Quadro e volte aqui.</p></div>'; return; }
-    if (!J || !J.rows.length) { c.innerHTML = `<div class="cartao vazio"><h3>Falta a planilha de jovens aprendizes</h3><p>${pode ? 'Clique em <b>Importar planilha de jovens</b>. A planilha precisa ter nome e CPF de cada jovem; o painel também procura as colunas de origem (CRV, RENAPSI ou João Bittar), início, término do contrato e setor.' : 'O RH ainda não importou a planilha de jovens.'}</p></div>`; return; }
+    if (!PS.length) { c.innerHTML = `<div class="cartao vazio"><h3>Falta a planilha de jovens aprendizes</h3><p>${pode ? 'Clique em <b>Importar planilha de jovens</b>. A planilha precisa ter nome e CPF de cada jovem; o painel também procura as colunas de origem (CRV, RENAPSI ou João Bittar), início, término do contrato e setor.' : 'O RH ainda não importou a planilha de jovens.'}</p></div>`; return; }
     $('#ap-sub').textContent = `Planilha de jovens: ${J.meta ? J.meta.arquivo + ' (' + new Date(J.meta.em).toLocaleDateString('pt-BR') + ')' : '—'} · Base Geral de ${brD(B.ref)} · empresas 5, 6 e 16 · cruzamento pelo CPF`;
     const Bx = base(), concl = Bx.filter(x => x.concl), cont = Bx.filter(x => x.st === 'cont'), conf = Bx.filter(x => x.st === 'conf'), C = contF();
     const at = cont.filter(x => x.situacao !== 'Desligado'), sa = cont.filter(x => x.situacao === 'Desligado');
     const tm = cont.filter(x => x.tempo != null), tMed = tm.length ? Math.round(tm.reduce((s, x) => s + x.tempo, 0) / tm.length) : null;
     const anos = [...new Set(PS.map(x => x.anoFim).filter(Boolean))].sort().reverse(), deps = [...new Set(PS.filter(x => x.h).map(x => x.h.depto).filter(Boolean))].sort();
-    c.innerHTML = `${!B.temOutros ? `<div class="cartao" style="border-left:4px solid #b5731a;margin-bottom:12px;font-size:13.5px"><b>Atenção:</b> a Base Geral carregada hoje traz os ativos só da CRV (5); das empresas 6 e 16 vêm apenas os desligados. Recarregue a planilha da Base Geral em Administração (o app agora guarda também os ativos de APFO e CAPFO) para o cruzamento ficar completo.</div>` : ''}
+    c.innerHTML = `${!B.cpfpOk ? `<div class="cartao" style="border-left:4px solid #c3352f;margin-bottom:12px;font-size:13.5px"><b>Base Geral com CPF desalinhado:</b> nesta base, o CPF dos desligados das empresas 6 e 16 não confere com o da matrícula (só ${B.alin}% batem nos desligados da CRV). Para não cruzar CPF errado, o painel usou só os CPFs da CRV (5). Recarregue a planilha da Base Geral em Administração para refazer os CPFs de todas as empresas.</div>` : ''}${!B.temOutros ? `<div class="cartao" style="border-left:4px solid #b5731a;margin-bottom:12px;font-size:13.5px"><b>Atenção:</b> a Base Geral carregada hoje traz os ativos só da CRV (5); das empresas 6 e 16 vêm apenas os desligados. Recarregue a planilha da Base Geral em Administração (o app agora guarda também os ativos de APFO e CAPFO) para o cruzamento ficar completo.</div>` : ''}
       <section class="dk-kpis">
         <button class="dk-k" data-k="todos" style="--c:#5b3f9e"><span>Passaram pelo programa</span><b>${nf(Bx.length)}</b><small>${nf(concl.length)} já concluíram · ${nf(Bx.length - concl.length)} em andamento ou sem término</small></button>
         <button class="dk-k" data-k="cont" style="--c:#2e7d4f"><span>Contratados depois</span><b>${nf(cont.length)}</b><small>em outra função, após o fim do contrato</small></button>
@@ -170,6 +200,7 @@ async function tela(p){
         <label>Empresa <select id="f-emp"><option value="">Todas</option>${EMPS.map(e => `<option value="${e}" ${F.emp === e ? 'selected' : ''}>${EMPN[e]}</option>`).join('')}</select></label>
         <label>Situação <select id="f-sit"><option value="">Todas</option><option value="Ativo" ${F.sit === 'Ativo' ? 'selected' : ''}>Ativos</option><option value="Desligado" ${F.sit === 'Desligado' ? 'selected' : ''}>Desligados</option></select></label>
         <label>Departamento <select id="f-dep"><option value="">Todos</option>${deps.map(d => `<option ${F.dep === d ? 'selected' : ''}>${esc(d)}</option>`).join('')}</select></label>
+        <label class="dk-chk" title="Aprendizes registrados no grupo com função de aprendiz que não estão nas planilhas das instituições"><input type="checkbox" id="f-base" ${CFG.crvBase !== false ? 'checked' : ''} ${pode ? '' : 'disabled'}> CRV direto: incluir aprendizes da Base Geral</label>
         <label>Término do programa <select id="f-ano"><option value="">Todos</option>${anos.map(a => `<option ${F.ano === a ? 'selected' : ''}>${a}</option>`).join('')}</select></label></section>
       <div class="ap-tabs"><button data-ab="n" class="${F.aba === 'n' ? 'on' : ''}">Contratados (${nf(C.length)})</button><button data-ab="g" class="${F.aba === 'g' ? 'on' : ''}">Por empresa, departamento e função</button><button data-ab="c" class="${F.aba === 'c' ? 'on' : ''}">A conferir (${nf(conf.length)})</button></div>
       <div id="ap-aba"></div>
@@ -197,6 +228,7 @@ async function tela(p){
     c.querySelectorAll('[data-bk]').forEach(b => b.onclick = () => { const t = b.dataset.bk, v = b.dataset.bv; const f = t === 'Por empresa' ? x => EMPN[x.h.emp] : t === 'Por departamento' ? x => x.h.depto || '—' : t === 'Por função de contratação' ? x => x.h.funcao || '—' : x => x.origem || 'Sem origem'; const L = C.filter(x => f(x) === v); lista(t.replace('Por ', '') + ': ' + v, L, nf(L.length) + ' pessoas'); });
     c.querySelectorAll('[data-ab]').forEach(b => b.onclick = () => { F.aba = b.dataset.ab; desenhar(); });
     [['f-or', 'or'], ['f-emp', 'emp'], ['f-sit', 'sit'], ['f-dep', 'dep'], ['f-ano', 'ano']].forEach(([id, k]) => $('#' + id).onchange = e => { F[k] = e.target.value; desenhar(); });
+    $('#f-base').onchange = async e => { try { await salvar('cfg', 'geral', Object.assign({}, CFG, { _id:undefined, crvBase:e.target.checked, por:quem(), em:new Date().toISOString() })); toast('Configuração salva. Cruzamento refeito.'); carregar(); } catch(er){ toast(traduzErro(er), true); } };
     const qi = $('#ap-q'); qi.oninput = () => { F.q = qi.value; clearTimeout(qi._t); qi._t = setTimeout(() => { desenhar(); const e = $('#ap-q'); if (e) { e.focus(); e.setSelectionRange(F.q.length, F.q.length); } }, 250); };
   }
   /* exportar: escolher o que sai */
