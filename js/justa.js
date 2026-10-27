@@ -48,61 +48,66 @@ async function quadro(){ if (!Q) { try { Q = await window.CRV_QUADRO(); } catch(
 const pessoa = m => { const k = fMat(String(m || '').replace(/\D/g, '')); return k && Q && Q.mapa ? Object.assign({ mat:k }, Q.mapa[k] || {}) : null; };
 
 /* ---------- PDF ---------- */
+/* mesmo papel timbrado dos documentos de Sanções Disciplinares (faixa azul, CRV INDUSTRIAL / UNIDADE CAPINÓPOLIS,
+   linha verde, título em azul, quadro cinza com os dados do colaborador e rodapé com CNPJ e endereço; logo à direita) */
 function montarPDF(r, K){
   const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit:'mm', format:'a4' });
-  const W = 210, L = 20, R = W - 20, CW = R - L, INK = [25, 30, 40], MUT = [95, 102, 115];
-  const lh = fs => fs * .42 * 1.18;
-  let y = 14;
-  const lg = logo(); if (lg) { try { doc.addImage(lg, 'PNG', L, y, 40, 12); } catch(_){} }
-  y += 19;
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(12.5 * Math.max(K, .85)); doc.setTextColor(...INK);
-  const tl = doc.splitTextToSize(TXT.titulo, CW); tl.forEach(t => { doc.text(t, W / 2, y, { align:'center' }); y += 5.6; });
-  y += 3 * K;
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5 * K); doc.text((r.cidade || 'Capinópolis/MG') + ', ' + extenso(r.dataDoc) + '.', R, y, { align:'right' }); y += 8 * K;
-  /* dados do empregado */
-  const fs = 10 * K;
-  const cel = [['Empregado(a):', r.nome, 'Matrícula:', r.mat], ['CPF:', r.cpf, 'Admissão:', brD(r.adm)], ['CTPS nº:', r.ctps, 'Série:', r.serie], ['Função:', r.funcao, 'Departamento:', r.depto], ['Setor:', r.setor, '', '']];
-  doc.autoTable({ startY:y, body:cel.map(l => l.map(v => v == null ? '' : String(v))), theme:'plain', semTotal:true, margin:{ left:L, right:20 },
-    styles:{ fontSize:fs, cellPadding:{ top:.8 * K, bottom:.8 * K, left:1, right:1 }, textColor:INK }, columnStyles:{ 0:{ fontStyle:'bold', cellWidth:28 }, 1:{ cellWidth:72 }, 2:{ fontStyle:'bold', cellWidth:28 } } });
-  y = doc.lastAutoTable.finalY + 5 * K;
+  const NAVY = [31, 58, 104], INK = [40, 46, 58], MUT = [110, 116, 128], GREEN = [110, 150, 60]; const L = 18, R = 192, W = R - L;
+  let quebrou = false;
+  const cab2 = () => { doc.setFillColor(...NAVY); doc.rect(0, 0, 210, 4, 'F'); };
+  const rodape = () => { const n = doc.getNumberOfPages(); for (let i = 1; i <= n; i++) { doc.setPage(i);
+    doc.setDrawColor(215, 220, 228); doc.setLineWidth(.3); doc.line(L, 276, R, 276); doc.setFont('helvetica', 'bold'); doc.setFontSize(7.3); doc.setTextColor(...INK); doc.text('CRV INDUSTRIAL LTDA - UNIDADE CAPINÓPOLIS | CNPJ 03.937.452/0004-35', 105, 280.5, { align:'center' });
+    doc.setFont('helvetica', 'normal'); doc.setTextColor(...MUT); doc.text('Rodovia MG-226, s/nº, km 63, Zona Rural, Capinópolis/MG - CEP 38.360-000', 105, 284.3, { align:'center' }); doc.text('Telefone: (34) 3263-8100', 105, 288, { align:'center' });
+    doc.setFontSize(6.8); doc.text('Gestão de Pessoas · emitido em ' + new Date().toLocaleDateString('pt-BR'), L, 292); if (n > 1) doc.text(i + '/' + n, R, 292, { align:'right' }); } };
+  const lab = (t, v, x, y) => { doc.setFont('helvetica', 'bold'); doc.text(t, x, y); const w = doc.getTextWidth(t); doc.setFont('helvetica', 'normal'); const vv = String(v || ''); doc.text(vv, x + w + 1.6, y); return x + w + 1.6 + doc.getTextWidth(vv); };
+  const sec = (t, y) => { if (y > 255) { quebrou = true; doc.addPage(); cab2(); y = 20; } doc.setFont('helvetica', 'bold'); doc.setFontSize(10 * Math.max(K, .85)); doc.setTextColor(...NAVY); doc.text(t, L, y); return y + 5.6 * K; };
+  /* cabeçalho */
+  cab2(); doc.setFont('helvetica', 'bold'); doc.setFontSize(13.5); doc.setTextColor(...NAVY); doc.text('CRV INDUSTRIAL', L, 19);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(7.8); doc.setTextColor(...MUT); doc.text('UNIDADE CAPINÓPOLIS', L, 24);
+  doc.setDrawColor(...GREEN); doc.setLineWidth(.6); doc.line(L, 29, R, 29);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(...NAVY); const tl = doc.splitTextToSize(TXT.titulo, W); let y = 38; tl.forEach(t => { doc.text(t, L, y); y += 6; });
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...INK); doc.text((r.cidade || 'Capinópolis/MG') + ', ' + extenso(r.dataDoc) + '.', L, y); y += 5;
+  /* quadro cinza com os dados do empregado */
+  doc.setFillColor(238, 241, 245); doc.roundedRect(L, y, W, 25, 2, 2, 'F'); doc.setFontSize(9.4); doc.setTextColor(...INK);
+  lab('Empregado(a):', r.nome, L + 1, y + 6.5); lab('Matrícula:', r.mat, 140, y + 6.5);
+  let x = lab('CPF:', r.cpf, L + 1, y + 11.6); x = lab('CTPS nº:', r.ctps, x + 6, y + 11.6); lab('Série:', r.serie, x + 6, y + 11.6); lab('Admissão:', brD(r.adm), 140, y + 11.6);
+  lab('Função:', r.funcao, L + 1, y + 16.7);
+  x = lab('Departamento:', r.depto, L + 1, y + 21.8); if (r.setor && r.setor !== r.depto) lab('Setor:', r.setor, Math.max(x + 6, 120), y + 21.8);
+  y += 34;
   const subst = t => String(t || '').split('{DATA_OCORRENCIA}').join(brD(r.dataOc) || '____/____/______').split('{DATA_DP}').join(brD(r.dpData) || '____/____/______').split('{HORA_DP}').join(brHora(r.dpHora) || '____h____');
-  const paragrafo = (texto, f, bold) => { doc.setFont('helvetica', bold ? 'bold' : 'normal'); doc.setFontSize(f); doc.setTextColor(...INK);
+  const fs = 9.6 * K, lh = 4.7 * K;
+  const paragrafo = texto => { doc.setFont('helvetica', 'normal'); doc.setFontSize(fs); doc.setTextColor(...INK);
     String(texto || '').replace(/\r/g, '').split('\n').forEach((pa, ip, arr) => {
-      if (!pa.trim()) { y += lh(f) * .6; return; }
-      const ls = doc.splitTextToSize(pa.trim(), CW);
-      ls.forEach((ln, i) => { if (y > 282) { doc.addPage(); y = 18; }
+      if (!pa.trim()) { y += lh * .5; return; }
+      const ls = doc.splitTextToSize(pa.trim(), W);
+      ls.forEach((ln, i) => { if (y > 262) { quebrou = true; doc.addPage(); cab2(); y = 20; }
         const ws = ln.split(' ').filter(Boolean);
-        if (i < ls.length - 1 && ws.length > 1) { const tw = ws.reduce((s, w) => s + doc.getTextWidth(w), 0), sp = (CW - tw) / (ws.length - 1); let x = L; ws.forEach(w => { doc.text(w, x, y); x += doc.getTextWidth(w) + sp; }); }
+        if (i < ls.length - 1 && ws.length > 1) { const tw = ws.reduce((s, w) => s + doc.getTextWidth(w), 0), sp = (W - tw) / (ws.length - 1); let xx = L; ws.forEach(w => { doc.text(w, xx, y); xx += doc.getTextWidth(w) + sp; }); }
         else doc.text(ln, L, y);
-        y += lh(f); });
-      if (ip < arr.length - 1) y += lh(f) * .35; }); };
-  paragrafo(subst(TXT.abertura), 10.5 * K); y += 2 * K;
-  /* alíneas marcadas, em negrito */
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5 * K);
-  ALI.filter(a => (r.alineas || []).includes(a[0])).forEach(a => { const ls = doc.splitTextToSize('Alínea "' + a[0] + '" – ' + a[1] + ';', CW - 6); ls.forEach(t => { doc.text(t, L + 6, y); y += lh(10.5 * K); }); y += .8 * K; });
-  y += 2.5 * K;
-  paragrafo(subst(TXT.convocacao), 10.5 * K); y += 4 * K;
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(11 * K); doc.text('DESCRIÇÃO DA OCORRÊNCIA', L, y); y += 6 * K;
-  paragrafo(r.desc, 10.2 * K);
-  /* assinaturas: empregador, empregado e 2 testemunhas */
-  const altAss = 58 * Math.max(K, .8);
-  if (y + altAss > 284) { doc.addPage(); y = 24; }
-  y += 15 * Math.max(K, .8); const cw = (CW - 14) / 2;
-  const ass = (x, yy, l1, l2, l3) => { doc.setDrawColor(40); doc.setLineWidth(.3); doc.line(x, yy, x + cw, yy); doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...INK); doc.text(l1, x + cw / 2, yy + 4.2, { align:'center' });
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...MUT); if (l2) doc.text(l2, x + cw / 2, yy + 8.2, { align:'center' }); if (l3) doc.text(l3, x + cw / 2, yy + 12, { align:'center' }); };
-  ass(L, y, 'CRV INDUSTRIAL', 'EMPREGADOR'); ass(L + cw + 14, y, String(r.nome || '').toUpperCase().slice(0, 48), 'EMPREGADO(A)');
-  y += 25 * Math.max(K, .8);
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...INK); doc.text('TESTEMUNHAS', L, y - 3);
-  const T = r.test || []; [0, 1].forEach(i => { const t = T[i] || {}; ass(L + i * (cw + 14), y + 6, (t.nome || 'Nome: ______________________').toUpperCase().slice(0, 48), 'CPF: ' + (t.cpf || '_______________'), ''); });
-  /* rodapé de todos os documentos do app */
-  const n = doc.getNumberOfPages(); for (let i = 1; i <= n; i++) { doc.setPage(i); doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...MUT);
-    doc.text('Gestão de Pessoas · CRV Industrial · emitido em ' + new Date().toLocaleDateString('pt-BR'), L, 291); if (n > 1) doc.text(i + '/' + n, R, 291, { align:'right' }); }
-  return doc;
+        y += lh; });
+      if (ip < arr.length - 1) y += lh * .3; }); };
+  paragrafo(subst(TXT.abertura)); y += 1.5 * K;
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(fs); doc.setTextColor(...INK);
+  ALI.filter(a => (r.alineas || []).includes(a[0])).forEach(a => { doc.splitTextToSize('Alínea "' + a[0] + '" – ' + a[1] + ';', W - 6).forEach(t => { if (y > 262) { quebrou = true; doc.addPage(); cab2(); y = 20; } doc.text(t, L + 6, y); y += lh; }); y += .6 * K; });
+  y += 2 * K; paragrafo(subst(TXT.convocacao)); y += 3 * K;
+  y = sec('DESCRIÇÃO DA OCORRÊNCIA', y); paragrafo(r.desc);
+  /* assinaturas no pé da folha, como nas sanções: empregador e empregado; testemunhas com nome e CPF */
+  if (y > 232) { quebrou = true; doc.addPage(); cab2(); y = 30; }
+  let ys = Math.max(y + 12, 238); const c2 = 114, cx1 = L + 39, cx2 = (c2 + R) / 2;
+  doc.setDrawColor(...INK); doc.setLineWidth(.3); doc.line(L, ys, L + 78, ys); doc.line(c2, ys, R, ys);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(8.8); doc.setTextColor(...INK); doc.text('CRV INDUSTRIAL', cx1, ys + 4.5, { align:'center' }); doc.text(String(r.nome || '').toUpperCase().slice(0, 44), cx2, ys + 4.5, { align:'center' });
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(7.8); doc.text('EMPREGADOR', cx1, ys + 9, { align:'center' }); doc.text('EMPREGADO(A) | Matrícula: ' + (r.mat || ''), cx2, ys + 9, { align:'center' });
+  ys += 23; doc.line(L, ys - 5, L + 78, ys - 5); doc.line(c2, ys - 5, R, ys - 5);
+  const T = r.test || [];
+  [[L, T[0] || {}], [c2, T[1] || {}]].forEach(([xx, t]) => { doc.text('Testemunha - Nome: ' + (t.nome || '______________________________'), xx, ys); doc.text('CPF: ' + (t.cpf || '_____________________________________________'), xx, ys + 4.3); });
+  rodape();
+  return { doc, quebrou };
 }
-function gerarPDF(r){ let doc = montarPDF(r, 1); for (const K of [.94, .88, .82, .76, .7, .64]) { if (doc.getNumberOfPages() <= 1) break; doc = montarPDF(r, K); } return doc; }
+async function gerarPDF(r){ let K = 1, B = montarPDF(r, K); while (B.quebrou && K > .62) { K = Math.round((K - .04) * 100) / 100; B = montarPDF(r, K); }
+  try { const f = window.CRV_PDF_LOGOS; if (f) { const o = await f(B.doc); if (o) return o; } } catch(_){} return B.doc; }
 const nomeArq = r => 'Justa causa - ' + (r.nome || '').split(' ').slice(0, 2).join(' ') + ' ' + r.mat + ' - ' + brD(r.dataDoc).split('/').join('-') + '.pdf';
-function visualizar(r){
-  const blob = gerarPDF(r).output('blob'), u = URL.createObjectURL(blob);
+async function visualizar(r){
+  const blob = (await gerarPDF(r)).output('blob'), u = URL.createObjectURL(blob);
   const w = document.createElement('div'); w.className = 'jc-prev';
   w.innerHTML = `<div class="jc-pv"><div class="jc-pvh"><b>Visualização · ${esc(r.nome || '')}</b><span style="flex:1"></span><button class="btn borda peq" data-b>Baixar PDF</button><button class="btn prim peq" data-x>Fechar visualização</button></div><iframe src="${u}#toolbar=1&view=FitH" title="Visualização do documento"></iframe></div>`;
   document.body.appendChild(w); const fechar = () => { w.remove(); setTimeout(() => URL.revokeObjectURL(u), 1000); };
@@ -181,14 +186,14 @@ async function form(r0, aoSalvar){
         if (!o.alineas.length) return 'Marque ao menos uma alínea do Art. 482.'; if (!o.dataOc) return 'Informe a data da ocorrência.'; if (!o.dataDoc) return 'Informe a data do documento.';
         if (!o.desc.trim()) return 'Escreva a descrição da ocorrência.'; return ''; };
       g('#jc-c').onclick = fecharModal;
-      g('#jc-ver').onclick = () => { const o = ler(); if (!o.mat && !ed) return msg('Informe a matrícula.'); try { visualizar(Object.assign({}, r, o, ed ? { mat:r.mat } : {})); } catch(e){ msg('Não consegui montar a visualização: ' + (e.message || e)); } };
+      g('#jc-ver').onclick = () => { const o = ler(); if (!o.mat && !ed) return msg('Informe a matrícula.'); visualizar(Object.assign({}, r, o, ed ? { mat:r.mat } : {})).catch(e => msg('Não consegui montar a visualização: ' + (e.message || e))); };
       const del = g('#jc-del'); if (del) del.onclick = async () => { if (!del.dataset.c) { del.dataset.c = 1; del.textContent = 'Confirmar exclusão'; return; }
         try { await salvar('emitidas', r._id, Object.assign({}, r, { _id:undefined, excluida:true, excluidaEm:new Date().toISOString(), excluidaPor:quem() })); fecharModal(); toast('Comunicação excluída.'); aoSalvar && aoSalvar(); } catch(e){ msg(traduzErro(e)); } };
       g('#jc-ok').onclick = async () => { const o = ler(); if (ed) o.mat = r.mat; const er = valida(o); if (er) return msg(er);
         const b = g('#jc-ok'); b.disabled = true; const agora = new Date().toISOString();
         const id = ed ? r._id : 'jc' + Date.now().toString(36);
         const reg = Object.assign({}, ed ? r : {}, o, { _id:undefined, atualizadoEm:agora, atualizadoPor:quem() }, ed ? {} : { criadoEm:agora, criadoPor:quem() });
-        try { await salvar('emitidas', id, reg); RASCUNHO = null; const doc = gerarPDF(Object.assign({}, reg, { _id:id })); baixar(doc.output('blob'), nomeArq(reg)); fecharModal(); toast(ed ? 'Comunicação atualizada e PDF gerado.' : 'Comunicação salva e PDF gerado.'); aoSalvar && aoSalvar(); }
+        try { await salvar('emitidas', id, reg); RASCUNHO = null; const doc = await gerarPDF(Object.assign({}, reg, { _id:id })); baixar(doc.output('blob'), nomeArq(reg)); fecharModal(); toast(ed ? 'Comunicação atualizada e PDF gerado.' : 'Comunicação salva e PDF gerado.'); aoSalvar && aoSalvar(); }
         catch(e){ b.disabled = false; msg('Não consegui salvar: ' + traduzErro(e)); } };
     } });
 }
@@ -243,8 +248,8 @@ async function tela(p, cfg, acao){
     $('#jc-ano').onchange = e => { F.ano = e.target.value; desenhar(); }; $('#jc-alf').onchange = e => { F.al = e.target.value; desenhar(); };
     const ach = id => L.find(r => r._id === id);
     c.querySelectorAll('[data-ab]').forEach(b => b.onclick = () => form(ach(b.dataset.ab), carregar));
-    c.querySelectorAll('[data-vi]').forEach(b => b.onclick = () => visualizar(ach(b.dataset.vi)));
-    c.querySelectorAll('[data-pdf]').forEach(b => b.onclick = () => { const r = ach(b.dataset.pdf); baixar(gerarPDF(r).output('blob'), nomeArq(r)); });
+    c.querySelectorAll('[data-vi]').forEach(b => b.onclick = () => visualizar(ach(b.dataset.vi)).catch(e => toast('Não consegui montar a visualização: ' + (e.message || e), true)));
+    c.querySelectorAll('[data-pdf]').forEach(b => b.onclick = async () => { const r = ach(b.dataset.pdf); baixar((await gerarPDF(r)).output('blob'), nomeArq(r)); });
   }
   await carregar();
   if (acao === 'jcn' && pode) form(null, carregar);
