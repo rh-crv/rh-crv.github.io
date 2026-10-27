@@ -58,13 +58,25 @@ function cruzar(J, B, V, incluiBase){
   /* aprendizes contratados direto pelo grupo: vêm da própria Base Geral (registro com função de aprendiz), se não estiverem nas planilhas */
   if (incluiBase) B.P.forEach((L, c) => { if (grupos.has(c)) return; const A = L.filter(x => ehApr(x.funcao)); if (!A.length) return; A.sort((a, b) => String(a.adm).localeCompare(String(b.adm)));
     const u = A[A.length - 1]; grupos.set(c, A.map(x => ({ nome:x.nome, cpf:c, origem:'CRV', ini:x.adm, fim:x.saida || '', setor:x.depto, mat:x.mat, base:true, emp:x.emp }))); });
-  grupos.forEach((L, k) => { L.sort((a, b) => String(a.ini || '').localeCompare(String(b.ini || '')) || String(a.fim || '').localeCompare(String(b.fim || ''))); const u = L[L.length - 1]; // o contrato mais recente (pelo início) define o fim do programa
-    const p = { k, cpf:k[0] === 'x' ? cpfN(u.cpf) : k, cpfRaw:u.cpf, nome:u.nome, origem:u.origem || '', motivo:u.motivo || '', daBase:!!u.base, empA:u.empA || (u.emp ? EMPN[u.emp] : ''), ini:L.map(x => x.ini).filter(Boolean).sort()[0] || '', fim:u.fim || '', setorA:u.setor || '', matA:u.mat || '', contratos:L.length, origens:[...new Set(L.map(x => x.origem).filter(Boolean))] };
+  /* cada passagem pelo programa conta: o mesmo jovem na RENAPSI e depois no João Bittar aparece duas vezes (uma por instituição).
+     Linhas idênticas (mesmo CPF, origem, início e fim) são repetição da planilha e contam uma vez só. */
+  const ENT = [];
+  grupos.forEach((L0, k) => { const vis = new Set(), L = L0.filter(x => { const z = (x.origem || '') + '|' + (x.ini || '') + '|' + (x.fim || ''); if (vis.has(z)) return false; vis.add(z); return true; });
+    const porO = new Map(); L.forEach(x => { const o = x.origem || ''; if (!porO.has(o)) porO.set(o, []); porO.get(o).push(x); });
+    const es = [...porO.entries()].map(([o, LL]) => { LL.sort((a, b) => String(a.ini || '').localeCompare(String(b.ini || '')) || String(a.fim || '').localeCompare(String(b.fim || ''))); return { k, o, L:LL, u:LL[LL.length - 1], ini:LL.map(x => x.ini).filter(Boolean).sort()[0] || '', dup:L0.length - L.length }; })
+      .sort((a, b) => String(a.ini).localeCompare(String(b.ini)));
+    es.forEach((e, n) => { e.prox = es[n + 1] || null; e.multi = es.length > 1; ENT.push(e); }); });
+  ENT.forEach(e => { const k = e.k, L = e.L, u = e.u, nx = e.prox;
+    const fimPl = u.fim || '', fimE = nx && nx.ini && (!fimPl || fimPl > nx.ini) ? nx.ini : fimPl;
+    const p = { k, cpf:k[0] === 'x' ? cpfN(u.cpf) : k, cpfRaw:u.cpf, nome:u.nome, origem:u.origem || '', motivo:u.motivo || '', daBase:!!u.base, empA:u.empA || (u.emp ? EMPN[u.emp] : ''), ini:e.ini, fim:fimE, fimPlan:fimE !== fimPl ? fimPl : '', setorA:u.setor || '', matA:u.mat || '', contratos:L.length, dup:e.dup, origens:[u.origem].filter(Boolean),
+      prox:nx ? nx.o : '', proxIni:nx ? nx.ini : '' };
+    p.vk = p.cpf + '|' + p.origem;
     p.anoFim = p.fim ? p.fim.slice(0, 4) : ''; p.concl = !!p.fim && p.fim <= hj;
     const regs = k[0] === 'x' ? [] : (B.P.get(k) || []); p.regs = regs;
-    const nonApr = regs.filter(x => !ehApr(x.funcao)); const depois = p.fim ? nonApr.filter(x => x.adm && x.adm > p.fim) : []; const antes = p.fim ? nonApr.filter(x => x.adm && x.adm <= p.fim) : [];
+    const ate = p.proxIni || '9999'; const nonApr = regs.filter(x => !ehApr(x.funcao) && (!p.proxIni || x.adm < p.proxIni)); const depois = p.fim ? nonApr.filter(x => x.adm && x.adm > p.fim && x.adm < ate) : []; const antes = p.fim ? nonApr.filter(x => x.adm && x.adm <= p.fim && (!e.multi || x.adm >= p.ini)) : [];
+    if (p.prox) p.transf = true;
     const nomeDif = regs.length && !regs.some(x => nomeParecido(p.nome, x.nome));
-    const v = V[p.cpf]; p.st = 'nao'; p.mot = '';
+    const v = V[p.vk] || (e.prox || ENT.some(z => z !== e && z.k === k) ? null : V[p.cpf]); p.st = 'nao'; p.mot = '';
     if (k[0] === 'x') { p.st = 'conf'; p.mot = String(u.cpf || '').trim() ? 'CPF inválido na planilha de jovens' : 'CPF vazio na planilha de jovens'; }
     else if (v && v.d === 'nao') { p.st = 'nao'; p.valid = v; }
     else if (v && v.d === 'sim') { p.h = nonApr.find(x => chaveReg(x) === v.k) || depois[0] || antes[0] || null; p.st = p.h ? 'cont' : 'conf'; p.valid = v; if (!p.h) p.mot = 'Contratação validada não encontrada na base atual'; }
@@ -187,7 +199,7 @@ async function tela(p){
     const anos = [...new Set(PS.map(x => x.anoFim).filter(Boolean))].sort().reverse(), deps = [...new Set(PS.filter(x => x.h).map(x => x.h.depto).filter(Boolean))].sort();
     c.innerHTML = `${!B.cpfpOk ? `<div class="cartao" style="border-left:4px solid #c3352f;margin-bottom:12px;font-size:13.5px"><b>Base Geral com CPF desalinhado:</b> nesta base, o CPF dos desligados das empresas 6 e 16 não confere com o da matrícula (só ${B.alin}% batem nos desligados da CRV). Para não cruzar CPF errado, o painel usou só os CPFs da CRV (5). Recarregue a planilha da Base Geral em Administração para refazer os CPFs de todas as empresas.</div>` : ''}${!B.temOutros ? `<div class="cartao" style="border-left:4px solid #b5731a;margin-bottom:12px;font-size:13.5px"><b>Atenção:</b> a Base Geral carregada hoje traz os ativos só da CRV (5); das empresas 6 e 16 vêm apenas os desligados. Recarregue a planilha da Base Geral em Administração (o app agora guarda também os ativos de APFO e CAPFO) para o cruzamento ficar completo.</div>` : ''}
       <section class="dk-kpis">
-        <button class="dk-k" data-k="todos" style="--c:#5b3f9e"><span>Passaram pelo programa</span><b>${nf(Bx.length)}</b><small>${nf(concl.length)} já concluíram · ${nf(Bx.length - concl.length)} em andamento ou sem término</small></button>
+        <button class="dk-k" data-k="todos" style="--c:#5b3f9e"><span>Passaram pelo programa</span><b>${nf(Bx.length)}</b><small>${nf(new Set(Bx.map(x => x.k)).size)} pessoas (quem passou por duas instituições conta uma vez em cada) · ${nf(concl.length)} já concluíram · ${nf(Bx.length - concl.length)} em andamento ou sem término</small></button>
         <button class="dk-k" data-k="cont" style="--c:#2e7d4f"><span>Contratados depois</span><b>${nf(cont.length)}</b><small>em outra função, após o fim do contrato</small></button>
         <button class="dk-k" data-k="cont" style="--c:#1d7a88"><span>Aproveitamento</span><b>${pct(cont.length, concl.length)}</b><small>contratados ÷ jovens que concluíram</small></button>
         <button class="dk-k" data-k="at" style="--c:#2f6fa8"><span>Continuam na empresa</span><b>${nf(at.length)}</b><small>${nf(sa.length)} já saíram</small></button>
@@ -214,7 +226,7 @@ async function tela(p){
         ${L.map(x => `<tr><td><b>${esc(x.nome)}</b></td><td>${esc(x.cpfRaw || '')}${x.cpf && x.cpf !== String(x.cpfRaw).replace(/\D/g, '') ? '<div class="nr-fonte" style="margin:0">→ ' + esc(cpfF(x.cpf)) + '</div>' : ''}</td><td>${esc(x.origem || '—')}</td><td>${esc(brD(x.ini))} a ${esc(brD(x.fim))}</td>
           <td>${x.valid && x.valid.d === 'nao' ? '<span class="ap-pill ap-de">Validado: não conta</span> <span class="nr-fonte">por ' + esc(x.valid.por || '') + '</span>' : esc(x.mot)}</td>
           <td>${(x.cand || []).map(h => `${esc(EMPN[h.emp])} · mat. ${esc(h.mat)} · ${esc(h.funcao)} · adm. ${esc(brD(h.adm))}${h.sit === 'Desligado' ? ' · saiu ' + esc(brD(h.saida)) : ''}<br>`).join('') || '—'}</td>
-          ${pode ? `<td><div class="ap-cf">${x.cpf && cpfOk(x.cpf) && (x.cand || []).length ? `<select data-sel="${esc(x.cpf)}">${x.cand.map(h => `<option value="${esc(chaveReg(h))}">${esc(EMPN[h.emp] + ' · ' + h.funcao + ' · ' + brD(h.adm))}</option>`).join('')}</select><button class="btn prim peq" data-sim="${esc(x.cpf)}">Contar como contratado</button>` : ''}${x.cpf && cpfOk(x.cpf) ? (x.valid ? `<button class="btn borda peq" data-desf="${esc(x.cpf)}">Desfazer</button>` : `<button class="btn borda peq" data-nao="${esc(x.cpf)}">Não conta</button>`) : '<span class="nr-fonte">corrija o CPF na planilha e importe de novo</span>'}</div></td>` : ''}</tr>`).join('')}</tbody>
+          ${pode ? `<td><div class="ap-cf">${x.cpf && cpfOk(x.cpf) && (x.cand || []).length ? `<select data-sel="${esc(x.vk)}">${x.cand.map(h => `<option value="${esc(chaveReg(h))}">${esc(EMPN[h.emp] + ' · ' + h.funcao + ' · ' + brD(h.adm))}</option>`).join('')}</select><button class="btn prim peq" data-sim="${esc(x.vk)}">Contar como contratado</button>` : ''}${x.cpf && cpfOk(x.cpf) ? (x.valid ? `<button class="btn borda peq" data-desf="${esc(x.vk)}">Desfazer</button>` : `<button class="btn borda peq" data-nao="${esc(x.vk)}">Não conta</button>`) : '<span class="nr-fonte">corrija o CPF na planilha e importe de novo</span>'}</div></td>` : ''}</tr>`).join('')}</tbody>
         <tfoot><tr><td colspan="${pode ? 7 : 6}">Total: ${nf(L.length)} ${L.length === 1 ? 'pessoa' : 'pessoas'}</td></tr></tfoot></table></div>` : '<div class="vazio"><h3>Nada a conferir</h3></div>'}</div>`;
       const dec = async (cpf, d, k) => { try { await salvar('valid', cpf, d ? { d, k:k || '', por:quem(), em:new Date().toISOString() } : { excluida:true, por:quem(), em:new Date().toISOString() }); toast(d ? 'Decisão registrada.' : 'Decisão desfeita.'); carregar(); } catch(e){ toast(traduzErro(e), true); } };
       a.querySelectorAll('[data-sim]').forEach(b => b.onclick = () => dec(b.dataset.sim, 'sim', a.querySelector(`[data-sel="${b.dataset.sim}"]`).value));
