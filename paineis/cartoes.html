@@ -192,7 +192,7 @@ const gers=[...new Set(R.map(r=>r.ger).filter(Boolean))].sort((a,b)=>a.localeCom
 $('fCat').innerHTML='<option value="">Todas as situações do cartão</option>'+ORD.map(k=>`<option value="${k}">${CATS[k].l}</option>`).join('')+'<option value="pedido">Já solicitados (marcados no app)</option><option value="demitido">Marcados como demitidos no app</option>';
 $('fDep').innerHTML='<option value="">Todos os setores</option>'+deps.map(d=>`<option>${esc(d)}</option>`).join('');
 $('fSit').innerHTML='<option value="">Situação no Quadro: todas</option>'+['Ativo','Afastado','Desligado','Fora do quadro'].map(x=>`<option>${x}</option>`).join('');
-const sel=(skip)=>R.filter(r=>(skip==='cat'||!S.cat||(S.cat==='pedido'?!!PED[r.mat]&&PEDE.has(r.k):S.cat==='demitido'?!!DEM[r.mat]:r.k===S.cat))&&(skip==='dep'||!S.dep||r.dep===S.dep)&&(skip==='ger'||!S.ger||r.ger===S.ger)&&(!S.sit||r.sit===S.sit)&&(!S.dl||(S.dl==='exc'?!!(EXC[r.mat]&&EXC[r.mat].on):S.dl==='aloj'?regra(r).v===1080:difLim(r)===S.dl))&&(!S.q||(r.nome+' '+r.mat+' '+r.func).toUpperCase().includes(S.q.toUpperCase())));
+const sel=(skip)=>R.filter(r=>(skip==='cat'||!S.cat||(S.cat==='pedido'?!!PED[r.mat]&&PEDE.has(r.k)&&!DEM[r.mat]:S.cat==='demitido'?!!DEM[r.mat]:r.k===S.cat&&!(PEDE.has(r.k)&&feito(r.mat))))&&(skip==='dep'||!S.dep||r.dep===S.dep)&&(skip==='ger'||!S.ger||r.ger===S.ger)&&(!S.sit||r.sit===S.sit)&&(!S.dl||(S.dl==='exc'?!!(EXC[r.mat]&&EXC[r.mat].on):S.dl==='aloj'?regra(r).v===1080:difLim(r)===S.dl))&&(!S.q||(r.nome+' '+r.mat+' '+r.func).toUpperCase().includes(S.q.toUpperCase())));
 const alvo=r=>(r.sit==='Ativo'||(T==='convenio'&&r.sit==='Afastado'))&&(T!=='premium'||r.eleg);
 
 function render(){
@@ -201,7 +201,7 @@ function render(){
   $('sub').textContent=`Planilha Sysprocard ${C.arquivo} de ${br(C.refPlanilha)} · cruzada com o Quadro Geral (empresa 5) de ${br(C.refQuadro)}`;
   const n=k=>R.filter(r=>r.k===k).length, A=R.filter(alvo), aOk=A.filter(r=>r.k==='ok').length;
   const pend=R.filter(r=>PEDE.has(r.k)&&!feito(r.mat));
-  const pedidos=R.filter(r=>PEDE.has(r.k)&&PED[r.mat]).length;
+  const pedidos=R.filter(r=>PEDE.has(r.k)&&PED[r.mat]&&!DEM[r.mat]).length;
   /* leitura */
   const grupo=T==='premium'?'motoristas e operadores de máquinas (I, II e III) ativos':T==='convenio'?'colaboradores ativos e afastados':'colaboradores ativos';
   const top=(()=>{const m={};A.filter(r=>r.k!=='ok').forEach(r=>m[r.dep]=(m[r.dep]||0)+1);const e=Object.entries(m).sort((a,b)=>b[1]-a[1])[0];return e})();
@@ -232,15 +232,16 @@ function render(){
     $('verif').querySelectorAll('[data-ver]').forEach(b=>b.onclick=()=>verificar(b.dataset.ver,b.dataset.ok==='1'));
   }
   /* kpis */
-  $('kpis').innerHTML=ORD.filter(k=>k==='ok'||n(k)).map(k=>{const v=n(k);const pd=PEDE.has(k)?R.filter(r=>r.k===k&&PED[r.mat]).length:0;
-    const s=k==='ok'?pc(v,A.length)+' do público do cartão':k==='afast'?R.filter(r=>r.k==='afast'&&r.card==='Ativo').length+' com cartão ativo':pd?pd+' já pedidos · '+(v-pd)+' a fazer':CATS[k].acao;
+  $('kpis').innerHTML=ORD.filter(k=>k==='ok'||n(k)).map(k=>{const tot=n(k);const pd=PEDE.has(k)?R.filter(r=>r.k===k&&PED[r.mat]&&!DEM[r.mat]).length:0,dm=PEDE.has(k)?R.filter(r=>r.k===k&&DEM[r.mat]).length:0;const v=tot-pd-dm;
+    const s=k==='ok'?pc(v,A.length)+' do público do cartão':k==='afast'?R.filter(r=>r.k==='afast'&&r.card==='Ativo').length+' com cartão ativo':pd||dm?[pd&&pd+' já pedido(s)',dm&&dm+' demitido(s)'].filter(Boolean).join(' · ')+' · '+v+' a fazer':CATS[k].acao;
     return `<button class="kpi${S.cat===k?' on':''}" style="--c:${CATS[k].c}" data-k="${k}"><div class="l">${CATS[k].l}</div><div class="v">${nf(v)}</div><div class="s">${esc(s)}</div></button>`}).join('')+
     (T==='convenio'?(()=>{const lib=R.filter(r=>r.k==='ok');const ac=lib.filter(r=>difLim(r)==='acima').length,ab=lib.filter(r=>difLim(r)==='abaixo').length,ex=R.filter(r=>EXC[r.mat]&&EXC[r.mat].on).length,al=R.filter(r=>r.k!==null&&regra(r).v===1080&&r.sit!=='Desligado').length;
       return `<button class="kpi${S.dl==='acima'?' on':''}" style="--c:var(--bad)" data-dl="acima"><div class="l">Limite acima da regra</div><div class="v">${nf(ac)}</div><div class="s">liberados com limite maior que o permitido</div></button>`+
       `<button class="kpi${S.dl==='abaixo'?' on':''}" style="--c:var(--info)" data-dl="abaixo"><div class="l">Limite abaixo do permitido</div><div class="v">${nf(ab)}</div><div class="s">podem receber até o valor da regra</div></button>`+
       `<button class="kpi${S.dl==='aloj'?' on':''}" style="--c:var(--acc)" data-dl="aloj"><div class="l">Alojados com direito a R$ 1.080</div><div class="v">${nf(al)}</div><div class="s">operadores e motoristas no alojamento</div></button>`+
       `<button class="kpi${S.dl==='exc'?' on':''}" style="--c:var(--warn)" data-dl="exc"><div class="l">Exceções de R$ 540</div><div class="v">${nf(ex)}</div><div class="s">${ex?'marcadas na lista':'marque na lista com “Exceção 540”'}</div></button>`})():'')+
-    (pedidos?`<button class="kpi${S.cat==='pedido'?' on':''}" style="--c:var(--info)" data-k="pedido"><div class="l">Já solicitados</div><div class="v">${nf(pedidos)}</div><div class="s">pedidos e bloqueios marcados no app</div></button>`:'');
+    (pedidos?`<button class="kpi${S.cat==='pedido'?' on':''}" style="--c:var(--info)" data-k="pedido"><div class="l">Já solicitados</div><div class="v">${nf(pedidos)}</div><div class="s">pedidos e bloqueios marcados no app</div></button>`:'')+
+    ((nd=>nd?`<button class="kpi${S.cat==='demitido'?' on':''}" style="--c:var(--bad)" data-k="demitido"><div class="l">Marcados como demitidos</div><div class="v">${nf(nd)}</div><div class="s">saíram da empresa · não precisa pedir</div></button>`:'')(R.filter(r=>DEM[r.mat]).length));
   $('kpis').querySelectorAll('[data-dl]').forEach(b=>b.onclick=()=>{S.dl=S.dl===b.dataset.dl?'':b.dataset.dl;S.lim=150;S.v='n';render();$('lt').scrollIntoView({behavior:'smooth',block:'start'})});
   $('kpis').querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{S.cat=S.cat===b.dataset.k?'':b.dataset.k;$('fCat').value=S.cat;S.lim=150;S.v='n';render();$('lt').scrollIntoView({behavior:'smooth',block:'start'})});
   /* cobertura por departamento (público do cartão) */
