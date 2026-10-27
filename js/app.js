@@ -164,6 +164,9 @@ async function carregarCatalogo(){
   if (!E.paineis.some(x => x.id === 'onboarding') && E.perfil && E.perfil.papel === 'admin') { const n = { id:'onboarding', frente:'Gestão de Colaboradores', nome:'Integração de Colaboradores', nivel:'controlado', ordem:12 };
     sb.from('paineis').insert(n).then(() => {}, () => {}); E.paineis.push(n); }
   // Avaliação de desempenho dos ativos (mesmo formulário da experiência): painel do app
+  // Comunicação de Justa Causa (restrita ao RH): ao lado das Sanções Disciplinares
+  if (!E.paineis.some(x => x.id === 'justa-causa') && E.perfil && E.perfil.papel === 'admin') { const sa = E.paineis.find(x => x.id === 'sancoes'); const n = { id:'justa-causa', frente:'Ocorrências e Relações Trabalhistas', nome:'Comunicação de Justa Causa', nivel:'restrito', ordem:(sa ? sa.ordem : 60) + 0.5 };
+    sb.from('paineis').insert(n).then(() => {}, () => {}); E.paineis.push(n); }
   if (!E.paineis.some(x => x.id === 'desempenho') && E.perfil && E.perfil.papel === 'admin') { const n = { id:'desempenho', frente:'Gestão de Colaboradores', nome:'Avaliação de Desempenho', nivel:'controlado', ordem:13 };
     sb.from('paineis').insert(n).then(() => {}, () => {}); E.paineis.push(n); }
   // Risco de saída: painel do app, calculado a partir do Quadro; restrito
@@ -546,6 +549,7 @@ async function pendenciasQuadro(){
    Cartão Alimentação e Premium não entram: o colaborador pode usar o saldo depois da saída.
    O que o RH marca como feito fica salvo (registros do Quadro, coleção deslig_check). */
 const DCK = [
+  { k:'jc',     n:'Justa causa',     acao:'Concluir a rescisão no DP', painel:'justa-causa' },
   { k:'conv',   n:'Cartão Convênio', acao:'Bloquear o cartão',  painel:'cartao-convenio' },
   { k:'unimed', n:'Unimed',          acao:'Excluir do plano',   painel:'unimed' },
   { k:'odonto', n:'Uniodonto',       acao:'Excluir do plano',   painel:'uniodonto' },
@@ -555,7 +559,9 @@ const DCK = [
 const brD = s => s ? String(s).slice(0, 10).split('-').reverse().join('/') : '';
 async function dadosDesligamento(){
   const Q = await window.CRV_QUADRO(); if (!Q || !Q.mapa) return null;
-  const deslig = m => { const c = Q.mapa[String(m).replace(/^0+(?=\d)/, '')]; return c && c.situacao === 'Desligado' ? c : null; };
+  // justa causa comunicada no app: entra no checklist mesmo antes de o Quadro trazer o desligamento
+  const JCM = {}; { const pj = E.paineis.find(x => x.id === 'justa-causa'); if (pj && podeVer(pj) && window.CRV_JC_INIT) { try { (await JC().regs()).forEach(r => { const k = String(r.mat).replace(/^0+(?=\d)/, ''); if (!JCM[k] || String(r.dataDoc) > String(JCM[k].dataDoc)) JCM[k] = r; }); } catch(_){} } }
+  const deslig = m => { const k = String(m).replace(/^0+(?=\d)/, ''), c = Q.mapa[k]; if (!c) return null; if (c.situacao === 'Desligado') return c; return JCM[k] ? Object.assign({}, c, { deslig: JCM[k].dataDoc || '' }) : null; };
   const P = new Map(), refs = {};
   const add = (m, nome, k, det, ref) => { const c = deslig(m); if (!c) return; const key = String(m).replace(/^0+(?=\d)/, '');
     if (!P.has(key)) P.set(key, { mat:key, nome:nome || c.nome, deslig:c.deslig || '', funcao:c.funcao || '', setor:c.setor || '', area:c.area || '', b:{} });
@@ -569,6 +575,7 @@ async function dadosDesligamento(){
   if (pode('alojamentos')) { const d = await window.CRV_DADOS('alojamentos'); const A = d && d.dados.DATA; if (A && A.people) { refs.aloj = d.referencia; A.people.filter(x => x.t === 'c' && x.m).forEach(x => { const h = A.houses && A.houses[x.h]; add(x.m, x.n, 'aloj', h ? `${h.n}${x.q ? ', quarto ' + x.q : ''}` : 'Alojado', refs.aloj); }); } }
   { const pc = E.paineis.find(x => x.id === 'clube'); if (pc && podeVer(pc)) { const R = (await window.CRV_REGS('clube', 'lanc')).filter(x => !x.excluida && x.mes); const mx = R.reduce((a, x) => x.mes > a ? x.mes : a, '');
     if (mx) { refs.clube = mx + '-01'; R.filter(x => x.mes === mx).forEach(x => add(x.mat, x.nome, 'clube', (x.tipo === 'F' ? 'Contribuição familiar' : x.tipo === 'I' ? 'Contribuição individual' : 'Sócio') + ' · lista de ' + mx.slice(5, 7) + '/' + mx.slice(0, 4), refs.clube)); } } }
+  if (Object.keys(JCM).length) { refs.jc = Object.values(JCM).reduce((a, r) => String(r.dataDoc) > a ? String(r.dataDoc) : a, ''); Object.values(JCM).forEach(r => add(r.mat, r.nome, 'jc', 'Comunicação de ' + brD(r.dataDoc) + ' · Art. 482, alínea(s) ' + JC().resumoAl(r) + (r.dpData ? ' · DP em ' + brD(r.dpData) + (r.dpHora ? ' às ' + r.dpHora : '') : ''), '')); }
   const { data } = await todasLinhas((a, z) => sb.from('registros').select('doc_id,dados').eq('painel', 'quadro').eq('colecao', 'deslig_check').order('caminho').range(a, z));
   const OK = {}; (data || []).forEach(r => { OK[r.doc_id] = (r.dados && r.dados.ok) || {}; });
   const L = [...P.values()].map(x => { x.ok = OK[x.mat] || {}; x.pend = Object.keys(x.b).filter(k => !x.ok[k]); return x; })
@@ -593,6 +600,7 @@ let _rel = null; const REL = () => _rel || (_rel = window.CRV_REL_INIT(Object.as
 let _bases = null; const BASES = () => _bases || (_bases = window.CRV_BASES_INIT(Object.assign(ctxMod(), { ehAdmin, FRENTES })));
 let _gestor = null; const GESTOR = () => _gestor || (_gestor = window.CRV_GESTOR_INIT(ctxMod()));
 let _des = null; const DES = () => _des || (_des = window.CRV_DES_INIT(ctxMod()));
+let _jc = null; const JC = () => _jc || (_jc = window.CRV_JC_INIT(Object.assign(ctxMod(), { logo: () => LOGO_DATAURL })));
 let _onb = null; const ONB = () => _onb || (_onb = window.CRV_ONB_INIT(Object.assign(ctxMod(), { RISCO })));
 async function pendenciasDesligamento(){
   const D = await dadosDesligamento(); if (!D) return [];
@@ -630,7 +638,9 @@ async function fichaDados(mat){
     const O = await window.CRV_OCORR([mat]); const o = O.P[mat];
     if (fPode('absenteismo') || fPode('quadro')) { const at = o ? o.at : [], fa = o ? o.fa : [];
       F.sec.push({ k:'abs', t:'Atestados e faltas (2026)', painel:'absenteismo', ref:O.abs, resumo:[['Dias de atestado', at.length], ['Faltas', fa.length], ['Último atestado', at.length ? brD(at[at.length - 1]) : '—'], ['Última falta', fa.length ? brD(fa[fa.length - 1]) : '—']] }); }
-    if (fPode('sancoes')) { const L = o ? o.adv.map(x => [brD(x.data), 'Advertência', x.motivo || '']).concat(o.sus.map(x => [brD(x.data), 'Suspensão' + (x.dias ? ' (' + x.dias + 'd)' : ''), x.motivo || ''])) : [];
+    const pjc = E.paineis.find(x => x.id === 'justa-causa'), JCL = pjc && podeVer(pjc) && window.CRV_JC_INIT ? await JC().daPessoa(mat).catch(() => []) : [];
+    if (JCL.length) F.sec.push({ k:'jc', t:'Comunicação de justa causa', painel:'justa-causa', cab:['Documento', 'Ocorrência', 'Art. 482 (alíneas)', 'Comparecimento ao DP', 'Lançado por'], linhas:JCL.map(r => [brD(r.dataDoc), brD(r.dataOc), JC().resumoAl(r), r.dpData ? brD(r.dpData) + (r.dpHora ? ' às ' + r.dpHora : '') : '', r.criadoPor || '']), alerta:'justa causa comunicada em ' + brD(JCL[0].dataDoc) });
+    if (fPode('sancoes')) { const L = (o ? o.adv.map(x => [brD(x.data), 'Advertência', x.motivo || '']).concat(o.sus.map(x => [brD(x.data), 'Suspensão' + (x.dias ? ' (' + x.dias + 'd)' : ''), x.motivo || ''])) : []).concat(JCL.map(r => [brD(r.dataDoc), 'Justa causa', 'Art. 482 da CLT, alínea(s) ' + JC().resumoAl(r)]));
       L.sort((a, b) => b[0].split('/').reverse().join('').localeCompare(a[0].split('/').reverse().join('')));
       F.sec.push({ k:'sanc', t:'Sanções disciplinares', painel:'sancoes', cab:['Data', 'Tipo', 'Motivo'], linhas:L, alerta: o && o.sus.length >= 3 ? o.sus.length + 'ª suspensão ou mais' : '' }); }
   })());
@@ -917,7 +927,7 @@ async function telaDesligamento(){
   const corpo = $('#dk-corpo'); if (!corpo) return;
   if (!D) { corpo.innerHTML = `<div class="cartao vazio"><h3>Sem a base do Quadro Geral</h3><p>O checklist usa os desligados do Quadro Geral.</p></div>`; return; }
   const fontes = DCK.filter(d => D.refs[d.k] !== undefined);
-  $('#dk-sub').innerHTML = `Desligados do Quadro de ${esc(brD(D.refQ))} × ${fontes.map(d => `${esc(d.n)} (base de ${esc(brD(D.refs[d.k]))})`).join(' · ')}. Cartão Alimentação e Premium não entram: o saldo pode ser usado depois da saída.`;
+  $('#dk-sub').innerHTML = `Desligados do Quadro de ${esc(brD(D.refQ))} × ${fontes.map(d => d.k === 'jc' ? 'Justas causas comunicadas no app' : `${esc(d.n)} (base de ${esc(brD(D.refs[d.k]))})`).join(' · ')}. Cartão Alimentação e Premium não entram: o saldo pode ser usado depois da saída.`;
   const F = { q:'', b:'', res:false, desde:'' };
   const pode = podeEditar(E.paineis.find(x => x.id === 'quadro') || {});
   const desenhar = () => {
@@ -1055,6 +1065,7 @@ const SUBACOES = {
   jovem:    [{ acao:'novo', nome:'Cadastrar jovem' }, { acao:'dslj', nome:'Registrar desligamento' }, { acao:'atj', nome:'Atestados' }],
   renapsi:  [{ acao:'novo', nome:'Cadastrar jovem' }, { acao:'dslj', nome:'Registrar desligamento' }, { acao:'atj', nome:'Atestados' }],
   sancoes:  [{ acao:'doc', nome:'Emitir advertência / suspensão / orientação' }],
+  'justa-causa': [{ acao:'jcn', nome:'Nova comunicação de justa causa' }],
   ouvidorias: [{ acao:'nova', nome:'Cadastrar ouvidoria' }],
   rd:       [{ acao:'novo', nome:'Cadastrar RD' }, { acao:'aut', nome:'Autorização de desconto' }, { acao:'hist', nome:'Histórico de autorizações' }],
   fadiga:   [{ acao:'novo', nome:'Cadastrar ocorrência' }, { acao:'trat', nome:'Aplicar tratativa' }],
@@ -1080,6 +1091,7 @@ function executarAcao(acao){
   if (acao === 'dslj' && w && typeof w.CRV_JOV_DESL === 'function') { fecharJanelasAut(w); w.CRV_JOV_DESL(); return true; }
   if (acao === 'atj' && w && typeof w.CRV_JOV_AT === 'function') { fecharJanelasAut(w); w.CRV_JOV_AT(); return true; }
   if (acao === 'ctr' && w && typeof w.CRV_CONTRATACAO === 'function') { fecharJanelasAut(w); w.CRV_CONTRATACAO(); return true; }
+  if (acao === 'jcn' && E.painelAberto === 'justa-causa' && typeof window.CRV_JC_NOVA === 'function') { window.CRV_JC_NOVA(); return true; }
   if (acao === 'grel' && w && typeof w.CRV_GERREL === 'function') { fecharJanelasAut(w); w.CRV_GERREL(); return true; }
   if (acao === 'hcol' && w && typeof w.CRV_HISTCOL === 'function') { fecharJanelasAut(w); w.CRV_HISTCOL(); return true; }
   if (acao === 'estab' && w && typeof w.CRV_ESTAB === 'function') { fecharJanelasAut(w); w.CRV_ESTAB(); return true; }
@@ -1104,6 +1116,7 @@ async function telaPainel(id, acao){
   if (id === 'risco') return RISCO().tela(p, cfg);
   if (id === 'onboarding') return ONB().tela(p, cfg);
   if (id === 'desempenho') return DES().tela(p, cfg);
+  if (id === 'justa-causa') return JC().tela(p, cfg, acao);
   if (MODELOS[id]) return telaModelo(p, cfg, acao);
   moldura(`<div class="trilha"><button data-ir="#/">Visão Geral</button> › <span>${esc(p.frente)}</span> › <b>${esc(p.nome)}</b></div>
     <div class="cartao vazio"><div class="spinner" style="margin:0 auto"></div><p>Carregando dados...</p></div>`);
@@ -1546,6 +1559,8 @@ async function telaModelo(p, cfg, acao){
     window.CRV_RECARREGAR = () => { if (location.hash.startsWith('#/p/' + encodeURIComponent(p.id))) telaPainel(p.id); };
     let tplU = tpl;
     if (p.id === 'ferias' && ehRH()) { try { const HF = await window.CRV_HIST('ferias'); if (Object.keys(HF).length > 1) tplU = tplU.replace(/<head[^>]*>/i, h => h + '<script>window.CRV_HF=' + JSON.stringify(HF).replace(/</g, '\\u003c') + ';<\/script>'); } catch(_) {} }
+    if (p.id === 'sancoes') { try { const pj = E.paineis.find(x => x.id === 'justa-causa'); if (pj && podeVer(pj) && window.CRV_JC_INIT) { const J = (await JC().regs()).map(r => ({ mat:String(r.mat), nome:r.nome || '', doc:r.dataDoc || '', oc:r.dataOc || '', al:JC().resumoAl(r), desc:String(r.desc || '').slice(0, 600) }));
+        if (J.length) tplU = tplU.replace(/<head[^>]*>/i, h => h + '<script>window.CRV_JC=' + JSON.stringify(J).replace(/</g, '\\u003c') + ';<\/script>'); } } catch(_) {} }
     if (p.id === 'absenteismo') { try { const Q = await window.CRV_QUADRO(); if (Q && Q.mapa) { // situação atual de cada um pelo Quadro Geral (a planilha de atestados pode estar mais antiga)
         const QS = {}; Object.entries(Q.mapa).forEach(([m, o]) => { QS[m] = [o.situacao === 'Desligado' ? 'DEMITIDO' : o.situacao === 'Afastado' ? 'AFASTADO' : 'ATIVO', o.situacao === 'Desligado' ? (o.deslig || '') : ''] });
         tplU = tplU.replace(/<head[^>]*>/i, h => h + '<script>window.CRV_QSIT=' + JSON.stringify({ ref:Q.referencia || '', S:QS }).replace(/</g, '\\u003c') + ';<\/script>'); } } catch(_) {} }
@@ -1695,7 +1710,7 @@ window.CRV_QUADRO = async function(){
     DM.forEach(r => { M[txt(r[0])] = { nasc: txt(r[27] || ''), cpf: txt(CPFM[txt(r[0])] || ''), cc: (txt(r[23]) && txt(r[23]) !== '0') ? txt(r[23]) : '', ccd: txt(r[13]), nome:txt(r[1]), funcao:txt(r[2]), setor:txt(r[3]), situacao:'Desligado', vinculo:txt(r[7]), gerencia:txt(r[6]), area:txt(r[5]), cnh:txt(r[17]), admissao:txt(r[9]), deslig:txt(r[20]), empresa:txt(r[21]).replace(/\s*\(\d+\)$/, '') }; });
     const XX = Array.isArray(dados.X) && dados.X.length === dados.D.length ? dados.X : null;
     const FXQ = dados.FX || {};
-    dados.D.forEach((r, i) => { M[txt(r[0])] = { idade: r[10], cid: txt(r[12]), cel: XX ? txt(XX[i][25]) : '', fx: FXQ[txt(r[0])] != null ? FXQ[txt(r[0])] : '', nasc: XX ? txt(XX[i][0]) : '', cpf: XX ? txt(XX[i][11]) : '', cc: XX ? txt(XX[i][33]) : '', ccd: txt(r[13]), nome:txt(r[1]), funcao:txt(r[2]), setor:txt(r[3]), situacao:txt(r[8]) || 'Ativo', vinculo:txt(r[7]), gerencia:txt(r[6]), area:txt(r[5]), cnh:txt(r[17]), admissao:txt(r[9]), deslig:'', empresa:'CRV' }; });
+    dados.D.forEach((r, i) => { M[txt(r[0])] = { idade: r[10], cid: txt(r[12]), cel: XX ? txt(XX[i][25]) : '', fx: FXQ[txt(r[0])] != null ? FXQ[txt(r[0])] : '', nasc: XX ? txt(XX[i][0]) : '', cpf: XX ? txt(XX[i][11]) : '', cc: XX ? txt(XX[i][33]) : '', ctps: XX ? txt(XX[i][12]) : '', serie: XX ? txt(XX[i][13]) : '', ccd: txt(r[13]), nome:txt(r[1]), funcao:txt(r[2]), setor:txt(r[3]), situacao:txt(r[8]) || 'Ativo', vinculo:txt(r[7]), gerencia:txt(r[6]), area:txt(r[5]), cnh:txt(r[17]), admissao:txt(r[9]), deslig:'', empresa:'CRV' }; });
     // departamentos (código Depto/Seção → nome), a partir dos ativos e afastados
     const DP = {};
     if (XX) dados.D.forEach((r, i) => { const cod = txt(XX[i][23]), nome = txt(r[3]); if (!cod || !nome) return;
