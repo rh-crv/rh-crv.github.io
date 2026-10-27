@@ -638,9 +638,10 @@ function exSections(){
   const m=MESES[cur],c=calc(m),out=[],sel=k=>$("ex_"+k)&&$("ex_"+k).checked&&!$("ex_"+k).disabled;
   const filt=$("ex_jovf").value==="r"?c.js.filter(j=>j.rad>0):c.js;
   const ord=a=>a.slice().sort((x,y)=>y.rad-x.rad||y.nf-x.nf||x.n.localeCompare(y.n));
+  const idJ=j=>{const b=BASE.find(x=>x.n===j.n)||{n:j.n,nasc:""};const i=idB(b);return i===null?"-":i+" anos"};
   if(sel("cad")){const L=c.js.slice().sort((x,y)=>x.n.localeCompare(y.n)),cpf=$("ex_cpf").checked;
-    out.push({k:"cad",t:"Relação dos jovens aprendizes · RENAPSI",p:[L.length+" jovens na relação da CRV em "+m.nome+"."],tables:[{h:["Nº","Matrícula CRV","Matrícula RENAPSI","Nome"].concat(cpf?["CPF"]:[],["Setor","Jornada","Início","Término do contrato"]),
-      r:L.map((j,i)=>[i+1,j.mat,j.matR,j.n].concat(cpf?[j.cpf]:[],[j.setor,j.jor,dBR(j.ini),dBR(j.fim)])),w:cpf?[10,22,26,0,26,38,24,22,30]:[10,24,28,0,42,26,24,32]}]});}
+    out.push({k:"cad",t:"Relação dos jovens aprendizes · RENAPSI",p:[L.length+" jovens na relação da CRV em "+m.nome+"."],tables:[{h:["Nº","Matrícula CRV","Matrícula RENAPSI","Nome","Idade"].concat(cpf?["CPF"]:[],["Setor","Jornada","Início","Término do contrato"]),
+      r:L.map((j,i)=>[i+1,j.mat,j.matR,j.n,idJ(j)].concat(cpf?[j.cpf]:[],[j.setor,j.jor,dBR(j.ini),dBR(j.fim)])),w:cpf?[10,20,24,0,16,26,34,22,20,26]:[10,22,26,0,16,40,24,22,28]}]});}
   if(sel("res")){
     const tb=(m._k||[]).map(k=>[k[1],txt(k[2]),txt(k[3])+(k[4]?" ("+txt(k[4])+")":"")]);
     const at=ord(c.js.filter(j=>j.rad>0)).map(j=>[j.n,RAD[j.rad][0],j.sinais.join(", ")||"-",ano(j.n,cur)]);
@@ -649,8 +650,8 @@ function exSections(){
       {t:"Radar",h:["Situação","Jovens","Leitura"],r:[2,1,0].map(r=>[RAD[r][0],c.rad[r],RAD[r][2]]),w:[60,22,0]},
       {t:"Quem acompanhar primeiro",h:["Aprendiz","Radar","Sinais do mês","Faltas no ano"],r:at.length?at:[["Nenhum jovem em atenção ou intervenção","","",""]],w:[0,30,0,26]}]});
   }
-  if(sel("jov"))out.push({k:"jov",t:"Aprendizes · "+m.label+($("ex_jovf").value==="r"?" · só atenção e intervenção":""),tables:[{h:["Matr. CRV","Aprendiz","Setor","Jornada","Radar","Faltas curso","Faltas empresa","Atestado e abono","Faltas no ano","Advert.","Sinais do mês"],
-    r:ord(filt).map(j=>[j.mat,j.n,j.setor,j.jor,RAD[j.rad][0],j.fa.length+(j.fj.length?" (+"+j.fj.length+" just.)":""),m.ponto?j.fx.length:"-",m.ponto?j.just.length:"-",ano(j.n,cur),j.nAdv,j.sinais.join(", ")||"-"]),w:[15,0,32,22,22,22,20,20,18,15,34]}]});
+  if(sel("jov"))out.push({k:"jov",t:"Aprendizes · "+m.label+($("ex_jovf").value==="r"?" · só atenção e intervenção":""),tables:[{h:["Matr. CRV","Aprendiz","Idade","Setor","Jornada","Radar","Faltas curso","Faltas empresa","Atestado e abono","Faltas no ano","Advert.","Sinais do mês"],
+    r:ord(filt).map(j=>[j.mat,j.n,idJ(j),j.setor,j.jor,RAD[j.rad][0],j.fa.length+(j.fj.length?" (+"+j.fj.length+" just.)":""),m.ponto?j.fx.length:"-",m.ponto?j.just.length:"-",ano(j.n,cur),j.nAdv,j.sinais.join(", ")||"-"]),w:[15,0,14,30,20,20,20,18,18,16,14,32]}]});
   if(sel("acu")){const r=c.js.map(j=>[j.n,j.setor,j.jor,ano(j.n,cur)]).sort((a,b)=>b[3]-a[3]||a[0].localeCompare(b[0]));
     out.push({k:"acu",t:"Faltas acumuladas · jan a "+m.label,p:["Faltas sem justificativa, no curso e na empresa, de janeiro de 2026 até "+m.nome+". Total: "+r.reduce((s,x)=>s+x[3],0)+"."],tables:[{h:["Aprendiz","Setor","Jornada","Faltas no ano"],r}]});}
   if(sel("oco")){const os=m.oc.slice().sort((a,b)=>a.d-b.d||a.n.localeCompare(b.n));
