@@ -23,6 +23,10 @@ window.CRV_TOTAIS_PDF = function(w){
           if (vazio) { for (let r2 = r + 1; r2 <= R.e.r; r2++) for (let c = R.s.c; c <= R.e.c; c++) { const v = cel(r2, c); if (v && v.v !== '' && v.v != null) return; } break; } // mais de um bloco: não mexe
           const c0 = cel(r, R.s.c); if (c0 && /^(total|subtotal)/i.test(String(c0.v).trim())) return; rows.push(r); }
         if (!rows.length) return;
+        /* ordem alfabética pelo nome (pedido do RH) */
+        if (iN >= 0) { const lin = rows.map(r => { const o = {}; for (let c = R.s.c; c <= R.e.c; c++) { const v = cel(r, c); if (v) o[c] = v; } return o; });
+          const k = o => nz(o[iN] ? o[iN].v : ''); lin.sort((a, b) => k(a).localeCompare(k(b), 'pt-BR'));
+          rows.forEach((r, i) => { for (let c = R.s.c; c <= R.e.c; c++) { const a = X.utils.encode_cell({ r, c }); if (lin[i][c]) ws[a] = lin[i][c]; else delete ws[a]; } }); }
         const ch = r => { const m = iM >= 0 ? cel(r, iM) : null, n = iN >= 0 ? cel(r, iN) : null; const mv = m ? String(m.v).trim() : ''; return mv && mv !== '-' ? 'm' + mv : n ? 'n' + nz(n.v) : ''; };
         const ks = new Set(rows.map(ch).filter(Boolean)), np = ks.size || rows.length, tr = R.e.r + 1, lc = iN >= 0 ? iN : iM;
         for (let c = R.s.c; c <= R.e.c; c++) { if (c === lc) continue; const h = nz((cel(hr, c) || {}).v); if (!DN.test(h) || NO.test(h)) continue; let s = 0, k = 0, z = null, bad = false;
@@ -53,6 +57,9 @@ window.CRV_TOTAIS_PDF = function(w){
       if (iM < 0 && iP < 0) return o;   // não é uma tabela de pessoas
       const rows = o.body.filter(r => Array.isArray(r) && r.length >= H.length - 1 && !/^(total|subtotal)/i.test(txt(r[0]).trim()));
       if (!rows.length) return o;
+      /* ordem alfabética pelo nome (pedido do RH): só em tabelas simples, sem linhas de grupo ou de total no meio */
+      if (iP >= 0 && !o.semOrdem && rows.length === o.body.length && o.body.every(r => Array.isArray(r) && r.every(c => !(c && typeof c === 'object' && (c.colSpan || c.rowSpan))))) {
+        const k = r => norm(txt(r[iP])); o = Object.assign({}, o, { body: o.body.slice().sort((a, b) => k(a).localeCompare(k(b), 'pt-BR')) }); }
       const chave = r => { const m = iM >= 0 ? txt(r[iM]).trim() : '', n = iP >= 0 ? norm(txt(r[iP])) : ''; return m && m !== '-' && m !== '–' ? 'm' + m : n ? 'n' + n : ''; };
       const ks = new Set(rows.map(chave).filter(Boolean)), np = ks.size || rows.length;
       const foot = H.map(() => '');

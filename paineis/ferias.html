@@ -1202,7 +1202,7 @@ function pdfRows(scope, semProg){
     const tem=new Set(PERIODS.filter(x=>set.has(x.person)&&!x.nulo&&x.saldo>0&&x.adquirido).map(x=>x.person.c));
     set.forEach(p=>{ if(tem.has(p.c)) return; const aq=p.per.filter(x=>!x.adquirido&&!x.nulo).sort((a,b)=>a.de.localeCompare(b.de))[0]; if(aq) rows.push(aq); });
   }
-  return rows.sort((a,b)=>a.person.dp.localeCompare(b.person.dp,'pt-BR')||a.person.d.localeCompare(b.person.d,'pt-BR')||a.limD-b.limD||a.person.n.localeCompare(b.person.n,'pt-BR'));
+  return rows.sort((a,b)=>a.person.dp.localeCompare(b.person.dp,'pt-BR')||a.person.d.localeCompare(b.person.d,'pt-BR')||a.person.n.localeCompare(b.person.n,'pt-BR')||a.limD-b.limD);
 }
 function buildPdf(scope, prazo, semProg){
   const rows=pdfRows(scope, semProg); const doc=new MiniPDF(); const M=30, BOT=548;
@@ -1278,7 +1278,7 @@ function saidasRows(incSaiu){
   const set=new Set(people()), out=[]; const {de,ate}=faixaSai();
   PERIODS.filter(x=>set.has(x.person)).forEach(x=>{ const s=progState(x); if(!s||s.k==='ret') return;
     s.parts.forEach(q=>{ if(q.k==='done'&&!incSaiu) return; if(de&&q.inicio<de) return; if(ate&&q.inicio>ate) return; out.push({x,s,q}); }); });
-  return out.sort((a,b)=>a.q.inicio.localeCompare(b.q.inicio)||a.x.person.d.localeCompare(b.x.person.d,'pt-BR')||a.x.person.n.localeCompare(b.x.person.n,'pt-BR'));
+  return out.sort((a,b)=>a.q.inicio.slice(0,7).localeCompare(b.q.inicio.slice(0,7))||a.x.person.n.localeCompare(b.x.person.n,'pt-BR')||a.q.inicio.localeCompare(b.q.inicio)); // por mês e, dentro do mês, em ordem alfabética
 }
 const ASSH=78;
 function buildPdfSaidas(incSaiu,ass){
@@ -1429,7 +1429,7 @@ function xlsProg(){
     if(s.k==='ret'){ rows.push([...base,'','','', '', '', '', 'Aguarda retorno','',s.g.obs||'',orig,reg]); return; }
     s.parts.forEach(q=>rows.push([...base,`${q.i+1} de ${q.n}`,D(q.inicio),D(q.fim),q.dias,q.abono||0,D(addDays(q.fim,1)),q.k==='now'?'De férias':q.k==='done'?'Já saiu':'Programado',q.late?'Sim':'',s.g.obs||'',orig,reg]));
   });
-  rows.sort((a,b)=>String(a[12]?.d||'9').localeCompare(String(b[12]?.d||'9'))||String(a[1]).localeCompare(String(b[1]),'pt-BR'));
+  rows.sort((a,b)=>String(a[1]).localeCompare(String(b[1]),'pt-BR')||String(a[12]?.d||'9').localeCompare(String(b[12]?.d||'9')));
   return {name:'Programações', head:['Contrato','Colaborador','Função','Setor','Seção','Gerência','Admissão','Período de','Período até','Saldo do período','Data limite','Parcela','Início das férias','Fim das férias','Dias de férias','Dias de abono','Retorno','Situação','Termina após o prazo','Observação','Origem','Registrado em'],
     widths:[10,36,28,18,30,30,12,12,12,10,12,9,13,13,9,9,12,16,12,34,10,13], rows};
 }
