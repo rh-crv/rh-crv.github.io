@@ -77,7 +77,7 @@ td .sm{font-size:11.5px;color:var(--mut)}tfoot td{font-weight:700;background:#f8
   <div class="per" id="per"></div>
   <div class="kpis" id="kpis"></div>
   <div class="nota" id="nota"></div>
-  <nav class="vtabs" id="vtabs"><button data-v="l">Lançamentos do período</button><button data-v="m">Mapa dos cartões</button><button data-v="r">Resumo</button></nav>
+  <nav class="vtabs" id="vtabs"><button data-v="l">Lançamentos do período</button><button data-v="m">Mapa dos cartões</button><button data-v="r">Resumo</button><button data-v="f">Fechamento por centro de custo</button></nav>
   <section class="box" id="vL">
     <div class="tools"><input id="q" type="search" placeholder="Buscar nome, nº do cartão, matrícula, setor ou solicitante"><select id="fSit"></select><select id="fSol"></select><span class="cnt" id="cnt"></span></div>
     <div class="tab"><table><thead><tr><th>Entrega</th><th>Cartão</th><th>Colaborador</th><th>Setor / cargo</th><th>Refeição</th><th>Duração</th><th>Creditado</th><th>Consumido</th><th>Solicitante</th><th>Situação</th><th></th></tr></thead><tbody id="tb"></tbody><tfoot id="tf"></tfoot></table></div>
@@ -91,6 +91,7 @@ td .sm{font-size:11.5px;color:var(--mut)}tfoot td{font-weight:700;background:#f8
     <div class="box"><h2>Por solicitante</h2><p class="sub">Creditado e consumido no período.</p><div id="rSol"></div></div>
     <div class="box"><h2>Por setor</h2><p class="sub">Creditado e consumido no período.</p><div id="rSet"></div></div>
   </section>
+  <section id="vF"></section>
   <p class="foot" id="foot"></p>
 </main>
 <div class="toast" id="toast" hidden></div>
@@ -161,7 +162,7 @@ function render(){
   $('nS').onclick=async()=>{if(!DB){toast('Não dá para salvar nesta visualização.');return}const v=$('nV').value.trim();
     try{await DB.collection('notas').doc(S.p).set({valor:v?num(v):null,em:new Date().toISOString(),por:(window.parent&&window.parent.CRV_QUEM)||''});NOTAS[S.p]={valor:v?num(v):null,em:new Date().toISOString(),por:(window.parent&&window.parent.CRV_QUEM)||''};render();toast('Valor da nota salvo.')}catch(e){toast('Sem permissão para salvar.')}};
   /* abas */
-  $('vL').hidden=S.v!=='l';$('vM').hidden=S.v!=='m';$('vR').hidden=S.v!=='r';
+  $('vL').hidden=S.v!=='l';$('vM').hidden=S.v!=='m';$('vR').hidden=S.v!=='r';$('vF').hidden=S.v!=='f';if(S.v==='f')fechRender();
   $('vtabs').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===S.v));
   /* filtros */
   const sols=[...new Set(L.map(x=>x.solicitante).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
@@ -446,7 +447,150 @@ $('bNovo').onclick=()=>abrirForm(null);
 $('bSem').onclick=abrirSemana;window.CRV_SEMANA=abrirSemana;
 $('bRel').onclick=abrirRel;
 window.CRV_NOVO=()=>abrirForm(null);window.CRV_RELATORIO=abrirRel;
-render();carregar();
+render();carregar().then(fechCarregar);
+/* =====================================================================
+   Fechamento por centro de custo (pedido do RH, 27/10/2026)
+   Importa o "Fechamento Syspro ADM" (abas Geral + abas de rateio: Indústria, Ferramentaria, Armazém...),
+   junta tudo numa lista só (os cartões rateados entram pelas linhas do rateio, no lugar da linha do Geral),
+   resume por centro de custo e aponta o que precisa de conferência. Coleção 'fech', um documento por período.
+   ===================================================================== */
+let FE={},FS={p:'',q:'',cc:''};
+const nrm=s=>String(s==null?'':s).normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
+const r2=v=>Math.round((+v||0)*100)/100;
+async function fechCarregar(){if(!DB)return;try{const s=await DB.collection('fech').get();FE={};s.docs.forEach(d=>FE[d.id]=d.data())}catch(_){}if(S.v==='f')fechRender()}
+function lerFechamento(wb,X){
+  const abas=[];let per='';
+  wb.SheetNames.forEach(sn=>{const A=X.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true,defval:''});
+    A.slice(0,6).forEach(r=>r.forEach(c=>{const m=String(c).match(/(\d{2})\/(\d{2})\/(\d{2,4})\s*a\s*(\d{2})\/(\d{2})\/(\d{2,4})/);if(m&&!per){const y=m[6].length===2?'20'+m[6]:m[6];per=y+'-'+m[5]}}));
+    const hi=A.findIndex(r=>r.some(c=>/cart[aã]o/i.test(String(c)))&&r.some(c=>/nome/i.test(String(c))));if(hi<0)return;
+    const H=A[hi].map(c=>nrm(c)),col=re=>H.findIndex(h=>re.test(h));
+    const C={ent:col(/ENTREGA/),car:col(/CARTAO/),nome:col(/NOME/),mat:col(/MATRICULA/),set:col(/^SETOR/),cargo:col(/CARGO/),ref:col(/REFEICAO/),dur:col(/DURACAO/),cred:col(/CREDITADO/),cons:col(/CONSUMIDO/),sol:col(/SOLICITANTE/),obs:col(/OBSERVA/),mot:col(/MOTIVO/),cc:col(/^CENTRO DE CUSTO/),ccd:col(/DESC/)};
+    const v=(r,k)=>C[k]>=0?r[C[k]]:'';const L=[];
+    A.slice(hi+1).forEach(r=>{const nome=String(v(r,'nome')||'').trim();if(!nome)return;let e=v(r,'ent');
+      if(typeof e==='number'){const d=new Date(Math.round((e-25569)*864e5));e=d.toISOString().slice(0,10)}else if(e instanceof Date)e=e.toISOString().slice(0,10);else{const m=String(e).match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);e=m?(m[3].length===2?'20'+m[3]:m[3])+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0'):''}
+      const tx=k=>{const x=v(r,k);return x==null?'':String(x).trim()};
+      L.push({aba:sn,entrega:e,cartao:tx('car'),nome,mat:tx('mat'),setor:tx('set'),cargo:tx('cargo'),refeicao:tx('ref'),duracao:tx('dur'),cred:tx('cred')===''?null:num(v(r,'cred')),cons:num(v(r,'cons')),sol:tx('sol'),sit:tx('obs'),motivo:tx('mot'),cc:tx('cc').replace(/\.0$/,''),ccd:tx('ccd')})});
+    abas.push({nome:sn,L})});
+  if(!abas.length)throw new Error('não encontrei a tabela (colunas Nº Cartão e Nome do Colaborador).');
+  const G=abas.find(a=>/geral/i.test(a.nome))||abas.slice().sort((a,b)=>b.L.length-a.L.length)[0];
+  const rateios=abas.filter(a=>a!==G&&a.L.length);
+  /* junta: cada aba de rateio substitui, no Geral, a linha do mesmo cartão e mesmo nome */
+  const usados=new Set(),info=[];let out=[];
+  const chave=x=>String(x.cartao)+'|'+nrm(x.nome);
+  const grupos=new Map();rateios.forEach(a=>a.L.forEach(x=>{const k=chave(x);if(!grupos.has(k))grupos.set(k,{aba:a.nome,L:[]});grupos.get(k).L.push(x)}));
+  G.L.forEach((x,i)=>{const g=grupos.get(chave(x));if(!g){out.push(Object.assign({},x,{orig:'Geral'}));return}
+    usados.add(chave(x));const soma=r2(g.L.reduce((s,y)=>s+y.cons,0));
+    g.L.forEach((y,j)=>out.push(Object.assign({},x,{cc:y.cc,ccd:y.ccd,cons:y.cons,cred:j===0?x.cred:0,orig:'Rateio · aba '+g.aba,rateio:true})));
+    info.push({cartao:x.cartao,nome:x.nome,aba:g.aba,ccG:x.cc,ccdG:x.ccd,consG:r2(x.cons),soma,n:g.L.length,ccs:[...new Set(g.L.map(y=>y.cc))].length})});
+  grupos.forEach((g,k)=>{if(usados.has(k))return;g.L.forEach(y=>out.push(Object.assign({},y,{orig:'Só na aba '+g.aba,rateio:true,cred:y.cred||0})));info.push({cartao:g.L[0].cartao,nome:g.L[0].nome,aba:g.aba,soGeral:false,soma:r2(g.L.reduce((s,y)=>s+y.cons,0)),n:g.L.length})});
+  out.forEach((x,i)=>{x.i=i;x.cred=x.cred==null?0:r2(x.cred);x.cons=r2(x.cons)});
+  return {per,linhas:out,rateios:info,abas:abas.map(a=>({nome:a.nome,n:a.L.length,cons:r2(a.L.reduce((s,y)=>s+y.cons,0)),cred:r2(a.L.reduce((s,y)=>s+(y.cred||0),0))})),geral:{cons:r2(G.L.reduce((s,y)=>s+y.cons,0)),cred:r2(G.L.reduce((s,y)=>s+(y.cred||0),0)),n:G.L.length}};
+}
+/* análise dos centros de custo e demais conferências (calculadas na hora, com o Quadro atual) */
+function analisar(F,QM){const L=F.linhas,P=[];
+  const add=(nivel,tipo,txt,ids)=>P.push({nivel,tipo,txt,ids:ids||[]});
+  (F.rateios||[]).forEach(r=>{if(r.ccG!=null){const ok=Math.abs(r.soma-r.consG)<0.01;if(ok&&r.n===1&&r.ccs===1&&L.some(x=>x.rateio&&String(x.cartao)===String(r.cartao)&&x.cc===r.ccG))return;
+    add(ok?'info':'alto','Cartão rateado',`Cartão ${r.cartao} (${r.nome}): no Geral está todo em ${r.ccG} ${r.ccdG} (${moeda(r.consG)}); a aba ${r.aba} divide em ${r.n} lançamento(s) e ${r.ccs} centro(s) de custo${ok?', com a mesma soma. No consolidado vale o rateio.':', mas a soma do rateio é '+moeda(r.soma)+' (diferença de '+moeda(r.soma-r.consG)+').'}`,L.filter(x=>x.rateio&&String(x.cartao)===String(r.cartao)&&nrm(x.nome)===nrm(r.nome)).map(x=>x.i))}
+    else add('alto','Rateio sem lançamento no Geral',`Cartão ${r.cartao} (${r.nome}) aparece na aba ${r.aba} (${moeda(r.soma)}), mas não está no Geral.`,L.filter(x=>String(x.cartao)===String(r.cartao)&&nrm(x.nome)===nrm(r.nome)).map(x=>x.i))});
+  L.filter(x=>/[\/;,]/.test(x.cc)).forEach(x=>add('alto','Mais de um centro de custo no lançamento',`${x.nome} (cartão ${x.cartao}): centro de custo "${x.cc} - ${x.ccd}" com ${moeda(x.cons)} sem divisão entre eles. Informe quanto vai para cada um.`,[x.i]));
+  const porC=new Map();L.forEach(x=>{if(!x.cc)return;if(!porC.has(x.cc))porC.set(x.cc,new Map());const m=porC.get(x.cc),d=nrm(x.ccd);m.set(d,(m.get(d)||[]).concat([x.i]))});
+  porC.forEach((m,c)=>{if(m.size>1)add('medio','Mesmo código com descrições diferentes',`Centro de custo ${c} aparece como: ${[...m.keys()].map(d=>'"'+d+'"').join(', ')}.`,[...m.values()].flat())});
+  const porD=new Map();L.forEach(x=>{if(!x.ccd||/[\/]/.test(x.cc))return;const d=nrm(x.ccd).replace(/[^A-Z0-9 ]/g,'').replace(/\s+/g,' ');if(!porD.has(d))porD.set(d,new Map());const m=porD.get(d);m.set(x.cc,(m.get(x.cc)||[]).concat([x.i]))});
+  porD.forEach((m,d)=>{if(m.size>1){const E=[...m.entries()].sort((a,b)=>b[1].length-a[1].length);add('alto','Mesma descrição com códigos diferentes',`"${d}" foi lançado nos códigos ${E.map(([c,ids])=>c+' ('+ids.length+')').join(', ')}. Confira se ${E.slice(1).map(e=>e[0]).join(', ')} está certo.`,E.slice(1).flatMap(e=>e[1]))}});
+  const porM=new Map();L.forEach(x=>{if(!/^\d+$/.test(x.mat))return;if(!porM.has(x.mat))porM.set(x.mat,new Map());porM.get(x.mat).set(nrm(x.nome),x.i)});
+  porM.forEach((m,mt)=>{if(m.size>1)add('alto','Mesma matrícula para pessoas diferentes',`Matrícula ${mt}: ${[...m.keys()].join(' e ')}.`,L.filter(x=>x.mat===mt).map(x=>x.i))});
+  const porN=new Map();L.forEach(x=>{const n=nrm(x.nome);if(!porN.has(n))porN.set(n,new Set());porN.get(n).add(String(x.cartao))});
+  porN.forEach((s,n)=>{if(s.size>1&&!/^(INDUSTRIA|RH|ARMAZEM|AMBULATORIO|T&D)/.test(n))add('medio','Mesma pessoa em mais de um cartão',`${n}: cartões ${[...s].join(' e ')}.`,L.filter(x=>nrm(x.nome)===n).map(x=>x.i))});
+  const crg=new Map();L.filter(x=>!x.rateio||x.cred).forEach(x=>{const k=String(x.cartao)+'|'+nrm(x.nome);crg.set(k,(crg.get(k)||{cred:0,cons:0,ids:[]}));const o=crg.get(k);o.cred+=x.cred||0;o.ids.push(x.i)});
+  L.filter(x=>x.rateio).forEach(x=>{const o=crg.get(String(x.cartao)+'|'+nrm(x.nome));if(o){o.cons+=x.cons;if(!o.ids.includes(x.i))o.ids.push(x.i)}});L.filter(x=>!x.rateio).forEach(x=>{const o=crg.get(String(x.cartao)+'|'+nrm(x.nome));o.cons+=x.cons});
+  crg.forEach((o,k)=>{if(o.cred>0&&o.cons-o.cred>0.009)add('medio','Consumido maior que o creditado',`Cartão ${k.split('|')[0]} (${k.split('|')[1]}): creditado ${moeda(o.cred)}, consumido ${moeda(o.cons)}.`,o.ids)});
+  /* cruzamento com o Quadro: colaboradores CRV (setor com CRV), mesma matrícula e nome parecido */
+  if(QM){L.forEach(x=>{if(!/^\d+$/.test(x.mat)||!/CRV/i.test(x.setor))return;const q=QM[x.mat];if(!q){add('medio','Matrícula fora do Quadro',`${x.nome} (mat. ${x.mat}, ${x.setor}) não está no Quadro Geral.`,[x.i]);return}
+    const a=new Set(nrm(x.nome).split(/[^A-Z]+/).filter(t=>t.length>=4)),b=nrm(q.nome).split(/[^A-Z]+/).filter(t=>t.length>=4);if(!b.some(t=>a.has(t))){add('alto','Matrícula de outra pessoa no Quadro',`Mat. ${x.mat} na planilha é ${x.nome}; no Quadro é ${q.nome}.`,[x.i]);return}
+    x.ccQ=q.cc||'';x.ccdQ=q.ccd||'';x.depQ=q.setor||'';x.sitQ=q.situacao||'';
+    if(q.cc&&x.cc&&!/[\/]/.test(x.cc)&&String(q.cc)!==String(x.cc))add('alto','Centro de custo diferente do Quadro',`${x.nome} (mat. ${x.mat}): lançado em ${x.cc} ${x.ccd}; no Quadro o centro de custo é ${q.cc} ${q.ccd} (${q.setor}).`,[x.i])})}
+  const sm=L.filter(x=>!/^\d+$/.test(x.mat));if(sm.length)add('info','Sem matrícula',`${sm.length} lançamento(s) sem matrícula (terceiros da RUBI S.A., prestadores, cartões de área). Não dá para cruzar com o Quadro.`,sm.map(x=>x.i));
+  return P}
+function resumoCC(L){const m=new Map();L.forEach(x=>{const k=x.cc||'—';if(!m.has(k))m.set(k,{cc:k,ds:new Map(),n:0,cred:0,cons:0,ids:[],pes:new Set()});const o=m.get(k);o.n++;o.cred+=x.cred||0;o.cons+=x.cons;o.ids.push(x.i);o.pes.add(nrm(x.nome));o.ds.set(x.ccd,(o.ds.get(x.ccd)||0)+1)});
+  return [...m.values()].map(o=>({cc:o.cc,ccd:[...o.ds.entries()].sort((a,b)=>b[1]-a[1])[0][0],n:o.n,pes:o.pes.size,cred:r2(o.cred),cons:r2(o.cons),ids:o.ids})).sort((a,b)=>b.cons-a.cons)}
+let QMAP=null;
+async function quadro(){if(QMAP)return QMAP;try{const f=window.parent&&window.parent.CRV_QUADRO;const q=typeof f==='function'?await f():null;QMAP=q&&q.mapa||{}}catch(_){QMAP={}}return QMAP}
+function fechImportar(){if(!DB)return toast('Não dá para salvar nesta visualização.');const X=window.XLSX||(window.parent&&window.parent.XLSX);if(!X)return toast('Leitor de Excel indisponível.');
+  const inp=document.createElement('input');inp.type='file';inp.accept='.xlsx,.xls';inp.onchange=async()=>{const fl=inp.files[0];if(!fl)return;let F;
+    try{const wb=X.read(new Uint8Array(await fl.arrayBuffer()),{type:'array',cellDates:false});F=lerFechamento(wb,X)}catch(e){return toast('Não consegui ler: '+(e.message||e))}
+    const per=F.per||S.p;const cons=r2(F.linhas.reduce((s,x)=>s+x.cons,0)),cred=r2(F.linhas.reduce((s,x)=>s+x.cred,0));
+    const w=document.createElement('div');w.className='fundo';w.innerHTML=`<div class="modal" style="max-width:760px"><div class="mcab"><h3>Importar fechamento Syspro ADM<small>${esc(fl.name)}</small></h3><button class="mini" id="iX">Fechar</button></div>
+      <div style="padding:14px 18px;font-size:13.5px;line-height:1.55">Período: <b>${perTxt(per)}</b>${FE[per]?' <span class="pill p-warn">já existe um fechamento deste período: será substituído</span>':''}<br>
+      Abas lidas: ${F.abas.map(a=>`<b>${esc(a.nome)}</b> (${a.n} linha(s), consumido ${moeda(a.cons)})`).join(' · ')}<br>
+      Juntando tudo: <b>${F.linhas.length}</b> lançamentos · creditado <b>${moeda(cred)}</b> · consumido <b>${moeda(cons)}</b>${Math.abs(cons-F.geral.cons)<0.01?' (bate com o total do Geral)':' <span class="pill p-bad">Geral soma '+moeda(F.geral.cons)+'</span>'}.<br>
+      ${F.rateios.length?`Cartões com rateio por centro de custo (entram pelas linhas das abas, no lugar da linha do Geral): ${F.rateios.map(r=>'cartão '+esc(r.cartao)+' · '+esc(r.nome)+' ('+r.n+' linha(s) na aba '+esc(r.aba)+')').join('; ')}.`:''}</div>
+      <div class="mpe"><button class="mini" id="iC">Cancelar</button><button class="mini pri" id="iO">Salvar fechamento</button></div></div>`;
+    document.body.appendChild(w);const fe=()=>w.remove();w.querySelector('#iX').onclick=fe;w.querySelector('#iC').onclick=fe;
+    w.querySelector('#iO').onclick=async()=>{try{const doc={periodo:per,arquivo:fl.name,em:new Date().toISOString(),por:(window.parent&&window.parent.CRV_QUEM)||'',linhas:F.linhas,rateios:F.rateios,abas:F.abas,geral:F.geral};
+      await DB.collection('fech').doc(per).set(doc);FE[per]=doc;FS.p=per;FS.cc='';fe();S.v='f';render();toast('Fechamento salvo: '+F.linhas.length+' lançamentos.')}catch(e){toast('Não consegui salvar: '+(e.message||'sem permissão'))}}};
+  inp.click()}
+const NIV={alto:['A conferir','p-bad'],medio:['Atenção','p-warn'],info:['Informação','p-ok']};
+async function fechRender(){const el=$('vF');if(!el)return;const ps=Object.keys(FE).sort();if(!FS.p||!FE[FS.p])FS.p=FE[S.p]?S.p:ps[ps.length-1]||'';
+  const F=FE[FS.p];
+  const topo=`<div class="tools"><b style="font-size:15px">Fechamento por centro de custo</b>${ps.length?`<select id="fP">${ps.map(p=>`<option value="${p}" ${p===FS.p?'selected':''}>${perTxt(p)}</option>`).join('')}</select>`:''}<span style="flex:1"></span>${DB?'<button class="mini pri" id="fImp">Importar fechamento da Sysprocard (planilha)</button>':''}${F?'<button class="mini" id="fXl">Excel</button><button class="mini" id="fPdf">Imprimir PDF</button>':''}</div>`;
+  if(!F){el.innerHTML=topo+`<p class="sub">Importe o arquivo "Fechamento syspro ADM" do período. O painel junta a aba Geral com as abas de rateio (Indústria, Ferramentaria, Armazém…) numa lista só e faz o resumo por centro de custo.</p>`;bind();return}
+  el.innerHTML=topo+'<p class="sub">Carregando…</p>';const QM=await quadro();const L=F.linhas,P=analisar(F,QM),R=resumoCC(L);
+  const cons=r2(L.reduce((s,x)=>s+x.cons,0)),cred=r2(L.reduce((s,x)=>s+x.cred,0)),alto=P.filter(p=>p.nivel==='alto');
+  const filt=L.filter(x=>(!FS.cc||(FS.cc.startsWith('ids:')?FS.cc.slice(4).split(',').includes(String(x.i)):(x.cc||'—')===FS.cc))&&(!FS.q||nrm([x.nome,x.cartao,x.mat,x.cc,x.ccd,x.setor,x.sol].join(' ')).includes(nrm(FS.q)))).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR')||String(a.cc).localeCompare(String(b.cc)));
+  const mx=Math.max(1,...R.map(r=>r.cons));
+  el.innerHTML=topo+`<p class="sub">Arquivo ${esc(F.arquivo)} · importado por ${esc(F.por||'')} em ${new Date(F.em).toLocaleDateString('pt-BR')}. Os cartões rateados entram pelas linhas das abas de rateio.</p>
+  <div class="kpis"><div class="kpi" style="--c:var(--acc)"><div class="l">Lançamentos</div><div class="v">${nf(L.length)}</div><div class="s">${nf(new Set(L.map(x=>nrm(x.nome))).size)} pessoas/áreas · ${nf(new Set(L.map(x=>x.cartao)).size)} cartões</div></div>
+   <div class="kpi" style="--c:var(--info)"><div class="l">Creditado</div><div class="v">${moeda(cred)}</div><div class="s">soma do fechamento</div></div>
+   <div class="kpi" style="--c:var(--ok)"><div class="l">Consumido</div><div class="v">${moeda(cons)}</div><div class="s">${cred?Math.round(cons/cred*100)+'% do creditado':'—'}</div></div>
+   <div class="kpi" style="--c:#2f6fa8"><div class="l">Centros de custo</div><div class="v">${nf(R.length)}</div><div class="s">${esc(R[0]?R[0].cc+' '+R[0].ccd:'')} é o maior</div></div>
+   <button class="kpi" data-pa="1" style="--c:var(--bad)"><div class="l">A conferir</div><div class="v">${nf(alto.length)}</div><div class="s">${nf(P.length-alto.length)} atenção/informação</div></button></div>
+  <div class="grid2" style="margin-bottom:14px"><div class="box"><h2>Resumo por centro de custo</h2><p class="sub">Consumido no período. Clique para ver os lançamentos.</p><div class="tab"><table><thead><tr><th>C. custo</th><th>Descrição</th><th style="text-align:right">Lanç.</th><th style="text-align:right">Consumido</th><th>%</th></tr></thead><tbody>
+    ${R.map(r=>`<tr data-cc="${esc(r.cc)}" style="cursor:pointer${FS.cc===r.cc?';background:var(--accbg)':''}"><td><b>${esc(r.cc)}</b></td><td>${esc(r.ccd)}</td><td class="n">${r.n}</td><td class="n"><b>${moeda(r.cons)}</b></td><td style="min-width:90px"><span style="display:block;height:8px;border-radius:4px;background:linear-gradient(90deg,#7d1a2c,#c0583f);width:${r.cons/mx*100}%"></span><span class="sm">${cons?(r.cons/cons*100).toLocaleString('pt-BR',{maximumFractionDigits:1}):0}%</span></td></tr>`).join('')}</tbody>
+    <tfoot><tr><td colspan="2">Total: ${R.length} centros de custo</td><td class="n">${L.length}</td><td class="n">${moeda(cons)}</td><td></td></tr></tfoot></table></div></div>
+   <div class="box"><h2>Análise dos centros de custo lançados</h2><p class="sub">Calculado com a planilha e o Quadro Geral de hoje. Clique para ver os lançamentos.</p><div id="fPa">${P.map((p,i)=>`<div data-pi="${i}" style="cursor:pointer;border:1px solid var(--line);border-radius:9px;padding:7px 10px;margin-bottom:6px;font-size:13px"><span class="pill ${NIV[p.nivel][1]}">${NIV[p.nivel][0]}</span> <b>${esc(p.tipo)}</b><div>${esc(p.txt)}</div></div>`).join('')||'<p class="sub">Nada a apontar.</p>'}</div></div></div>
+  <div class="box"><div class="tools"><b>Lista única (todas as abas juntas)</b>${FS.cc?`<span class="pill p-warn">${FS.cc.startsWith('ids:')?'filtro da análise':'C. custo '+esc(FS.cc)}</span><button class="mini" id="fLim">limpar filtro</button>`:''}<input id="fQ" type="search" placeholder="Buscar nome, cartão, matrícula, centro de custo" value="${esc(FS.q)}"><span class="cnt">${nf(filt.length)} lançamentos</span></div>
+   <div class="tab"><table><thead><tr><th>Entrega</th><th>Cartão</th><th>Colaborador</th><th>Setor</th><th>Situação</th><th>Motivo</th><th>C. custo</th><th style="text-align:right">Creditado</th><th style="text-align:right">Consumido</th><th>Origem</th></tr></thead><tbody>
+   ${filt.map(x=>`<tr><td>${br(x.entrega)}</td><td><b>${esc(x.cartao)}</b></td><td><b>${esc(x.nome)}</b><div class="sm">${/^\d+$/.test(x.mat)?'mat. '+esc(x.mat):esc(x.mat||'sem matrícula')}${x.cargo?' · '+esc(x.cargo):''}</div></td><td>${esc(x.setor)}<div class="sm">${esc(x.sol)}</div></td><td>${esc(x.sit)}</td><td>${esc(x.motivo)}</td><td><b>${esc(x.cc)}</b> ${esc(x.ccd)}${x.ccQ&&String(x.ccQ)!==String(x.cc)?`<div class="sm" style="color:var(--bad)">Quadro: ${esc(x.ccQ)} ${esc(x.ccdQ)}</div>`:''}</td><td class="n">${x.cred?moeda(x.cred):'—'}</td><td class="n">${moeda(x.cons)}</td><td class="sm">${esc(x.orig)}</td></tr>`).join('')}</tbody>
+   <tfoot><tr><td colspan="7">Total: ${nf(new Set(filt.map(x=>nrm(x.nome))).size)} pessoas/áreas · ${nf(filt.length)} lançamentos</td><td class="n">${moeda(filt.reduce((s,x)=>s+x.cred,0))}</td><td class="n">${moeda(filt.reduce((s,x)=>s+x.cons,0))}</td><td></td></tr></tfoot></table></div></div>`;
+  bind();
+  el.querySelectorAll('[data-cc]').forEach(t=>t.onclick=()=>{FS.cc=FS.cc===t.dataset.cc?'':t.dataset.cc;fechRender()});
+  el.querySelectorAll('[data-pi]').forEach(t=>t.onclick=()=>{const p=P[+t.dataset.pi];FS.cc='ids:'+p.ids.join(',');fechRender();setTimeout(()=>{const b=el.querySelector('#fQ');if(b)b.scrollIntoView({behavior:'smooth',block:'center'})},50)});
+  const lb=el.querySelector('#fLim');if(lb)lb.onclick=()=>{FS.cc='';fechRender()};
+  const pa=el.querySelector('[data-pa]');if(pa)pa.onclick=()=>el.querySelector('#fPa').scrollIntoView({behavior:'smooth'});
+  const qi=el.querySelector('#fQ');qi.oninput=()=>{FS.q=qi.value;clearTimeout(qi._t);qi._t=setTimeout(()=>{fechRender().then(()=>{const e=$('fQ');if(e){e.focus();e.setSelectionRange(FS.q.length,FS.q.length)}})},300)};
+  el.querySelector('#fXl').onclick=()=>fechExcel(F,L,R,P).catch(e=>toast('Não consegui gerar o Excel.'));
+  el.querySelector('#fPdf').onclick=()=>fechPdf(F,L,R,P).catch(e=>toast('Não consegui gerar o PDF: '+(e.message||e)));
+  function bind(){const b=el.querySelector('#fImp');if(b)b.onclick=fechImportar;const s=el.querySelector('#fP');if(s)s.onchange=e=>{FS.p=e.target.value;FS.cc='';fechRender()}}
+}
+const LH=['Entrega','Cartão','Colaborador','Matrícula','Setor','Cargo','Refeição','Duração','Solicitante','Situação','Motivo','C. custo','Desc. C. custo','Creditado','Consumido','Origem','C. custo no Quadro'];
+const lRow=x=>[br(x.entrega),x.cartao,x.nome,x.mat,x.setor,x.cargo,x.refeicao,x.duracao,x.sol,x.sit,x.motivo,x.cc,x.ccd,x.cred,x.cons,x.orig,x.ccQ&&String(x.ccQ)!==String(x.cc)?x.ccQ+' '+x.ccdQ:''];
+async function fechExcel(F,L,R,P){const X=window.XLSX||(window.parent&&window.parent.XLSX);if(!X)throw new Error('x');const wb=X.utils.book_new();
+  const LS=L.slice().sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR')||String(a.cc).localeCompare(String(b.cc)));const cons=r2(L.reduce((s,x)=>s+x.cons,0)),cred=r2(L.reduce((s,x)=>s+x.cred,0));
+  const A=[['Fechamento Syspro ADM · '+perTxt(F.periodo)+' · todas as abas juntas'],[],LH].concat(LS.map(lRow));A.push(['Total: '+new Set(L.map(x=>nrm(x.nome))).size+' pessoas/áreas · '+L.length+' lançamentos','','','','','','','','','','','','',cred,cons]);
+  const ws=X.utils.aoa_to_sheet(A);ws['!cols']=[11,8,36,10,22,22,18,9,16,14,20,10,30,12,12,22,30].map(w=>({wch:w}));X.utils.book_append_sheet(wb,ws,'Consolidado',{semTotal:true});
+  const B=[['Resumo por centro de custo · '+perTxt(F.periodo)],[],['C. custo','Descrição','Lançamentos','Pessoas/áreas','Consumido','% do consumido']].concat(R.map(r=>[r.cc,r.ccd,r.n,r.pes,r.cons,cons?r2(r.cons/cons*100):0]));B.push(['Total: '+R.length+' centros de custo','',L.length,'',cons,100]);B.push([]);B.push(['O centro de custo é pelo consumido. O creditado de um cartão rateado fica na primeira linha do rateio na aba Consolidado.']);
+  const w2=X.utils.aoa_to_sheet(B);w2['!cols']=[12,36,12,12,14,14,12].map(w=>({wch:w}));X.utils.book_append_sheet(wb,w2,'Resumo por C. custo',{semTotal:true,semOrdem:true});
+  const C=[['Análise dos centros de custo · '+perTxt(F.periodo)],[],['Nível','Tipo','Descrição']].concat(P.map(p=>[NIV[p.nivel][0],p.tipo,p.txt]));C.push(['Total: '+P.length+' apontamentos']);
+  const w3=X.utils.aoa_to_sheet(C);w3['!cols']=[12,36,120].map(w=>({wch:w}));X.utils.book_append_sheet(wb,w3,'Análise',{semTotal:true,semOrdem:true});
+  await salvar('Fechamento Syspro ADM - '+perTxt(F.periodo).replace(/\//g,'-')+'.xlsx',new Uint8Array(X.write(wb,{bookType:'xlsx',type:'array'})),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}
+async function fechPdf(F,L,R,P){const J=(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF);if(!J)throw new Error('gerador de PDF indisponível');
+  const doc=new J({unit:'mm',format:'a4',orientation:'landscape'}),W=297,H=210;const cons=r2(L.reduce((s,x)=>s+x.cons,0)),cred=r2(L.reduce((s,x)=>s+x.cred,0));
+  const NAVY=[31,58,104],INK=[30,36,48],MUT=[110,116,128],GREEN=[110,150,60],M={top:30,bottom:26,left:12,right:12};
+  const st={fontSize:7.6,cellPadding:1.3,lineColor:[225,222,216],lineWidth:.1,textColor:INK},hs={fillColor:[36,65,79],textColor:255,fontStyle:'bold'},fs={fillColor:[246,240,233],textColor:INK,fontStyle:'bold'};
+  doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(...NAVY);doc.text('Fechamento Cartão Alimentação ADM · Sysprocard',12,36);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(...INK);doc.text('Período '+perTxt(F.periodo)+' · todas as abas juntas (Geral + rateios)',12,41.5);
+  doc.setFillColor(238,241,245);doc.roundedRect(12,45,W-24,10,2,2,'F');doc.setFontSize(9.2);const lab=(t,v,x)=>{doc.setFont('helvetica','bold');doc.text(t,x,51.3);const w0=doc.getTextWidth(t);doc.setFont('helvetica','normal');doc.text(String(v),x+w0+1.6,51.3)};
+  lab('Lançamentos:',L.length,16);lab('Pessoas/áreas:',new Set(L.map(x=>nrm(x.nome))).size,62);lab('Creditado:',moeda(cred),112);lab('Consumido:',moeda(cons),170);lab('Centros de custo:',R.length,228);
+  let y=62;const tt=t=>{if(y>H-50){doc.addPage();y=M.top+4}doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(...NAVY);doc.text(t,12,y);y+=2.5};
+  tt('Resumo por centro de custo');doc.autoTable({startY:y,head:[['C. custo','Descrição','Lançamentos','Pessoas/áreas','Consumido','%']],body:R.map(r=>[r.cc,r.ccd,r.n,r.pes,moeda(r.cons),(cons?(r.cons/cons*100).toLocaleString('pt-BR',{maximumFractionDigits:1}):'0')+'%']),foot:[['Total: '+R.length+' centros de custo','',String(L.length),'',moeda(cons),'100%']],showFoot:'lastPage',theme:'striped',styles:st,headStyles:hs,footStyles:fs,columnStyles:{2:{halign:'right'},3:{halign:'right'},4:{halign:'right',fontStyle:'bold'},5:{halign:'right'}},margin:M,semTotal:true,semOrdem:true});y=doc.lastAutoTable.finalY+8;
+  tt('Análise dos centros de custo lançados');doc.autoTable({startY:y,head:[['Nível','Tipo','Descrição']],body:P.map(p=>[NIV[p.nivel][0],p.tipo,p.txt]),theme:'striped',styles:st,headStyles:hs,columnStyles:{0:{cellWidth:22},1:{cellWidth:55}},margin:M,semTotal:true,semOrdem:true,didParseCell:h=>{if(h.section==='body'&&h.column.index===0&&h.cell.raw==='A conferir')h.cell.styles.textColor=[180,35,24]}});y=doc.lastAutoTable.finalY+8;
+  const LS=L.slice().sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR')||String(a.cc).localeCompare(String(b.cc)));
+  tt('Lista única dos lançamentos');doc.autoTable({startY:y,head:[['Entrega','Cartão','Colaborador','Matrícula','Setor','Situação','C. custo','Descrição','Creditado','Consumido','Origem']],body:LS.map(x=>[br(x.entrega),x.cartao,x.nome,x.mat,x.setor,x.sit,x.cc,x.ccd,x.cred?moeda(x.cred):'—',moeda(x.cons),x.orig]),foot:[[{content:'Total: '+new Set(L.map(x=>nrm(x.nome))).size+' pessoas/áreas · '+L.length+' lançamentos',colSpan:8},moeda(cred),moeda(cons),'']],showFoot:'lastPage',theme:'striped',styles:Object.assign({},st,{fontSize:7}),headStyles:hs,footStyles:fs,columnStyles:{8:{halign:'right'},9:{halign:'right',fontStyle:'bold'}},margin:M});
+  const n=doc.getNumberOfPages(),hj=new Date();for(let i=1;i<=n;i++){doc.setPage(i);doc.setFillColor(...NAVY);doc.rect(0,0,W,4,'F');doc.setFont('helvetica','bold');doc.setFontSize(13.5);doc.setTextColor(...NAVY);doc.text('CRV INDUSTRIAL',12,14);doc.setFont('helvetica','normal');doc.setFontSize(7.8);doc.setTextColor(...MUT);doc.text('UNIDADE CAPINÓPOLIS',12,18.5);doc.setDrawColor(...GREEN);doc.setLineWidth(.6);doc.line(12,22,W-12,22);
+    doc.setDrawColor(215,220,228);doc.setLineWidth(.3);doc.line(12,H-19,W-12,H-19);doc.setFont('helvetica','bold');doc.setFontSize(7.3);doc.setTextColor(...INK);doc.text('CRV INDUSTRIAL LTDA - UNIDADE CAPINÓPOLIS | CNPJ 03.937.452/0004-35',W/2,H-15,{align:'center'});doc.setFont('helvetica','normal');doc.setTextColor(...MUT);doc.text('Rodovia MG-226, s/nº, km 63, Zona Rural, Capinópolis/MG - CEP 38.360-000 · Telefone: (34) 3263-8100',W/2,H-11.4,{align:'center'});
+    doc.setFontSize(7);doc.setTextColor(130,136,148);doc.text('Gestão de Pessoas · emitido em '+hj.toLocaleDateString('pt-BR')+' por '+((window.parent&&window.parent.CRV_QUEM)||'')+' · Página '+i+' de '+n,W-12,H-5,{align:'right'})}
+  await salvar('Fechamento Syspro ADM - '+perTxt(F.periodo).replace(/\//g,'-')+'.pdf',new Uint8Array((await (window.parent.CRV_PDF_LOGOS||window.CRV_PDF_LOGOS||(d=>d))(doc,{syspro:true})).output('arraybuffer')),'application/pdf')}
+window.CRV_FECH=()=>{S.v='f';render()};
+
 })();
 </script>
 </body></html>
