@@ -539,7 +539,7 @@ function fechImportar(){if(!DB)return toast('Não dá para salvar nesta visualiz
 const NIV={alto:['A conferir','p-bad'],medio:['Atenção','p-warn'],info:['Informação','p-ok']};
 async function fechRender(){const el=$('vF');if(!el)return;const ps=Object.keys(FE).sort();if(!FS.p||!FE[FS.p])FS.p=FE[S.p]?S.p:ps[ps.length-1]||'';
   const F=FE[FS.p];
-  const topo=`<div class="tools"><b style="font-size:15px">Fechamento por centro de custo</b>${ps.length?`<select id="fP">${ps.map(p=>`<option value="${p}" ${p===FS.p?'selected':''}>${perTxt(p)}</option>`).join('')}</select>`:''}<span style="flex:1"></span>${DB?'<button class="mini pri" id="fImp">Importar fechamento da Sysprocard (planilha)</button>':''}${F?'<button class="mini" id="fXl">Excel</button><button class="mini" id="fPdf">Imprimir PDF</button>':''}</div>`;
+  const topo=`<div class="tools"><b style="font-size:15px">Fechamento por centro de custo</b>${ps.length?`<select id="fP">${ps.map(p=>`<option value="${p}" ${p===FS.p?'selected':''}>${perTxt(p)}</option>`).join('')}</select>`:''}<span style="flex:1"></span>${DB?'<button class="mini pri" id="fImp">Importar fechamento da Sysprocard (planilha)</button>':''}${F&&DB?'<button class="mini" id="fMapa">Levar cartões em uso para o mapa</button>':''}${F?'<button class="mini" id="fXl">Excel</button><button class="mini" id="fPdf">Imprimir PDF</button>':''}</div>`;
   if(!F){el.innerHTML=topo+`<p class="sub">Importe o arquivo "Fechamento syspro ADM" do período. O painel junta a aba Geral com as abas de rateio (Indústria, Ferramentaria, Armazém…) numa lista só e faz o resumo por centro de custo.</p>`;bind();return}
   el.innerHTML=topo+'<p class="sub">Carregando…</p>';const QM=await quadro();const L=F.linhas,P=analisar(F,QM),R=resumoCC(efetivas(F)),RB=L.filter(ehRubi),rbT=r2(RB.reduce((s,x)=>s+x.cons,0)),rbR=temRubi(F)?r2(F.rubi.reduce((s,r)=>s+(+r.valor||0),0)):0;
   const cons=r2(L.reduce((s,x)=>s+x.cons,0)),cred=r2(L.reduce((s,x)=>s+x.cred,0)),okP=F.okP||{},pk=p=>p.tipo+'|'+p.txt,alto=P.filter(p=>p.nivel==='alto'&&!okP[pk(p)]);
@@ -564,6 +564,7 @@ async function fechRender(){const el=$('vF');if(!el)return;const ps=Object.keys(
    <tfoot><tr><td colspan="7">Total: ${nf(new Set(filt.map(x=>nrm(x.nome))).size)} pessoas/áreas · ${nf(filt.length)} lançamentos</td><td class="n">${moeda(filt.reduce((s,x)=>s+x.cred,0))}</td><td class="n">${moeda(filt.reduce((s,x)=>s+x.cons,0))}</td><td></td>${DB?'<td></td>':''}</tr></tfoot></table></div></div>`;
   bind();
   el.querySelectorAll('[data-cc]').forEach(t=>t.onclick=()=>{FS.cc=FS.cc===t.dataset.cc?'':t.dataset.cc;fechRender()});
+  {const b=el.querySelector('#fMapa');if(b)b.onclick=()=>levarMapa(F)}
   el.querySelectorAll('[data-ed]').forEach(b=>b.onclick=()=>editarLinha(F,+b.dataset.ed));
   el.querySelectorAll('[data-pc]').forEach(b=>b.onclick=()=>{const p=P[+b.dataset.pc];if(p.ids.length===1)return editarLinha(F,p.ids[0]);FS.cc='ids:'+p.ids.join(',');fechRender();setTimeout(()=>{const t=$('fQ');if(t)t.scrollIntoView({behavior:'smooth',block:'center'});toast('Clique em Alterar no lançamento que precisa de correção.')},60)});
   el.querySelectorAll('[data-pok]').forEach(b=>b.onclick=()=>conferido(F,pk(P[+b.dataset.pok]),true));
@@ -638,6 +639,29 @@ function editarRubi(F,tot,n){const w=document.createElement('div');w.className='
   g('rO').onclick=async()=>{const R=RR.filter(r=>String(r.cc).trim()&&+r.valor).map(r=>({cc:String(r.cc).trim(),ccd:String(r.ccd||'').trim(),valor:r2(r.valor)}));if(!R.length)return toast('Informe pelo menos um centro de custo com valor.');
     try{const o={rubi:R,rubiPor:(window.parent&&window.parent.CRV_QUEM)||'',rubiEm:new Date().toISOString()};await DB.collection('fech').doc(F.periodo).update(o);Object.assign(F,o);fe();fechRender();toast('Rateio da RUBI S.A. salvo.')}catch(e){toast('Não consegui salvar: '+(e.message||'sem permissão'))}};
   desenha()}
+/* leva os cartões do fechamento para o mapa (coleção 'usos', período do fechamento): um lançamento por cartão + pessoa */
+const sitMapa=t=>{const n=nrm(t);if(/^EM USO/.test(n))return 'Em uso';if(/AGUARDANDO DEV/.test(n))return 'Aguardando devolução';if(/^DEVOLVID/.test(n))return 'Devolvido';if(/BLOQUE/.test(n))return 'Bloqueado';if(/DESATIV/.test(n))return 'Bloqueado';if(/EXTRAV/.test(n))return 'Extraviado';return ''};
+function levarMapa(F){const g=new Map();F.linhas.forEach(x=>{const k=String(x.cartao)+'|'+nrm(x.nome);if(!g.has(k))g.set(k,Object.assign({},x,{cons:0,cred:0}));const o=g.get(k);o.cons=r2(o.cons+x.cons);o.cred=r2(o.cred+(x.cred||0))});
+  const T=[...g.values()].map(x=>Object.assign(x,{sm:sitMapa(x.sit)})),uso=T.filter(x=>x.sm==='Em uso'||x.sm==='Aguardando devolução'),out=T.filter(x=>x.sm&&!uso.includes(x)),sem=T.filter(x=>!x.sm);
+  const ja=x=>U.find(u=>u.periodo===F.periodo&&String(u.cartao)===String(x.cartao)&&nrm(u.nome)===nrm(x.nome));
+  const w=document.createElement('div');w.className='fundo';w.innerHTML=`<div class="modal" style="max-width:820px"><div class="mcab"><h3>Levar cartões para o mapa · ${perTxt(F.periodo)}<small>Cria (ou atualiza) um lançamento por cartão no período do fechamento. O mapa mostra a situação de cada cartão pelo último lançamento dele.</small></h3><button class="mini" id="mX">Fechar</button></div>
+   <div style="padding:14px 18px;font-size:13.5px"><p style="margin-top:0"><b>${uso.length}</b> cartão(ões) em uso ou aguardando devolução na planilha${uso.filter(ja).length?' ('+uso.filter(ja).length+' já estão no app e serão atualizados)':''}.</p>
+   <label style="display:block;margin-bottom:8px"><input type="checkbox" id="mOut"> Levar também os ${out.length} devolvidos / bloqueados / desativados (libera ou bloqueia esses cartões no mapa)</label>
+   ${sem.length?`<p class="sub">${sem.length} sem situação reconhecida ficam de fora: ${sem.map(x=>esc(x.cartao+' '+x.nome+' ('+(x.sit||'vazio')+')')).join('; ')}.</p>`:''}
+   <div class="tab" style="max-height:340px"><table><thead><tr><th>Cartão</th><th>Nome</th><th>Setor</th><th>Situação</th><th style="text-align:right">Creditado</th><th style="text-align:right">Consumido</th></tr></thead><tbody id="mTb"></tbody></table></div></div>
+   <div class="mpe"><span id="mMsg" style="flex:1;font-size:13px"></span><button class="mini" id="mC">Cancelar</button><button class="mini pri" id="mO">Levar para o mapa</button></div></div>`;
+  document.body.appendChild(w);const q=id=>w.querySelector('#'+id),fe=()=>w.remove();q('mX').onclick=fe;q('mC').onclick=fe;
+  const lista=()=>uso.concat(q('mOut').checked?out:[]).sort((a,b)=>(+a.cartao||0)-(+b.cartao||0)||a.nome.localeCompare(b.nome,'pt-BR'));
+  const dw=()=>{const L=lista();q('mTb').innerHTML=L.map(x=>`<tr><td><b>${esc(x.cartao)}</b></td><td>${esc(x.nome)}${ja(x)?' <span class="pill p-ok">atualiza</span>':''}</td><td>${esc(x.setor)}</td><td>${esc(x.sm)}${x.sm!==x.sit?' <span class="sm">('+esc(x.sit)+')</span>':''}</td><td class="n">${moeda(x.cred)}</td><td class="n">${moeda(x.cons)}</td></tr>`).join('');q('mO').textContent='Levar '+L.length+' cartão(ões) para o mapa'};
+  q('mOut').onchange=dw;dw();
+  q('mO').onclick=async()=>{const L=lista();q('mO').disabled=true;let n=0,f=0;const agora=new Date().toISOString(),qm=(window.parent&&window.parent.CRV_QUEM)||'';
+    for(const x of L){const mat=/^\d+$/.test(x.mat)?x.mat:'';const d={cartao:+x.cartao||x.cartao,entrega:x.entrega||'',mat,matTxt:mat?'':x.mat,nome:x.nome,setor:x.setor,cargo:x.cargo,refeicao:x.refeicao,duracao:x.duracao,creditado:x.cred,consumido:x.cons,solicitante:x.sol,situacao:x.sm,
+        obs:[x.motivo,x.sm!==x.sit?'Na planilha: '+x.sit:''].filter(Boolean).join(' · '),cc:x.cc,ccd:x.ccd,fonte:'Fechamento Syspro '+perTxt(F.periodo)};
+      try{const e=ja(x);if(e){await DB.collection('usos').doc(e._id).update(Object.assign({},d,{alteradoEm:agora,alteradoPor:qm}));Object.assign(e,d)}
+        else{const reg=Object.assign({},d,{periodo:F.periodo,cadastradoEm:agora,cadastradoPor:qm});const ref=await DB.collection('usos').add(reg);U.push(Object.assign({_id:ref&&ref.id?ref.id:('n'+Date.now()+n)},reg))}n++}catch(er){f++}
+      q('mMsg').textContent='Levando… '+n+'/'+L.length}
+    fe();S.p=F.periodo;S.v='m';render();toast(n+' cartão(ões) no mapa'+(f?' · '+f+' com erro':'')+'.')};
+}
 /* escolher o que sai no PDF / Excel (lembra a última escolha neste navegador) */
 function escolherPartes(F,tipo,fn){let sv={};try{sv=JSON.parse(localStorage.getItem('crv-fech-partes')||'{}')}catch(_){}
   const OP=[['r','Resumo por centro de custo'],['rb','Rateio RUBI S.A.'+(temRubi(F)?'':' (não informado)')],['a','Análise dos centros de custo'],['l','Lista única dos lançamentos']];
