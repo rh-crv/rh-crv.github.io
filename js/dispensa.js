@@ -114,5 +114,60 @@ async function abrir(){
       g('#dv-ok').onclick = async () => { const o = ler(); if (!valida(o)) return; const b = g('#dv-ok'); b.disabled = true; try { baixar((await gerar(o)).output('blob'), nomeArq(o)); toast('Documento gerado.'); fecharModal(); } catch(e){ b.disabled = false; msg('Não consegui gerar o PDF: ' + (e.message || e)); } };
     } });
 }
-return { abrir };
+/* =====================================================================
+   DECLARAÇÃO DE TRABALHO (modelo da coordenação de RH): colaborador ativo, com CPF, RG, cargo e admissão.
+   ===================================================================== */
+/* parágrafo justificado com trechos em negrito: segs = [[texto, negrito], ...] */
+function paragrafoRico(doc, segs, y, L, W, fs, lh){ doc.setFontSize(fs); doc.setTextColor(30, 36, 48);
+  const T = []; segs.forEach(([t, b]) => String(t).split(/(\s+)/).forEach(w => { if (!w) return; if (/^\s+$/.test(w)) { if (T.length) T[T.length - 1].sp = true; return; } T.push({ w, b:!!b, sp:false }); }));
+  const larg = o => { doc.setFont('helvetica', o.b ? 'bold' : 'normal'); return doc.getTextWidth(o.w); }; doc.setFont('helvetica', 'normal'); const esp = doc.getTextWidth(' ');
+  const linhas = []; let cur = [], cw = 0;
+  T.forEach((o, i) => { const lw = larg(o), add = (cur.length && T[i - 1].sp ? esp : 0) + lw; if (cur.length && cw + add > W) { linhas.push(cur); cur = [o]; cw = lw; } else { cur.push(o); cw += add; } o.lw = lw; }); if (cur.length) linhas.push(cur);
+  linhas.forEach((ln, li) => { const ult = li === linhas.length - 1; const tw = ln.reduce((a, o) => a + o.lw, 0); const nGaps = ln.filter((o, k) => k < ln.length - 1 && o.sp).length;
+    const gap = !ult && nGaps ? (W - tw) / nGaps : esp; let x = L;
+    ln.forEach((o, k) => { doc.setFont('helvetica', o.b ? 'bold' : 'normal'); doc.text(o.w, x, y); x += o.lw + (k < ln.length - 1 && o.sp ? gap : 0); }); y += lh; });
+  return y; }
+async function gerarDecl(r){
+  let ass = [{ nome:'Michelle Patrícia Alves Pereira', cargo:'Coordenadora de RH' }];
+  try { const A = window.CRV_ASSINANTES ? await window.CRV_ASSINANTES('declaracao') : []; if (A && A.length) ass = A.map(a => ({ nome:tc(a.nome), cargo:a.cargo })); } catch(_){}
+  const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit:'mm', format:'a4' }); const D = window.CRV_DOC; const L = 18, W = 174, f = r.trat === 'a';
+  let y = cabecalho(doc, 'Declaração de Trabalho', r.dataDoc) + 26;
+  y = paragrafoRico(doc, [['Declaramos, para os devidos fins, que '], [String(r.nome || '').toUpperCase(), 1], [', ' + (f ? 'inscrita' : 'inscrito') + ' no CPF nº '], [r.cpf || '', 1],
+    [r.rg ? ' e ' + (f ? 'portadora' : 'portador') + ' do RG nº ' : ''], [r.rg || '', 1], [', ocupa o cargo de ' + String(r.cargo || '').toUpperCase() + ' na empresa '], ['CRV Industrial Ltda.', 1], [', inscrita no CNPJ nº '], ['03.937.452/0004-35', 1],
+    [', desde '], [brD(r.adm), 1], [', encontrando-se '], [(f ? 'atualmente ativa' : 'atualmente ativo') + ' no quadro de colaboradores da empresa', 1], ['.']], y, L, W, 12.4, 7.8);
+  y += 6; y = paragrafoRico(doc, [['Por ser expressão da verdade, firmamos a presente declaração para os fins que se fizerem necessários.']], y, L, W, 12.4, 7.8);
+  D.assinaturas(doc, Math.max(y + 40, 190) - 16, ass);
+  D.moldura(doc); try { if (window.CRV_PDF_LOGOS) await window.CRV_PDF_LOGOS(doc); } catch(_){} return doc; }
+async function abrirDecl(){
+  css(); if (!Q) { try { Q = await window.CRV_QUADRO(); } catch(_){ Q = null; } }
+  abrirModal({ titulo:'Declaração de trabalho', largo:true,
+    corpo:`<div class="dv-g">
+      <div class="dv-h">Colaborador</div>
+      <label class="s3">Matrícula<input id="dc-mat" inputmode="numeric" placeholder="Digite a matrícula"></label><div class="dv-st" id="dc-st">Ao digitar a matrícula, os dados vêm da Base Geral de Colaboradores (Quadro).</div>
+      <label class="s8">Nome completo<input data-k="nome"></label><label class="s4">Tratamento<select data-k="trat"><option value="o">Masculino (inscrito, ativo)</option><option value="a">Feminino (inscrita, ativa)</option></select></label>
+      <label class="s4">CPF<input data-k="cpf"></label><label class="s4">RG<input data-k="rg"></label><label class="s4">Admissão<input type="date" data-k="adm"></label>
+      <label class="s8">Cargo<input data-k="cargo"></label><label class="s4">Data do documento<input type="date" data-k="dataDoc" value="${hoje()}"></label>
+      <div class="dv-h">Como vai sair o texto</div><div class="dv-prev" id="dc-prev"></div>
+      <p class="nr-msg" id="dc-msg" style="grid-column:span 12;margin:0"></p></div>`,
+    pe:`<span style="flex:1"></span><button class="btn borda" id="dc-c">Cancelar</button><button class="btn borda" id="dc-ver">Visualizar</button><button class="btn prim" id="dc-ok">Imprimir / Gerar PDF</button>`,
+    aoAbrir: m => {
+      const g = s => m.querySelector(s), msg = t => { g('#dc-msg').textContent = t; };
+      const ler = () => { const o = { mat:g('#dc-mat').value.replace(/\D/g, '').replace(/^0+(?=\d)/, '') }; m.querySelectorAll('[data-k]').forEach(e => o[e.dataset.k] = e.value.trim()); return o; };
+      const prev = () => { const o = ler(), f = o.trat === 'a'; g('#dc-prev').innerHTML = `Declaramos, para os devidos fins, que <b>${esc(String(o.nome || '(nome)').toUpperCase())}</b>, ${f ? 'inscrita' : 'inscrito'} no CPF nº <b>${esc(o.cpf || '(CPF)')}</b>${o.rg ? ` e ${f ? 'portadora' : 'portador'} do RG nº <b>${esc(o.rg)}</b>` : ''}, ocupa o cargo de ${esc(String(o.cargo || '(cargo)').toUpperCase())} na empresa <b>CRV Industrial Ltda.</b>, inscrita no CNPJ nº <b>03.937.452/0004-35</b>, desde <b>${esc(brD(o.adm) || '(admissão)')}</b>, encontrando-se <b>${f ? 'atualmente ativa' : 'atualmente ativo'} no quadro de colaboradores da empresa</b>.<br>Por ser expressão da verdade, firmamos a presente declaração para os fins que se fizerem necessários.<br><span style="color:var(--mut)">Assinatura: coordenação de RH</span>`; };
+      m.querySelectorAll('[data-k]').forEach(e => { e.addEventListener('input', prev); e.addEventListener('change', prev); }); prev();
+      const set = (k, v) => { const e = m.querySelector(`[data-k="${k}"]`); if (e) e.value = v || ''; };
+      g('#dc-mat').oninput = () => { const k = g('#dc-mat').value.replace(/\D/g, '').replace(/^0+(?=\d)/, ''); const c = Q && Q.mapa && Q.mapa[k]; const st = g('#dc-st');
+        if (!k) st.textContent = 'Ao digitar a matrícula, os dados vêm da Base Geral de Colaboradores (Quadro).';
+        else if (!c) st.innerHTML = '<span style="color:#a3301c">Matrícula não encontrada no Quadro. Preencha os dados à mão.</span>';
+        else { set('nome', c.nome); set('cpf', fCPF(c.cpf)); set('rg', c.rg ? (/^[A-Za-z]/.test(c.rg) ? '' : (c.rgUf || '')) + c.rg : ''); set('cargo', tc(c.funcao)); set('adm', String(c.admissao || '').slice(0, 10)); if (/^F/i.test(c.sexo || '')) set('trat', 'a'); else if (/^M/i.test(c.sexo || '')) set('trat', 'o');
+          st.innerHTML = `<b>${esc(tc(c.nome))}</b> · ${esc(tc(c.funcao))} · ${esc(tc(c.setor))} · ${c.situacao === 'Desligado' ? '<span style="color:#a3301c">desligado em ' + esc(brD(c.deslig)) + ': a declaração diz que está ativo</span>' : esc(c.situacao || '')}`; }
+        prev(); };
+      const valida = o => { if (!o.nome || !o.cpf || !o.cargo || !o.adm) { msg('Preencha nome, CPF, cargo e admissão.'); return false; } msg(''); return true; };
+      const nomeA = o => 'Declaracao de trabalho - ' + String(o.nome || '').split(' ').slice(0, 2).map(tc).join(' ').normalize('NFD').replace(/[̀-ͯ]/g, '') + ' ' + (o.mat || '') + '.pdf';
+      g('#dc-c').onclick = fecharModal;
+      g('#dc-ver').onclick = async () => { const o = ler(); if (!valida(o)) return; const u = URL.createObjectURL((await gerarDecl(o)).output('blob')); window.open(u, '_blank'); setTimeout(() => URL.revokeObjectURL(u), 60000); };
+      g('#dc-ok').onclick = async () => { const o = ler(); if (!valida(o)) return; const b = g('#dc-ok'); b.disabled = true; try { baixar((await gerarDecl(o)).output('blob'), nomeA(o)); toast('Declaração gerada.'); fecharModal(); } catch(e){ b.disabled = false; msg('Não consegui gerar o PDF: ' + (e.message || e)); } };
+    } });
+}
+return { abrir, abrirDecl };
 };

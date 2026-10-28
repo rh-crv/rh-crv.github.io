@@ -1084,7 +1084,7 @@ const DICAS = {
   ferias: { v:1, t:['<b>Imprimir relação de saídas de férias</b> gera a lista de quem sai de férias, por mês ou por período, com o lugar da assinatura.', 'Quem assina sai de Central de Rotinas → <b>Cadastros do RH</b> → Assinantes.'] }
 };
 const SUBACOES = {
-  quadro:   [{ acao:'grel', nome:'Gerador de relatórios' }, { acao:'hcol', nome:'Histórico do colaborador' }, { acao:'ent', nome:'Entrevista de desligamento' }, { acao:'dav', nome:'Documento de dispensa' }, { acao:'entr', nome:'Respostas das entrevistas' }, { acao:'estab', nome:'Estabilidade' }, { acao:'aso', nome:'Exames (ASO)' }, { acao:'afast', nome:'Afastamentos' }],
+  quadro:   [{ acao:'grel', nome:'Gerador de relatórios' }, { acao:'hcol', nome:'Histórico do colaborador' }, { acao:'decl', nome:'Declaração de trabalho' }, { acao:'ent', nome:'Entrevista de desligamento' }, { acao:'dav', nome:'Documento de dispensa' }, { acao:'entr', nome:'Respostas das entrevistas' }, { acao:'estab', nome:'Estabilidade' }, { acao:'aso', nome:'Exames (ASO)' }, { acao:'afast', nome:'Afastamentos' }],
   admissoes: [{ acao:'vq', nome:'Todas as empresas e anos' }, { acao:'vp', nome:'Acompanhamento 2026' }],
   rescisoes: [{ acao:'dav', nome:'Documento de dispensa' }, { acao:'vq', nome:'Todas as empresas e anos' }, { acao:'vp', nome:'Acompanhamento 2026' }],
   rs: [{ acao:'ctr', nome:'Contratações em Andamento' }],
@@ -1116,6 +1116,7 @@ function executarAcao(acao){
   const f = document.getElementById('modelo-frame');
   const w = f && f.contentWindow;
   if (acao === 'dav' && window.CRV_DAV_INIT) { DAV().abrir(); return true; }
+  if (acao === 'decl' && window.CRV_DAV_INIT) { DAV().abrirDecl(); return true; }
   if (acao === 'aut' && w && typeof w.CRV_AUTORIZACAO === 'function') { fecharJanelasAut(w); w.CRV_AUTORIZACAO(); return true; }
   if (acao === 'hist' && w && typeof w.CRV_AUT_HIST === 'function') { fecharJanelasAut(w); w.CRV_AUT_HIST(); return true; }
   if (acao === 'doc' && w && typeof w.CRV_DOCDISC === 'function') { fecharJanelasAut(w); w.CRV_DOCDISC(); return true; }
@@ -1754,7 +1755,7 @@ window.CRV_QUADRO = async function(){
     DM.forEach(r => { M[txt(r[0])] = { nasc: txt(r[27] || ''), cpf: txt(CPFM[txt(r[0])] || ''), cc: (txt(r[23]) && txt(r[23]) !== '0') ? txt(r[23]) : '', ccd: txt(r[13]), nome:txt(r[1]), funcao:txt(r[2]), setor:txt(r[3]), situacao:'Desligado', vinculo:txt(r[7]), gerencia:txt(r[6]), area:txt(r[5]), cnh:txt(r[17]), admissao:txt(r[9]), deslig:txt(r[20]), empresa:txt(r[21]).replace(/\s*\(\d+\)$/, '') }; });
     const XX = Array.isArray(dados.X) && dados.X.length === dados.D.length ? dados.X : null;
     const FXQ = dados.FX || {};
-    dados.D.forEach((r, i) => { M[txt(r[0])] = { idade: r[10], sexo: txt(r[11]), cid: txt(r[12]), cel: XX ? txt(XX[i][25]) : '', fx: FXQ[txt(r[0])] != null ? FXQ[txt(r[0])] : '', nasc: XX ? txt(XX[i][0]) : '', cpf: XX ? txt(XX[i][11]) : '', cc: XX ? txt(XX[i][33]) : '', ctps: XX ? txt(XX[i][12]) : '', serie: XX ? txt(XX[i][13]) : '', ccd: txt(r[13]), nome:txt(r[1]), funcao:txt(r[2]), setor:txt(r[3]), situacao:txt(r[8]) || 'Ativo', vinculo:txt(r[7]), gerencia:txt(r[6]), area:txt(r[5]), cnh:txt(r[17]), admissao:txt(r[9]), deslig:'', empresa:'CRV' }; });
+    dados.D.forEach((r, i) => { M[txt(r[0])] = { idade: r[10], sexo: txt(r[11]), cid: txt(r[12]), cel: XX ? txt(XX[i][25]) : '', fx: FXQ[txt(r[0])] != null ? FXQ[txt(r[0])] : '', nasc: XX ? txt(XX[i][0]) : '', cpf: XX ? txt(XX[i][11]) : '', rg: XX ? txt(XX[i][7]) : '', rgUf: XX ? txt(XX[i][10]) : '', cc: XX ? txt(XX[i][33]) : '', ctps: XX ? txt(XX[i][12]) : '', serie: XX ? txt(XX[i][13]) : '', ccd: txt(r[13]), nome:txt(r[1]), funcao:txt(r[2]), setor:txt(r[3]), situacao:txt(r[8]) || 'Ativo', vinculo:txt(r[7]), gerencia:txt(r[6]), area:txt(r[5]), cnh:txt(r[17]), admissao:txt(r[9]), deslig:'', empresa:'CRV' }; });
     // departamentos (código Depto/Seção → nome), a partir dos ativos e afastados
     const DP = {};
     if (XX) dados.D.forEach((r, i) => { const cod = txt(XX[i][23]), nome = txt(r[3]); if (!cod || !nome) return;
