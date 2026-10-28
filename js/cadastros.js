@@ -14,12 +14,13 @@ const nrm = s => String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g,
 const DOCS = [
   { k:'acid-aut', n:'Unimed · Autorização para não descontar (acidente de trabalho)' },
   { k:'acid-rel', n:'Unimed · Relatório de acidentes de trabalho' },
+  { k:'acid-reemb', n:'Unimed · Reembolso de desconto indevido (acidente de trabalho)' },
   { k:'ferias-dp', n:'Férias · Relação para o Departamento Pessoal' }
 ];
 /* como está hoje nos documentos (pedidos do RH em 27/10/2026); muda pela tela de cadastros */
 const ASS_PADRAO = [
-  { id:'a1', nome:'Michelle Pereira', cargo:'Coordenadora de RH', mat:'', docs:['acid-aut', 'acid-rel'] },
-  { id:'a2', nome:'Leonardo Dias', cargo:'Gerente Executivo', mat:'', docs:['acid-aut', 'acid-rel'] },
+  { id:'a1', nome:'Michelle Pereira', cargo:'Coordenadora de RH', mat:'', docs:['acid-aut', 'acid-rel', 'acid-reemb'] },
+  { id:'a2', nome:'Leonardo Dias', cargo:'Gerente Executivo', mat:'', docs:['acid-aut', 'acid-rel', 'acid-reemb'] },
   { id:'a3', nome:'', cargo:'Coordenadora de RH', mat:'334', docs:['ferias-dp'] }
 ];
 let SB = null, CAD = null, _carregando = null;
@@ -78,7 +79,7 @@ window.CRV_DOC = (function(){
     secao(doc, y, t){ const { H } = dims(doc); if (y > H - 50) { doc.addPage(); y = 34; } doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...C.NAVY); doc.text(String(t), 12, y); return y + 2.5; },
     /* assinaturas centralizadas lado a lado; lista [{nome,cargo}] ou [[nome,cargo]]; devolve o y seguinte (ou null se não couber nesta folha) */
     assinaturas(doc, y, lista){ const { W, H } = dims(doc); const A = (lista || []).map(a => Array.isArray(a) ? { nome:a[0], cargo:a[1] } : a).filter(a => a && a.nome); if (!A.length) return y;
-      const yy = y + 16; if (yy + 12 > H - 22) return null; const lw = 70, gap = 30, tw = A.length * lw + (A.length - 1) * gap; let x = (W - tw) / 2;
+      const yy = y + 16; if (yy + 12 > H - 22) return null; const gap = A.length > 2 ? 10 : 30, lw = Math.min(70, (W - 24 - (A.length - 1) * gap) / A.length), tw = A.length * lw + (A.length - 1) * gap; let x = (W - tw) / 2;
       A.forEach(a => { doc.setDrawColor(60,66,80); doc.setLineWidth(.3); doc.line(x, yy, x + lw, yy); doc.setFont('helvetica', 'bold'); doc.setFontSize(8.8); doc.setTextColor(...C.INK); doc.text(a.nome, x + lw / 2, yy + 4.5, { align:'center' }); doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...C.MUT); doc.text(a.cargo || '', x + lw / 2, yy + 8.6, { align:'center' }); x += lw + gap; });
       return yy + 14; },
     /* cabeçalho e rodapé em todas as páginas (chamar no fim, antes de salvar) */
