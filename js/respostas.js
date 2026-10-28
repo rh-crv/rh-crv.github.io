@@ -48,6 +48,8 @@ async function carregar(){
   else ENVS = r1.data || [];
   const r2 = await sb.from('gestor_docs').select(COLS_DOC).order('criado_em', { ascending:false });
   if (r2.error) { DOCS = []; if (semBanco(r2.error)) FALTA = 'banco'; } else DOCS = r2.data || [];
+  /* "Ver como gestor": o administrador vê só o que é das áreas do gestor escolhido */
+  if (E.perfil && E.perfil.__sim) { const ar = E.perfil.areas || []; ENVS = ENVS.filter(e => ar.includes(e.chave)); DOCS = DOCS.filter(d => (d.chaves || []).some(k => ar.includes(k))); }
   return { ENVS, DOCS };
 }
 const avisoBanco = () => FALTA === 'banco' ? `<div class="cartao" style="padding:10px 14px;background:#fff7e6;border-color:#f0d199;color:#5c3b00;font-size:13.5px;margin-bottom:12px">${ehRH() ? 'Falta preparar o banco para as respostas e os documentos dos gestores: rode o arquivo <b>12_respostas_rh.sql</b> no Supabase.' : 'Esta parte ainda está sendo preparada pelo RH.'}</div>` : '';
@@ -57,7 +59,7 @@ function vigiar(){ if (!CANAL && sb.channel) { try { CANAL = sb.channel('crv-res
 let _rec = null; function recarregar(){ clearTimeout(_rec); _rec = setTimeout(async () => { try { await carregar(); badges(); if (TELA && location.hash.startsWith(TELA.h)) TELA.des(); } catch(_){} }, 400); }
 /* contadores no menu do gestor e faixa na tela inicial */
 function contar(){ const novasR = ENVS.filter(e => !e.lido_em).length, docsN = DOCS.filter(d => ABERTOS.includes(d.status) && !visto(d)).length, atr = DOCS.filter(atrasado).length, imp = DOCS.filter(d => d.status === 'disponivel').length; return { novasR, docsN, atr, imp }; }
-function badges(){ if (!E.perfil || E.perfil.papel !== 'gestor') return; const c = contar();
+function badges(){ return; /* sem contadores no menu (mesmo padrão do RH); os avisos ficam na Central de Rotinas */ if (!E.perfil || E.perfil.papel !== 'gestor') return; const c = contar();
   const pon = (h, n, cor) => { const b = document.querySelector(`[data-ir="${h}"]`); if (!b) return; let s = b.querySelector('.rsp-b'); if (!n) { if (s) s.remove(); return; } if (!s) { s = document.createElement('span'); s.className = 'rsp-b'; s.style.cssText = 'margin-left:auto;background:' + cor + ';color:#fff;border-radius:99px;padding:0 7px;font-size:11px;font-weight:800;line-height:18px'; b.appendChild(s); } s.textContent = n; };
   pon('#/eq/resp', c.novasR, '#c0583f'); pon('#/eq/mdisc', c.imp + c.atr, '#b5731a'); }
 async function iniciarGestor(){ try { await carregar(); badges(); vigiar(); } catch(_){} }
@@ -133,7 +135,7 @@ async function telaResp(rh){
 }
 async function abrirResp(e, rh){ if (!e) return;
   let anx = []; try { const { data } = await sb.from('gestor_envios').select('rh_anexos').eq('id', e.id).maybeSingle(); anx = (data && data.rh_anexos) || []; } catch(_){}
-  if (!rh && !e.lido_em) { try { const { error } = await sb.rpc('marcar_envio_lido', { p_id:e.id }); if (!error) { e.lido_em = new Date().toISOString(); e.lido_por = quem(); badges(); if (TELA) TELA.des(); } } catch(_){} }
+  if (!rh && !e.lido_em && !(E.perfil && E.perfil.__sim)) { try { const { error } = await sb.rpc('marcar_envio_lido', { p_id:e.id }); if (!error) { e.lido_em = new Date().toISOString(); e.lido_por = quem(); badges(); if (TELA) TELA.des(); } } catch(_){} }
   abrirModal({ titulo:(TIPO_ENV[e.tipo] || e.tipo) + ' · ' + tc(e.colaborador || e.mat), largo:true,
     corpo:`<p style="margin-top:0"><b>${esc(tc(e.colaborador || ''))}</b> · matrícula <b>${esc(e.mat)}</b></p><p>${esc(resumoEnv(e))}</p>
       <div style="background:${e.status === 'aceito' ? '#eef7f1' : '#fdecea'};border-radius:10px;padding:10px 14px"><b>${e.status === 'aceito' ? 'Aceito pelo RH' : 'Devolvido pelo RH'}</b> em ${esc(dh(e.rh_em))}<br>${esc(e.rh_obs || (e.status === 'aceito' ? 'Sem observação.' : ''))}</div>
@@ -145,7 +147,7 @@ async function abrirResp(e, rh){ if (!e) return;
 
 /* ---------- medidas disciplinares (gestor imprime e acompanha; RH acompanha tudo) ---------- */
 async function pdfDoc(d){ const { data, error } = await sb.from('gestor_docs').select('pdf,nome_arq').eq('id', d.id).maybeSingle(); if (error || !data || !data.pdf) throw new Error('Documento não encontrado.'); return { blob:b64Blob(data.pdf, 'application/pdf'), nome:data.nome_arq || 'documento.pdf' }; }
-async function acao(d, ac, dados){ const { error } = await sb.rpc('gdoc_acao', { p_id:d.id, p_acao:ac, p_dados:dados || {} }); if (error) throw error; }
+async function acao(d, ac, dados){ if (E.perfil && E.perfil.__sim) { if (ac === 'visto') return; throw new Error('Modo "Ver como gestor": nada é alterado.'); } const { error } = await sb.rpc('gdoc_acao', { p_id:d.id, p_acao:ac, p_dados:dados || {} }); if (error) throw error; }
 async function acaoRH(d, campos, ac, dados){ const hist = (d.hist || []).concat([{ em:new Date().toISOString(), por:quem(), acao:ac, dados:dados || {} }]);
   const { error } = await sb.from('gestor_docs').update(Object.assign({ atualizado_em:new Date().toISOString(), hist }, campos)).eq('id', d.id); if (error) throw error; }
 function cardDoc(d, rh){ const s = ST[d.status] || [d.status, '#5d6a85'], p = parado(d), at = atrasado(d), su = alertaSus(d), dd = d.dados || {};
@@ -268,8 +270,21 @@ async function pendencias(){ if (!ehRH()) return []; try { await carregar(); } c
   const C = DOCS.filter(d => d.status === 'correcao'); if (C.length) out.push({ id:'gdocs-correcao', sev:'warn', t:'Correção pedida pelos gestores em documentos disciplinares', painel:'sancoes', pnome:'Sanções', d:'Emita o documento corrigido no painel Sanções: o anterior fica como substituído e o novo aparece para o gestor.',
     itens:C.map(d => ({ nome:tc(d.colaborador), mat:d.mat, det:(d.titulo || '') + ' · ' + (d.correcao || '') })) });
   return out; }
+/* Central de Rotinas do departamento (gestor/assistente) */
+async function pendenciasArea(){ const OP = window.CRV_GOPC ? window.CRV_GOPC() : null; const tem = k => !OP || OP.has(k); try { await carregar(); vigiar(); } catch(_){ return []; } const out = [];
+  if (tem('resp')) { const N = ENVS.filter(e => !e.lido_em); if (N.length) out.push({ id:'r-novas', sev:'warn', t:'Respostas novas do RH', painel:'', rota:'#/eq/resp', pnome:'Respostas do RH', d:'Abra para ver o retorno do RH e os anexos.', itens:N.map(e => ({ nome:tc(e.colaborador || ''), mat:e.mat, det:(TIPO_ENV[e.tipo] || e.tipo) + ' · ' + (e.status === 'aceito' ? 'aceito' : 'devolvido') + ' em ' + dh(e.rh_em) })) }); }
+  if (tem('mdisc')) { const it = d => ({ nome:tc(d.colaborador), mat:d.mat, det:(d.titulo || '') + (d.tipo === 'sus' && d.dados && d.dados.ini ? ' · suspensão ' + brD(d.dados.ini) + (d.dados.fim && d.dados.fim !== d.dados.ini ? ' a ' + brD(d.dados.fim) : '') : '') + ' · ' + (ST[d.status] || [d.status])[0] + (parado(d) ? ' há ' + parado(d).dias + ' dia(s) úteis' : '') + (atrasado(d) ? ' · FORA DO PRAZO' : '') });
+    const atr = DOCS.filter(atrasado), sus = DOCS.filter(d => alertaSus(d));
+    if (atr.length) out.push({ id:'r-atr', sev:'crit', t:'Medidas disciplinares fora do prazo', painel:'', rota:'#/eq/mdisc', pnome:'Medidas disciplinares', d:'Passou de ' + ((atr[0] && atr[0].prazo) || 2) + ' dia(s) úteis sem aplicar ou sem devolver assinado ao RH.', itens:atr.map(it) });
+    if (sus.length) out.push({ id:'r-sus', sev:'crit', t:'Suspensão começando e documento não aplicado', painel:'', rota:'#/eq/mdisc', pnome:'Medidas disciplinares', d:'Aplique o documento antes do início da suspensão.', itens:sus.map(d => ({ nome:tc(d.colaborador), mat:d.mat, det:alertaSus(d) })) });
+    const disp = DOCS.filter(d => ['disponivel', 'impresso'].includes(d.status) && !atrasado(d) && !alertaSus(d)); if (disp.length) out.push({ id:'r-disp', sev:'warn', t:'Medidas disciplinares para imprimir e aplicar', painel:'', rota:'#/eq/mdisc', pnome:'Medidas disciplinares', d:'Imprima, aplique ao colaborador e marque como aplicado.', itens:disp.map(it) });
+    const apl = DOCS.filter(d => ['aplicado', 'entregue'].includes(d.status) && !atrasado(d)); if (apl.length) out.push({ id:'r-apl', sev:'info', t:'Aplicadas, pendentes de devolução ao RH', painel:'', rota:'#/eq/mdisc', pnome:'Medidas disciplinares', d:'Entregue o documento assinado ao RH.', itens:apl.map(it) });
+    const cor = DOCS.filter(d => d.status === 'correcao'); if (cor.length) out.push({ id:'r-cor', sev:'info', t:'Correções pedidas ao RH (aguardando)', painel:'', rota:'#/eq/mdisc', pnome:'Medidas disciplinares', d:'O RH vai liberar o documento corrigido.', itens:cor.map(d => ({ nome:tc(d.colaborador), mat:d.mat, det:d.correcao || '' })) }); }
+  return out; }
+window.CRV_RESP_RESET = () => { ENVS = []; DOCS = []; TELA = null; };
+window.CRV_GDOCS_PESSOA = async mat => { try { await carregar(); } catch(_){ return []; } return DOCS.filter(d => d.mat === String(mat) && d.status !== 'cancelado').map(d => Object.assign({ st:(ST[d.status] || [d.status])[0] }, d)); };
 /* histórico do colaborador (Perfil do Colaborador) */
 async function daPessoa(mat){ try { const { data } = await sb.from('gestor_docs').select('id,titulo,tipo,dados,status,aplicado_em,recebido_em,recusa,criado_em,area_nome').eq('mat', String(mat)).order('criado_em', { ascending:false }); return data || []; } catch(_){ return []; } }
 window.CRV_GDOC_ANEXO = async id => { const { data } = await sb.from('gestor_docs').select('anexo').eq('id', id).maybeSingle(); if (data && data.anexo) abrirArquivo(data.anexo); else toast('Sem documento assinado anexado.', true); };
-return { telaResp, telaDocsGestor, telaRH, iniciarGestor, porFaixa, badges, pendencias, daPessoa, ST, TIPO_DOC };
+return { telaResp, telaDocsGestor, telaRH, iniciarGestor, porFaixa, badges, pendencias, pendenciasArea, daPessoa, ST, TIPO_DOC };
 };

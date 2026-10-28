@@ -15,6 +15,17 @@ const addD = (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(
 // chaves: 'a:<setor>' = setor inteiro; 'd:<setor>|<departamento>' = só um departamento do setor
 const nomeChave = k => k[0] === 'd' ? k.slice(2).split('|')[1] + ' (' + k.slice(2).split('|')[0] + ')' : k.slice(2);
 const chaveOk = k => /^[ad]:/.test(k || '');
+/* liderança: nenhum salário aparece para o gestor (qualquer função que contenha estas palavras, inclusive abreviadas) */
+const LIDER = f => /ENCARREGAD|SUPERVIS|COORD|GERENT|GERENC|DIRETOR/.test(String(f || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
+const R$ = n => 'R$ ' + Number(n).toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 });
+const OPC = () => (window.CRV_GOPC ? window.CRV_GOPC() : new Set(['central', 'ficha', 'sal', 'eq', 'mov', 'pv', 'exp', 'nov', 'fer', 'freq', 'disc', 'mdisc', 'perfil', 'cr', 'alo', 'resp', 'env']));
+const SIM = () => !!(E.perfil && E.perfil.__sim);
+/* dados da área do usuário (no "Ver como gestor" o administrador vê só as áreas do gestor escolhido) */
+async function lerArea(){ let q = sb.from('area_dados').select('chave,dados,atualizado_em').neq('chave', '__meta'); const ar = (E.perfil && E.perfil.areas) || []; if (ar.length) q = q.in('chave', ar);
+  const { data, error } = await q; if (error) throw error; const A = (data || []).map(x => x.dados).filter(Boolean);
+  const P = []; const vis = new Set(); A.forEach(a => a.P.forEach(p => { if (!vis.has(p.m)) { vis.add(p.m); P.push(Object.assign({ chave:a.nome }, p)); } })); P.sort((a, b) => a.n.localeCompare(b.n, 'pt-BR'));
+  let ENV = []; try { const r = await sb.from('gestor_envios').select('*').order('criado_em', { ascending:false }); ENV = (r.data || []).filter(e => vis.has(e.mat)); } catch(_){}
+  return { A, P, vis, ENV }; }
 const daChave = (k, p) => k[0] === 'a' ? p.area === k.slice(2) : k[0] === 'd' ? (p.area + '|' + p.setor) === k.slice(2) : false;
 const tipoChave = k => k[0] === 'd' ? 'Departamento' : 'Setor';
 const DEC = { efetivar:'Efetivar', encerrar:'Encerrar contrato', prorrogar:'Prorrogar' };
@@ -101,6 +112,10 @@ async function recortes(chaves){
   const ALO = {}; try { const d = await window.CRV_DADOS('alojamentos'); const A = d && d.dados.DATA; if (A) (A.people || []).forEach(y => { if (y.t === 'c') ALO[fMat(y.m)] = { casa:((A.houses || [])[y.h] || {}).n || '', q:y.q || '', orig:[y.oc, y.ou].filter(Boolean).join('/') }; }); } catch(_){}
   let PREV = null; try { const L = await window.CRV_REGS('curriculos', 'config'); PREV = L.find(x => x._id === 'previsao') || null; } catch(_){}
   const casa = (k, p) => daChave(k, p);
+  /* salário para o gestor: só de quem não é liderança (encarregado, supervisor, coordenador, gerente) e quando o nome bate com a planilha */
+  let SAL = null; try { const o = window.CRV_SAL ? await window.CRV_SAL() : null; SAL = o && o.SAL; } catch(_){}
+  const nTok = t => String(t || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').split(/\s+/).filter(Boolean);
+  const salDe = (m, nome, func) => { if (!SAL || !SAL[m] || LIDER(func)) return null; const v = SAL[m], a = nTok(v[4]), b = nTok(nome); if (a.length && (a[0] !== b[0] || a[a.length - 1] !== b[b.length - 1])) return null; return +v[0] || null; };
   const d400 = addD(h, -400);
   const out = [];
   for (const k of chaves) {
@@ -117,7 +132,7 @@ async function recortes(chaves){
         rd: (RD[m] || []).sort((a, b) => String(b.d).localeCompare(String(a.d))),
         exp: p.vinculo === 'Experiência' || (EXP[m] && EXP[m].v2 >= addD(h, -30)) ? EXP[m] || null : null, fer: FER[m] || [], cr:(CR[m] || []).filter(x => !x.fim || x.fim >= addD(h, -30)), ob };
     }).sort((a, b) => a.n.localeCompare(b.n, 'pt-BR'));
-    P.forEach(p => { p.cid = CID[p.m] || ''; p.alo = ALO[p.m] || null; const t = traj(p.m); if (t.length) p.tr = t; const oh = ocHist(p.m); if (oh) p.oh = oh; const pf = PFL[p.m]; if (pf) p.pf = { atest:+pf.atest || 0, falta:+pf.falta || 0, fj:+pf.fj || 0, susp:+pf.susp || 0, adv:+pf.adv || 0, par:pf.parecer && ((pf.parecer.acoes || []).length || String(pf.parecer.txt || '').trim()) ? { acoes:pf.parecer.acoes || [], txt:pf.parecer.txt || '', resp:pf.parecer.resp || '', em:pf.parecer.em || '' } : null }; });
+    P.forEach(p => { const sv = salDe(p.m, p.n, p.f); if (sv) p.sal = sv; p.cid = CID[p.m] || ''; p.alo = ALO[p.m] || null; const t = traj(p.m); if (t.length) p.tr = t; const oh = ocHist(p.m); if (oh) p.oh = oh; const pf = PFL[p.m]; if (pf) p.pf = { atest:+pf.atest || 0, falta:+pf.falta || 0, fj:+pf.fj || 0, susp:+pf.susp || 0, adv:+pf.adv || 0, par:pf.parecer && ((pf.parecer.acoes || []).length || String(pf.parecer.txt || '').trim()) ? { acoes:pf.parecer.acoes || [], txt:pf.parecer.txt || '', resp:pf.parecer.resp || '', em:pf.parecer.em || '' } : null }; });
     // movimentação dos últimos 13 meses (inclui quem já saiu)
     const MOV = { adm:[], sai:[] };
     Object.entries(M).forEach(([m, p]) => { if (!casa(k, p)) return;
@@ -168,10 +183,11 @@ const PAINEL_G = { eq:['Gestão de Colaboradores', 'Equipe', 'Quem é da sua equ
   perfil:['Seleção e Perfil Profissional', 'Perfil profissional', 'Quem da sua equipe está no levantamento de perfil profissional: veja os números e registre seu parecer e o plano de ação.'],
   env:['Atendimento e Ouvidoria', 'Meus envios ao RH', 'Tudo o que você programou ou avaliou e enviou, com a situação de cada envio.'] };
 async function tela(abaIni){
+  const OP = OPC();
   moldura(`<section class="ini-topo"><div><div class="ini-eyebrow" id="gs-eye">Gestão de Pessoas</div><h1 id="gs-h1">Minha equipe</h1><div class="ini-data" id="gs-sub">Carregando…</div></div>
       <div class="dk-acoes"><button class="btn borda" id="gs-xls">Excel</button><button class="btn borda" id="gs-pdf">PDF</button></div></section>
     <div id="gs-corpo"><div class="cartao vazio"><div class="spinner" style="margin:0 auto"></div></div></div>`);
-  const { data, error } = await sb.from('area_dados').select('chave,dados,atualizado_em').neq('chave', '__meta');
+  let data = null, error = null; { let q0 = sb.from('area_dados').select('chave,dados,atualizado_em').neq('chave', '__meta'); const ar = (E.perfil && E.perfil.areas) || []; if (ar.length) q0 = q0.in('chave', ar); const r0 = await q0; data = r0.data; error = r0.error; }
   const c = $('#gs-corpo'); if (!c) return;
   if (error) { c.innerHTML = `<div class="cartao vazio"><h3>Não consegui abrir os dados da sua equipe</h3><p>${esc(traduzErro(error))}</p></div>`; return; }
   const A = (data || []).map(x => x.dados).filter(Boolean);
@@ -193,7 +209,7 @@ async function tela(abaIni){
   const aloL = P.filter(p => p.alo);
   $('#gs-sub').innerHTML = `${ASSIST() ? `<span class="gs-ch">Assistente de ${esc(tcG(ASSIST().nome))}</span>` : ''}${A.map(a => `<span class="gs-ch">${esc(a.tipo)}: ${esc(a.nome)}</span>`).join('')} <span>Atualizado pelo RH em ${esc(new Date(A.map(a => a.gerado).sort().pop()).toLocaleDateString('pt-BR'))}</span>`;
   const H = h, em15 = addD(H, 15);
-  let ENV = []; const lerEnv = async () => { try { const r = await sb.from('gestor_envios').select('*').order('criado_em', { ascending:false }); ENV = r.error ? [] : (r.data || []); } catch(_){ ENV = []; } };
+  let ENV = []; const lerEnv = async () => { try { const r = await sb.from('gestor_envios').select('*').order('criado_em', { ascending:false }); ENV = r.error ? [] : (r.data || []).filter(e => vis.has(e.mat)); } catch(_){ ENV = []; } };
   await lerEnv();
   const ultEnv = (tipo, mat, ref) => ENV.find(e => e.tipo === tipo && e.mat === mat && e.status !== 'cancelado' && (!ref || (e.dados || {}).ref === ref));
   const chaveDe = m => (A.find(a => a.P.some(p => p.m === m)) || A[0]).chave;
@@ -207,11 +223,12 @@ async function tela(abaIni){
   const pfPrio = x => x.susp > 0 || x.falta > 10 || x.adv >= 3 ? 0 : x.adv >= 1 ? 1 : 2, pfL = P.filter(p => p.pf).sort((a, b) => pfPrio(a.pf) - pfPrio(b.pf) || (b.pf.susp * 100 + b.pf.adv * 10 + b.pf.falta) - (a.pf.susp * 100 + a.pf.adv * 10 + a.pf.falta));
   const pfPend = p => !p.pf.par && !(ultEnv('perfil', p.m) || {}).id;
   const ABAS = [['eq', 'Equipe', P.length], ['mov', 'Admissões e saídas', MSAI.filter(x => x.d >= addD(h, -90)).length], ['pv', 'Quadro x previsto', PVI.reduce((t, x) => t + Math.max(0, x.p - x.t), 0)], ['exp', 'Experiência', expL.filter(p => p.prox && p.prox <= em15).length], ['fer', 'Férias', ferL.filter(f => /Vencido|Vence/.test(f.st)).length], ['freq', 'Frequência', P.filter(p => p.fa30).length], ['disc', 'Disciplina', P.filter(p => s12(p).length).length], ['nov', 'Novos colaboradores', novos.length], ['alo', 'Alojamento', aloL.length], ['cr', 'Em treinamento', crL.length], ['perfil', 'Perfil profissional', pfL.filter(pfPend).length], ['env', 'Meus envios', ENV.filter(e => e.status === 'devolvido').length]];
+  for (let i = ABAS.length - 1; i >= 0; i--) if (!OP.has(ABAS[i][0])) ABAS.splice(i, 1);
   const FQ = P.filter(p => p.fa90 || p.at90).sort((a, b) => b.fa90 - a.fa90 || b.at90 - a.at90);
-  let aba = abaIni && PAINEL_G[abaIni] ? abaIni : 'resumo', q = ''; const fq = { v:'', c:'' };
+  let aba = abaIni && PAINEL_G[abaIni] && OP.has(abaIni) ? abaIni : 'resumo', q = ''; const fq = { v:'', c:'' };
   if (aba !== 'resumo') { $('#gs-eye').textContent = PAINEL_G[aba][0]; $('#gs-h1').textContent = PAINEL_G[aba][1]; $('#gs-sub').innerHTML = `<span class="gs-desc">${esc(PAINEL_G[aba][2])}</span> ` + $('#gs-sub').innerHTML; }
   const tabelas = {
-    eq: () => { const L = P.filter(p => (!fq.v || p.v === fq.v) && (!fq.c || (p.cid || '(sem cidade)') === fq.c)); return { t:'Equipe', cab:['Colaborador', 'Matrícula', 'Função', 'Seção', 'Contrato', 'Cidade', 'Admissão', 'Situação', 'Sanções 12 meses', 'Faltas no ano'], lin:L.map(p => [p.n, p.m, p.f, p.s, p.v, p.cid || '', brD(p.adm), p.sit, s12(p).length, p.faAno || 0]), mats:L.map(p => p.m), hl:L.map(p => s12(p).length >= 3) }; },
+    eq: () => { const L = P.filter(p => (!fq.v || p.v === fq.v) && (!fq.c || (p.cid || '(sem cidade)') === fq.c)); const sal = OP.has('sal') && L.some(p => p.sal); return { t:'Equipe', cab:['Colaborador', 'Matrícula', 'Função', 'Seção', 'Contrato', 'Cidade', 'Admissão', 'Situação', 'Sanções 12 meses', 'Faltas no ano'].concat(sal ? ['Salário'] : []), lin:L.map(p => [p.n, p.m, p.f, p.s, p.v, p.cid || '', brD(p.adm), p.sit, s12(p).length, p.faAno || 0].concat(sal ? [p.sal && !LIDER(p.f) ? R$(p.sal) : ''] : [])), mats:L.map(p => p.m), hl:L.map(p => s12(p).length >= 3) }; },
     mov: () => { const de = desde(), Ad = MADM.filter(x => x.d >= de), Sa = MSAI.filter(x => x.d >= de); const L = [...Ad.map(x => ['Admissão', x]), ...Sa.map(x => ['Saída', x])].sort((a, b) => b[1].d.localeCompare(a[1].d));
       return { t:`Admissões e saídas · ${PERS.find(x => x[0] === per)[1].toLowerCase()}`, cab:['Colaborador', 'Movimento', 'Data', 'Função', 'Seção', 'Tipo / contrato', 'Motivo da saída', 'Dias de casa'], lin:L.map(([t, x]) => [x.n, t, brD(x.d), x.f, x.s, t === 'Saída' ? x.tipo || '—' : x.v + (x.saiu ? ' · saiu em ' + brD(x.saiu) : ''), t === 'Saída' ? x.mot.join(', ') || '—' : '', t === 'Saída' && x.casa != null ? x.casa : '']), hl:L.map(([t, x]) => t === 'Saída' && x.casa != null && x.casa <= 90), pess:L.map(([t, x]) => ({ n:x.n, m:x.m, f:x.f })) }; },
     pv: () => ({ t:'Quadro x previsto' + (pvPos && pvPos.posicao ? ` (previsão de ${brD(pvPos.posicao)})` : ''), cab:['Seção', 'Grupo', 'Previsto', 'Atual', 'Em experiência', 'Falta contratar', 'Acima do previsto'], lin:PVI.slice().sort((a, b) => (b.p - b.t) - (a.p - a.t)).map(x => [x.n, x.g, x.p, x.t, x.x, Math.max(0, x.p - x.t) || '—', Math.max(0, x.t - x.p) || '—']), hl:PVI.slice().sort((a, b) => (b.p - b.t) - (a.p - a.t)).map(x => x.p > x.t) }),
@@ -271,7 +288,8 @@ async function tela(abaIni){
     return `<div class="fc-tw"><table class="gt-t"><thead><tr>${cab.map(x => `<th>${esc(x)}</th>`).join('')}${T.acao ? `<th>${esc(T.acaoT || '')}</th>` : ''}</tr></thead><tbody>${idx.map(i => `<tr class="${T.hl && T.hl[i] ? 'gt-hl' : ''}">${T.lin[i].map((v, j) => tira[j] ? '' : (j === pc && temP ? `<td class="gt-pc" data-l="${esc(T.cab[j])}">${pcel(i)}</td>` : `<td data-l="${esc(T.cab[j])}">${cel(v, T.cab[j])}</td>`)).join('')}${T.acao ? `<td class="gs-ac" data-l="${esc(T.acaoT || '')}">${T.acao[i] || ''}</td>` : ''}</tr>`).join('')}</tbody></table></div>`;
   }
   const desenhar = () => {
-    if (aba === 'resumo') { c.innerHTML = `<section class="gs-res-g">${ABAS.map(([k, t, n]) => `<button class="gs-rc" data-ir="#/eq/${k}" style="--c:${{ perfil:'#16807a', eq:'#2f6fa8', exp:'var(--amber)', fer:'#8e3b6a', freq:'var(--coral)', disc:'#a1341f', nov:'var(--cane)', cr:'#b5731a', mov:'#2f8a8a', pv:'#5a4fb0', alo:'#7a6a2a', env:'#24427c' }[k]}"><span class="gs-rf">${esc(PAINEL_G[k][0])}</span><b>${esc(PAINEL_G[k][1])}</b><strong>${n}</strong><small>${{ eq:'pessoas', exp:'vencendo em 15 dias', fer:'vencidas ou vencendo', freq:'com falta em 30 dias', disc:'com sanção em 12 meses', nov:'até 120 dias de casa', cr:'com crachá de treinamento', mov:'saídas em 90 dias', pv:'posições a contratar', alo:'alojados', perfil:'sem parecer da gestão', env:'devolvidos pelo RH' }[k]}</small><em>Abrir ›</em></button>`).join('')}</section>
+    if (aba === 'resumo') { const tp = document.querySelector('.ini-topo'); if (tp && window.CRV_CAPA_GP) { const ac = tp.querySelector('.dk-acoes'); const nv = document.createElement('div'); tp.replaceWith(nv); nv.outerHTML = window.CRV_CAPA_GP(esc(A.map(a => a.nome).join(' · ')) + (ASSIST() ? ' · assistente de ' + esc(tcG(ASSIST().nome)) : ''), OP.has('central') ? 'Abrir a Central de Rotinas do departamento' : '', '#/central'); const cp = document.querySelector('.ini-capa'); if (ac && cp) { ac.style.cssText = 'display:flex;justify-content:flex-end;gap:8px;margin:12px 0'; cp.after(ac); } document.querySelectorAll('.ini-capa [data-ir]').forEach(b => b.onclick = () => location.hash = b.dataset.ir); }
+      c.innerHTML = `<section class="gs-res-g">${ABAS.map(([k, t, n]) => `<button class="gs-rc" data-ir="#/eq/${k}" style="--c:${{ perfil:'#16807a', eq:'#2f6fa8', exp:'var(--amber)', fer:'#8e3b6a', freq:'var(--coral)', disc:'#a1341f', nov:'var(--cane)', cr:'#b5731a', mov:'#2f8a8a', pv:'#5a4fb0', alo:'#7a6a2a', env:'#24427c' }[k]}"><span class="gs-rf">${esc(PAINEL_G[k][0])}</span><b>${esc(PAINEL_G[k][1])}</b><strong>${n}</strong><small>${{ eq:'pessoas', exp:'vencendo em 15 dias', fer:'vencidas ou vencendo', freq:'com falta em 30 dias', disc:'com sanção em 12 meses', nov:'até 120 dias de casa', cr:'com crachá de treinamento', mov:'saídas em 90 dias', pv:'posições a contratar', alo:'alojados', perfil:'sem parecer da gestão', env:'devolvidos pelo RH' }[k]}</small><em>Abrir ›</em></button>`).join('')}</section>
       <p class="nr-fonte">Escolha um painel aqui ou no menu ao lado. Quadro de ${esc(brD(ref.quadro))}. Dúvidas ou correções: fale com a Gestão de Pessoas.</p>`;
       c.querySelectorAll('[data-ir]').forEach(b => b.onclick = () => location.hash = b.dataset.ir); return; }
     const T = tabelas[aba](), nq = normal(q); const idx = T.lin.map((l, i) => i).filter(i => !nq || normal(T.lin[i].join(' ') + ' ' + ((T.mats && T.mats[i]) || (T.pess && T.pess[i] && T.pess[i].m) || '')).includes(nq));
@@ -281,7 +299,7 @@ async function tela(abaIni){
       <section class="fc-sec cartao gt-sec"><header><h3>${esc(T.t)}</h3><span class="gt-cnt">${idx.length} ${idx.length === 1 ? 'registro' : 'registros'}</span></header>${idx.length ? tabelaG(T, idx) : '<p class="fc-vz">Nada aqui.</p>'}</section>
       <p class="nr-fonte">Clique no nome para abrir a ficha do colaborador. Quadro de ${esc(brD(ref.quadro))}${ref.abs ? ' · faltas e atestados até ' + esc(brD(ref.abs)) : ''}${ref.exp ? ' · experiência de ' + esc(brD(ref.exp)) : ''}${ref.fer ? ' · férias de ' + esc(brD(ref.fer)) : ''}. Dúvidas ou correções: fale com a Gestão de Pessoas.</p>`;
     c.querySelectorAll('[data-a]').forEach(b => b.onclick = () => { aba = b.dataset.a; desenhar(); });
-    c.querySelectorAll('[data-f]').forEach(b => b.onclick = () => ficha(P.find(p => p.m === b.dataset.f)));
+    c.querySelectorAll('[data-f]').forEach(b => b.onclick = () => OP.has('ficha') ? (location.hash = '#/ficha/' + b.dataset.f) : ficha(P.find(p => p.m === b.dataset.f)));
     c.querySelectorAll('[data-fq]').forEach(b => b.onclick = () => { const [k, v] = b.dataset.fq.split('|'); fq[k] = fq[k] === v ? '' : v; desenhar(); });
     c.querySelectorAll('[data-per]').forEach(b => b.onclick = () => { per = +b.dataset.per; desenhar(); });
     const lf = $('#gs-lf'); if (lf) lf.onclick = () => { fq.v = ''; fq.c = ''; desenhar(); };
@@ -333,7 +351,7 @@ async function tela(abaIni){
         sec('Trajetória na empresa', ['Data', 'Mudança', 'De', 'Para'], (p.tr || []).map(x => [brD(x[0]), x[1] === 'd' ? 'Departamento' : 'Função', x[2], x[3]]));
         rodapePDF(doc); baixar(doc.output('blob'), 'Ficha ' + p.n + '.pdf'); }; } });
   }
-  const enviar = async (tipo, p, dados, assin) => {
+  const enviar = async (tipo, p, dados, assin) => { if (SIM()) throw new Error('Modo "Ver como gestor": nada é enviado.');
     const row = { id:(crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2)), chave:chaveDe(p.m), tipo, mat:p.m, colaborador:p.n, dados, assinatura:assin, status:'enviado', autor:E.perfil.user_id, autor_nome:E.perfil.nome, criado_em:new Date().toISOString() };
     const { error } = await sb.from('gestor_envios').insert(row); if (error) throw error; try { window.CRV_LOG_ACESSO && window.CRV_LOG_ACESSO('enviou', TIPO_ENV[tipo] || tipo, p.n + ' (' + p.m + ')'); } catch(_){} await lerEnv(); return row; };
   const lerAss = (m, pref) => { const nm = m.querySelector('#' + pref + '-nm').value.trim(), ok = m.querySelector('#' + pref + '-dec').checked;
@@ -582,5 +600,41 @@ async function telaEnvios(){
     c.querySelectorAll('[data-id]').forEach(b => b.onclick = () => verEnvio(L.find(e => e.id === b.dataset.id), true, async () => { L = await lerEnviosRH() || []; des(); })); };
   des();
 }
-return { tela, gerar, opcoes, ultimaGeracao, nomeChave, tipoChave, chaveOk, telaEnvios, pendenciasEnvios };
+/* ---------- telas do RH reaproveitadas pelo gestor: Perfil do Colaborador e Central de Rotinas do departamento ---------- */
+async function departamentos(){ try { const { A } = await lerArea(); return A.map(a => a.nome); } catch(_){ return []; } }
+/* lista de pessoas no mesmo formato do Quadro (para a busca da ficha) */
+async function pessoas(){ const { A, P } = await lerArea(); const mapa = {};
+  P.forEach(p => { mapa[p.m] = { nome:p.n, funcao:p.f, setor:p.s, area:p.area || '', situacao:p.sit || 'Ativo', vinculo:p.v || '', admissao:p.adm || '', gerencia:p.ger || '', deslig:'' }; });
+  return { mapa, referencia:(A[0] && A[0].ref && A[0].ref.quadro) || '' }; }
+async function fichaDados(mat){ const { A, P } = await lerArea(); const p = P.find(x => x.m === String(mat)); if (!p) return null; const OP = OPC(), h = hoje(), ref = (A[0] && A[0].ref) || {};
+  const c = { nome:p.n, funcao:p.f, setor:p.s, area:p.area || p.chave || '', situacao:p.sit || 'Ativo', vinculo:p.v || '', admissao:p.adm || '', gerencia:p.ger || '', deslig:'' };
+  const sec = [];
+  if (OP.has('sal') && p.sal && !LIDER(p.f)) sec.push({ k:'sal', t:'Remuneração', resumo:[['Salário', R$(p.sal)], ['Função', p.f]] });
+  if (p.tr && p.tr.length) sec.push({ k:'traj', t:'Trajetória na empresa', cab:['Data', 'Mudança', 'De', 'Para'], linhas:p.tr.map(x => [brD(x[0]), x[1] === 'd' ? 'Departamento' : 'Função', x[2], x[3]]) });
+  if (p.exp) sec.push({ k:'exp', t:'Período de experiência', cab:['Etapa', 'Data', 'Avaliação da área'], linhas:[['1º vencimento', brD(p.exp.v1), p.exp.dec1 || 'pendente'], ['Vencimento final', brD(p.exp.v2), p.exp.dec2 || 'pendente']] });
+  sec.push({ k:'freq', t:'Frequência' + (ref.abs ? ' (até ' + brD(ref.abs) + ')' : ''), resumo:[['Faltas em 30 dias', p.fa30 || 0], ['Faltas em 90 dias', p.fa90 || 0], ['Faltas no ano', p.faAno || 0], ['Dias de atestado em 90 dias', p.at90 || 0], ['Dias de atestado no ano', p.atAno || 0]] });
+  if (p.oh && p.oh.y) sec.push({ k:'oh', t:'Histórico de ausências (por ano)', cab:['Ano', 'Dias de atestado', 'Faltas', 'Faltas justificadas', 'Dias de suspensão'], linhas:p.oh.y.map(x => [x[0], x[5] || 0, x[1], x[2], x[3]]) });
+  sec.push({ k:'sanc', t:'Medidas disciplinares', cab:['Data', 'Tipo', 'Motivo'], linhas:(p.san || []).map(x => [brD(x.d), x.t, x.mot]) });
+  try { if (window.CRV_GDOCS_PESSOA) { const D = await window.CRV_GDOCS_PESSOA(mat); if (D.length) sec.push({ k:'gdocs', t:'Documentos disciplinares liberados à área', cab:['Liberado em', 'Documento', 'Situação', 'Aplicado em'], linhas:D.map(d => [brD(String(d.criado_em).slice(0, 10)), d.titulo || '', d.st, brD(d.aplicado_em)]) }); } } catch(_){}
+  if ((p.rd || []).length) sec.push({ k:'rd', t:'Registros de dano (RD)', cab:['RD', 'Data', 'Desfecho', 'Tratativa'], linhas:p.rd.map(x => [x.n, brD(x.d), x.des, x.tr]) });
+  if ((p.cr || []).length) sec.push({ k:'cr', t:'Crachá de treinamento', cab:['Função em treinamento', 'Início', 'Vencimento', 'Resultado'], linhas:p.cr.map(x => [x.func, brD(x.ini), brD(x.fim), x.res || '—']) });
+  if (p.pf) sec.push({ k:'pf', t:'Perfil profissional (12 meses)', resumo:[['Atestados', p.pf.atest], ['Faltas', p.pf.falta], ['Advertências', p.pf.adv], ['Suspensões', p.pf.susp], ['Parecer da gestão', p.pf.par ? (p.pf.par.acoes || []).join(', ') || 'preenchido' : 'pendente']] });
+  return { c, sec }; }
+/* o que a área precisa responder: experiência, férias, perfil e envios devolvidos */
+async function pendenciasArea(){ const OP = OPC(); const { P, ENV } = await lerArea(); const h = hoje(), out = [];
+  const ultEnv = (tipo, mat, ref) => ENV.find(e => e.tipo === tipo && e.mat === mat && e.status !== 'cancelado' && (!ref || (e.dados || {}).ref === ref));
+  if (OP.has('exp')) { const L = P.filter(p => p.exp && !p.exp.enc).map(p => { const et = etapaExp(p.exp, h); return et && et.venc && et.venc <= addD(h, 15) ? { p, et } : null; }).filter(Boolean)
+      .filter(x => { const e = ultEnv('experiencia', x.p.m, x.et.k + '|' + x.et.venc); return !e || e.status === 'devolvido'; }).sort((a, b) => a.et.venc.localeCompare(b.et.venc));
+    const atr = L.filter(x => h > prazoEnc(x.et.venc));
+    if (L.length) out.push({ id:'g-exp', sev:atr.length ? 'crit' : 'warn', t:'Contratos de experiência para a área responder', painel:'', rota:'#/eq/exp', pnome:'Período de experiência', d:'Avalie e envie ao RH. O encerramento precisa chegar até 5 dias antes do vencimento.' + (atr.length ? ' ' + atr.length + ' já passou do prazo.' : ''),
+      itens:L.map(x => ({ nome:x.p.n, mat:x.p.m, det:x.et.t + ' vence em ' + brD(x.et.venc) + ' · enviar até ' + brD(prazoEnc(x.et.venc)) + (h > prazoEnc(x.et.venc) ? ' · ATRASADO' : '') })) }); }
+  if (OP.has('fer')) { const L = P.flatMap(p => (p.fer || []).filter(f => /Vencido|Vence/.test(f.st || '') && !f.prog).map(f => ({ p, f }))).filter(x => { const e = ultEnv('ferias', x.p.m, x.f.de); return !e || e.status === 'devolvido'; }).sort((a, b) => String(a.f.lim).localeCompare(String(b.f.lim)));
+    if (L.length) out.push({ id:'g-fer', sev:L.some(x => /Vencido/.test(x.f.st)) ? 'crit' : 'warn', t:'Férias para programar', painel:'', rota:'#/eq/fer', pnome:'Férias', d:'Programe nas datas liberadas pelo RH e envie até o dia 15 do mês anterior.',
+      itens:L.map(x => ({ nome:x.p.n, mat:x.p.m, det:x.f.st + ' · data limite ' + brD(x.f.lim) + ' · saldo ' + x.f.saldo + 'd' })) }); }
+  if (OP.has('perfil')) { const L = P.filter(p => p.pf && !p.pf.par && !ultEnv('perfil', p.m));
+    if (L.length) out.push({ id:'g-pf', sev:'info', t:'Perfil profissional sem parecer da gestão', painel:'', rota:'#/eq/perfil', pnome:'Perfil profissional', d:'Registre o parecer e o plano de ação de cada um.', itens:L.map(p => ({ nome:p.n, mat:p.m, det:p.pf.susp + ' suspensão(ões) · ' + p.pf.adv + ' advertência(s) · ' + p.pf.falta + ' falta(s)' })) }); }
+  if (OP.has('env')) { const dev = ENV.filter(e => e.status === 'devolvido' && !ENV.some(o => o.tipo === e.tipo && o.mat === e.mat && o.criado_em > e.criado_em && o.status !== 'cancelado'));
+    if (dev.length) out.push({ id:'g-dev', sev:'warn', t:'Envios devolvidos pelo RH para corrigir', painel:'', rota:'#/eq/env', pnome:'Meus envios ao RH', d:'O RH devolveu com o motivo: ajuste e envie de novo.', itens:dev.map(e => ({ nome:e.colaborador || e.mat, mat:e.mat, det:(TIPO_ENV[e.tipo] || e.tipo) + ' · ' + (e.rh_obs || '') })) }); }
+  return out; }
+return { tela, gerar, opcoes, ultimaGeracao, nomeChave, tipoChave, chaveOk, telaEnvios, pendenciasEnvios, departamentos, pessoas, fichaDados, pendenciasArea };
 };
