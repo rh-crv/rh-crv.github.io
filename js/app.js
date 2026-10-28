@@ -1414,7 +1414,7 @@ function cabecalhoPDF(doc, titulo, sub){
 function rodapePDF(doc){
   const n = doc.getNumberOfPages(), w = doc.internal.pageSize.getWidth(), h = doc.internal.pageSize.getHeight();
   for (let i=1;i<=n;i++){ doc.setPage(i); doc.setFontSize(8); doc.setTextColor(93,106,133);
-    doc.text(`Documento interno · uso restrito do RH · por ${E.perfil.nome}`, 24, h-16); doc.text(`${i}/${n}`, w-40, h-16); }
+    doc.text('Documento interno · uso restrito do RH', 24, h-16); doc.text(`${i}/${n}`, w-40, h-16); }
 }
 
 /* ---------- enviar planilha ---------- */
