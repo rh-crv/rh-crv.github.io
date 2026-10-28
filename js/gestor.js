@@ -230,6 +230,41 @@ async function gerarPaineis(G){
   }
   return n;
 }
+/* ---------- gestor lança dentro do painel do RH (férias, experiência, sanção, parecer) ----------
+   O painel grava como sempre; a ponte chama esta função. Cada painel diz em area-filtros.js (D.envios[coleção]) como
+   transformar o lançamento num envio do mesmo formato dos envios antigos: { tipo, mat, dados, resumo:[[rótulo, valor]] }.
+   O envio vai assinado para o RH (Envios dos Gestores); quando o RH aceita, entra no painel. */
+async function enviarPainel(id, caminho, dados){
+  const D = window.CRV_AREA && window.CRV_AREA.def(id); const ps = String(caminho).split('/'), docId = ps.pop(), col = ps.join('/');
+  const conv = D && D.envios && D.envios[col]; if (!conv) return false;
+  if (SIM()) throw new Error('Modo "Ver como gestor": nada é enviado.');
+  const c = conv(docId, dados || {}); if (!c) return false;
+  const { A, P } = await lerArea(); const p = P.find(x => x.m === fMat(c.mat));
+  if (!p) throw new Error('Este colaborador não está na sua equipe no Quadro atual. Fale com a Gestão de Pessoas.');
+  const chave = (A.find(a => a.P.some(x => x.m === p.m)) || A[0] || {}).chave;
+  const dd = Object.assign({ funcao:p.f, secao:p.s, viaPainel:id }, c.dados);
+  return new Promise((ok, falha) => { let feito = false;
+    abrirModal({ titulo:(TIPO_ENV[c.tipo] || 'Envio ao RH') + ' · ' + tcG(p.n), largo:true,
+      corpo:`<div class="gs-fid" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div><small>Matrícula</small><b>${esc(p.m)}</b></div><div><small>Função</small><b>${esc(p.f || '')}</b></div><div><small>Seção</small><b>${esc(p.s || '')}</b></div></div>
+        <div class="fc-tw"><table class="fc-t"><tbody>${(c.resumo || []).map(([k, v]) => `<tr><td>${esc(k)}</td><td><b>${esc(v == null ? '' : v)}</b></td></tr>`).join('')}</tbody></table></div>
+        <p class="nr-nota" style="padding:6px 0">Vai para a Gestão de Pessoas conferir. Só entra no painel depois que o RH aceitar; a resposta aparece em Respostas do RH.</p>
+        ${blocoAssinatura('gpv', E.perfil.nome)}<div id="gpv-msg"></div>`,
+      pe:`<button class="btn borda" id="gpv-c">Cancelar</button><button class="btn prim" id="gpv-ok">Assinar e enviar ao RH</button>`,
+      aoAbrir: m => { const fim = () => { if (!feito) { feito = true; falha(Object.assign(new Error('Envio cancelado.'), { code:'cancelado' })); } };
+        m.querySelector('#gpv-c').onclick = () => { fecharModal(); fim(); };
+        const obs = new MutationObserver(() => { if (!document.body.contains(m)) { obs.disconnect(); fim(); } }); obs.observe(document.body, { childList:true, subtree:true });
+        m.querySelector('#gpv-ok').onclick = async () => { const bt = m.querySelector('#gpv-ok'), msg = t => m.querySelector('#gpv-msg').innerHTML = `<div class="erro">${esc(t)}</div>`;
+          const nm = m.querySelector('#gpv-nm').value.trim(); if (!m.querySelector('#gpv-dec').checked) return msg('Marque a declaração de autorização.');
+          if (!assinaturaOk(nm, E.perfil.nome)) return msg('A assinatura precisa ser o seu nome completo, como no seu acesso: ' + E.perfil.nome + '.');
+          const as = ASSIST(), assin = as ? { nome:nm, em:new Date().toISOString(), usuario:E.perfil.usuario || '', assistente:true, gestorResp:tcG(as.nome), gestorRespId:as.id, declaracao:'Preenchido por ' + nm + ', assistente, com autorização do gestor responsável ' + tcG(as.nome) + '. Declaro que as informações estão corretas e autorizo a Gestão de Pessoas a dar continuidade.' }
+            : { nome:nm, em:new Date().toISOString(), usuario:E.perfil.usuario || '', declaracao:'Declaro que as informações estão corretas e autorizo a Gestão de Pessoas a dar continuidade.' };
+          bt.disabled = true; bt.textContent = 'Enviando…';
+          const row = { id:(crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2)), chave, tipo:c.tipo, mat:p.m, colaborador:p.n, dados:dd, assinatura:assin, status:'enviado', autor:E.perfil.user_id, autor_nome:E.perfil.nome, criado_em:new Date().toISOString() };
+          const { error } = await sb.from('gestor_envios').insert(row);
+          if (error) { bt.disabled = false; bt.textContent = 'Assinar e enviar ao RH'; return msg(traduzErro(error)); }
+          try { window.CRV_LOG_ACESSO && window.CRV_LOG_ACESSO('enviou', TIPO_ENV[c.tipo] || c.tipo, p.n + ' (' + p.m + ')'); } catch(_){}
+          feito = true; obs.disconnect(); fecharModal(); toast('Enviado ao RH. Aguardando a conferência da Gestão de Pessoas.'); ok(true); }; } }); });
+}
 async function ultimaGeracao(){ try { const { data } = await sb.from('area_dados').select('dados').eq('chave', '__meta').maybeSingle(); return data && data.dados; } catch(_){ return null; } }
 
 /* tela do gestor: resumo (#/) ou um painel da equipe (#/eq/<painel>) */
@@ -361,8 +396,10 @@ async function tela(abaIni){
   }
   const desenhar = () => {
     if (aba === 'resumo') { const tp = document.querySelector('.ini-topo'); if (tp && window.CRV_CAPA_GP) { const ac = tp.querySelector('.dk-acoes'); const nv = document.createElement('div'); tp.replaceWith(nv); nv.outerHTML = window.CRV_CAPA_GP(esc(A.map(a => a.nome).join(' · ')) + (ASSIST() ? ' · assistente de ' + esc(tcG(ASSIST().nome)) : ''), OP.has('central') ? 'Abrir a Central de Rotinas do departamento' : '', '#/central'); const cp = document.querySelector('.ini-capa'); if (ac && cp) { ac.style.cssText = 'display:flex;justify-content:flex-end;gap:8px;margin:12px 0'; cp.after(ac); } document.querySelectorAll('.ini-capa [data-ir]').forEach(b => b.onclick = () => location.hash = b.dataset.ir); }
-      c.innerHTML = `<section class="gs-res-g">${ABAS.map(([k, t, n]) => `<button class="gs-rc" data-ir="${esc(SUBST[k] || '#/eq/' + k)}" style="--c:${{ perfil:'#16807a', eq:'#2f6fa8', exp:'var(--amber)', fer:'#8e3b6a', freq:'var(--coral)', disc:'#a1341f', nov:'var(--cane)', cr:'#b5731a', mov:'#2f8a8a', pv:'#5a4fb0', alo:'#7a6a2a', env:'#24427c' }[k]}"><span class="gs-rf">${esc(PAINEL_G[k][0])}</span><b>${esc(PAINEL_G[k][1])}</b><strong>${n}</strong><small>${{ eq:'pessoas', exp:'vencendo em 15 dias', fer:'vencidas ou vencendo', freq:'com falta em 30 dias', disc:'com sanção em 12 meses', nov:'até 120 dias de casa', cr:'com crachá de treinamento', mov:'saídas em 90 dias', pv:'posições a contratar', alo:'alojados', perfil:'sem parecer da gestão', env:'devolvidos pelo RH' }[k]}</small><em>Abrir ›</em></button>`).join('')}</section>
-      <p class="nr-fonte">Escolha um painel aqui ou no menu ao lado. Quadro de ${esc(brD(ref.quadro))}. Dúvidas ou correções: fale com a Gestão de Pessoas.</p>`;
+      const MG = (window.CRV_GMENU ? window.CRV_GMENU() : []), COR = window.CRV_CAPA || {};
+      c.innerHTML = MG.length ? `<section class="gs-res-g">${MG.flatMap(([f, L]) => L.map(([ir, n]) => `<button class="gs-rc" data-ir="${esc(ir)}" style="--c:${esc((COR[f] || [])[1] || '#2f6fa8')}"><span class="gs-rf">${esc(f)}</span><b>${esc(n)}</b><em>Abrir ›</em></button>`)).join('')}</section>`
+        : '<div class="cartao vazio"><h3>Nenhum painel liberado ainda</h3><p>A Gestão de Pessoas libera os painéis do seu setor no seu acesso.</p></div>';
+      c.insertAdjacentHTML('beforeend', `      <p class="nr-fonte">Escolha um painel aqui ou no menu ao lado. Cada painel mostra só o seu setor, com todo o histórico. Dúvidas ou correções: fale com a Gestão de Pessoas.</p>`);
       c.querySelectorAll('[data-ir]').forEach(b => b.onclick = () => location.hash = b.dataset.ir); return; }
     const T = tabelas[aba](), nq = normal(q); const idx = T.lin.map((l, i) => i).filter(i => !nq || normal(T.lin[i].join(' ') + ' ' + ((T.mats && T.mats[i]) || (T.pess && T.pess[i] && T.pess[i].m) || '')).includes(nq));
     c.innerHTML = `<section class="dk-kpis gs-k" hidden>${ABAS.map(([k, t, n]) => `<button class="dk-k ${aba === k ? 'on' : ''}" data-a="${k}" style="--c:${{ perfil:'#16807a', eq:'#2f6fa8', exp:'var(--amber)', fer:'#8e3b6a', freq:'var(--coral)', disc:'#a1341f', nov:'var(--cane)', cr:'#b5731a', mov:'#2f8a8a', pv:'#5a4fb0', alo:'#7a6a2a', env:'#24427c' }[k]}"><span>${t}</span><b>${n}</b><small>${{ eq:'pessoas', exp:'vencendo em 15 dias', fer:'vencidas ou vencendo', freq:'com falta em 30 dias', disc:'com sanção em 12 meses', nov:'até 120 dias de casa', cr:'com crachá de treinamento', mov:'saídas em 90 dias', pv:'posições a contratar', alo:'alojados', perfil:'sem parecer da gestão', env:'devolvidos pelo RH' }[k]}</small></button>`).join('')}</section>
@@ -710,5 +747,5 @@ async function pendenciasArea(){ const OP = OPC(); const { P, ENV } = await lerA
   if (OP.has('env')) { const dev = ENV.filter(e => e.status === 'devolvido' && !ENV.some(o => o.tipo === e.tipo && o.mat === e.mat && o.criado_em > e.criado_em && o.status !== 'cancelado'));
     if (dev.length) out.push({ id:'g-dev', sev:'warn', t:'Envios devolvidos pelo RH para corrigir', painel:'', rota:'#/eq/env', pnome:'Meus envios ao RH', d:'O RH devolveu com o motivo: ajuste e envie de novo.', itens:dev.map(e => ({ nome:e.colaborador || e.mat, mat:e.mat, det:(TIPO_ENV[e.tipo] || e.tipo) + ' · ' + (e.rh_obs || '') })) }); }
   return out; }
-return { tela, gerar, opcoes, ultimaGeracao, nomeChave, tipoChave, chaveOk, telaEnvios, pendenciasEnvios, departamentos, pessoas, fichaDados, pendenciasArea };
+return { tela, gerar, enviarPainel, opcoes, ultimaGeracao, nomeChave, tipoChave, chaveOk, telaEnvios, pendenciasEnvios, departamentos, pessoas, fichaDados, pendenciasArea };
 };

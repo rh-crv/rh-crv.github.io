@@ -634,7 +634,7 @@ setupFilters();render();
 
 <!-- ===== Documentos disciplinares (advertência, suspensão, orientação) ===== -->
 <style>
-.ds-btn{margin-left:auto;background:#e9a23b;color:#2b1d00;border:0;border-radius:8px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap}
+.ds-btn,.ds-gbtn{margin-left:auto;background:#e9a23b;color:#2b1d00;border:0;border-radius:8px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap}
 .ds-fundo{position:fixed;inset:0;background:rgba(10,20,40,.55);z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding:22px 12px;overflow:auto}
 .ds-modal{background:#fff;color:#14213d;border-radius:12px;width:100%;max-width:940px;box-shadow:0 20px 60px rgba(0,0,0,.35);font-size:13px}
 .ds-cab{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid #e0e5ef}
@@ -662,8 +662,11 @@ setupFilters();render();
 @media (max-width:700px){.ds-corpo>*{grid-column:1/-1!important}}
 </style>
 <script>
+/* gestor/assistente (CRV_GESTOR_AREA): a base do painel já vem recortada pela área dele; o formulário vira "Solicitar sanção ao RH" */
+const SANC_BASE=()=>{try{return DB}catch(_){return null}};
 (function(){
 'use strict';
+const GA=window.CRV_GESTOR_AREA===true;
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const br=s=>s?String(s).slice(0,10).split('-').reverse().join('/'):'';
 const hoje=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
@@ -701,6 +704,7 @@ const quem=()=>(window.parent&&window.parent.CRV_QUEM)||'';
 async function quadro(m){try{const f=window.parent&&window.parent.CRV_QUADRO;if(typeof f==='function'){const q=await f();return q&&q.mapa&&q.mapa[m]}}catch(_){}return null}
 
 function abrir(pre){
+  if(GA)return abrirGestor(pre);
   const e=pre||{};let tipo=e.tipo||'adv';let TOP=(e.topicos||[{t:'',x:''}]).map(x=>Object.assign({},x));
   const w=document.createElement('div');w.className='ds-fundo';
   w.innerHTML=`<div class="ds-modal" role="dialog" aria-modal="true"><div class="ds-cab"><h3>Documento disciplinar<small>A matrícula puxa os dados do Quadro. Para destacar em negrito no PDF, escreva entre **asteriscos** (ex.: **11/10/2026, às 13h50**).</small></h3><button class="ds-mini" id="dX">Fechar</button></div>
@@ -803,6 +807,95 @@ function abrir(pre){
   if(!e.mat)setTimeout(()=>g('dM').focus(),60);
 }
 
+/* ---------- gestor: o mesmo formulário, sem PDF e sem documento ----------
+   Grava em 'solicitacoes' (a ponte do app não grava: abre a assinatura e cria o envio 'sancao' ao RH, no formato do
+   antigo "Pedido de sanção"). O RH aceita em Envios dos Gestores; o pedido cai em "Pedidos dos gestores", onde o RH emite. */
+const SANC_T={ori:'Orientação disciplinar',adv:'Advertência escrita',sus:'Suspensão disciplinar'};
+const SANC_D={ori:'Conversa formal registrada, sem penalidade',adv:'Registro formal da falta',sus:'Afastamento sem salário, de 1 a 30 dias'};
+const fmat=m=>String(m==null?'':m).replace(/\D/g,'').replace(/^0+(?=\d)/,'');
+const nrm=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().trim();
+function pessoaG(m){const B=SANC_BASE();const p=B&&B.P&&B.P[fmat(m)];if(p)return {mat:fmat(m),nome:p[0]||'',func:p[1]||'',dep:p[2]||'',ger:p[3]||'',sit:p[4]||'',ct:p[5]||'',adm:p[6]||''};
+  /* quem ainda não tem sanção não está na base do painel: vem da equipe atual do gestor (Quadro), que o app injeta */
+  const q=(window.CRV_EQUIPE||{})[fmat(m)];return q?{mat:fmat(m),nome:q.nome||'',func:q.funcao||'',dep:q.setor||'',ger:q.gerencia||'',sit:q.situacao==='Desligado'?'DEMITIDO':String(q.situacao||'ATIVO').toUpperCase(),ct:String(q.vinculo||'').toUpperCase(),adm:q.admissao||''}:null}
+function hist12(m){const B=SANC_BASE();if(!B||!B.R)return [];const d12=addD(hoje(),-365);
+  return B.R.filter(r=>fmat(r[1])===m&&String(r[2]||'')>=d12).sort((a,b)=>String(b[2]).localeCompare(String(a[2]))).map(r=>br(r[2])+' '+(r[0]?'Suspensão'+(r[5]?' ('+r[5]+'d)':''):'Advertência'))}
+function abrirGestor(pre){
+  const e=pre||{};let tipo=e.tipo||'',enviado=false;
+  const B=SANC_BASE()||{},OPS=[...new Set(Object.keys(B.P||{}).concat(Object.keys(window.CRV_EQUIPE||{})))].map(pessoaG).filter(p=>p&&p.sit!=='DEMITIDO').sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+  const w=document.createElement('div');w.className='ds-fundo';
+  w.innerHTML=`<div class="ds-modal" role="dialog" aria-modal="true"><div class="ds-cab"><h3>Solicitar sanção ao RH<small>O RH analisa os fatos e o histórico, define a medida e emite o documento para o colaborador assinar. A solicitação sozinha não vale como sanção.</small></h3><button class="ds-mini" id="dX">Fechar</button></div>
+   <div class="ds-corpo">
+    <div class="ds-sec">Medida sugerida</div>
+    <div class="ds-tipos" id="dT">${['adv','sus','ori'].map(k=>`<button data-t="${k}" title="${esc(SANC_D[k])}">${SANC_T[k]}</button>`).join('')}</div>
+    <div class="ds-sec">Colaborador</div>
+    <div class="ds-c w2"><label>Matrícula *</label><input id="dM" inputmode="numeric" value="${esc(e.mat||'')}"></div>
+    <div class="ds-c w6"><label>Nome (digite para buscar)</label><input id="dN" list="dPL" autocomplete="off" value="${esc(e.nome||'')}"><datalist id="dPL">${OPS.map(p=>`<option value="${esc(p.nome)}">${esc(p.mat+' · '+p.func)}</option>`).join('')}</datalist></div>
+    <div class="ds-c w4"><label>Função</label><input id="dFun" readonly></div>
+    <div class="ds-c w6"><label>Departamento</label><input id="dDep" readonly></div>
+    <div class="ds-c w3"><label>Admissão</label><input id="dAdm" type="date" readonly></div>
+    <div class="ds-c w3"><label>Contrato</label><input id="dCt" readonly></div>
+    <div class="ds-info" id="dI">Digite a matrícula ou o nome. Só aparecem as pessoas ativas da sua área.</div>
+    <div class="ds-sec">Ocorrido</div>
+    <div class="ds-c w3"><label>Data do ocorrido *</label><input id="dData" type="date" max="${hoje()}" value="${esc(e.data||'')}"></div>
+    <div class="ds-c w2"><label>Horário aproximado</label><input id="dHora" type="time" value="${esc(e.hora||'')}"></div>
+    <div class="ds-c w5"><label>Local, frota ou frente</label><input id="dLocal" maxlength="120" value="${esc(e.local||'')}"></div>
+    <div class="ds-c w2" id="wDias"><label>Dias de suspensão *</label><input id="dDias" type="number" min="1" max="30" inputmode="numeric" value="${esc(e.dias||'')}"></div>
+    <div class="ds-info av" id="dAv" hidden></div>
+    <div class="ds-c w12"><label>Assunto (uma linha) *</label><input id="dAss" maxlength="140" value="${esc(e.assunto||'')}" placeholder="Ex.: Ausência sem justificativa no turno da noite"></div>
+    <div class="ds-c w12"><label>Descrição completa dos fatos *</label><textarea id="dDesc" maxlength="5000" style="min-height:120px" placeholder="Em ordem: o que aconteceu, quando e onde; o que o colaborador fez ou deixou de fazer; como você soube ou constatou; qual norma, procedimento ou orientação foi descumprida; consequências (risco, dano, prejuízo, atraso); o que o colaborador disse sobre o fato.">${esc(e.desc||'')}</textarea><small id="dCnt" style="color:#5d6a85"></small></div>
+    <div class="ds-c w8"><label>Testemunhas (nome e função)</label><input id="dTest" maxlength="300" placeholder="Opcional" value="${esc(e.test||'')}"></div>
+    <div class="ds-c w4"><label>Já tinha sido orientado sobre isso?</label><select id="dAnt"><option value="">Não informado</option><option>Sim, verbalmente</option><option>Sim, por escrito</option><option>Não</option></select></div>
+    <div class="ds-sec">Documentos emitidos pelo RH e solicitações</div>
+    <div class="ds-lista" id="dL"><p style="padding:8px;margin:0;color:#5d6a85">Carregando…</p></div>
+   </div>
+   <div class="ds-pe"><span class="esp" id="dMsg"></span><button class="ds-b sec" id="dC">Cancelar</button><button class="ds-b pri" id="dG">Solicitar sanção ao RH</button></div></div>`;
+  document.body.appendChild(w);
+  const g=id=>w.querySelector('#'+id),fe=()=>w.remove();g('dX').onclick=fe;g('dC').onclick=fe;w.addEventListener('mousedown',ev=>{if(ev.target===w)fe()});
+  if(e.ant)g('dAnt').value=e.ant;
+  const sync=()=>{w.querySelectorAll('#dT button').forEach(b=>b.classList.toggle('on',b.dataset.t===tipo));g('wDias').hidden=tipo!=='sus'};
+  w.querySelector('#dT').onclick=ev=>{const b=ev.target.closest('[data-t]');if(b&&!enviado){tipo=b.dataset.t;sync()}};
+  const avisos=()=>{const dt=g('dData').value,h=hoje();let t='';if(dt&&dt<=h){const n=Math.round((dObj(h)-dObj(dt))/864e5);if(n>7)t=`O fato foi há ${n} dias. Quanto mais tempo entre o fato e a medida, maior o risco de a sanção ser questionada (imediatidade). Envie o quanto antes.`}
+    g('dAv').hidden=!t;g('dAv').textContent=t};
+  g('dData').addEventListener('change',avisos);avisos();
+  g('dDesc').oninput=()=>{const n=g('dDesc').value.trim().length;g('dCnt').textContent=n<80?`${n} caracteres · descreva com mais detalhes (mínimo 80)`:`${n} caracteres`};g('dDesc').oninput();
+  /* solicitações e documentos da área (só leitura) */
+  let DOCS=[],SOL=[];
+  const listar=async()=>{const D=await db();const h=g('dL');if(!D){h.innerHTML='<p style="padding:8px;margin:0;color:#5d6a85">Registro indisponível nesta visualização.</p>';return}
+    try{const ler=async c=>{try{return (await D.collection(c).get()).docs.map(d=>Object.assign({_id:d.id},d.data()))}catch(_){return []}};
+      DOCS=(await ler('documentos')).filter(x=>!x.excluido);SOL=(await ler('solicitacoes'));
+      const L=SOL.map(x=>({d:x.data,doc:'Solicitação: '+(SANC_T[x.tipo]||x.tipo)+(x.tipo==='sus'&&x.dias?' de '+x.dias+' dia(s)':''),nome:x.nome,mat:x.mat,ass:x.assunto,st:x._aguardaRH?'<b style="color:#8a5a00">Aguardando o RH</b>':'Enviada',o:x.solicitadoEm||''}))
+        .concat(DOCS.map(x=>({d:x.data,doc:x.titulo||'',nome:x.nome,mat:x.mat,ass:x.assunto||x.oAss||'',st:'Emitido pelo RH',o:x.emitidoEm||''}))).sort((a,b)=>String(b.o||b.d).localeCompare(String(a.o||a.d)));
+      h.innerHTML=L.length?`<table><thead><tr><th>Data</th><th>Documento</th><th>Colaborador</th><th>Assunto</th><th>Situação</th></tr></thead><tbody>${L.map(x=>`<tr><td>${br(x.d)}</td><td>${esc(x.doc)}</td><td><b>${esc(tc(x.nome))}</b> · ${esc(x.mat)}</td><td>${esc(x.ass)}</td><td>${x.st}</td></tr>`).join('')}</tbody></table>`:'<p style="padding:8px;margin:0;color:#5d6a85">Nenhum documento emitido nem solicitação aguardando o RH.</p>';
+    }catch(_){h.innerHTML='<p style="padding:8px;margin:0;color:#8a2a1a">Não consegui ler o registro.</p>'}};
+  /* colaborador: só da base do painel (já recortada pela área), ativo */
+  let P=null;
+  const mostrar=p=>{P=p&&p.sit!=='DEMITIDO'?p:null;['dFun','dDep','dAdm','dCt'].forEach(k=>g(k).value='');
+    if(!p){g('dI').className='ds-info av';g('dI').textContent='Matrícula não encontrada entre as pessoas da sua área neste painel. Confira o número ou busque pelo nome.';return}
+    if(p.sit==='DEMITIDO'){g('dI').className='ds-info er';g('dI').textContent=tc(p.nome)+' está desligado(a): não cabe pedido de sanção.';return}
+    g('dN').value=p.nome;g('dFun').value=p.func;g('dDep').value=p.dep;g('dAdm').value=String(p.adm).slice(0,10);g('dCt').value=p.ct;
+    const H=hist12(p.mat),ped=SOL.filter(x=>fmat(x.mat)===p.mat&&x._aguardaRH),dc=DOCS.filter(x=>fmat(x.mat)===p.mat);
+    g('dI').className='ds-info ok';g('dI').innerHTML=`<b>${esc(tc(p.nome))}</b> · ${esc(p.func)} · ${esc(p.dep)}${p.ct==='EXPERIÊNCIA'?' · <b>em experiência</b>':''}<br>${H.length?`${H.length} sanç${H.length>1?'ões':'ão'} nos últimos 12 meses: ${esc(H.slice(0,4).join('; '))}`:'Nenhuma sanção nos últimos 12 meses.'}${dc.length?`<br>Documentos já emitidos no app: ${dc.map(x=>esc(x.titulo)+' em '+br(x.data)).join('; ')}.`:''}${ped.length?`<br><b style="color:#a3301c">Já existe ${ped.length>1?ped.length+' solicitações':'uma solicitação'} desta pessoa aguardando o RH.</b>`:''}`};
+  let tm=null;g('dM').addEventListener('input',()=>{clearTimeout(tm);tm=setTimeout(()=>{const m=fmat(g('dM').value);if(m)mostrar(pessoaG(m))},350)});
+  g('dN').addEventListener('change',()=>{const q=nrm(g('dN').value);const L=OPS.filter(p=>nrm(p.nome)===q);const L2=L.length?L:OPS.filter(p=>nrm(p.nome).includes(q));if(q&&L2.length===1){g('dM').value=L2[0].mat;mostrar(L2[0])}});
+  sync();listar().then(()=>{if(e.mat)mostrar(pessoaG(e.mat))});
+  g('dG').onclick=async()=>{const msg=g('dMsg'),erro=t=>{msg.style.color='#a3301c';msg.textContent=t};if(enviado){fe();return}
+    const dt=g('dData').value,dias=+g('dDias').value,ass=g('dAss').value.trim(),desc=g('dDesc').value.trim();
+    if(!P)return erro('Escolha o colaborador (matrícula ou nome).');if(!tipo)return erro('Escolha a medida sugerida.');
+    if(tipo==='sus'&&!(dias>=1&&dias<=30&&Number.isInteger(dias)))return erro('Informe os dias de suspensão (de 1 a 30).');
+    if(!dt)return erro('Informe a data do ocorrido.');if(dt>hoje())return erro('A data do ocorrido não pode ser no futuro.');
+    if(ass.length<5)return erro('Escreva o assunto em uma linha.');if(desc.length<80)return erro('Descreva os fatos com mais detalhes (mínimo 80 caracteres).');
+    const H=hist12(P.mat);
+    const d={tipo,mat:P.mat,nome:P.nome,func:P.func,dep:P.dep,ger:P.ger,adm:P.adm,data:dt,hora:g('dHora').value,local:g('dLocal').value.trim(),assunto:ass,desc,dias:tipo==='sus'?dias:null,
+      test:g('dTest').value.trim(),ant:g('dAnt').value,solicitadoEm:new Date().toISOString(),_g:{exp:P.ct==='EXPERIÊNCIA',s12:H.length,ult:H.slice(0,5)}};
+    const D=await db();if(!D)return erro('Registro indisponível nesta visualização.');
+    const bt=g('dG');bt.disabled=true;msg.style.color='#5d6a85';msg.textContent='Abrindo a assinatura…';
+    try{await D.collection('solicitacoes').doc('s'+P.mat+'_'+Date.now().toString(36)).set(d);
+      enviado=true;bt.disabled=false;bt.textContent='Fechar';g('dC').hidden=true;w.querySelectorAll('input,textarea,select').forEach(i=>i.disabled=true);
+      msg.style.color='#1d5c3a';msg.textContent='Solicitação enviada ao RH. Aguardando o RH: o documento só existe depois que o RH aceitar e emitir.';listar()}
+    catch(er){bt.disabled=false;if(er&&er.code==='cancelado'){msg.textContent='';return}erro('Não foi enviada: '+((er&&er.message)||er))}};
+  if(!e.mat)setTimeout(()=>g('dM').focus(),60);
+}
+
 /* texto da penalidade quando o documento não traz (ex.: lançado pelo painel de Fadiga ou campo apagado) */
 const penDe=d=>{const n=Math.max(1,parseInt(d.dias,10)||1),nn=String(n).padStart(2,'0')+' ('+(NUM[n]||n)+') '+(n===1?'DIA':'DIAS'),r=String(d.ret||'').trim();
   return d.tipo==='sus'?`Fica aplicada a penalidade de **SUSPENSÃO DISCIPLINAR DE ${nn}**`+(d.ini?(n===1||!d.fim?`, com início e término em **${br(d.ini)}**`:`, com início em **${br(d.ini)}** e término em **${br(d.fim)}**`):'')+`. O retorno deverá ocorrer ${/^\d{4}-\d{2}-\d{2}$/.test(r)?'em **'+br(r)+'**':r||'no primeiro dia de trabalho após o término da suspensão'}.`
@@ -865,11 +958,13 @@ async function pdf(d){
   if(DL)return DL.save({filename:nome,data:bytes});
   const u=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));const a=document.createElement('a');a.href=u;a.download=nome;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},4000);
 }
-function montarBotao(){const alvo=document.querySelector('header .hin')||document.querySelector('header');if(!alvo||document.querySelector('.ds-btn'))return;
+function montarBotao(){const alvo=document.querySelector('header .hin')||document.querySelector('header');if(!alvo||document.querySelector('.ds-btn,.ds-gbtn'))return;
+  /* gestor: outra classe (o app esconde .ds-btn no modo gestor) e outro rótulo; abre o mesmo formulário, que só solicita ao RH */
+  if(GA){const b=document.createElement('button');b.className='ds-gbtn';b.type='button';b.textContent='Solicitar sanção ao RH';b.onclick=()=>abrir();alvo.appendChild(b);return}
   const b=document.createElement('button');b.className='ds-btn';b.type='button';b.textContent='Emitir advertência / suspensão / orientação';b.onclick=()=>abrir();alvo.appendChild(b)}
 /* pedidos de sanção enviados pelos gestores e aceitos pelo RH */
 const TPN={ori:'Orientação',adv:'Advertência',sus:'Suspensão'};
-async function pedidos(){const D=await db();if(!D)return;let L=[];try{const s=await D.collection('pedidos').get();L=s.docs.map(d=>Object.assign({_id:d.id},d.data())).filter(x=>!x.emitido).sort((a,b)=>(a.aceitoEm||'')<(b.aceitoEm||'')?-1:1)}catch(_){return}
+async function pedidos(){if(GA)return;const D=await db();if(!D)return;let L=[];try{const s=await D.collection('pedidos').get();L=s.docs.map(d=>Object.assign({_id:d.id},d.data())).filter(x=>!x.emitido).sort((a,b)=>(a.aceitoEm||'')<(b.aceitoEm||'')?-1:1)}catch(_){return}
   let b=document.querySelector('.ds-ped');const alvo=document.querySelector('header .hin')||document.querySelector('header');
   if(!L.length){if(b)b.remove();return}
   if(!b&&alvo){b=document.createElement('button');b.className='ds-btn ds-ped';b.type='button';alvo.appendChild(b)}

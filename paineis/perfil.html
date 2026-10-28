@@ -396,16 +396,17 @@ async function makePDF(list,label){
     boxes([{l:'Matrícula',v:p.mat},{l:'Admissão',v:fmtD(p.admD)},{l:'Tempo de casa',v:tenure(p.admD)},{l:p.gerencia?'Gerência / área':'Grupo',v:p.gerencia?title(p.gerencia):p.grp}],36);
     label7('Registros funcionais',M,y); y+=8;
     boxes(NUMS.map(m=>({l:m[1],v:p[m[0]],big:1,hot:hot(m[0],p[m[0]]),s:'média do grupo: '+AVG(m[0]).toLocaleString('pt-BR',{maximumFractionDigits:1})})),56);
-    if(p.aviso){ const ls=d.wrap('Atenção: '+p.aviso,CW-20,8.5,true), h=ls.length*12+12; need(h+10); d.rect(M,y,CW,h,[255,243,214]); ls.forEach((ln,i)=>d.text(ln,M+10,y+15+i*12,{size:8.5,bold:true,color:PC.media})); y+=h+14; }
-    need(50); label7('Informações da Gestão de Pessoas (RH)',M,y); y+=8;
-    const y0=y; para(p.obsF||'-',10,INK,12); d.rect(M,y0+1,3,Math.max(10,y-y0-3),GOLD); y+=10;
-    if(p.tm.length){ need(40); label7('Pontos de atenção',M,y); y+=7; para(p.tm.join('  ·  '),9.5,BLUE); y+=10; }
+    if(p.aviso&&!GA){ const ls=d.wrap('Atenção: '+p.aviso,CW-20,8.5,true), h=ls.length*12+12; need(h+10); d.rect(M,y,CW,h,[255,243,214]); ls.forEach((ln,i)=>d.text(ln,M+10,y+15+i*12,{size:8.5,bold:true,color:PC.media})); y+=h+14; }
+    if(!GA){ need(50); label7('Informações da Gestão de Pessoas (RH)',M,y); y+=8;
+    const y0=y; para(p.obsF||'-',10,INK,12); d.rect(M,y0+1,3,Math.max(10,y-y0-3),GOLD); y+=10; }
+    if(p.tm.length&&!GA){ need(40); label7('Pontos de atenção',M,y); y+=7; para(p.tm.join('  ·  '),9.5,BLUE); y+=10; }
     need(190); label7('Parecer da gestão direta',M,y); y+=12;
     const pr=p.parecer||{acoes:[],txt:''}, half=Math.ceil(ACOES.length/2);
     ACOES.forEach((a,i)=>{ const x=M+(i<half?0:CW/2), yy=y+(i%half)*17; d.rect(x,yy,9,9,pr.acoes.includes(a)?BLUE:WHITE,pr.acoes.includes(a)?BLUE:MUT);
       if(pr.acoes.includes(a)){ d.line(x+2,yy+4.5,x+4,yy+7,WHITE,1.3); d.line(x+4,yy+7,x+7.3,yy+2,WHITE,1.3); }
       d.text(a,x+15,yy+8,{size:9.5,bold:pr.acoes.includes(a),color:a==='Desligamento'&&pr.acoes.includes(a)?PC.alta:INK}); });
     y+=half*17+12; label7('Observações, prazos e responsáveis',M,y); y+=8;
+    if(p._ag){ para('Parecer enviado ao RH, aguardando a conferência da Gestão de Pessoas.',8.5,MUT); y+=4; }
     if(pr.txt&&pr.txt.trim()) para(pr.txt,9.5); else for(let i=0;i<4;i++){ y+=20; d.line(M,y,M+CW,y,LINE,0.6); }
     if((pr.resp||pr.em)&&temParecer(p)){ y+=8; need(14); d.text(d.fit('Parecer preenchido'+(pr.resp?' por '+pr.resp:'')+(pr.em?' em '+fmtD(parseD(pr.em)):''),CW,8.5),M,y+8,{size:8.5,color:MUT}); y+=10; }
     y+=20; need(60); const sy=Math.max(y+34,d.H-96), sw=(CW-40)/3;
@@ -431,6 +432,7 @@ const $ = s=>document.querySelector(s), $$ = s=>[...document.querySelectorAll(s)
 const esc = s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtD = d=>d? d.toLocaleDateString('pt-BR') : '—';
 const REF = new Date();
+const GA=window.CRV_GESTOR_AREA===true; // gestor de área: só o parecer da gestão, enviado ao RH (o RH confere e aceita)
 let ALL=[], DATA=[], gGer='', gDep='', dl=null, db=null, col=null, canWrite=true, canAdmin=true, curId=null, editing=null, firstPaint=true, view='geral';
 
 function parseD(v){ if(!v) return null; if(v instanceof Date) return v; if(typeof v==='number') return new Date(Math.round((v-25569)*864e5)); const s=String(v); const m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})/); if(m) return new Date(+m[3],m[2]-1,+m[1]); const d=new Date(s.length===10?s+'T12:00:00':s); return isNaN(d)?null:d; }
@@ -450,7 +452,7 @@ const S=k=>DATA.reduce((a,p)=>a+(+p[k]||0),0);
 const AVG=k=>DATA.length?S(k)/DATA.length:0;
 const cur=()=>DATA.find(p=>p._id===curId)||null;
 let lastSig='';
-const sheetSig=()=>JSON.stringify([curId,canWrite,canAdmin,DATA.map(p=>[p._id,body(p)])]);
+const sheetSig=()=>JSON.stringify([curId,canWrite,canAdmin,DATA.map(p=>[p._id,body(p),!!p._ag])]);
 
 function toast(msg,bad){ const t=$('#toast'); t.textContent=msg; t.classList.toggle('bad',!!bad); t.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>t.hidden=true,3800); }
 function ask(titleTxt,body,yesLb){ return new Promise(res=>{ $('#mbT').textContent=titleTxt; $('#mbP').textContent=body; $('#mbYes').textContent=yesLb||'Confirmar'; $('#mb').hidden=false;
@@ -463,21 +465,22 @@ function write(id,fn){ const s=$('#saveState'); s.hidden=false; s.textContent='S
   const p=(queue[id]||Promise.resolve()).then(fn).then(()=>{ s.textContent='Salvo ✓'; },e=>{ s.textContent='Não salvo'; onWriteErr(e); });
   queue[id]=p; return p; }
 function onWriteErr(e){ const c=e&&e.code;
+  if(c==='cancelado'){ $('#saveState').hidden=true; return; }
   if(c==='invalid_argument'){ canWrite=false; applyWrite(); toast('Seu acesso a este painel é somente leitura. A alteração não foi salva.',true); }
   else if(c==='quota_exceeded') toast('O painel atingiu o limite de armazenamento. Exclua registros antigos e tente de novo.',true);
   else toast('Não foi possível salvar agora. Tente novamente em instantes.',true); }
 function applyWrite(){ if(!canWrite) canAdmin=false; $$('.w').forEach(e=>e.hidden=!canAdmin); }
 const cleanId = v=>String(v).trim().replace(/[^A-Za-z0-9_\-.~:@+]/g,'-').slice(0,100);
 function body(p){ return {mat:p.mat,nome:p.nome,funcao:p.funcao,depto:p.depto,gerencia:p.gerencia||'',adm:p.adm||'',atest:+p.atest||0,falta:+p.falta||0,fj:+p.fj||0,susp:+p.susp||0,adv:+p.adv||0,obs:p.obs||'',aviso:p.aviso||'',parecer:{acoes:(p.parecer&&p.parecer.acoes)||[],txt:(p.parecer&&p.parecer.txt)||'',resp:(p.parecer&&p.parecer.resp)||'',em:(p.parecer&&p.parecer.em)||''}}; }
-const temParecer=p=>!!(p.parecer&&(p.parecer.acoes.length||String(p.parecer.txt||'').trim()));
-const pedeDeslig=p=>!!(p.parecer&&p.parecer.acoes.includes('Desligamento'));
+const temParecer=p=>!p._ag&&!!(p.parecer&&(p.parecer.acoes.length||String(p.parecer.txt||'').trim()));
+const pedeDeslig=p=>!p._ag&&!!(p.parecer&&p.parecer.acoes.includes('Desligamento'));
 
 // ===== preparo e render =====
 const scopeLabel=()=>[gGer&&('Gerência/área: '+title(gGer)),gDep&&('Departamento: '+title(gDep))].filter(Boolean).join(' · ')||'Todas as áreas';
 function fillSel(sel,vals,curV,allLb){ sel.innerHTML=`<option value="">${allLb}</option>`+vals.map(v=>`<option value="${esc(v)}">${esc(title(v))}</option>`).join(''); sel.value=vals.includes(curV)?curV:''; return sel.value; }
 function prep(){
   ALL.forEach(p=>{ p.depto=String(p.depto||'').trim(); p.gerencia=String(p.gerencia||'').trim();
-    const pr=p.parecer||{}; p.parecer={acoes:(Array.isArray(pr.acoes)?pr.acoes:[]).map(a=>a==='Avaliar desligamento'?'Desligamento':a),txt:pr.txt||'',resp:pr.resp||'',em:pr.em||''}; });
+    p._ag=GA&&!!p._aguardaRH; const pr=p.parecer||{}; p.parecer={acoes:(Array.isArray(pr.acoes)?pr.acoes:[]).map(a=>a==='Avaliar desligamento'?'Desligamento':a),txt:pr.txt||'',resp:pr.resp||'',em:pr.em||''}; });
   const gers=[...new Set(ALL.map(p=>p.gerencia).filter(Boolean))].sort();
   gGer=fillSel($('#gGer'),gers,gGer,'Todas'); $('#gGerL').hidden=!gers.length;
   const deps=[...new Set(ALL.filter(p=>!gGer||p.gerencia===gGer).map(p=>p.depto).filter(Boolean))].sort();
@@ -514,9 +517,10 @@ function renderInsights(){
   if(lid.length) ins.push(['Liderança',`<strong>${lid.length} de ${DATA.length}</strong> avaliados estão em liderança/fiscalização e somam <strong>${lidAdv} de ${S('adv')}</strong> advertências.`+(lid.every(p=>p.admD&&monthsOf(p.admD)<12)?' Todos com menos de 1 ano de casa.':'')]);
   const tc={}; DATA.forEach(p=>p.tm.forEach(t=>tc[t]=(tc[t]||0)+1));
   const tt=Object.entries(tc).sort((a,b)=>b[1]-a[1]).slice(0,2).map(x=>x[0].toLowerCase());
-  if(tt.length) ins.push(['Temas recorrentes',`As informações do RH apontam principalmente <strong>${tt.join('</strong> e <strong>')}</strong> como pontos de desenvolvimento.`]);
+  if(tt.length&&!GA) ins.push(['Temas recorrentes',`As informações do RH apontam principalmente <strong>${tt.join('</strong> e <strong>')}</strong> como pontos de desenvolvimento.`]);
   const cp=DATA.filter(temParecer).length, ds=DATA.filter(pedeDeslig).length;
-  ins.push(['Parecer da gestão',`<strong>${cp} de ${DATA.length}</strong> com parecer preenchido`+(ds?` · <strong class="red">${ds} com desligamento solicitado</strong>.`:'.')]);
+  const ag=DATA.filter(p=>p._ag).length;
+  ins.push(['Parecer da gestão',`<strong>${cp} de ${DATA.length}</strong> com parecer preenchido`+(ag?` · <strong>${ag} aguardando o RH</strong>`:'')+(ds?` · <strong class="red">${ds} com desligamento solicitado</strong>.`:'.')]);
   $('#insights').innerHTML=ins.map(i=>`<div class="ins"><b>${i[0]}</b>${i[1]}</div>`).join('');
 }
 let chartView='abs';
@@ -534,8 +538,8 @@ function renderBars(){
   $$('.brow').forEach(b=>b.onclick=()=>goNominal(b.dataset.id));
 }
 function renderThemes(){
-  const c=THEMES.map(t=>({t:t.t,n:DATA.filter(p=>p.tm.includes(t.t)).length})).filter(x=>x.n).sort((a,b)=>b.n-a.n);
-  $('#themes').innerHTML=c.map(x=>`<div class="theme"><div class="t">${x.t}</div><div class="n">${x.n} de ${DATA.length}</div><div class="tr"><div class="fl" data-w="${x.n/DATA.length*100}"></div></div></div>`).join('')||'<p class="hint">Sem informações registradas.</p>';
+  const c=GA?[]:THEMES.map(t=>({t:t.t,n:DATA.filter(p=>p.tm.includes(t.t)).length})).filter(x=>x.n).sort((a,b)=>b.n-a.n);
+  $('#themes').innerHTML=c.map(x=>`<div class="theme"><div class="t">${x.t}</div><div class="n">${x.n} de ${DATA.length}</div><div class="tr"><div class="fl" data-w="${x.n/DATA.length*100}"></div></div></div>`).join('')||(GA?'':'<p class="hint">Sem informações registradas.</p>');
   grow('#themes .fl');
   const n=k=>DATA.filter(p=>p.prio===k).length;
   $('#prioRow').innerHTML=['alta','media','baixa'].map(k=>`<div class="prio-box b-${k}" data-p="${k}" title="Ver na base"><b>${n(k)}</b><span>${PRIO_LB[k]}</span></div>`).join('');
@@ -602,28 +606,43 @@ function renderSheet(){
      </div>
      <div><p class="h3">Registros funcionais</p><div class="big-mets">${NUMS.map(m=>{const v=p[m[0]], mx=Math.max(1,...DATA.map(x=>x[m[0]])); return `<div class="bm ${hot(m[0],v)?'hot':''}"><div class="l">${m[1]}</div><div class="v">${v}</div><div class="c">média do grupo: ${AVG(m[0]).toLocaleString('pt-BR',{maximumFractionDigits:1})}</div><div class="bar"><i style="background:${m[2]}" data-w="${v/mx*100}"></i></div></div>`}).join('')}</div></div>
      <div id="hApp"></div>
-     ${p.aviso?`<div class="warn">⚠ ${esc(p.aviso)}</div>`:''}
-     <div><p class="h3">Informações da Gestão de Pessoas (RH)</p><div class="fb">${esc(p.obsF)||'—'}</div></div>
-     ${p.tm.length?`<div><p class="h3">Pontos de atenção</p><div class="tags">${p.tm.map(t=>`<span class="tag">${t}</span>`).join('')}</div></div>`:''}
-     <div><p class="h3">Parecer da gestão direta</p>
+     ${p.aviso&&!GA?`<div class="warn">⚠ ${esc(p.aviso)}</div>`:''}
+     ${GA?'':`<div><p class="h3">Informações da Gestão de Pessoas (RH)</p><div class="fb">${esc(p.obsF)||'—'}</div></div>`}
+     ${p.tm.length&&!GA?`<div><p class="h3">Pontos de atenção</p><div class="tags">${p.tm.map(t=>`<span class="tag">${t}</span>`).join('')}</div></div>`:''}
+     <div><p class="h3">Parecer da gestão direta${p._ag?' <span class="badge b-media" style="margin-left:6px">Aguardando o RH</span>':''}</p>
        <div class="ga">${ACOES.map((a,k)=>`<label class="${a==='Desligamento'?'dsl':''}"><input type="checkbox" id="ga-${k}" data-a="${a}" ${ga.acoes.includes(a)?'checked':''} ${canWrite?'':'disabled'}> ${a}</label>`).join('')}</div>
        <div class="dslnote" id="dslNote" ${ga.acoes.includes('Desligamento')?'':'hidden'}>Desligamento solicitado pela gestão. Registre abaixo o motivo e o prazo para o RH dar andamento.</div>
        <label class="fld" style="margin-top:10px"><span>Observações da gestão (motivo, prazos, responsáveis)</span><textarea id="gaTxt" placeholder="Escreva aqui as observações da gestão…" ${canWrite?'':'readonly'}>${esc(ga.txt)}</textarea></label>
-       <label class="fld" style="margin-top:10px;max-width:420px"><span>Gestor(a) responsável pelo parecer</span><input id="gaResp" type="text" placeholder="Nome de quem preencheu" value="${esc(ga.resp||'')}" ${canWrite?'':'readonly'}></label>
-       <p class="hint" id="gaInfo" style="margin:8px 0 0">${window.PAINEL_OFFLINE?'Para registrar o parecer, gere o PDF da ficha, imprima, preencha, assine e entregue ao RH.':(ga.em?'Parecer atualizado em '+fmtD(parseD(ga.em))+'. ':'')+(canWrite?'O parecer é salvo automaticamente e fica visível para o RH.':'Seu acesso é somente para consulta.')}</p>
+       <label class="fld" style="margin-top:10px;max-width:420px"><span>Gestor(a) responsável pelo parecer</span><input id="gaResp" type="text" placeholder="Nome de quem preencheu" value="${esc(ga.resp||(GA&&canWrite?quemApp():''))}" ${canWrite?'':'readonly'}></label>${GA&&canWrite?'<div class="md-act" style="justify-content:flex-start;margin-top:12px"><button type="button" class="b2 pri" id="gaSend">'+(p._ag||temParecer(p)?'Enviar novo parecer ao RH':'Enviar parecer ao RH')+'</button></div>':''}
+       <p class="hint" id="gaInfo" style="margin:8px 0 0">${GA?(p._ag?'Parecer enviado ao RH. Aguardando a conferência da Gestão de Pessoas: só entra no levantamento depois que o RH aceitar.':(ga.em&&temParecer(p)?'Parecer registrado pelo RH em '+fmtD(parseD(ga.em))+'. ':'')+(canWrite?'Marque a ação, escreva o motivo, o prazo e o responsável e envie ao RH. O RH confere e lança no levantamento.':'Seu acesso é somente para consulta.')):window.PAINEL_OFFLINE?'Para registrar o parecer, gere o PDF da ficha, imprima, preencha, assine e entregue ao RH.':(ga.em?'Parecer atualizado em '+fmtD(parseD(ga.em))+'. ':'')+(canWrite?'O parecer é salvo automaticamente e fica visível para o RH.':'Seu acesso é somente para consulta.')}</p>
      </div>
    </div></div>`;
   grow('.bm .bar i'); fillHist(p);
   $('#prev').onclick=()=>step(-1); $('#next').onclick=()=>step(1);
   if(dl) $('#pdfOne').onclick=()=>makePDF([p],title(p.nome));
   if(canAdmin) $('#edBtn').onclick=()=>{ editing=p._id; renderSheet(); };
-  if(canWrite){
+  if(canWrite&&GA){
+    $$('.ga input').forEach(c=>c.onchange=()=>{ $('#dslNote').hidden=!$$('.ga input:checked').some(x=>x.dataset.a==='Desligamento'); });
+    $('#gaSend').onclick=()=>enviarParecer(p);
+  }
+  else if(canWrite){
     const save=()=>{ const par={acoes:$$('.ga input:checked').map(x=>x.dataset.a),txt:$('#gaTxt').value,resp:$('#gaResp').value.trim(),em:iso(new Date())}; p.parecer=par; lastSig=sheetSig();
       $('#dslNote').hidden=!par.acoes.includes('Desligamento'); $('#gaInfo').textContent='Parecer atualizado em '+fmtD(new Date())+'. O parecer é salvo automaticamente e fica visível para o RH.';
       write(p._id,()=>col.doc(p._id).update({parecer:par})); };
     $$('.ga input').forEach(c=>c.onchange=save);
     ['#gaTxt','#gaResp'].forEach(sel=>{ let t; const el=$(sel), ini=el.value; el.oninput=()=>{ clearTimeout(t); t=setTimeout(save,900); }; el.onblur=()=>{ clearTimeout(t); if(el.value!==ini && el.value!==(sel==='#gaTxt'?p.parecer.txt:p.parecer.resp)) save(); }; });
   }
+}
+function quemApp(){ try{ return String(window.parent.CRV_QUEM||'') }catch(_){ return '' } }
+// gestor: envia o parecer ao RH (a ponte abre a assinatura; se o gestor cancelar, só não salva)
+async function enviarParecer(p){
+  const par={acoes:$$('.ga input:checked').map(x=>x.dataset.a),txt:$('#gaTxt').value.trim(),resp:$('#gaResp').value.trim(),em:iso(new Date())};
+  if(!par.acoes.length) return toast('Marque pelo menos uma ação da gestão.',true);
+  if(par.txt.length<15) return toast('Escreva as observações, com prazo e responsável.',true);
+  const b=$('#gaSend'); b.disabled=true;
+  try{ await col.doc(p._id).update({parecer:par}); toast('Parecer enviado ao RH. Aguardando a conferência da Gestão de Pessoas.'); }
+  catch(e){ if(!(e&&e.code==='cancelado')) toast((e&&e.message)||'Não foi possível enviar agora. Tente novamente.',true); }
+  finally{ const x=$('#gaSend'); if(x) x.disabled=false; }
 }
 function saveForm(isNew,old){
   const g=id=>$('#ed-'+id).value.trim();
@@ -651,9 +670,9 @@ let tSort={k:'prio',d:1};
 function renderTable(){
   const q=$('#q').value.trim().toUpperCase(), fp=$('#fPrio').value, fg=$('#fGrp').value, fpar=$('#fPar').value;
   const cols=[['mat','Mat.','n'],['nome','Nome',''],['funcao','Função',''],['par','Parecer da gestão',''],['depto','Departamento',''],['adm','Admissão',''],['atest','Atest.','n'],['falta','Faltas','n'],['fj','F. just.','n'],['susp','Susp.','n'],['adv','Advert.','n'],['prio','Prioridade','']];
-  const L=DATA.filter(p=>(!q||String(p.nome).toUpperCase().includes(q)||String(p.mat).includes(q))&&(!fp||p.prio===fp)&&(!fg||p.grp===fg)&&(!fpar||(fpar==='deslig'?pedeDeslig(p):fpar==='com'?temParecer(p):!temParecer(p)))).sort((a,b)=>{const k=tSort.k; let x=a[k],y=b[k]; if(k==='par'){x=(pedeDeslig(a)?0:temParecer(a)?1:2);y=(pedeDeslig(b)?0:temParecer(b)?1:2)} if(k==='prio'){x=PRIO_ORD[x]*1e4-score(a);y=PRIO_ORD[y]*1e4-score(b)} if(k==='adm'||k==='tempo'){x=a.admD||0;y=b.admD||0; if(k==='tempo'){[x,y]=[y,x]}} return (x>y?1:x<y?-1:0)*tSort.d;});
+  const L=DATA.filter(p=>(!q||String(p.nome).toUpperCase().includes(q)||String(p.mat).includes(q))&&(!fp||p.prio===fp)&&(!fg||p.grp===fg)&&(!fpar||(fpar==='ag'?p._ag:fpar==='deslig'?pedeDeslig(p):fpar==='com'?temParecer(p):!temParecer(p)&&!p._ag))).sort((a,b)=>{const k=tSort.k; let x=a[k],y=b[k]; if(k==='par'){x=(pedeDeslig(a)?0:temParecer(a)?1:a._ag?2:3);y=(pedeDeslig(b)?0:temParecer(b)?1:b._ag?2:3)} if(k==='prio'){x=PRIO_ORD[x]*1e4-score(a);y=PRIO_ORD[y]*1e4-score(b)} if(k==='adm'||k==='tempo'){x=a.admD||0;y=b.admD||0; if(k==='tempo'){[x,y]=[y,x]}} return (x>y?1:x<y?-1:0)*tSort.d;});
   $('#tbl').innerHTML=`<thead><tr>${cols.map(c=>`<th class="${c[2]}" data-k="${c[0]}">${c[1]}${tSort.k===c[0]?(tSort.d>0?' ▲':' ▼'):''}</th>`).join('')}</tr></thead>
-  <tbody>${L.map(p=>`<tr data-id="${esc(p._id)}"><td class="n">${esc(p.mat)}</td><td><b>${esc(title(p.nome))}</b></td><td>${esc(title(p.funcao))}</td><td><div class="pchips">${p.parecer.acoes.map(a=>`<span class="pchip ${a==='Desligamento'?'dsl':''}">${a}</span>`).join('')||(temParecer(p)?'<span class="pchip">Só observação</span>':'<span style="color:var(--muted)">—</span>')}</div></td><td>${esc(title(p.depto))}</td><td>${fmtD(p.admD)}</td><td class="n">${p.atest}</td><td class="n ${p.falta>10?'hot':''}">${p.falta}</td><td class="n">${p.fj}</td><td class="n ${p.susp?'hot':''}">${p.susp}</td><td class="n ${p.adv>=3?'hot':''}">${p.adv}</td><td><span class="badge b-${p.prio}">${{alta:'Alta',media:'Média',baixa:'Acompanhar'}[p.prio]}</span></td></tr>`).join('')||`<tr><td colspan="12" style="text-align:center;color:var(--muted);padding:30px">Nenhum colaborador com esses filtros.</td></tr>`}
+  <tbody>${L.map(p=>`<tr data-id="${esc(p._id)}"><td class="n">${esc(p.mat)}</td><td><b>${esc(title(p.nome))}</b></td><td>${esc(title(p.funcao))}</td><td><div class="pchips">${p._ag?'<span class="pchip" style="background:var(--media-bg);color:var(--media);border-color:transparent">Aguardando o RH</span>':''}${p.parecer.acoes.map(a=>`<span class="pchip ${a==='Desligamento'?'dsl':''}">${a}</span>`).join('')||(temParecer(p)||p._ag?'<span class="pchip">Só observação</span>':'<span style="color:var(--muted)">—</span>')}</div></td><td>${esc(title(p.depto))}</td><td>${fmtD(p.admD)}</td><td class="n">${p.atest}</td><td class="n ${p.falta>10?'hot':''}">${p.falta}</td><td class="n">${p.fj}</td><td class="n ${p.susp?'hot':''}">${p.susp}</td><td class="n ${p.adv>=3?'hot':''}">${p.adv}</td><td><span class="badge b-${p.prio}">${{alta:'Alta',media:'Média',baixa:'Acompanhar'}[p.prio]}</span></td></tr>`).join('')||`<tr><td colspan="12" style="text-align:center;color:var(--muted);padding:30px">Nenhum colaborador com esses filtros.</td></tr>`}
   ${L.length?`<tr style="cursor:default"><td></td><td><b>Total (${L.length})</b></td><td></td><td></td><td></td><td></td>${['atest','falta','fj','susp','adv'].map(k=>`<td class="n"><b>${L.reduce((a,p)=>a+p[k],0)}</b></td>`).join('')}<td></td></tr>`:''}</tbody>`;
   $$('#tbl th').forEach(th=>th.onclick=()=>{const k=th.dataset.k; tSort={k,d:tSort.k===k?-tSort.d:1}; renderTable();});
   $$('#tbl tbody tr[data-id]').forEach(tr=>tr.onclick=()=>goNominal(tr.dataset.id));
@@ -787,6 +806,8 @@ applyWrite();
   if(!d){ canWrite=false; applyWrite(); return setState('Os dados deste painel ficam guardados na sua conta.<br>Abra o painel conectado ao Claude para visualizar e editar o levantamento.'); }
   db=d; col=db.collection('colaboradores');
   try{ if(u){ if(await u.can('data.write')===false) canWrite=false; canAdmin=canWrite && await u.canEdit(); } }catch(_){}
+  if(GA){ canAdmin=false; const t=$('#themes').closest('.card'); t.querySelector('h2').textContent='Prioridade'; t.querySelector('.hint').textContent='Critério de organização do levantamento (nº de colaboradores). Clique para ver na base.';
+    if(canWrite) $('#fPar').insertAdjacentHTML('beforeend','<option value="ag">Aguardando o RH</option>'); }
   applyWrite();
   col.onSnapshot(snap=>{ ALL=snap.docs.map(x=>({...x.data(),_id:x.id})); renderAll(); },
     ()=>setState('Não foi possível carregar os dados agora. Recarregue a página para tentar de novo.'));

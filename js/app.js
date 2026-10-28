@@ -72,10 +72,19 @@ const GESTOR_MENU = [
    Fica em perfis.paineis_ver como 'g:<opção>' (com 'g:_' = configurado); sem configuração, vale tudo liberado. */
 /* painéis do RH abertos para o gestor com a base recortada para a área dele (js/area-paineis.js): opção 'p:<painel>' */
 const GESTOR_PN = () => (window.CRV_AREA ? window.CRV_AREA.LISTA : []);
-const GESTOR_OPC = [['central', 'Central de Rotinas do departamento'], ['ficha', 'Perfil do Colaborador'], ['sal', 'Salário na ficha e nas listas (nunca de encarregado, supervisor, coordenador ou gerente)']].concat(GESTOR_MENU.flatMap(([f, it]) => it.map(([k, n]) => [k, f + ' · ' + n])))
-  .concat(GESTOR_PN().map(d => ['p:' + d.id, 'Painel do RH · ' + d.nome + ' (só a área do gestor, sem dados sensíveis)']));
-// sem configuração: tudo do menu da equipe, sem os painéis do RH (esses só quando a administradora marcar)
-const gOpc = u => { const L = (u && Array.isArray(u.paineis_ver)) ? u.paineis_ver : []; if (!L.includes('g:_')) return new Set(GESTOR_OPC.map(o => o[0]).filter(k => !/^p:/.test(k))); return new Set(L.filter(x => /^g:/.test(x) && x !== 'g:_').map(x => x.slice(2))); };
+/* gestor (out/2026): o menu dele é o mesmo do RH, só com os painéis liberados e só o setor dele; ele faz a parte dele
+   dentro do painel (programar férias, avaliar experiência, solicitar sanção, parecer). Ficam também a Central, o Perfil do
+   Colaborador, as Medidas disciplinares, as Respostas do RH e os envios dele. */
+const GESTOR_EXTRA = [['mdisc', 'Ocorrências e Relações Trabalhistas', 'Medidas disciplinares'], ['resp', 'Atendimento e Ouvidoria', 'Respostas do RH'], ['env', 'Atendimento e Ouvidoria', 'Meus envios ao RH']];
+const GESTOR_OPC = [['central', 'Central de Rotinas do departamento'], ['ficha', 'Perfil do Colaborador'], ['sal', 'Salário na ficha (nunca de encarregado, supervisor, coordenador ou gerente)']]
+  .concat(GESTOR_PN().map(d => ['p:' + d.id, d.frente + ' · ' + d.nome])).concat(GESTOR_EXTRA.map(([k, f, n]) => [k, f + ' · ' + n]));
+/* telas antigas da equipe → painel do RH que faz o mesmo papel (quem já tinha a tela marcada ganha o painel) */
+const GESTOR_ANTIGO = { eq:['quadro'], pv:['quadro'], mov:['admissoes', 'rescisoes'], exp:['experiencia'], fer:['ferias'], freq:['absenteismo'], disc:['sancoes', 'rd'], perfil:['perfil'], cr:['crachas'] };
+const gOpc = u => { const L = (u && Array.isArray(u.paineis_ver)) ? u.paineis_ver : [];
+  if (!L.includes('g:_')) return new Set(GESTOR_OPC.map(o => o[0]));   // sem configuração: tudo
+  const o = new Set(L.filter(x => /^g:/.test(x) && x !== 'g:_').map(x => x.slice(2)));
+  if (![...o].some(k => /^p:/.test(k))) [...o].forEach(k => (GESTOR_ANTIGO[k] || []).forEach(id => o.add('p:' + id)));
+  return o; };
 window.CRV_GOPC = () => gOpc(E.perfil);
 const nomePapel = p => ({admin:'Administrador principal', rh:'Equipe RH', editor:'Editor', leitor:'Leitor', gestor:'Gestor de área'}[p] || p);
 /* assistente (secretária) de gestor: acesso de gestor ligado a um gestor responsável; vê a mesma equipe e lança em nome dele.
@@ -458,25 +467,15 @@ function moldura(conteudo){
   $('#m-instalar').onclick = () => { fechar(); instalarApp(); };
 }
 
-/* menu do gestor igual ao do RH: os painéis do RH liberados, com os mesmos nomes e frentes, só com a área dele.
-   A tela simplificada da equipe que faz o mesmo papel some do menu (sem duplicar); o que o gestor envia ao RH
-   (avaliar experiência, programar férias, pedir sanção, parecer) vira opção dentro do painel, como as ações do RH. */
-const GSUBST = { absenteismo:{ esc:['freq'] }, sancoes:{ esc:['disc'], ac:[['disc', 'Pedir sanção ao RH']] }, experiencia:{ esc:['exp'], ac:[['exp', 'Avaliar e enviar ao RH']] },
-  ferias:{ esc:['fer'], ac:[['fer', 'Programar férias e enviar ao RH']] }, admissoes:{ esc:['mov'] }, rescisoes:{ esc:['mov'] }, quadro:{ esc:['eq', 'pv'] }, crachas:{ esc:['cr'] },
-  perfil:{ esc:['perfil'], ac:[['perfil', 'Parecer da gestão']] } };
-/* telas da equipe que viraram painel do RH: 'freq' → '#/gp/absenteismo' (usado no menu e nos atalhos da Visão Geral) */
-const gSubst = u => { const op = gOpc(u), o = {}; Object.entries(GSUBST).forEach(([id, r]) => { if (op.has('p:' + id) && window.CRV_AREA && window.CRV_AREA.def(id)) r.esc.forEach(k => { if (!o[k]) o[k] = '#/gp/' + id; }); }); return o; };
-window.CRV_GSUBST = () => gSubst(E.perfil);
-function menuGestor(u){ const op = gOpc(u), sub = gSubst(u), G = {};
-  // ações que o gestor envia ao RH, ficam dentro do painel correspondente
-  const acDe = id => ((GSUBST[id] || {}).ac || []).filter(([k]) => op.has(k)).map(([k, n]) => ['#/eq/' + k, n]);
+/* menu do gestor igual ao do RH: os painéis liberados, com os mesmos nomes, frentes e ordem; mais as telas que só o gestor tem */
+function menuGestor(u){ const op = gOpc(u), G = {};
   GESTOR_PN().forEach(d => { if (!op.has('p:' + d.id)) return; const pr = (E.paineis || []).find(x => x.id === d.id); const f = (pr && pr.frente) || d.frente;
-    (G[f] = G[f] || []).push(['#/gp/' + d.id, (pr && pr.nome) || d.nome, acDe(d.id), (pr && +pr.ordem) || 999]); });
-  // ação cujo painel não foi liberado: aparece como item próprio
-  GESTOR_MENU.forEach(([f, it]) => it.forEach(([k, n]) => { if (!op.has(k) || sub[k]) return; (G[f] = G[f] || []).push(['#/eq/' + k, n, [], 1000]); }));
+    (G[f] = G[f] || []).push(['#/gp/' + d.id, (pr && pr.nome) || d.nome, [], (pr && +pr.ordem) || 999]); });
+  GESTOR_EXTRA.forEach(([k, f, n]) => { if (op.has(k)) (G[f] = G[f] || []).push(['#/eq/' + k, n, [], 1000]); });
   Object.values(G).forEach(L => L.sort((a, b) => a[3] - b[3]));
-  const ord = ORDEM_FRENTES;
-  return Object.keys(G).sort((a, b) => ((ord.indexOf(a) + 1) || 99) - ((ord.indexOf(b) + 1) || 99)).map(f => [f, G[f]]); }
+  return Object.keys(G).sort((a, b) => ((ORDEM_FRENTES.indexOf(a) + 1) || 99) - ((ORDEM_FRENTES.indexOf(b) + 1) || 99)).map(f => [f, G[f]]); }
+window.CRV_GMENU = () => menuGestor(E.perfil);
+window.CRV_GSUBST = () => ({});
 
 /* gestor: esconde os botões de lançamento do RH dentro dos painéis (cadastrar, emitir documento, tratativa, autorização) */
 const GESTOR_SO_LER = '<style id="crv-gestor-ler">.nv-btn,.nv-ed,.nv-del,.aut-btn,.ds-btn,.ds-ped,#ftBtn,.ft-trat{display:none!important}</style>';
@@ -508,17 +507,25 @@ async function telaPainelGestor(id){
   try {
     window.CRV_QUEM = E.perfil.nome; window.CRV_RECARREGAR = null;
     const regs = pk.regs || {}, pid = usaQ ? 'quadro' : id;
-    window.__CRV_PAINEL = window.CRV_PONTE.criar({ sb, painel:pid, perfil:() => E.perfil, quem:() => E.perfil.nome, podeEditar:() => false, ehAdmin:() => false, memoria:regs });
+    // o que o gestor já enviou e ainda aguarda o RH aparece no painel como "Aguardando o RH" (mesmo depois de recarregar)
+    if (!usaQ && D.pendente) { try { const { data:EV } = await sb.from('gestor_envios').select('id,tipo,mat,colaborador,dados,status,criado_em').eq('status', 'enviado');
+      (EV || []).forEach(e => { let r = null; try { r = D.pendente(e); } catch(_){} if (!r || !r.colecao || !r.doc_id) return; const L = regs[r.colecao] || (regs[r.colecao] = []);
+        const i = L.findIndex(x => x.doc_id === r.doc_id), v = { doc_id:r.doc_id, dados:Object.assign({}, i >= 0 ? L[i].dados : {}, r.dados, { _aguardaRH:true }) }; if (i >= 0) L[i] = v; else L.push(v); }); } catch(_){} }   // mescla: não perde o que o RH já registrou
+    const lanca = !usaQ && !!(D.envios && Object.keys(D.envios).length);
+    window.__CRV_PAINEL = window.CRV_PONTE.criar({ sb, painel:pid, perfil:() => E.perfil, quem:() => E.perfil.nome, podeEditar:() => lanca, ehAdmin:() => false, memoria:regs,
+      enviar: lanca ? (caminho, dados) => GESTOR().enviarPainel(id, caminho, dados) : null });
     let novos = [];
     if (!usaQ && PAINEIS_COM_NOVOS.includes(id)) { const cols = [].concat(COLECAO_NOVOS[id] || 'novos');
       cols.forEach(c => (regs[c] || []).forEach(x => { if (x.dados && !x.dados.excluida) novos.push(cols.length > 1 ? { _id:x.doc_id, colecao:c, dados:x.dados } : { _id:x.doc_id, dados:x.dados }); })); }
     // o que o app injeta no painel do RH (ex.: histórico do sistema no Absenteísmo), já recortado para a área
+    // equipe atual do gestor (pelo Quadro), para os formulários de solicitação acharem quem ainda não aparece na base do painel
+    if (!usaQ && D.envios) { try { const eq = await GESTOR().pessoas(); pk.inj = Object.assign({}, pk.inj, { CRV_EQUIPE:eq && eq.mapa || {} }); } catch(_){} }
     const inj = Object.entries(pk.inj || {}).filter(([k]) => /^CRV_[A-Z_]+$/.test(k)).map(([k, v]) => '<script>window.' + k + '=' + JSON.stringify(v).replace(/</g, '\\u003c') + ';<\/script>').join('');
     const tplG = tpl.replace(/<head[^>]*>/i, h0 => h0 + '<script>window.CRV_GESTOR_AREA=true;' + (usaQ ? 'window.CRV_MODO_QUADRO=' + JSON.stringify(vq) + ';' : '') + '<\/script>' + inj + GESTOR_SO_LER);
     const html = montarModelo(tplG, pk.conteudo, pk.referencia, usaQ ? Object.assign({}, p, { id:'quadro' }) : p, novos);
     const url = URL.createObjectURL(new Blob([html], { type:'text/html' }));
     area.className = 'modelo-area';
-    area.innerHTML = `<div style="font-size:12.5px;color:var(--mut);margin:0 0 6px">Somente a sua área · todo o histórico da base de ${esc(fmtRef(pk.referencia))}. Os lançamentos deste painel são feitos pela Gestão de Pessoas.</div><iframe id="modelo-frame" title="${esc(p.nome)}" src="${url}"></iframe>`; ajustarFrame(); [300, 1500, 4000].forEach(t => setTimeout(ajustarFrame, t));
+    area.innerHTML = `<div style="font-size:12.5px;color:var(--mut);margin:0 0 6px">Somente a sua área · todo o histórico da base de ${esc(fmtRef(pk.referencia))}. ${D.envios ? 'O que você lançar aqui vai para a Gestão de Pessoas conferir antes de entrar no painel.' : 'Os lançamentos deste painel são feitos pela Gestão de Pessoas.'}</div><iframe id="modelo-frame" title="${esc(p.nome)}" src="${url}"></iframe>`; ajustarFrame(); [300, 1500, 4000].forEach(t => setTimeout(ajustarFrame, t));
     E.painelAberto = id;
     $('#modelo-frame').onload = () => setTimeout(() => URL.revokeObjectURL(url), 2000);
   } catch(e) { area.innerHTML = `<div class="erro">Não consegui montar o painel: ${esc(e.message)}</div>`; }
@@ -531,6 +538,7 @@ function rota(){
   logAcesso('abriu', ondeDe(h));
   if (E.perfil.papel === 'gestor') { if (h === '#/conta') return telaConta();
     if (h === '#/central') return gOpc(E.perfil).has('central') ? telaCentralGestor() : (location.hash = '#/');
+    { const k = h.startsWith('#/eq/') ? h.slice(5) : ''; if (k && GESTOR_ANTIGO[k]) { const id = GESTOR_ANTIGO[k].find(x => gOpc(E.perfil).has('p:' + x)); location.hash = id ? '#/gp/' + id : '#/'; return; } }
     if (h.startsWith('#/gp/')) { const id = decodeURIComponent(h.slice(5).split('/')[0]); return gOpc(E.perfil).has('p:' + id) ? telaPainelGestor(id) : (location.hash = '#/'); }
     if (h === '#/ficha' || h.startsWith('#/ficha/')) return gOpc(E.perfil).has('ficha') ? telaFicha(h.split('/')[2] || '') : (location.hash = '#/');
     if (window.CRV_RESP_INIT && h === '#/eq/resp' && gOpc(E.perfil).has('resp')) return RESP().telaResp(false).catch(e => console.error(e));

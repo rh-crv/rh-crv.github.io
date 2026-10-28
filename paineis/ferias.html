@@ -604,7 +604,7 @@ DATA.forEach(p => {
   p.search = (p.n+' '+p.c).toLowerCase();
 });
 let PROG = {}; // do painel (db)
-function progOf(x){ return PROG[x.key] || x.plan || null; }
+function progOf(x){ const g=PROG[x.key]; return (g&&!g._aguardaRH?g:null) || x.plan || null; } /* _aguardaRH: enviado pelo gestor, ainda não vale */
 function partsOf(g){
   if(!g||g.retorno) return [];
   const arr = Array.isArray(g.parcelas)&&g.parcelas.length ? g.parcelas : [{inicio:g.inicio,dias:g.dias}];
@@ -671,6 +671,7 @@ function people(){
 // ---------- componentes ----------
 const pill = st => st ? `<span class="pill p-${st}">${STATUS[st].l}</span>` : '<span class="small">Sem saldo</span>';
 function progChip(x, compact){
+  const pe = pendOf(x); if (pe) return `<span class="prog ret" title="Enviado ao RH. Entra no painel quando o RH aceitar.">Aguardando o RH · ${partsOf(pe).map(q=>`${fmtSh(q.inicio)} (${q.dias}d)`).join(' + ')}${+pe.abono?` + ${pe.abono} abono`:''}</span>`;
   const s = progState(x);
   if (!s) return (x.saldo>0 && x.st!=='aq') ? `<span class="prog none">Sem data</span>` : '';
   if (s.k==='ret') return `<span class="prog ret" title="${esc(s.g.obs||'')}">Aguarda retorno</span>`;
@@ -687,14 +688,21 @@ function progChip(x, compact){
 const ACID=new Set(window.CRV_GESTOR_AREA===true?[]:["42470", "22809", "27741", "11083", "27534", "6282", "14680", "40617", "19677", "38751"]); /* motivo do afastamento fica só com o RH */
 const tags = p => (GEST.has(String(p.c))?'<span class="gst">'+GEST.get(String(p.c))+'</span>':'')+(ACID.has(String(p.c))?'<span class="gst acd" title="Motivo do afastamento informado pela Gestão de Pessoas em 07/10/2026">Acidente de trabalho</span>':'')+(p.af?'<span class="tag af">Afastado</span>':'')+(p.dobra?'<span class="tag db" title="Dois ou mais períodos adquiridos sem gozo">2+ períodos</span>':'')+(p.nNulo?`<span class="tag" title="Períodos anulados: direito perdido">${p.nNulo} nulo${p.nNulo>1?'s':''}</span>`:'');
 let CAN_EDIT = false;
+/* gestor/assistente (CRV_GESTOR_AREA): programa no mesmo formulário, só nas datas liberadas e dentro do prazo; vai ao RH como solicitação */
+const GESTOR = window.CRV_GESTOR_AREA===true;
+const minIniG = () => iso(new Date(HOJE.getFullYear(), HOJE.getMonth()+(HOJE.getDate()<=15?1:2), 1));   // envio até o dia 15 do mês anterior ao início
+const prazoG = ini => { const [a,m]=ini.split('-').map(Number); return iso(new Date(a, m-2, 15)); };
+function pendOf(x){ const g=PROG[x.key]; return g&&g._aguardaRH ? g : null; }
+const podeProg = x => CAN_EDIT && !x.nulo && x.saldo>0 && (!GESTOR || (x.ate<=iso(HOJE) && !progOf(x) && !pendOf(x)));
+const rotProg = (x,has) => GESTOR ? 'Programar e enviar ao RH' : (has?'Editar':'Programar');
 function timeline(p){
   return `<div class="tl">`+p.per.slice().reverse().map(x=>{
-    const canP = CAN_EDIT && !x.nulo && x.saldo>0;
+    const canP = podeProg(x);
     const s = progState(x);
     return `<div class="tl-row ${x.nulo?'nul':''}">
       <div><div class="per">${fmtS(x.de)} – ${fmtS(x.ate)}</div><div style="margin-top:3px">${pill(x.st)}</div></div>
       <div class="facts"><span>Saldo <b>${x.nulo?'0 (perdido)':nf(x.saldo)+'d'}</b></span><span>Faltas <b>${x.faltas}</b></span><span>Limite <b>${fmtS(x.lim)}</b></span>${!x.nulo&&x.saldo>0&&x.adquirido?`<span>Prazo <b class="${x.dias<0?'days neg':''}">${x.dias<0?x.dias+'d':x.dias+'d'}</b></span>`:''}${s&&s.parts&&s.parts.length>1?`<span>Parcelas <b>${s.parts.map(q=>`${fmtSh(q.inicio)} (${q.dias}d)`).join(' · ')}</b></span>`:''}${s&&s.g.obs?`<span>Obs. <b style="font-family:var(--f-body)">${esc(s.g.obs)}</b></span>`:''}${s&&s.g.at?`<span>Registrado <b>${fmtS(String(s.g.at).slice(0,10))}</b></span>`:''}${s&&s.g.src==='planilha'?'<span class="small">(data da planilha)</span>':''}</div>
-      <div class="act">${progChip(x)}${canP?`<button type="button" class="btn sm" data-prog="${x.key}">${progOf(x)?'Editar':'Programar'}</button>`:''}</div>
+      <div class="act">${progChip(x)}${canP?`<button type="button" class="btn sm" data-prog="${x.key}">${rotProg(x,!!progOf(x))}</button>`:''}</div>
     </div>`;}).join('')+`</div><div class="tl-foot">${esc(p.f)} · ${esc(p.dp)} › ${esc(p.d)} · ${esc(p.t)} · admissão ${fmtS(p.a)}</div>`;
 }
 
@@ -739,7 +747,7 @@ function itemHtml(x){
   return `<div class="it ab-${URG.includes(x.st)?x.st:(x.st==='ret'?'ret':'ok')} ${hasDate&&!URG.includes(x.st)?'done':''}" data-key="${x.key}" tabindex="0" role="button" aria-expanded="${openIt.has(x.key)}">
     <div style="min-width:0"><div class="nm">${esc(p.n)}${tags(p)}</div><div class="meta">${p.c} · ${esc(p.dp)} › ${esc(p.d)} · adm. ${fmtS(p.a)}</div></div>
     <div class="right"><div class="lim">Limite ${fmtS(x.lim)} · ${dtxt}</div></div>
-    <div class="row2"><span class="small mono">Período ${fmtS(x.de)} – ${fmtS(x.ate)} · saldo ${nf(x.saldo)}d</span>${progChip(x,true)}${CAN_EDIT&&!x.nulo&&x.saldo>0?`<button type="button" class="btn sm" data-prog="${x.key}">${has?'Editar':'Programar'}</button>`:''}${x.nulo?pill('nulo'):''}</div>
+    <div class="row2"><span class="small mono">Período ${fmtS(x.de)} – ${fmtS(x.ate)} · saldo ${nf(x.saldo)}d</span>${progChip(x,true)}${podeProg(x)?`<button type="button" class="btn sm" data-prog="${x.key}">${rotProg(x,has)}</button>`:''}${x.nulo?pill('nulo'):''}</div>
     ${openIt.has(x.key)?`<div class="it-det">${timeline(p)}</div>`:''}
   </div>`;
 }
@@ -750,7 +758,7 @@ function grpHtml(L){
     <div style="min-width:0"><div class="nm">${esc(p.n)}<span class="np">${L.length} períodos</span>${tags(p).replace(/<span class="tag db"[^>]*>[^<]*<\/span>/,'')}</div><div class="meta">${p.c} · ${esc(p.dp)} › ${esc(p.d)} · adm. ${fmtS(p.a)}</div></div>
     <div class="right"><div class="lim">Mais antigo: limite ${fmtS(ord[0].lim)}</div></div>
     <div class="pers">${ord.map(q=>{ const has=!!progOf(q); const dt=q.dias<0?`<b>${-q.dias} dias</b> atrás`:`em <b>${q.dias} dias</b>`;
-      return `<div class="pr"><span class="small mono">${fmtS(q.de)} – ${fmtS(q.ate)} · saldo ${nf(q.saldo)}d</span>${progChip(q,true)}${CAN_EDIT&&!q.nulo&&q.saldo>0?`<button type="button" class="btn sm" data-prog="${q.key}">${has?'Editar':'Programar'}</button>`:''}<span class="lim">Limite ${fmtS(q.lim)} · ${dt}</span></div>`; }).join('')}</div>
+      return `<div class="pr"><span class="small mono">${fmtS(q.de)} – ${fmtS(q.ate)} · saldo ${nf(q.saldo)}d</span>${progChip(q,true)}${podeProg(q)?`<button type="button" class="btn sm" data-prog="${q.key}">${rotProg(q,has)}</button>`:''}<span class="lim">Limite ${fmtS(q.lim)} · ${dt}</span></div>`; }).join('')}</div>
     ${openIt.has(x.key)?`<div class="it-det">${timeline(p)}</div>`:''}
   </div>`;
 }
@@ -855,12 +863,12 @@ function renderProg(ps){
     <td>${pc}${q.n>1?`<div class="small">${q.i+1}ª parcela de ${q.n}</div>`:''}${r.s.falta>0?`<div class="small">faltam ${nf(r.s.falta)}d sem data</div>`:''}</td><td class="mono" style="white-space:nowrap">${q.dias}d${q.abono?`<div class="ab-tag">+ ${q.abono} abono</div>`:''}</td><td><span class="nm">${esc(p.n)}</span>${tags(p)}<div class="small">${p.c} · ${esc(p.d)} · adm. ${fmtS(p.a)}</div></td>
     <td class="small">${esc(p.g)}</td><td class="mono">${fmtS(x.de)} – ${fmtS(x.ate)}</td><td class="mono">${fmtS(x.lim)}</td>
     <td class="small"><div class="ob" title="${esc(r.s.g.obs||'')}">${esc(r.s.g.obs||'')}</div>${r.s.g.src==='planilha'?'<div>(planilha)</div>':''}</td>
-    <td>${CAN_EDIT?`<button type="button" class="btn sm" data-prog="${x.key}">Editar</button>`:''}</td></tr>`; };
+    <td>${CAN_EDIT&&!GESTOR?`<button type="button" class="btn sm" data-prog="${x.key}">Editar</button>`:''}</td></tr>`; };
   const head = `<thead><tr><th>Férias</th><th>Dias</th><th>Colaborador</th><th>Gerência</th><th>Período aquisitivo</th><th>Data limite</th><th>Observação</th><th></th></tr></thead>`;
   const groups = {}; dated.forEach(r=>{ (groups[r.mes]=groups[r.mes]||[]).push(r); });
   let h = Object.keys(groups).sort().map(k=>`<div class="prog-month"><h3><span>Saídas em ${mLong(k)}</span><span class="small">${groups[k].length}</span></h3>
     <div class="tbl-wrap"><table class="tProg">${head}<tbody>${groups[k].map(line).join('')}</tbody></table></div></div>`).join('');
-  if (ret.length) h += `<div class="prog-month"><h3><span>Aguardam retorno do afastamento</span><span class="small">${ret.length}</span></h3><div class="tbl-wrap"><table class="tProg"><thead><tr><th>Situação</th><th>Colaborador</th><th>Período aquisitivo</th><th>Data limite</th><th>Observação</th><th></th></tr></thead><tbody>${ret.map(r=>{const x=r.x,p=x.person; return `<tr class="row" data-c="${p.c}" tabindex="0"><td>${pill(x.st)}</td><td><span class="nm">${esc(p.n)}</span>${tags(p)}<div class="small">${p.c} · ${esc(p.g)}</div></td><td class="mono">${fmtS(x.de)} – ${fmtS(x.ate)}</td><td class="mono">${fmtS(x.lim)}</td><td class="small">${esc(r.s.g.obs)}</td><td>${CAN_EDIT?`<button type="button" class="btn sm" data-prog="${x.key}">Editar</button>`:''}</td></tr>`;}).join('')}</tbody></table></div></div>`;
+  if (ret.length) h += `<div class="prog-month"><h3><span>Aguardam retorno do afastamento</span><span class="small">${ret.length}</span></h3><div class="tbl-wrap"><table class="tProg"><thead><tr><th>Situação</th><th>Colaborador</th><th>Período aquisitivo</th><th>Data limite</th><th>Observação</th><th></th></tr></thead><tbody>${ret.map(r=>{const x=r.x,p=x.person; return `<tr class="row" data-c="${p.c}" tabindex="0"><td>${pill(x.st)}</td><td><span class="nm">${esc(p.n)}</span>${tags(p)}<div class="small">${p.c} · ${esc(p.g)}</div></td><td class="mono">${fmtS(x.de)} – ${fmtS(x.ate)}</td><td class="mono">${fmtS(x.lim)}</td><td class="small">${esc(r.s.g.obs)}</td><td>${CAN_EDIT&&!GESTOR?`<button type="button" class="btn sm" data-prog="${x.key}">Editar</button>`:''}</td></tr>`;}).join('')}</tbody></table></div></div>`;
   const emptyTxt={todos:'Nenhuma férias registrada com os filtros atuais.',prog:'Ninguém com saída programada para os filtros atuais.',ferias:'Ninguém de férias hoje para os filtros atuais.',saiu:'Nenhuma férias concluída registrada para os filtros atuais.',ret:'Ninguém aguardando retorno para os filtros atuais.'};
   $('progList').innerHTML = h || `<div class="empty">${emptyTxt[progSit]}${CAN_EDIT&&progSit!=='saiu'?' Use o botão "Programar" na aba Alertas ou na lista nominal.':''}</div>`;
 }
@@ -1031,8 +1039,8 @@ const foraCal=q=>!!(q.out||(q.inicio&&CAL&&!calDe(q.inicio)));
 function drawParts(){
   const ret=$('pRet').checked;
   $('pParts').innerHTML = dlgParts.map((q,i)=>`<div class="prow">
-    <div class="fld"><label for="pIni${i}">${dlgParts.length>1?`Início da ${i+1}ª parcela`:'Início das férias'}</label>${!CAL||foraCal(q)?`<input type="date" id="pIni${i}" data-pi="${i}" value="${q.inicio||''}" ${ret?'disabled':''}>${CAL?`<button type="button" class="btn sm" data-pcal="${i}" style="margin-top:4px" ${ret?'disabled':''}>Voltar às datas liberadas</button>`:''}`
-      :`<select id="pIni${i}" data-pi="${i}" ${ret?'disabled':''}><option value="">Escolha uma data liberada</option>${CAL.filter(c=>pd(c.ini)>=HOJE||c.ini===q.inicio).map(c=>`<option value="${c.ini}" ${c.ini===q.inicio?'selected':''}>${fmtS(c.ini)}${c.pag?` · pagamento ${fmtS(c.pag)}`:''}</option>`).join('')}<option value="__out">Outra data (com autorização)…</option></select>`}</div>
+    <div class="fld"><label for="pIni${i}">${dlgParts.length>1?`Início da ${i+1}ª parcela`:'Início das férias'}</label>${(!CAL||foraCal(q))&&!GESTOR?`<input type="date" id="pIni${i}" data-pi="${i}" value="${q.inicio||''}" ${ret?'disabled':''}>${CAL?`<button type="button" class="btn sm" data-pcal="${i}" style="margin-top:4px" ${ret?'disabled':''}>Voltar às datas liberadas</button>`:''}`
+      :`<select id="pIni${i}" data-pi="${i}" ${ret?'disabled':''}><option value="">Escolha uma data liberada</option>${(CAL||[]).filter(c=>GESTOR?c.ini>=minIniG():(pd(c.ini)>=HOJE||c.ini===q.inicio)).map(c=>`<option value="${c.ini}" ${c.ini===q.inicio?'selected':''}>${fmtS(c.ini)}${c.pag?` · pagamento ${fmtS(c.pag)}`:''}</option>`).join('')}${GESTOR?'':'<option value="__out">Outra data (com autorização)…</option>'}</select>`}</div>
     <div class="fld"><label for="pDias${i}">Dias</label><input type="number" id="pDias${i}" data-pd="${i}" min="5" max="30" step="1" value="${q.dias||''}" ${ret?'disabled':''}></div>
     ${dlgParts.length>1?`<button type="button" class="btn sm danger" data-prm="${i}" aria-label="Remover parcela ${i+1}" ${ret?'disabled':''}>Remover</button>`:''}
   </div>`).join('');
@@ -1040,9 +1048,9 @@ function drawParts(){
 }
 async function openDlg(key){
   if(!CAN_EDIT) return; await carregarCal();
-  const x=PBYKEY[key]; if(!x) return; dlgKey=key; lastFocus=document.activeElement;
+  const x=PBYKEY[key]; if(!x) return; if(GESTOR&&!podeProg(x)) return; dlgKey=key; lastFocus=document.activeElement;
   const p=x.person, g=progOf(x);
-  $('dlgT').textContent = g ? 'Editar programação' : 'Programar férias';
+  $('dlgT').textContent = GESTOR ? 'Programar férias e enviar ao RH' : g ? 'Editar programação' : 'Programar férias';
   $('dlgSub').textContent = `${p.n} · contrato ${p.c} · ${p.d}`;
   $('dlgFacts').innerHTML = `<div><span>Período</span><b>${fmtSh(x.de)}/${x.de.slice(2,4)} – ${fmtSh(x.ate)}/${x.ate.slice(2,4)}</b></div><div><span>Saldo</span><b>${nf(x.saldo)} dias</b></div><div><span>Data limite</span><b>${fmtS(x.lim)}</b></div>`;
   $('pRet').checked = !!(g&&g.retorno);
@@ -1051,7 +1059,8 @@ async function openDlg(key){
   $('pAut').value = g&&g.autorizacao&&g.autorizacao.txt ? g.autorizacao.txt : '';
   $('pAb').value = g&&g.abono ? g.abono : 0;
   $('pObs').value = g&&g.obs ? g.obs : '';
-  $('pDel').hidden = !PROG[key];
+  $('pDel').hidden = !PROG[key] || GESTOR;
+  if(GESTOR){ $('pRet').checked=false; $('pRet').closest('label').hidden=true; $('pAb').max=10; $('pAb').step=10; $('pSave').textContent='Programar e enviar ao RH'; }
   drawParts(); syncDlg(); $('ov').hidden=false; setTimeout(()=>{ const el=$('pIni0'); if(el) el.focus(); },0);
 }
 function closeDlg(){ $('ov').hidden=true; dlgKey=null; if(lastFocus&&document.contains(lastFocus)) lastFocus.focus(); }
@@ -1104,11 +1113,26 @@ function syncDlg(){
     dated.forEach(q=>{ const c=calDe(q.inicio); if(c){ if(c.pag) w.unshift(['info',`${multi?`${q.i+1}ª parcela: `:''}data liberada no calendário · pagamento em ${fmtS(c.pag)}.`]); }
       else if(q.inicio!==q.orig){ precisaAut=true; w.unshift(['bad',`${multi?`${q.i+1}ª parcela: `:''}${fmtS(q.inicio)} não é uma data liberada no calendário de férias. Só pode ser salva com autorização: preencha quem autorizou.`]); }
       else w.push(['info',`${multi?`${q.i+1}ª parcela: `:''}${fmtS(q.inicio)} está fora do calendário de datas liberadas (programação já existente).`]); }); }
-  $('pAutW').hidden = !(CAL && !ret && dlgParts.some(q=>foraCal(q)));
-  const semAut = precisaAut && !$('pAut').value.trim();
+  $('pAutW').hidden = GESTOR || !(CAL && !ret && dlgParts.some(q=>foraCal(q)));
+  let semAut = precisaAut && !$('pAut').value.trim();
+  if(GESTOR){ const e=errosG(x); if(e.length){ semAut=true; e.slice().reverse().forEach(t=>w.unshift(['bad',t])); } else semAut=false;
+    const mi=minIniG(); w.unshift(['info',`Prazo do gestor: férias que começam em ${MESES_L[+mi.slice(5,7)-1]} podem ser enviadas até ${fmtS(prazoG(mi))}. Hoje, o início mais cedo é ${fmtS(mi)}. A programação vai ao RH e só entra no painel depois que o RH aceitar.`]); }
   $('pWarn').innerHTML = w.map(([c,t])=>`<div class="warn ${c}">${t.replace(/^[a-zà-ú]/,ch=>ch.toUpperCase())}</div>`).join('');
   $('pSave').disabled = (!ret && !dated.length) || semAut;
 }
+/* regras do gestor (as mesmas do formulário antigo de programação): bloqueiam o envio */
+function errosG(x){ const w=[], mi=minIniG(), ab=Math.max(0,+$('pAb').value||0), L=dlgParts, tot=L.reduce((t,q)=>t+(+q.dias||0),0), saldo=Math.round(x.saldo);
+  if(!CAL) w.push('Ainda não há datas liberadas pelo RH (ou o calendário não carregou). Fale com o RH.');
+  else if(!CAL.some(c=>c.ini>=mi)) w.push(`Ainda não há datas liberadas pelo RH a partir de ${fmtS(mi)}. Fale com o RH.`);
+  if(L.some(q=>!q.inicio)&&L.some(q=>q.inicio)) w.push('Informe o início de cada parcela.');
+  if(L.some(q=>q.inicio&&!calDe(q.inicio))) w.push('O início precisa ser uma das datas liberadas pelo RH. Outra data, só o RH pode lançar.');
+  if(L.some(q=>q.inicio&&q.inicio<mi)) w.push(`Fora do prazo: o início mais cedo possível hoje é ${fmtS(mi)} (envio até o dia 15 do mês anterior).`);
+  if(ab&&ab!==10) w.push('Abono pecuniário: 10 dias (o colaborador precisa pedir) ou nenhum.');
+  if(tot+ab>saldo) w.push(`A soma (${tot} dias${ab?' + '+ab+' de abono':''}) passa do saldo de ${saldo} dias.`);
+  if(L.length>1&&!L.some(q=>+q.dias>=14)) w.push('Uma das parcelas precisa ter pelo menos 14 dias.');
+  if(L.some(q=>+q.dias<5)) w.push('Cada parcela precisa ter pelo menos 5 dias.');
+  const S=L.filter(q=>q.inicio).slice().sort((a,b)=>a.inicio.localeCompare(b.inicio)); for(let i=1;i<S.length;i++) if(S[i].inicio<=addDays(S[i-1].inicio,(+S[i-1].dias||1)-1)) { w.push('As parcelas se sobrepõem.'); break; }
+  return w; }
 $('pParts').addEventListener('change',e=>{ const t=e.target; if(t.tagName==='SELECT'&&t.dataset.pi!==undefined){ const q=dlgParts[+t.dataset.pi]; if(t.value==='__out'){ q.out=true; q.inicio=''; drawParts(); syncDlg(); const el=$('pIni'+t.dataset.pi); if(el) el.focus(); } else { q.inicio=t.value; syncDlg(); } } });
 $('pParts').addEventListener('input',e=>{ const t=e.target; if(t.tagName==='SELECT') return; if(t.dataset.pi!==undefined) dlgParts[+t.dataset.pi].inicio=t.value; if(t.dataset.pd!==undefined) dlgParts[+t.dataset.pd].dias=t.value; syncDlg(); });
 $('pParts').addEventListener('click',e=>{ const c=e.target.closest('[data-pcal]'); if(c){ const q=dlgParts[+c.dataset.pcal]; q.out=false; if(q.inicio&&!calDe(q.inicio)) q.inicio=''; drawParts(); syncDlg(); return; } const b=e.target.closest('[data-prm]'); if(!b) return; dlgParts.splice(+b.dataset.prm,1); drawParts(); syncDlg(); });
@@ -1130,9 +1154,13 @@ $('pSave').onclick=async()=>{
                    : {inicio:parc[0].inicio, dias:parc[0].dias, parcelas:parc, abono:Math.max(0,Math.min(10,+$('pAb').value||0)), obs:$('pObs').value.trim(), at:new Date().toISOString()};
   if(!ret&&CAL){ const fora=parc.filter(q=>!calDe(q.inicio)).map(q=>q.inicio); if(fora.length){ const t=$('pAut').value.trim(); const g0=progOf(PBYKEY[dlgKey]); if(t) body.autorizacao={txt:t,datas:fora,em:(g0&&g0.autorizacao&&g0.autorizacao.txt===t&&g0.autorizacao.em)||new Date().toISOString()}; else if(g0&&g0.autorizacao) body.autorizacao=g0.autorizacao; } }
   const key=dlgKey;
-  const done=()=>{ PROG[key]={...body,src:'painel'}; closeDlg(); recompute(); render(); toast('Programação salva.'); };
+  if(GESTOR){ const x=PBYKEY[key]; if(errosG(x).length){ busy=false; syncDlg(); return; }   // dados do período para o envio ao RH (mesmo formato do formulário antigo)
+    body._g={de:x.de, ate:x.ate, lim:x.lim, saldo:Math.round(x.saldo), mi:minIniG()}; }
+  const done=()=>{ PROG[key]={...body,src:'painel',...(GESTOR?{_aguardaRH:true}:{})}; closeDlg(); recompute(); render(); toast(GESTOR?'Programação enviada ao RH. Aguardando a conferência.':'Programação salva.'); };
   try{ await DB.doc('prog/'+key).set(body); done(); }
-  catch(e){ if(e&&e.code==='unavailable'){ try{ await new Promise(r=>setTimeout(r,800+Math.random()*600)); await DB.doc('prog/'+key).set(body); done(); }catch(e2){ toast(errMsg(e2)); } } else toast(errMsg(e)); }
+  catch(e){ if(e&&e.code==='cancelado'){ /* gestor desistiu de assinar: não salva, o formulário continua aberto */ }
+    else if(GESTOR) toast(e&&e.message?e.message:errMsg(e));
+    else if(e&&e.code==='unavailable'){ try{ await new Promise(r=>setTimeout(r,800+Math.random()*600)); await DB.doc('prog/'+key).set(body); done(); }catch(e2){ toast(errMsg(e2)); } } else toast(errMsg(e)); }
   finally{ busy=false; $('pSave').disabled=false; }
 };
 $('pDel').onclick=async()=>{
@@ -1577,9 +1605,9 @@ recompute(); render();
     const [db,user]=await Promise.all([window.claude.use('db'),window.claude.use('user')]);
     if(!db){ setChip(false,'Somente leitura · programações indisponíveis'); return; }
     DB=db;
-    const owner = user ? await user.isOwner() : false;
+    const owner = user ? (GESTOR ? await user.canEdit() : await user.isOwner()) : false;
     CAN_EDIT = !!owner;
-    setChip(CAN_EDIT, CAN_EDIT ? 'Você pode programar férias' : 'Somente leitura');
+    setChip(CAN_EDIT, CAN_EDIT ? (GESTOR ? 'Você pode programar férias e enviar ao RH' : 'Você pode programar férias') : 'Somente leitura');
     db.collection('prog').onSnapshot(snap=>{
       const m={}; snap.docs.forEach(d=>{ if(!d.exists) return; const v=d.data(); if(v&&PBYKEY[d.id]) m[d.id]={...v,src:'painel'}; });
       PROG=m; recompute(); render(); window.__crvPend=1;
