@@ -2288,22 +2288,44 @@ async function adminUsuarios(){
   const c = $('#admin-corpo');
   if (error) { c.innerHTML = `<div class="erro">${esc(traduzErro(error))}</div>`; return; }
   const temG = data.some(u => u.papel === 'gestor'); const ug = temG ? await GESTOR().ultimaGeracao() : null;
-  c.innerHTML = `<div class="cartao-cab"><h3>${data.length} usuário(s)</h3><button class="btn prim" id="u-novo">+ Novo usuário</button></div>
+  /* administradora central: só ela cadastra, altera, redefine senha e exclui usuários (marca 'admin:central' em perfis.frentes) */
+  const ehCentralU = x => x && x.papel === 'admin' && (x.frentes || []).includes('admin:central');
+  const temCentral = data.some(x => ehCentralU(x) && x.ativo), souCentral = ehCentralU(E.perfil) || (!temCentral && ehAdmin());
+  c.innerHTML = `<div class="cartao-cab"><h3>${data.length} usuário(s)</h3>${souCentral ? '<button class="btn prim" id="u-novo">+ Novo usuário</button>' : ''}</div>
+    ${souCentral ? '' : '<div class="cartao" style="padding:10px 14px;background:#fff7e6;border-color:#f0d199;color:#5c3b00;font-size:13.5px">Só a <b>administradora central</b> cadastra, altera, troca senha ou exclui usuários. Aqui você só consulta.</div>'}
     ${temG ? `<div class="gs-adm cartao"><div><b>Visão dos gestores</b><small>${ug && ug.em ? 'Atualizada em ' + esc(new Date(ug.em).toLocaleString('pt-BR')) + ' · ' + (ug.chaves || []).length + ' setor(es) ou departamento(s)' : 'Ainda não gerada'}. Atualiza sozinha quando você entra no app ou carrega as bases.</small></div><button class="btn borda" id="u-gerar">Atualizar agora</button></div>` : ''}
     <p style="color:var(--mut);margin-top:0;font-size:13px"><b>Administrador principal</b> faz tudo: importa bases, cria e tira painéis, cadastra usuários e muda configurações · <b>Equipe RH</b> vê todos os painéis (inclusive restritos) e faz todos os lançamentos, mas não importa bases nem mexe na estrutura · <b>Editor</b> vê e atualiza as frentes liberadas · <b>Leitor</b> só consulta as frentes liberadas · <b>Gestor de área</b> vê só a própria equipe (experiência, férias, frequência, novos e crachás), sem acesso aos painéis. Painéis <span class="selo restrito">restrito</span> são só de administradores.</p>
     ${data.map((u,i)=>`<div class="linha-u ${u.ativo?'':'inativo'}">
       <div class="av" style="background:${PALETA[i%PALETA.length]}">${esc(iniciais(u.nome))}</div>
-      <div class="info"><b>${esc(u.nome)}</b> ${u.ativo?'':'<small>(desativado)</small>'}<br><small>@${esc(u.usuario)} · ${esc(papelDe(u))}${u.importa && u.papel !== 'admin' ? ' · importa planilhas' : ''}${u.papel==='admin'?' · todas as frentes':u.papel==='rh'?' · todos os painéis'+(u.importa?'':', só lançamentos'):(u.paineis_ver||[]).length||(u.paineis_editar||[]).length?` · ${u.frentes?.length ? esc(u.frentes.join(', ')) + ' + ' : ''}painéis: ${esc([...(u.paineis_ver||[]), ...(u.paineis_editar||[])].map(id => (E.paineis.find(x => x.id === id) || {}).nome || id).join(', '))}`:u.papel==='gestor'?` · ${(u.areas||[]).filter(k=>GESTOR().chaveOk(k)).length ? esc((u.areas||[]).filter(k=>GESTOR().chaveOk(k)).map(k=>(k[0]==='a'?'setor ':'depto. ')+GESTOR().nomeChave(k)).join(', ')) : 'nenhum setor vinculado'}`:` · ${u.frentes?.length ? esc(u.frentes.join(', ')) : 'nenhuma frente liberada'}`}</small></div>
-      <button class="btn peq borda" data-edit="${esc(u.user_id)}">Editar</button>
+      <div class="info"><b>${esc(u.nome)}</b> ${u.ativo?'':'<small>(desativado)</small>'}<br><small>@${esc(u.usuario)} · ${esc(ehCentralU(u) ? 'Administradora central' : papelDe(u))}${u.importa && u.papel !== 'admin' ? ' · importa planilhas' : ''}${u.papel==='admin'?' · todas as frentes':u.papel==='rh'?' · todos os painéis'+(u.importa?'':', só lançamentos'):(u.paineis_ver||[]).length||(u.paineis_editar||[]).length?` · ${u.frentes?.length ? esc(u.frentes.join(', ')) + ' + ' : ''}painéis: ${esc([...(u.paineis_ver||[]), ...(u.paineis_editar||[])].map(id => (E.paineis.find(x => x.id === id) || {}).nome || id).join(', '))}`:u.papel==='gestor'?` · ${(u.areas||[]).filter(k=>GESTOR().chaveOk(k)).length ? esc((u.areas||[]).filter(k=>GESTOR().chaveOk(k)).map(k=>(k[0]==='a'?'setor ':'depto. ')+GESTOR().nomeChave(k)).join(', ')) : 'nenhum setor vinculado'}`:` · ${u.frentes?.length ? esc(u.frentes.join(', ')) : 'nenhuma frente liberada'}`}</small></div>
+      ${souCentral ? `<button class="btn peq borda" data-edit="${esc(u.user_id)}">Editar</button>
       <button class="btn peq borda" data-senha="${esc(u.user_id)}">Nova senha</button>
+      ${u.user_id !== E.perfil.user_id ? `<button class="btn peq borda" data-exc="${esc(u.user_id)}" style="color:var(--coral)">Excluir</button>` : ''}` : ''}
     </div>`).join('')}`;
-  $('#u-novo').onclick = () => formUsuario(null, data);
+  const un = $('#u-novo'); if (un) un.onclick = () => formUsuario(null, data);
+  c.querySelectorAll('[data-exc]').forEach(b => b.onclick = () => excluirUsuario(data.find(u => u.user_id === b.dataset.exc)));
   const bg = $('#u-gerar'); if (bg) bg.onclick = async () => { bg.disabled = true; bg.textContent = 'Atualizando…'; const r = await GESTOR().gerar(true).catch(e => ({ ok:false, erro:e }));
     if (r.ok) { toast(`Visão dos gestores atualizada (${r.n || 0} área(s)).`); adminUsuarios(); } else { toast(traduzErro(r.erro), true); bg.disabled = false; bg.textContent = 'Atualizar agora'; } };
   c.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => formUsuario(data.find(u=>u.user_id===b.dataset.edit), data));
   c.querySelectorAll('[data-senha]').forEach(b => b.onclick = () => formSenha(data.find(u=>u.user_id===b.dataset.senha)));
 }
 
+function excluirUsuario(u){ if (!u) return;
+  abrirModal({ titulo:'Excluir ' + u.nome,
+    corpo:`<div id="x-msg"></div><p style="margin-top:0">O login de <b>${esc(u.nome)}</b> (@${esc(u.usuario)}) será apagado e a pessoa não entra mais no app. O que ela já lançou nos painéis continua guardado com o nome dela.</p>
+      <p style="color:var(--mut);font-size:13px">Se for só temporário (férias, afastamento), prefira <b>Editar → desmarcar "Usuário ativo"</b>: dá para reativar depois.</p>
+      <div class="campo"><label>Para confirmar, digite EXCLUIR</label><input id="x-conf" autocomplete="off"></div>`,
+    pe:`<button class="btn borda" id="x-c">Cancelar</button><button class="btn prim" id="x-ok" style="background:var(--coral);border-color:var(--coral)">Excluir usuário</button>`,
+    aoAbrir: () => { $('#x-c').onclick = fecharModal;
+      $('#x-ok').onclick = async () => { const msg = t => $('#x-msg').innerHTML = `<div class="erro">${esc(t)}</div>`;
+        if ($('#x-conf').value.trim().toUpperCase() !== 'EXCLUIR') return msg('Digite EXCLUIR para confirmar.');
+        const bt = $('#x-ok'); bt.disabled = true; bt.textContent = 'Excluindo…';
+        const { error } = await sb.rpc('admin_excluir_usuario', { p_user:u.user_id });
+        if (error) { bt.disabled = false; bt.textContent = 'Excluir usuário'; const m = String(error.message || '').toLowerCase();
+          return msg(m.includes('admin_excluir_usuario') || m.includes('could not find the function') ? 'Falta preparar o banco para excluir usuários: rode o arquivo 11_admin_central.sql no Supabase.' : traduzErro(error)); }
+        registrar(null, 'excluiu usuário', u.nome + ' (@' + u.usuario + ')'); if (u.papel === 'gestor') GESTOR().gerar(true).catch(() => {});
+        fecharModal(); toast('Usuário excluído.'); adminUsuarios(); }; } });
+}
 function formUsuario(u, todos){
   const novo = !u;
   const frentes = frentesExistentes();
@@ -2357,7 +2379,7 @@ function formUsuario(u, todos){
         const ehAssist = papel === 'gestor' && (m.querySelector('[name=u-tipo]:checked') || {}).value === 'a';
         const gResp = ehAssist ? todos.find(x => x.user_id === $('#u-gresp').value) : null;
         if (ehAssist && !gResp) return erro('Escolha o gestor responsável pela assistente.');
-        const fr = ehAssist ? ['assist:' + gResp.user_id, 'assistnome:' + gResp.nome] : papel === 'admin' || papel === 'gestor' || papel === 'rh' ? [] : [...m.querySelectorAll('#u-frentes-box .checks input:checked')].map(x=>x.value);
+        const fr = ehAssist ? ['assist:' + gResp.user_id, 'assistnome:' + gResp.nome] : papel === 'admin' ? ((u && (u.frentes || []).includes('admin:central')) ? ['admin:central'] : []) : papel === 'gestor' || papel === 'rh' ? [] : [...m.querySelectorAll('#u-frentes-box .checks input:checked')].map(x=>x.value);
         const ar = ehAssist ? (gResp.areas || []).slice() : papel === 'gestor' ? [...m.querySelectorAll('#u-areas input:checked:not(:disabled)')].map(x=>x.value).filter(k => GESTOR().chaveOk(k)) : [];
         if (papel === 'gestor' && !ar.length) return erro(ehAssist ? 'O gestor escolhido ainda não tem setor marcado. Marque os setores dele primeiro.' : 'Marque pelo menos um setor ou departamento para o gestor.');
         /* o gestor mudou de setor ou de nome: as assistentes dele acompanham */
