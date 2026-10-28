@@ -33,6 +33,7 @@ const PADRAO = { 'q:6932':{ faz:ASSIST }, 'q:15441':{ faz:ASSIST },
   'j:jovem:123':{ faz:'Checklist\nContratos\nArquivo' },
   'j:jovem:175':{ faz:'Mídia do RH\nProdução de vídeos (audiovisual) de divulgação e integração de novos colaboradores' },
   'j:jovem:158':{ faz:'Arquivo de treinamentos\nChecklist\nProtocolar documentos\nLançar treinamentos' },
+  'j:jovem:93':{ faz:'Transmitir a integração (em vídeo)\nResponder o WhatsApp do RH (interno e externo)\nFiltrar currículos' },
   'q:45433':{ faz:'Recepção e atendimento interno\nConexão com contratos\nColeta de assinaturas\nApoio na chegada à área\nOrientação inicial\nWhatsApp interno e externo' } };
 let CFG = null, FOTOS = {}, PESS = [], ACHADOS = [], VIEW = '';
 async function lerCfg(){ const { data } = await sb.from('registros').select('dados').eq('painel', 'quadro').eq('caminho', 'sistema/organograma').maybeSingle();
