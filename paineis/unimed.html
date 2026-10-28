@@ -1308,26 +1308,31 @@ function reembolsos(){const L=(AC.RB||[]).slice().sort((a,b)=>String(b.em||b.dat
   w.querySelectorAll('[data-re]').forEach(b=>b.onclick=()=>{const x=L.find(y=>y.id===b.dataset.re);w.remove();reembolso(x)});
 }
 /* documento no padrão único do RH */
-async function pdfReemb(d){const J=JS();const doc=new J({unit:'mm',format:'a4'}),W=210,L=18,R=192,CW=R-L;const D=window.parent&&window.parent.CRV_DOC;const C=D?D.cores:{NAVY:[31,58,104],INK:[30,36,48],MUT:[110,116,128]};const ES=D?D.estilo():{theme:'striped',styles:{},headStyles:{fillColor:[36,65,79]},footStyles:{}};const M={top:30,bottom:26,left:L,right:W-R};
-  let A=[];try{const f=window.parent&&window.parent.CRV_ASSINANTES;if(f){A=await f('acid-reemb');if(!A.length)A=await f('acid-aut')}}catch(_){}if(!A.length)A=[{nome:'Michelle Pereira',cargo:'Coordenadora de RH'},{nome:'Leonardo Dias',cargo:'Gerente Executivo'}];
-  const dt=d.data||hojeI();let y=36;doc.setFont('helvetica','bold');doc.setFontSize(17);doc.setTextColor(...C.NAVY);doc.text('Reembolso de desconto indevido',L,y);
+async function pdfReemb(d){const J=JS(),W=210,L=18,R=192,CW=R-L;const D=window.parent&&window.parent.CRV_DOC;const C=D?D.cores:{NAVY:[31,58,104],INK:[30,36,48],MUT:[110,116,128]};const ES=D?D.estilo():{theme:'striped',styles:{},headStyles:{fillColor:[36,65,79]},footStyles:{}};const M={top:30,bottom:26,left:L,right:W-R};
+  let A=[];try{const f=window.parent&&window.parent.CRV_ASSINANTES;if(f){A=await f('acid-reemb');if(!A.length)A=await f('acid-aut')}}catch(_){}if(!A.length)A=[{nome:'Michelle Pereira',cargo:'Coordenadora de RH'},{nome:'Leonardo Dias',cargo:'Gerente Executivo'}];const logo=await logoCRV();
+  /* tudo numa página só, com as assinaturas: se não couber, monta de novo com letra e espaçamento menores */
+  const build=K=>{const doc=new J({unit:'mm',format:'a4'});let quebrou=false;
+  const dt=d.data||hojeI();let y=36;doc.setFont('helvetica','bold');doc.setFontSize(17*Math.max(K,.8));doc.setTextColor(...C.NAVY);doc.text('Reembolso de desconto indevido',L,y);
   doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(...C.INK);doc.text('Capinópolis/MG, '+(+dt.slice(8))+' de '+MESL[+dt.slice(5,7)-1]+' de '+dt.slice(0,4)+'.',L,y+6);
   doc.setFillColor(238,241,245);doc.roundedRect(L,y+10,CW,10,2,2,'F');doc.setFontSize(9.2);const lab=(t,v,x)=>{doc.setFont('helvetica','bold');doc.text(t,x,y+16.3);const w0=doc.getTextWidth(t);doc.setFont('helvetica','normal');doc.text(String(v),x+w0+1.6,y+16.3)};
   lab('Assunto:','coparticipação Unimed · acidente de trabalho',L+4);lab('Competência:',d.comp||'—',L+104);lab('Total:',brl(d.total),L+146);y+=28;
   const sec=t=>{doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(...C.NAVY);doc.text(t,L,y);y+=2.5};
-  sec('Dados do colaborador');doc.autoTable(Object.assign({},ES,{startY:y,theme:'plain',body:[['Nome',d.nome,'Matrícula',String(d.mat)],['CPF',d.cpf||'—','Admissão',d.admissao?String(d.admissao).slice(0,10).split('-').reverse().join('/'):'—'],['Função',d.funcao||'—','Setor',d.setor||'—'],['Centro de custo',d.cc||'—','Plano',d.plano||'—']],styles:Object.assign({},ES.styles,{fontSize:8.6,cellPadding:1.3}),columnStyles:{0:{fontStyle:'bold',cellWidth:26,textColor:C.MUT},1:{cellWidth:66},2:{fontStyle:'bold',cellWidth:22,textColor:C.MUT}},margin:M,semTotal:true,semOrdem:true}));y=doc.lastAutoTable.finalY+5;
-  if(d.acidente){const a=d.acidente;sec('Acidente de trabalho');doc.autoTable(Object.assign({},ES,{startY:y,theme:'plain',body:[['Data do acidente',a.data?dbr(a.data):'—','CAT',a.cat||'—'],['Diagnóstico',a.diag||'—','Parte do corpo',a.parte||'—'],['Local',a.local||'—','Afastamento',a.dias!==''&&a.dias!=null?a.dias+' dia(s)':'—']],styles:Object.assign({},ES.styles,{fontSize:8.6,cellPadding:1.3}),columnStyles:{0:{fontStyle:'bold',cellWidth:26,textColor:C.MUT},1:{cellWidth:66},2:{fontStyle:'bold',cellWidth:22,textColor:C.MUT}},margin:M,semTotal:true,semOrdem:true}));y=doc.lastAutoTable.finalY+5}
-  doc.setFont('helvetica','normal');doc.setFontSize(9.6);doc.setTextColor(...C.INK);
+  sec('Dados do colaborador');doc.autoTable(Object.assign({},ES,{startY:y,theme:'plain',body:[['Nome',d.nome,'Matrícula',String(d.mat)],['CPF',d.cpf||'—','Admissão',d.admissao?String(d.admissao).slice(0,10).split('-').reverse().join('/'):'—'],['Função',d.funcao||'—','Setor',d.setor||'—'],['Centro de custo',d.cc||'—','Plano',d.plano||'—']],styles:Object.assign({},ES.styles,{fontSize:8.6*K,cellPadding:1.3*K}),columnStyles:{0:{fontStyle:'bold',cellWidth:26,textColor:C.MUT},1:{cellWidth:66},2:{fontStyle:'bold',cellWidth:22,textColor:C.MUT}},margin:M,semTotal:true,semOrdem:true}));y=doc.lastAutoTable.finalY+5*K;
+  if(d.acidente){const a=d.acidente;sec('Acidente de trabalho');doc.autoTable(Object.assign({},ES,{startY:y,theme:'plain',body:[['Data do acidente',a.data?dbr(a.data):'—','CAT',a.cat||'—'],['Diagnóstico',a.diag||'—','Parte do corpo',a.parte||'—'],['Local',a.local||'—','Afastamento',a.dias!==''&&a.dias!=null?a.dias+' dia(s)':'—']],styles:Object.assign({},ES.styles,{fontSize:8.6*K,cellPadding:1.3*K}),columnStyles:{0:{fontStyle:'bold',cellWidth:26,textColor:C.MUT},1:{cellWidth:66},2:{fontStyle:'bold',cellWidth:22,textColor:C.MUT}},margin:M,semTotal:true,semOrdem:true}));y=doc.lastAutoTable.finalY+5}
+  doc.setFont('helvetica','normal');doc.setFontSize(9.6*K);doc.setTextColor(...C.INK);
   const txt='Solicitamos ao Departamento Pessoal o reembolso ao colaborador, na folha de pagamento'+(d.comp?' da competência '+d.comp:'')+', dos valores de coparticipação do plano de saúde Unimed descontados indevidamente, referentes a atendimentos médicos decorrentes de acidente de trabalho'+(d.acidente&&d.acidente.data?' ocorrido em '+dbr(d.acidente.data):'')+', no valor total de '+brl(d.total)+', conforme a relação abaixo.'+(d.obs?' Observação: '+d.obs:'');
-  const tl=doc.splitTextToSize(txt,CW);doc.text(tl,L,y+2,{align:'justify',maxWidth:CW});y+=tl.length*4.4+4;
+  const tl=doc.splitTextToSize(txt,CW);doc.text(tl,L,y+2,{align:'justify',maxWidth:CW});y+=tl.length*4.4*K+4*K;
   const body=(d.itens||[]).map(i=>[i.fat||'',dbr(i.d),i.s||'',i.p||'',brl(i.v)]).concat((d.manuais||[]).map(m=>[m.ref||'—',m.data?dbr(m.data):'—',m.desc||'',' ',brl(m.valor)]));
-  doc.autoTable(Object.assign({},ES,{startY:y,head:[['Fatura / competência','Data','Procedimento','Prestador','Valor']],body,foot:[[{content:'Total: '+body.length+' lançamento(s) · 1 colaborador',colSpan:4},brl(d.total)]],showFoot:'lastPage',semTotal:true,semOrdem:true,styles:Object.assign({},ES.styles,{fontSize:8.2}),columnStyles:{0:{cellWidth:30},1:{cellWidth:20},4:{cellWidth:26,halign:'right',fontStyle:'bold'}},margin:M}));y=doc.lastAutoTable.finalY;
+  doc.autoTable(Object.assign({},ES,{startY:y,head:[['Fatura / competência','Data','Procedimento','Prestador','Valor']],body,foot:[[{content:'Total: '+body.length+' lançamento(s) · 1 colaborador',colSpan:4},brl(d.total)]],showFoot:'lastPage',semTotal:true,semOrdem:true,styles:Object.assign({},ES.styles,{fontSize:8.2*K,cellPadding:1.3*K}),columnStyles:{0:{cellWidth:30},1:{cellWidth:20},4:{cellWidth:26,halign:'right',fontStyle:'bold'}},margin:M}));y=doc.lastAutoTable.finalY;
   let L2=A.map(a=>({nome:a.nome,cargo:a.cargo}));if(d.assColab)L2=L2.concat([{nome:d.nome,cargo:'Colaborador (ciente)'}]);
   const lin=[L2.slice(0,3),L2.slice(3)].filter(x=>x.length);let yy=y+6;
-  for(const g0 of lin){if(D){let r=D.assinaturas(doc,yy,g0);if(r===null){doc.addPage();r=D.assinaturas(doc,34,g0)}yy=r}}
+  if(doc.getNumberOfPages()>1)quebrou=true;
+  for(const g0 of lin){if(D){const r=D.assinaturas(doc,yy,g0);if(r===null){quebrou=true;break}yy=r}}
   if(D)D.moldura(doc,quem());
-  const logo=await logoCRV();if(logo&&logo.src){try{const h=11,w=h*logo.w/logo.h;for(let p=1;p<=doc.getNumberOfPages();p++){doc.setPage(p);doc.addImage(logo.src,'PNG',W-12-w,7,w,h)}}catch(_){}}
-  return doc}
+  if(logo&&logo.src){try{const h=11,w=h*logo.w/logo.h;for(let p=1;p<=doc.getNumberOfPages();p++){doc.setPage(p);doc.addImage(logo.src,'PNG',W-12-w,7,w,h)}}catch(_){}}
+  return {doc,quebrou}};
+  let K=1,B=build(K);while(B.quebrou&&K>.5){K=Math.round((K-.05)*100)/100;B=build(K)}return B.doc}
+
 window.CRV_REEMB=()=>{window.tab('x');reembolso()};
 
 /* pendências de acidente de trabalho para a Central de Rotinas do RH */
