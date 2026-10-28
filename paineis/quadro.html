@@ -832,6 +832,8 @@ D.forEach((r,i)=>{r.p=PID[i];r.em='CRV (5)'});
 DM.forEach(r=>{r.dm=1;r.x=Array(35).fill('');r.x[23]=r[22];r.x[33]=r[23];let k=r[22]||r[DEP];if(DEPS.has(k)&&DEPS.get(k).n!=r[DEP])k=k+'|'+r[DEP];r.dk=k;
   if(!DEPS.has(k)){const lab=labs.has(r[DEP])?r[DEP]+' · cód. '+r[22]:r[DEP];labs.add(lab);DEPS.set(k,{k:k,n:r[DEP],cc:r[CC],area:r[AREA],lab:lab})}
   r.em=r[21];r.dl=DEPS.get(k).lab;r.t=Math.round((new Date(r[20]+'T00:00:00')-new Date(r[ADM]+'T00:00:00'))/864e5);r.k=(r[NOME]+' '+r[MAT]+' '+r[FUN]).toLowerCase();r.p=r[26]})}
+/* painel do gestor: nome das seções igual ao do RH (o desempate entre seções de mesmo nome é feito na base toda) */
+if(window.CRV_GESTOR_AREA&&typeof GRE=='object'&&GRE&&GRE.lab){const L=GRE.lab;D.concat(DM).forEach(r=>{const l=L[(r.x[23]||r[DEP])+'|'+r[DEP]];if(l){r.dl=l;const d=DEPS.get(r.dk);if(d)d.lab=l}})}
 const OUT=r=>r[AREA]=='Afastados'||r[AREA]=='Desistentes';
 const AREAS=cnt(D,AREA).map(x=>x[0]);
 const EMPS=['CRV (5)','APFO (6)','CAPFO (16)'];
