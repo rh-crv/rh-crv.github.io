@@ -376,7 +376,7 @@ body.has-sel .wrap>.foot{margin-bottom:90px}
     <label class="chk"><input type="checkbox" id="fAf" checked> Incluir afastados</label>
     <button class="btn" id="btnLimpar" type="button">Limpar</button>
     <button class="btn" id="btnSel" type="button">Selecionar pessoas</button>
-    <button class="btn primary" id="btnDP" type="button" style="background:#1c7f53;border-color:#1c7f53">Imprimir relação para o Departamento Pessoal</button>
+    <button class="btn primary" id="btnDP" type="button" style="background:#1c7f53;border-color:#1c7f53">Imprimir relação de saídas de férias</button>
     <button class="btn primary" id="btnPdf" type="button">Gerar PDF</button>
     <button class="btn primary" id="btnXls" type="button">Exportar Excel</button>
   </div>
@@ -1292,7 +1292,7 @@ function buildPdfSaidas(incSaiu,ass){
   /* padrão único dos documentos do RH: faixa azul, CRV INDUSTRIAL, linha verde, logo à direita; rodapé com os dados da empresa */
   const header=()=>{ doc.addPage(); doc.rect(0,0,842,11,'#1f3a68'); doc.text('CRV INDUSTRIAL',M,40,{size:13.5,bold:true,color:'#1f3a68'}); doc.text('UNIDADE CAPINÓPOLIS',M,52,{size:7.8,color:'#6e7480'});
     const lh=30, lw=lh*LOGOJ.w/LOGOJ.h; doc.image(842-M-lw,18,lw,lh); doc.line(M,62,842-M,62,'#6e963c',1.7);
-    doc.text('Relação de Saídas de Férias · Departamento Pessoal',M,86,{size:15,bold:true,color:'#1f3a68'});
+    doc.text('Relação de Saídas de Férias',M,86,{size:15,bold:true,color:'#1f3a68'});
     doc.text(fit(desc,false,9,600),M,100,{size:9,color:'#45536c'});
     y=110;
     if(first){ const ppl=new Set(rows.map(r=>r.x.person.c)).size, dias=rows.reduce((a,r)=>a+r.q.dias,0), ab=rows.reduce((a,r)=>a+(r.q.abono||0),0);
@@ -1347,7 +1347,7 @@ async function assCoord(){ try{ const fa=window.parent&&window.parent.CRV_ASSINA
   if(c&&c.nome) return {nome:String(c.nome).trim(),funcao:String(c.funcao||'').trim(),mat:MAT_COORD}; }catch(_){} return {nome:'',funcao:'',mat:MAT_COORD}; }
 /* botão próprio: relação de quem vai sair de férias, para enviar ao Departamento Pessoal */
 function abrirDP(){ lastFocus=document.activeElement; $('pdfMsg').textContent=''; document.querySelector('input[name=pTipo][value=saidas]').checked=true; $('pdfTipoFs').hidden=true;
-  $('pdfT').textContent='Relação para o Departamento Pessoal'; $('pdfT').nextElementSibling.textContent='Quem vai sair de férias no mês ou entre as datas escolhidas. Usa também os filtros de setor, seção e gerência da tela.';
+  $('pdfT').textContent='Relação de saídas de férias'; $('pdfT').nextElementSibling.textContent='Quem vai sair de férias no mês ou entre as datas escolhidas. Usa também os filtros de setor, seção e gerência da tela.';
   pdfSync(); if(!$('pdfMes').value&&!$('pdfDe').value&&!$('pdfAte').value){ const cur=iso(HOJE).slice(0,7); const o=[...$('pdfMes').options].find(x=>x.value>=cur); if(o){ $('pdfMes').value=o.value; $('pdfMes').dispatchEvent(new Event('change')); } }
   $('ovPdf').hidden=false; setTimeout(()=>$('pdfMes').focus(),0); }
 $('btnDP').addEventListener('click',abrirDP); window.CRV_FER_DP=abrirDP;

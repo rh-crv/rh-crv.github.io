@@ -327,7 +327,7 @@ async function pdf(R,o){o=Object.assign({},o);if(o.t)o.c=true;const J=JS();if(!J
     doc.autoTable({startY:y,head:[['Centro de custo','Departamento','Sócios','Familiar','Individual','Valor da nota']],body:C.map(c=>[c.cc||'—',c.ccd||c.n,c.q,c.f,c.i,brl(c.v)]),
       foot:[['Total: '+R.length+' pessoas',C.length+' centros de custo',R.length,R.filter(r=>r.tipo==='F').length,R.filter(r=>r.tipo==='I').length,brl(soma(R,'valor'))]],showFoot:'lastPage',
       styles:st,headStyles:hs,footStyles:ES.footStyles,theme:'striped',alternateRowStyles:{fillColor:[250,249,246]},columnStyles:{2:{halign:'right'},3:{halign:'right'},4:{halign:'right'},5:{halign:'right'}},margin:MG})}
-  if(D)D.moldura(doc,quem());else{const n=doc.getNumberOfPages();for(let i=1;i<=n;i++){doc.setPage(i);doc.setFontSize(7.5);doc.setTextColor(120);doc.text('Gestão de Pessoas · gerado em '+new Date().toLocaleDateString('pt-BR')+(quem()?' por '+quem():'')+' · página '+i+' de '+n,10,290)}}
+  if(D)D.moldura(doc,quem());else{const n=doc.getNumberOfPages();for(let i=1;i<=n;i++){doc.setPage(i);doc.setFontSize(7.5);doc.setTextColor(120);doc.text('Gestão de Pessoas · gerado em '+new Date().toLocaleDateString('pt-BR')+' · página '+i+' de '+n,10,290)}}
   const out=await logos(doc);await salvarArq(arq()+sufx(o)+'.pdf',new Uint8Array((out||doc).output('arraybuffer')),'application/pdf')}
 
 /* ---------- eventos ---------- */

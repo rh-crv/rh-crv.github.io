@@ -1073,7 +1073,7 @@ const DICAS = {
   'cartao-alimentacao': { v:1, t:['Importe a planilha exportada da Sysprocard: o painel compara com o Quadro e mostra quem falta pedir cartão.', 'Marque <b>Pedido</b> ou <b>Demitido</b>: a pessoa sai da lista de pendências na hora.'] },
   'cartao-convenio': { v:1, t:['Importe a planilha exportada da Sysprocard: o painel compara com o Quadro e mostra quem falta pedir cartão.', 'Marque <b>Pedido</b> ou <b>Demitido</b>: a pessoa sai da lista de pendências na hora.'] },
   'cartao-premium': { v:1, t:['Importe a planilha exportada da Sysprocard: o painel compara com o Quadro e mostra quem falta pedir cartão.', 'Marque <b>Pedido</b> ou <b>Demitido</b>: a pessoa sai da lista de pendências na hora.'] },
-  ferias: { v:1, t:['<b>Imprimir relação para o Departamento Pessoal</b> gera a lista de quem sai de férias, por mês ou por período, com o lugar da assinatura.', 'Quem assina sai de Central de Rotinas → <b>Cadastros do RH</b> → Assinantes.'] }
+  ferias: { v:1, t:['<b>Imprimir relação de saídas de férias</b> gera a lista de quem sai de férias, por mês ou por período, com o lugar da assinatura.', 'Quem assina sai de Central de Rotinas → <b>Cadastros do RH</b> → Assinantes.'] }
 };
 const SUBACOES = {
   quadro:   [{ acao:'grel', nome:'Gerador de relatórios' }, { acao:'hcol', nome:'Histórico do colaborador' }, { acao:'ent', nome:'Entrevista de desligamento' }, { acao:'entr', nome:'Respostas das entrevistas' }, { acao:'estab', nome:'Estabilidade' }, { acao:'aso', nome:'Exames (ASO)' }, { acao:'afast', nome:'Afastamentos' }],
@@ -1095,7 +1095,7 @@ const SUBACOES = {
   crachas:  [{ acao:'novo', nome:'Cadastrar crachá de treinamento' }],
   clube:    [{ acao:'novo', nome:'Lançar sócio' }],
   unimed:   [{ acao:'acid', nome:'Acidente de trabalho' }, { acao:'reemb', nome:'Reembolso de desconto indevido' }],
-  ferias:   [{ acao:'fdp', nome:'Relação para o Departamento Pessoal' }],
+  ferias:   [{ acao:'fdp', nome:'Relação de saídas de férias' }],
   farmacia: [{ acao:'aut', nome:'Autorização de desconto' }, { acao:'hist', nome:'Histórico de autorizações' }],
   'servicos-gerais': [{ acao:'she', nome:'Lançar horas extras' }, { acao:'sab', nome:'Lançar abonos' }, { acao:'sgr', nome:'Gratificação do mês' }, { acao:'sin', nome:'Nova inspeção semanal' }, { acao:'spa', nome:'Plano de ação' }]
 };

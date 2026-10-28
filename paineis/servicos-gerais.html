@@ -536,7 +536,7 @@ async function pdfHE(){const J=JS();if(!J)throw new Error('PDF indisponível.');
     columnStyles:{0:{cellWidth:16},1:{cellWidth:11,halign:'center'},2:{cellWidth:44},3:{cellWidth:24},4:{cellWidth:16},5:{cellWidth:'auto'},6:{cellWidth:11,halign:'center'},7:{cellWidth:11,halign:'center'},8:{cellWidth:13,halign:'right',fontStyle:'bold'}},margin:{left:10,right:10,top:20}});
   assinaturas(doc,K==='ab'&&(CFG().assAB||[]).length?CFG().assAB:CFG().assHE,doc.lastAutoTable.finalY+8,W);rodape(doc,W);
   await salvarArq(TK().arq+' Servicos Gerais - '+compCap(COMP).replace('/',' ')+'.pdf',new Uint8Array((await logos(doc)).output('arraybuffer')),'application/pdf')}
-function rodape(doc,W){const n=doc.internal.getNumberOfPages(),H=doc.internal.pageSize.getHeight();for(let p=1;p<=n;p++){doc.setPage(p);doc.setFont('helvetica','normal');doc.setFontSize(7.2);doc.setTextColor(130,136,148);doc.text('Emitido em '+new Date().toLocaleDateString('pt-BR')+' por '+quem()+' · Página '+p+' de '+n,W-10,H-6,{align:'right'})}}
+function rodape(doc,W){const n=doc.internal.getNumberOfPages(),H=doc.internal.pageSize.getHeight();for(let p=1;p<=n;p++){doc.setPage(p);doc.setFont('helvetica','normal');doc.setFontSize(7.2);doc.setTextColor(130,136,148);doc.text('Emitido em '+new Date().toLocaleDateString('pt-BR')+' · Página '+p+' de '+n,W-10,H-6,{align:'right'})}}
 /* gratificação: Excel e PDF */
 async function xlsGR(){const X=XL();if(!X)throw new Error('Excel indisponível.');const g=GR(COMP);const t=grTot(g);
   const a=[['AVALIAÇÃO MENSAL - GRATIFICAÇÃO BPP'],['MÊS AVALIAÇÃO '+COMP.slice(5)+'/'+COMP.slice(0,4)],['Período '+br(g.ini)+' a '+br(g.fim)],[CFG().setor],[],['CÓDIGO - MATRÍCULA','NOME','FUNÇÃO','TOTAL PREVISTO','% ATINGIDO BPP','TOTAL GRATIFICAÇÃO','MOTIVO']];

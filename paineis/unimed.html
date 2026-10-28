@@ -1441,7 +1441,7 @@ function exportar(){const T=ativos().filter(a=>noAno(a,F.ano)&&(!F.dep||a.depto=
         doc.setFont('helvetica','normal');doc.setFontSize(7.8);doc.setTextColor(...MUT);doc.text('UNIDADE CAPINÓPOLIS',L,18.5);doc.setDrawColor(...GREEN);doc.setLineWidth(.6);doc.line(L,22,R,22);
         doc.setDrawColor(215,220,228);doc.setLineWidth(.3);doc.line(L,BASE+3,R,BASE+3);doc.setFont('helvetica','bold');doc.setFontSize(7.3);doc.setTextColor(...INK);doc.text('CRV INDUSTRIAL LTDA - UNIDADE CAPINÓPOLIS | CNPJ 03.937.452/0004-35',W/2,BASE+7,{align:'center'});
         doc.setFont('helvetica','normal');doc.setTextColor(...MUT);doc.text('Rodovia MG-226, s/nº, km 63, Zona Rural, Capinópolis/MG - CEP 38.360-000 · Telefone: (34) 3263-8100',W/2,BASE+10.6,{align:'center'});
-        doc.setFontSize(7);doc.setTextColor(130,136,148);doc.text('Gestão de Pessoas · emitido em '+hj.toLocaleDateString('pt-BR')+' por '+quem()+' · Página '+i+' de '+n,R,H-5,{align:'right'})}
+        doc.setFontSize(7);doc.setTextColor(130,136,148);doc.text('Gestão de Pessoas · emitido em '+hj.toLocaleDateString('pt-BR')+' · Página '+i+' de '+n,R,H-5,{align:'right'})}
       return {doc,fits}};
     let B=build(0);if(!B.fits)B=build(45);
     const out=window.parent&&window.parent.CRV_PDF_LOGOS?await window.parent.CRV_PDF_LOGOS(B.doc):B.doc;

@@ -14,13 +14,14 @@ const nrm = s => String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g,
 const DOCS = [
   { k:'acid-aut', n:'Unimed · Autorização para não descontar (acidente de trabalho)' },
   { k:'acid-rel', n:'Unimed · Relatório de acidentes de trabalho' },
+  { k:'conv-folha', n:'Cartão Convênio · Lançamento em folha e desconto final' },
   { k:'acid-reemb', n:'Unimed · Reembolso de desconto indevido (acidente de trabalho)' },
-  { k:'ferias-dp', n:'Férias · Relação para o Departamento Pessoal' }
+  { k:'ferias-dp', n:'Férias · Relação de saídas de férias' }
 ];
 /* como está hoje nos documentos (pedidos do RH em 27/10/2026); muda pela tela de cadastros */
 const ASS_PADRAO = [
-  { id:'a1', nome:'Michelle Pereira', cargo:'Coordenadora de RH', mat:'', docs:['acid-aut', 'acid-rel', 'acid-reemb'] },
-  { id:'a2', nome:'Leonardo Dias', cargo:'Gerente Executivo', mat:'', docs:['acid-aut', 'acid-rel', 'acid-reemb'] },
+  { id:'a1', nome:'Michelle Pereira', cargo:'Coordenadora de RH', mat:'', docs:['acid-aut', 'acid-rel', 'acid-reemb', 'conv-folha'] },
+  { id:'a2', nome:'Leonardo Dias', cargo:'Gerente Executivo', mat:'', docs:['acid-aut', 'acid-rel', 'acid-reemb', 'conv-folha'] },
   { id:'a3', nome:'', cargo:'Coordenadora de RH', mat:'334', docs:['ferias-dp'] }
 ];
 let SB = null, CAD = null, _carregando = null;
@@ -88,7 +89,7 @@ window.CRV_DOC = (function(){
         doc.setFont('helvetica', 'normal'); doc.setFontSize(7.8); doc.setTextColor(...C.MUT); doc.text('UNIDADE CAPINÓPOLIS', 12, 18.5); doc.setDrawColor(...C.GREEN); doc.setLineWidth(.6); doc.line(12, 22, W - 12, 22);
         doc.setDrawColor(215,220,228); doc.setLineWidth(.3); doc.line(12, H - 19, W - 12, H - 19); doc.setFont('helvetica', 'bold'); doc.setFontSize(7.3); doc.setTextColor(...C.INK); doc.text('CRV INDUSTRIAL LTDA - UNIDADE CAPINÓPOLIS | CNPJ 03.937.452/0004-35', W / 2, H - 15, { align:'center' });
         doc.setFont('helvetica', 'normal'); doc.setTextColor(...C.MUT); doc.text('Rodovia MG-226, s/nº, km 63, Zona Rural, Capinópolis/MG - CEP 38.360-000 · Telefone: (34) 3263-8100', W / 2, H - 11.4, { align:'center' });
-        doc.setFontSize(7); doc.setTextColor(130,136,148); doc.text('Gestão de Pessoas · emitido em ' + hj.toLocaleDateString('pt-BR') + (quem ? ' por ' + quem : '') + ' · Página ' + i + ' de ' + n, W - 12, H - 5, { align:'right' }); }
+        doc.setFontSize(7); doc.setTextColor(130,136,148); doc.text('Gestão de Pessoas · emitido em ' + hj.toLocaleDateString('pt-BR') + ' · Página ' + i + ' de ' + n, W - 12, H - 5, { align:'right' }); }
       return doc; }
   };
 })();
