@@ -24,6 +24,11 @@ const iso = s => { s = String(s || ''); const m = s.match(/^(\d{2})\/(\d{2})\/(\
 const tempoCasa = adm => { adm = iso(adm); if (!/^\d{4}-\d{2}-\d{2}$/.test(adm)) return ''; const a = new Date(adm + 'T12:00:00'), h = new Date(); let m = (h.getFullYear() - a.getFullYear()) * 12 + (h.getMonth() - a.getMonth()); if (h.getDate() < a.getDate()) m--; if (m < 0) return '';
   const y = Math.floor(m / 12), r = m % 12; return y ? y + (y === 1 ? ' ano' : ' anos') + (r ? ' e ' + r + (r === 1 ? ' mês' : ' meses') : '') : r ? r + (r === 1 ? ' mês' : ' meses') : 'menos de 1 mês'; };
 
+/* atividades informadas pelo RH (preenchimento inicial; depois de salvo na ficha, vale o que estiver salvo) */
+const ASSIST = 'Triagem de candidatos\nOrganização documental\nContratos físicos\nConferência das informações\nInterface com áreas\nCumprimento de prazos\nSanções disciplinares\nIndicadores (acompanhamento)\nWhatsApp interno e externo';
+const PADRAO = { 'q:6932':{ faz:ASSIST }, 'q:15441':{ faz:ASSIST },
+  'q:2471':{ faz:'Onboarding\nAcompanhamento de experiência\nFérias\nVida funcional\nTreinamentos (controle) relacionados à jornada\nJovem Aprendiz\nDemissões\nRH Externo\nAplicativo Gestão de Pessoas\nSocial (eventos)\nMídia / comunicação\nNotas fiscais (lançamentos) e pedidos\nSanções disciplinares\nIndicadores (acompanhamento)' },
+  'q:45433':{ faz:'Recepção e atendimento interno\nConexão com contratos\nColeta de assinaturas\nApoio na chegada à área\nOrientação inicial\nWhatsApp interno e externo' } };
 let CFG = null, FOTOS = {}, PESS = [], ACHADOS = [], VIEW = '';
 async function lerCfg(){ const { data } = await sb.from('registros').select('dados').eq('painel', 'quadro').eq('caminho', 'sistema/organograma').maybeSingle();
   CFG = Object.assign({ conf:false, inc:[], exc:[], chefe:{}, nivel:{}, info:{} }, (data && data.dados) || {}); }
@@ -150,7 +155,7 @@ async function conferir(primeira){
 
 /* ---------- ficha da pessoa ---------- */
 function ficha(k){
-  const p = PESS.find(x => x.key === k); if (!p) return; const pode = ehRH(); const info = CFG.info[k] || {};
+  const p = PESS.find(x => x.key === k); if (!p) return; const pode = ehRH(); const info = CFG.info[k] || PADRAO[k] || {};
   const faz = String(info.faz || '').split(/\n/).map(t => t.replace(/^[-•·\s]+/, '').trim()).filter(Boolean), proc = String(info.procure || '').split(/[,;\n]/).map(t => t.trim()).filter(Boolean);
   const chefe = PESS.find(x => x.key === p.chefe);
   const w = janela(esc(tc(p.nome)), `<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:12px"><div class="og-f" style="width:120px;height:120px;margin:0;background:${corDe(p.key)};--c:${NIV[p.nivel].c}">${fotoHtml(p, 120)}</div>
@@ -158,7 +163,7 @@ function ficha(k){
       <div style="font-size:13px;color:#5d6a85;margin-top:6px">${p.jovem ? 'Contrato de ' + esc(brD(p.ini)) + ' a ' + esc(brD(p.fim)) : (tempoCasa(p.adm) ? esc(tempoCasa(p.adm)) + ' de casa (desde ' + esc(brD(p.adm)) + ')' : '')}${chefe ? '<br>Responde a: <b>' + esc(tc(chefe.nome)) + '</b>' : ''}</div>
       ${p.jovem ? '<span class="og-sel">JOVEM APRENDIZ</span>' : ''}</div></div>
     <h4 style="margin:6px 0 6px;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:${NIV[p.nivel].c}">O que faz no departamento</h4>
-    ${faz.length ? '<ul style="margin:0 0 10px;padding-left:18px;line-height:1.6">' + faz.map(t => '<li>' + esc(t) + '</li>').join('') + '</ul>' : '<p style="color:#8a94a8;margin:0 0 10px">Ainda não preenchido.</p>'}
+    ${faz.length ? '<ul style="margin:0 0 10px;padding-left:18px;line-height:1.6;' + (faz.length > 7 ? 'columns:2 220px;column-gap:24px' : '') + '">' + faz.map(t => '<li>' + esc(t) + '</li>').join('') + '</ul>' : '<p style="color:#8a94a8;margin:0 0 10px">Ainda não preenchido.</p>'}
     ${proc.length ? `<h4 style="margin:6px 0 6px;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:${NIV[p.nivel].c}">Procure para</h4><div style="display:flex;gap:6px;flex-wrap:wrap">${proc.map(t => `<span style="background:#eef1f5;border-radius:99px;padding:3px 10px;font-size:12.5px">${esc(t)}</span>`).join('')}</div>` : ''}
     ${pode ? `<details style="margin-top:14px;border-top:1px solid #e4e7ec;padding-top:10px"><summary style="cursor:pointer;font-weight:700">Editar (RH)</summary>
       <label style="display:block;font-size:12px;font-weight:700;color:#667085;margin-top:10px">O QUE FAZ NO DEPARTAMENTO (um tópico por linha)<textarea id="og-faz" rows="6" style="width:100%;margin-top:4px;padding:8px;border:1px solid #d5dbe6;border-radius:8px;font:inherit">${esc(faz.join('\n'))}</textarea></label>
