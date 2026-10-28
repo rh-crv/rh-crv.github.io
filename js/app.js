@@ -344,7 +344,7 @@ function moldura(conteudo){
         <div class="lat-tit"><b>Gestão de Pessoas</b><span>Unidade Capinópolis</span></div>
       </div>
       <nav class="lat-nav">
-        ${p.papel === 'gestor' ? '' : `<button class="lat-item ${h==='#/'||h===''?'ativo':''}" data-ir="#/">${svg('casa')}<span>Visão Geral</span></button>`}
+        ${p.papel === 'gestor' ? '' : `<button class="lat-item ${h==='#/'||h===''?'ativo':''}" data-ir="#/">${svg('casa')}<span>Visão Geral</span></button><button class="lat-item ${h==='#/organograma'?'ativo':''}" data-ir="#/organograma"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="5" rx="1"/><rect x="2" y="16" width="6" height="5" rx="1"/><rect x="16" y="16" width="6" height="5" rx="1"/><path d="M12 8v4M5 16v-2h14v2"/></svg><span>Organograma do RH</span></button>`}
         ${p.papel === 'gestor' ? `<button class="lat-item ${h==='#/'||h===''?'ativo':''}" data-ir="#/">${svg('casa')}<span>Minha equipe</span></button>
         <div class="lat-sec">Painéis da equipe</div>
         ${GESTOR_MENU.map(([f, itens]) => { const cfg = FRENTES[f] || { cor:'#24427c', ic:'pessoas' }; const aqui = itens.some(([k]) => h === '#/eq/' + k); const ab = aqui || abertas['g:' + f];
@@ -448,6 +448,7 @@ function rota(){
   if (h === '#/relatorio') return REL().tela();
   if (h === '#/bases') return BASES().tela();
   if (h === '#/cadastros' && ehRH()) return CADS().tela();
+  if (h === '#/organograma' && E.perfil && E.perfil.papel !== 'gestor') return ORG().tela();
   if (h === '#/envios' && ehRH()) return GESTOR().telaEnvios();
   if (h === '#/desligamento') return telaDesligamento();
   if (h === '#/conta') return telaConta();
@@ -602,6 +603,7 @@ const ctxMod = () => ({ sb, E, $, esc, normal, brD, fMat, fDias, podeVer, podeEd
 const NR1 = () => _nr1 || (_nr1 = window.CRV_NR1_INIT ? window.CRV_NR1_INIT(ctxMod()) : null);
 let _risco = null; const RISCO = () => _risco || (_risco = window.CRV_RISCO_INIT(ctxMod()));
 let _rel = null; const REL = () => _rel || (_rel = window.CRV_REL_INIT(Object.assign(ctxMod(), { NR1, RISCO, BASES })));
+let _org = null; const ORG = () => _org || (_org = window.CRV_ORG_INIT(ctxMod()));
 let _cad = null; const CADS = () => _cad || (_cad = window.CRV_CAD_INIT(Object.assign(ctxMod(), { FRENTES })));
 let _bases = null; const BASES = () => _bases || (_bases = window.CRV_BASES_INIT(Object.assign(ctxMod(), { ehAdmin, FRENTES })));
 let _gestor = null; const GESTOR = () => _gestor || (_gestor = window.CRV_GESTOR_INIT(ctxMod()));
@@ -1513,7 +1515,7 @@ async function logAcesso(acao, onde, detalhe){
 window.CRV_LOG_ACESSO = logAcesso;
 const ondeDe = h => { if (h.startsWith('#/p/')) { const id = decodeURIComponent(h.slice(4).split('/')[0]); return 'Painel: ' + ((E.paineis || []).find(p => p.id === id)?.nome || id); }
   if (h.startsWith('#/eq/')) { const k = h.slice(5); return 'Minha equipe: ' + ({ eq:'Equipe', mov:'Admissões e saídas', pv:'Quadro x previsto', exp:'Experiência', nov:'Novos colaboradores', perfil:'Perfil profissional', fer:'Férias', freq:'Frequência', disc:'Disciplina e RD', cr:'Em treinamento', alo:'Alojamento', env:'Meus envios' }[k] || k); }
-  return ({ '#/':'Visão Geral', '#/central':'Central de Rotinas do RH', '#/admin':'Administração', '#/conta':'Minha conta', '#/relatorio':'Relatórios Gerenciais', '#/bases':'Qualidade dos Dados', '#/cadastros':'Cadastros do RH', '#/envios':'Envios dos Gestores' })[h] || (h.startsWith('#/ficha') ? 'Perfil do Colaborador' : h.startsWith('#/desligamento') ? 'Conferência de Desligamentos' : h.replace(/^#\//, '') || 'Início'); };
+  return ({ '#/':'Visão Geral', '#/central':'Central de Rotinas do RH', '#/admin':'Administração', '#/conta':'Minha conta', '#/relatorio':'Relatórios Gerenciais', '#/bases':'Qualidade dos Dados', '#/cadastros':'Cadastros do RH', '#/organograma':'Organograma do RH', '#/envios':'Envios dos Gestores' })[h] || (h.startsWith('#/ficha') ? 'Perfil do Colaborador' : h.startsWith('#/desligamento') ? 'Conferência de Desligamentos' : h.replace(/^#\//, '') || 'Início'); };
 async function registrar(painel, acao, detalhe){
   try { await sb.from('historico').insert({ painel, acao, detalhe, usuario: E.perfil?.nome }); } catch(_){}
 }
