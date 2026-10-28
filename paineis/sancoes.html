@@ -814,12 +814,14 @@ const SANC_T={ori:'Orientação disciplinar',adv:'Advertência escrita',sus:'Sus
 const SANC_D={ori:'Conversa formal registrada, sem penalidade',adv:'Registro formal da falta',sus:'Afastamento sem salário, de 1 a 30 dias'};
 const fmat=m=>String(m==null?'':m).replace(/\D/g,'').replace(/^0+(?=\d)/,'');
 const nrm=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().trim();
-function pessoaG(m){const B=SANC_BASE();const p=B&&B.P&&B.P[fmat(m)];return p?{mat:fmat(m),nome:p[0]||'',func:p[1]||'',dep:p[2]||'',ger:p[3]||'',sit:p[4]||'',ct:p[5]||'',adm:p[6]||''}:null}
+function pessoaG(m){const B=SANC_BASE();const p=B&&B.P&&B.P[fmat(m)];if(p)return {mat:fmat(m),nome:p[0]||'',func:p[1]||'',dep:p[2]||'',ger:p[3]||'',sit:p[4]||'',ct:p[5]||'',adm:p[6]||''};
+  /* quem ainda não tem sanção não está na base do painel: vem da equipe atual do gestor (Quadro), que o app injeta */
+  const q=(window.CRV_EQUIPE||{})[fmat(m)];return q?{mat:fmat(m),nome:q.nome||'',func:q.funcao||'',dep:q.setor||'',ger:q.gerencia||'',sit:q.situacao==='Desligado'?'DEMITIDO':String(q.situacao||'ATIVO').toUpperCase(),ct:String(q.vinculo||'').toUpperCase(),adm:q.admissao||''}:null}
 function hist12(m){const B=SANC_BASE();if(!B||!B.R)return [];const d12=addD(hoje(),-365);
   return B.R.filter(r=>fmat(r[1])===m&&String(r[2]||'')>=d12).sort((a,b)=>String(b[2]).localeCompare(String(a[2]))).map(r=>br(r[2])+' '+(r[0]?'Suspensão'+(r[5]?' ('+r[5]+'d)':''):'Advertência'))}
 function abrirGestor(pre){
   const e=pre||{};let tipo=e.tipo||'',enviado=false;
-  const B=SANC_BASE()||{},OPS=Object.keys(B.P||{}).map(pessoaG).filter(p=>p&&p.sit!=='DEMITIDO').sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+  const B=SANC_BASE()||{},OPS=[...new Set(Object.keys(B.P||{}).concat(Object.keys(window.CRV_EQUIPE||{})))].map(pessoaG).filter(p=>p&&p.sit!=='DEMITIDO').sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
   const w=document.createElement('div');w.className='ds-fundo';
   w.innerHTML=`<div class="ds-modal" role="dialog" aria-modal="true"><div class="ds-cab"><h3>Solicitar sanção ao RH<small>O RH analisa os fatos e o histórico, define a medida e emite o documento para o colaborador assinar. A solicitação sozinha não vale como sanção.</small></h3><button class="ds-mini" id="dX">Fechar</button></div>
    <div class="ds-corpo">

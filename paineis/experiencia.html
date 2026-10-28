@@ -1622,7 +1622,7 @@ window.CRV_PENDENCIAS=function(forcar){
   const DECG=[["efetivar","Efetivar","Fica no quadro como efetivo"],["prorrogar","Prorrogar","Avaliar mais um pouco, até o fim do contrato"],["encerrar","Encerrar o contrato","Não continua após o vencimento"]];
   const addDia=(d,n)=>new Date(d.getFullYear(),d.getMonth(),d.getDate()+n);
   const st=document.createElement("style");
-  st.textContent=".rg:not(.fmb),#reg,#arBtn,#fmSave,#fmClr,#fmPdf,#fmXls,#fmRh,.fmrh,.fmres,#fmResHint,.fmtipo{display:none!important}"+
+  st.textContent=".rg:not(.fmb),#reg,#arBtn,#fmBox p.fmh3:has(+ .fmres),#fmSave,#fmClr,#fmPdf,#fmXls,#fmRh,.fmrh,.fmres,#fmResHint,.fmtipo{display:none!important}"+
     "#fmBox.gst input,#fmBox.gst textarea{pointer-events:auto}#fmBox.gst textarea,#fmBox.gst input:not([type=radio]){background:#fff}"+
     ".tag.agrh{background:#fff4e0;color:#8a5a00;border-color:#e9a23b}"+
     ".gs-box{margin:14px 0 4px;padding:12px 14px;border-radius:12px;border:1px solid rgba(46,138,87,.35);background:rgba(46,138,87,.06)}.gs-box .fmh3{margin:0 0 8px}"+
@@ -1642,8 +1642,10 @@ window.CRV_PENDENCIAS=function(forcar){
   apply=function(p){ _ap(p); const rg=REG[p.mat], g=rg&&rg._aguardaRH&&rg._g;
     p.agRH=g&&g.etapa===p.key&&g.venc===iso(p.data)?g:null; return p; };
   const tagAg=p=>p.agRH?` <span class="tag agrh" title="Avaliação enviada ao RH${p.agRH.em?" em "+fdy(pd(p.agRH.em.slice(0,10))):""}">Aguardando o RH: ${esc((DECG.find(x=>x[0]===p.agRH.decisao)||[])[1]||"").toLowerCase()}</span>`:"";
-  const _row=rowHTML;
-  rowHTML=function(p){ const s=_row(p); return p.agRH?s.replace('<div class="sm">',tagAg(p)+'<div class="sm">'):s; };
+  /* marca "Aguardando o RH" ao lado do botão do formulário em todas as listas (Nominal, Avaliações, janelas de nomes) */
+  const marcaAg=()=>document.querySelectorAll(".fmb[data-m]").forEach(b=>{const p=P.find(x=>x.mat===+b.dataset.m)||ENC.find(x=>x.mat===+b.dataset.m),t=b.previousElementSibling,tem=t&&t.classList.contains("agrh");
+    if(p&&p.agRH){ if(!tem) b.insertAdjacentHTML("beforebegin",tagAg(p).trim()+" "); } else if(tem) t.remove(); });
+  new MutationObserver(()=>{ clearTimeout(marcaAg._t); marcaAg._t=setTimeout(marcaAg,80); }).observe(document.body,{childList:true,subtree:true});
   const _avr=avRows;
   avRows=function(){ return _avr().map(r=>r.dec==="aguardando"&&r.p.agRH&&r.k===r.p.key?{...r,obs:"Avaliação enviada ao RH ("+((DECG.find(x=>x[0]===r.p.agRH.decisao)||[])[1]||"")+"): aguardando a conferência da Gestão de Pessoas"}:r); };
 

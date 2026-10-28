@@ -510,7 +510,7 @@ async function telaPainelGestor(id){
     // o que o gestor já enviou e ainda aguarda o RH aparece no painel como "Aguardando o RH" (mesmo depois de recarregar)
     if (!usaQ && D.pendente) { try { const { data:EV } = await sb.from('gestor_envios').select('id,tipo,mat,colaborador,dados,status,criado_em').eq('status', 'enviado');
       (EV || []).forEach(e => { let r = null; try { r = D.pendente(e); } catch(_){} if (!r || !r.colecao || !r.doc_id) return; const L = regs[r.colecao] || (regs[r.colecao] = []);
-        const i = L.findIndex(x => x.doc_id === r.doc_id), v = { doc_id:r.doc_id, dados:Object.assign({}, r.dados, { _aguardaRH:true }) }; if (i >= 0) L[i] = v; else L.push(v); }); } catch(_){} }
+        const i = L.findIndex(x => x.doc_id === r.doc_id), v = { doc_id:r.doc_id, dados:Object.assign({}, i >= 0 ? L[i].dados : {}, r.dados, { _aguardaRH:true }) }; if (i >= 0) L[i] = v; else L.push(v); }); } catch(_){} }   // mescla: não perde o que o RH já registrou
     const lanca = !usaQ && !!(D.envios && Object.keys(D.envios).length);
     window.__CRV_PAINEL = window.CRV_PONTE.criar({ sb, painel:pid, perfil:() => E.perfil, quem:() => E.perfil.nome, podeEditar:() => lanca, ehAdmin:() => false, memoria:regs,
       enviar: lanca ? (caminho, dados) => GESTOR().enviarPainel(id, caminho, dados) : null });
@@ -518,6 +518,8 @@ async function telaPainelGestor(id){
     if (!usaQ && PAINEIS_COM_NOVOS.includes(id)) { const cols = [].concat(COLECAO_NOVOS[id] || 'novos');
       cols.forEach(c => (regs[c] || []).forEach(x => { if (x.dados && !x.dados.excluida) novos.push(cols.length > 1 ? { _id:x.doc_id, colecao:c, dados:x.dados } : { _id:x.doc_id, dados:x.dados }); })); }
     // o que o app injeta no painel do RH (ex.: histórico do sistema no Absenteísmo), já recortado para a área
+    // equipe atual do gestor (pelo Quadro), para os formulários de solicitação acharem quem ainda não aparece na base do painel
+    if (!usaQ && D.envios) { try { const eq = await GESTOR().pessoas(); pk.inj = Object.assign({}, pk.inj, { CRV_EQUIPE:eq && eq.mapa || {} }); } catch(_){} }
     const inj = Object.entries(pk.inj || {}).filter(([k]) => /^CRV_[A-Z_]+$/.test(k)).map(([k, v]) => '<script>window.' + k + '=' + JSON.stringify(v).replace(/</g, '\\u003c') + ';<\/script>').join('');
     const tplG = tpl.replace(/<head[^>]*>/i, h0 => h0 + '<script>window.CRV_GESTOR_AREA=true;' + (usaQ ? 'window.CRV_MODO_QUADRO=' + JSON.stringify(vq) + ';' : '') + '<\/script>' + inj + GESTOR_SO_LER);
     const html = montarModelo(tplG, pk.conteudo, pk.referencia, usaQ ? Object.assign({}, p, { id:'quadro' }) : p, novos);

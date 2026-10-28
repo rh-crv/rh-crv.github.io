@@ -3,15 +3,67 @@
 
 /* ---------- Período de experiência ----------
    Recorte = o mesmo do filtro "Setor" do painel do RH: RAW[r][4] = setor (área), RAW[r][3] = departamento (da própria base).
-   Os lançamentos (coleção 'registros', doc 'm<matrícula>') vão só para as matrículas que ficaram na base recortada. */
+   Os lançamentos (coleção 'registros', doc 'm<matrícula>') vão só para as matrículas que ficaram na base recortada.
+   Envio do gestor: na aba Formulários o gestor preenche o RE.0150.07 e grava 'registros/m<mat>' com o campo _g
+   (etapa, vencimento, notas, decisão, comentário). Aqui isso vira o envio 'experiencia' no MESMO formato do formulário
+   antigo do gestor (js/gestor.js formExp), para o RH aceitar em "Envios dos Gestores" sem mudança. */
 (function(){
 const cx = ctx => (ctx.areasN ? ctx : Object.assign(ctx, (({areasN, depSelN, depsN, areasConhecidasN}) => ({areasN, depSelN, depsN, areasConhecidasN}))(CRV_AREA.contexto(ctx.chaves, ctx.mapa))));
+/* formulário oficial RE.0150.07 (mesmos fatores e regra do js/gestor.js): nota 0 a 5; pontos = nota × 2; total = média; meta 70% */
+const FORM_COD = 'RE.0150.07 · Versão 05';
+const FAT = ['Pontualidade/ Assiduidade', 'Iniciativa/Pró-atividade', 'Relacionamento', 'Organização', 'Metas', 'Qualidade do serviço /Atenção', 'Postura Profissional', 'Conhecimento / Desenvolvimento profissional', 'Liderança'];
+const ETAPA = { pr:'1º período', ef:'Fim do contrato', ef90:'Fim dos 90 dias' };
+const DECT = { efetivar:'Efetivar', prorrogar:'Prorrogar', encerrar:'Encerrar o contrato' };
+const ISO = /^\d{4}-\d{2}-\d{2}$/;
+const addD = (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+const hoje = () => { const t = new Date(); return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'); };
+const br = iso => iso ? iso.split('-').reverse().join('/') : '';
+const pct = p => p == null ? '—' : (p * 100).toFixed(1).replace('.', ',') + '%';
+const faixa = p => p == null ? '' : p >= .7 ? 'Desempenho acima do esperado' : p >= .7 - .105 ? 'Atenção para o desempenho mostrado' : 'Desempenho abaixo do esperado';
+
+function envioExp(docId, d){
+  const g = d && d._g; if (!g) return null;                       // gravação sem avaliação do gestor: não é envio
+  const mat = (String(docId).match(/^m(\d+)$/) || [])[1]; if (!mat) return null;
+  const etapa = g.etapa, venc = String(g.venc || ''), dec = g.decisao, obs = String(g.obs || '').trim().slice(0, 1200);
+  if (!ETAPA[etapa] || !ISO.test(venc)) throw new Error('Não encontrei a etapa e o vencimento do contrato. Atualize o painel e tente de novo.');
+  const notas = Array.isArray(g.notas) ? g.notas.slice(0, FAT.length) : [];
+  if (notas.length !== FAT.length || notas.some((n, i) => n === null ? i !== FAT.length - 1 : !(Number.isInteger(n) && n >= 0 && n <= 5)))
+    throw new Error('Dê uma nota de 0 a 5 em todos os fatores (só Liderança pode ficar como "não se aplica").');
+  if (!DECT[dec]) throw new Error('Escolha a decisão: efetivar, prorrogar ou encerrar.');
+  const h = hoje(), lim = addD(venc, -5);                          // encerramento vai ao RH até 5 dias antes do vencimento
+  if (dec === 'encerrar' && h > lim) throw new Error('Fora do prazo para encerramento (até ' + br(lim) + '). Fale com a Gestão de Pessoas.');
+  if ((dec === 'encerrar' || dec === 'prorrogar') && obs.length < 10) throw new Error('Escreva o comentário que justifica a decisão.');
+  const v = notas.filter(n => n !== null).map(n => n * 2), tot = v.reduce((a, b) => a + b, 0) / v.length, p = tot / 10;
+  const crit = FAT.map((a, i) => [a, notas[i] == null ? 'não se aplica' : notas[i] + ' (' + notas[i] * 2 + ' pts)']);
+  const dados = { ref:etapa + '|' + venc, etapa, etapaT:ETAPA[etapa], venc, decisao:dec, crit, notas, tot, pct:p, form:FORM_COD, obs };
+  if (ISO.test(String(g.adm || ''))) dados.adm = g.adm;
+  dados.prazoEnc = lim;                                            // funcao e secao: o app completa pelo Quadro (como no formulário antigo)
+  const resumo = [['Etapa', ETAPA[etapa]], ['Vencimento', br(venc)], ['Encerramento: enviar até', br(lim)],
+    ['Fatores avaliados', notas.filter(n => n !== null).length + ' de ' + FAT.length + ' (formulário ' + FORM_COD + ')'],
+    ['% atingido (meta 70%)', pct(p) + ' · ' + faixa(p)], ['Total de pontos', tot.toFixed(1).replace('.', ',')],
+    ['Decisão', DECT[dec]], ['Comentário', obs || '—']];
+  if (h > venc) resumo.push(['Atenção', 'O contrato já venceu em ' + br(venc) + '. Fale com a Gestão de Pessoas.']);
+  else if (h > lim) resumo.push(['Atenção', 'Passou do prazo para encerrar (5 dias antes do vencimento).']);
+  return { tipo:'experiencia', mat, dados, resumo };
+}
+
+/* envio ainda aguardando o RH → documento como o painel lê ('registros/m<mat>' com _g e _aguardaRH), para continuar
+   marcado "Aguardando o RH" depois de recarregar. Só traz _g: o app deve MESCLAR com o documento que já existe (enc, pr, ef...). */
+function pendenteExp(e){
+  if (!e || e.tipo !== 'experiencia' || (e.status && e.status !== 'enviado')) return null;
+  const d = e.dados || {}, mat = CRV_AREA.fm(e.mat); if (!mat || !ETAPA[d.etapa] || !ISO.test(String(d.venc || ''))) return null;
+  const _g = { etapa:d.etapa, venc:d.venc, adm:d.adm || '', decisao:d.decisao, notas:Array.isArray(d.notas) ? d.notas.slice() : [], obs:d.obs || '',
+    gestor:(e.assinatura && e.assinatura.nome) || e.autor_nome || '', cargoG:'', em:e.criado_em || '', envio:e.id || '' };
+  return { colecao:'registros', doc_id:'m' + mat, dados:{ _g, _aguardaRH:true } };
+}
+
 CRV_AREA.reg({ id:'experiencia', nome:'Período de experiência', frente:'Gestão de Colaboradores',
   filtro(c, ctx){ cx(ctx);
     const L = (CRV_AREA.get(c, 'RAW') || []).filter(r => CRV_AREA.casa(ctx, r[4], r[3]));
     CRV_AREA.set(c, 'RAW', L);
     ctx._expMats = new Set(L.map(r => CRV_AREA.fm(r[0]))); },
-  regs:{ registros:(id, d, ctx) => { const m = (String(id).match(/^m?(\d+)/) || [])[1]; return !!m && !!ctx._expMats && ctx._expMats.has(CRV_AREA.fm(m)); } } });
+  regs:{ registros:(id, d, ctx) => { const m = (String(id).match(/^m?(\d+)/) || [])[1]; return !!m && !!ctx._expMats && ctx._expMats.has(CRV_AREA.fm(m)); } },
+  envios:{ registros:envioExp }, pendente:pendenteExp });
 })();
 
 /* ---------- Férias ----------
@@ -24,7 +76,40 @@ CRV_AREA.reg({ id:'ferias', nome:'Férias', frente:'Absenteísmo e Férias',
     const L = (CRV_AREA.get(c, 'DATA') || []).filter(p => CRV_AREA.casa(ctx, p.dp, p.d));
     CRV_AREA.set(c, 'DATA', L); CRV_AREA.set(c, 'GEST', []);
     ctx._ferMats = new Set(L.map(p => CRV_AREA.fm(p.c))); },
-  regs:{ prog:(id, d, ctx) => { const m = (String(id).match(/^(\d+)_/) || [])[1]; return !!m && !!ctx._ferMats && ctx._ferMats.has(CRV_AREA.fm(m)); } } });
+  regs:{ prog:(id, d, ctx) => { const m = (String(id).match(/^(\d+)_/) || [])[1]; return !!m && !!ctx._ferMats && ctx._ferMats.has(CRV_AREA.fm(m)); } },
+  /* gestor programa no próprio painel (só datas liberadas, prazo até o dia 15 do mês anterior): vira envio 'ferias' ao RH,
+     no mesmo formato do formulário antigo (gestor.js → formFer). O painel grava prog/<matrícula>_<início do aquisitivo>
+     com { inicio, dias, parcelas, abono, obs, _g:{ de, ate, lim, saldo } } (o _g só no modo gestor). */
+  envios:{ prog:(docId, d) => {
+    const m = String(docId).match(/^(\d+)_(\d{4}-\d{2}-\d{2})$/); if (!m) throw new Error('Período de férias não identificado. Fale com a Gestão de Pessoas.');
+    const g = d._g || {};
+    if (d.retorno) throw new Error('"Aguarda retorno do afastamento" é lançado só pelo RH.');
+    if (!g.de || g.de !== m[2] || !g.lim) throw new Error('Dados do período não vieram do painel. Abra o painel de novo e tente outra vez.');
+    if (d.autorizacao) throw new Error('Data fora do calendário (com autorização) é lançada só pelo RH.');
+    const iso = dt => dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
+    const addD = (s, n) => { const [a, b, c] = s.split('-').map(Number); return iso(new Date(a, b - 1, c + n)); };
+    const h = new Date(), mi = iso(new Date(h.getFullYear(), h.getMonth() + (h.getDate() <= 15 ? 1 : 2), 1));   // = minInicioFerias do gestor.js
+    const parc = (Array.isArray(d.parcelas) && d.parcelas.length ? d.parcelas : [{ inicio:d.inicio, dias:d.dias }])
+      .filter(x => x && /^\d{4}-\d{2}-\d{2}$/.test(x.inicio || '')).map(x => ({ inicio:x.inicio, dias:+x.dias, fim:addD(x.inicio, +x.dias - 1) })).sort((a, b) => a.inicio.localeCompare(b.inicio));
+    const ab = +d.abono || 0, tot = parc.reduce((t, x) => t + x.dias, 0), saldo = +g.saldo || 0;
+    if (!parc.length) throw new Error('Informe o início das férias.');
+    if (parc.length > 3) throw new Error('No máximo 3 parcelas.');
+    if (parc.some(x => x.inicio < mi)) throw new Error('Fora do prazo: o início mais cedo possível hoje é ' + mi.split('-').reverse().join('/') + ' (envio até o dia 15 do mês anterior).');
+    if (parc.some(x => !(x.dias >= 5))) throw new Error('Cada parcela precisa ter pelo menos 5 dias.');
+    if (parc.length > 1 && !parc.some(x => x.dias >= 14)) throw new Error('Uma das parcelas precisa ter pelo menos 14 dias.');
+    if (ab && ab !== 10) throw new Error('Abono pecuniário: 10 dias ou nenhum.');
+    if (tot + ab > saldo) throw new Error('A soma (' + tot + ' dias' + (ab ? ' + 10 de abono' : '') + ') passa do saldo de ' + saldo + ' dias.');
+    for (let i = 1; i < parc.length; i++) if (parc[i].inicio <= parc[i - 1].fim) throw new Error('As parcelas se sobrepõem.');
+    const br = s => s ? s.split('-').reverse().join('/') : '';
+    const foraLimite = parc[0].inicio > g.lim;
+    const dados = { ref:g.de, de:g.de, ate:g.ate, lim:g.lim, saldo, parcelas:parc, abono:ab, obs:String(d.obs || '').trim(), foraLimite };
+    return { tipo:'ferias', mat:m[1], dados,
+      resumo:[['Período aquisitivo', br(g.de) + ' a ' + br(g.ate)], ['Data limite', br(g.lim)], ['Saldo', saldo + ' dias']]
+        .concat(parc.map((x, i) => [(parc.length > 1 ? (i + 1) + 'ª parcela' : 'Férias'), br(x.inicio) + ' a ' + br(x.fim) + ' (' + x.dias + ' dias)']))
+        .concat(ab ? [['Abono pecuniário', '10 dias']] : []).concat(foraLimite ? [['Atenção', 'Início depois da data limite: o RH vai avaliar']] : []).concat(dados.obs ? [['Observação', dados.obs]] : []) }; } },
+  /* envio ainda aguardando o RH: aparece no painel como "Aguardando o RH" mesmo depois de recarregar */
+  pendente(e){ const d = e.dados || {}; if (e.tipo !== 'ferias' || !d.de || !Array.isArray(d.parcelas) || !d.parcelas.length) return null; const p0 = d.parcelas[0];
+    return { colecao:'prog', doc_id:CRV_AREA.fm(e.mat) + '_' + d.de, dados:{ inicio:p0.inicio, dias:p0.dias, parcelas:d.parcelas.map(x => ({ inicio:x.inicio, dias:x.dias })), abono:d.abono || 0, obs:d.obs || '', _aguardaRH:true, envio:e.id } }; } });
 })();
 
 /* ---------- Registro de Danos (RD) ----------
@@ -218,6 +303,37 @@ CRV_AREA.reg({ id:'sancoes', nome:'Sanções Disciplinares', frente:'Ocorrência
     if (S && S.base.has(m)) return S.area.has(m);
     const X = ctx.areasN ? ctx : A.contexto(ctx.chaves, ctx.mapa);
     return A.casa(X, null, d.dep); } },
+  // gestor solicita a sanção no próprio painel (botão "Solicitar sanção ao RH"): o painel grava em 'solicitacoes' e a ponte
+  // transforma no envio 'sancao' do antigo "Pedido de sanção" (formSan). funcao/secao vêm do Quadro (enviarPainel).
+  // Não vai 'hist': o painel não tem faltas em 90 dias (fa90) e o verEnvio mostraria "undefined"; o histórico de sanções vai no resumo.
+  envios:{ solicitacoes:(id, d) => {
+    if (!d || !d.mat) return null;
+    const T = { ori:'Orientação disciplinar', adv:'Advertência escrita', sus:'Suspensão disciplinar' }, sus = d.tipo === 'sus', dias = +d.dias;
+    const br = s => s ? String(s).slice(0, 10).split('-').reverse().join('/') : '';
+    const h = new Date(), hoje = h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0') + '-' + String(h.getDate()).padStart(2, '0');
+    if (!T[d.tipo]) throw new Error('Escolha a medida sugerida.');
+    if (sus && !(dias >= 1 && dias <= 30 && Number.isInteger(dias))) throw new Error('Informe os dias de suspensão (de 1 a 30).');
+    if (!d.data || !/^\d{4}-\d{2}-\d{2}$/.test(d.data)) throw new Error('Informe a data do ocorrido.');
+    if (d.data > hoje) throw new Error('A data do ocorrido não pode ser no futuro.');
+    const ass = String(d.assunto || '').trim(), desc = String(d.desc || '').trim();
+    if (ass.length < 5) throw new Error('Escreva o assunto em uma linha.');
+    if (desc.length < 80) throw new Error('Descreva os fatos com mais detalhes (mínimo 80 caracteres).');
+    const g = d._g || {};
+    const dados = { ref:d.data, tipo:d.tipo, tipoT:T[d.tipo], dias:sus ? dias : null, data:d.data, hora:d.hora || '', local:String(d.local || '').trim(),
+      assunto:ass, desc, test:String(d.test || '').trim(), ant:d.ant || '', adm:d.adm || '', exp:!!g.exp };
+    const resumo = [['Medida sugerida', T[d.tipo] + (sus ? ' · ' + dias + ' dia' + (dias > 1 ? 's' : '') : '')], ['Data do ocorrido', br(d.data) + (dados.hora ? ' · ' + dados.hora : '')],
+      ['Local', dados.local || '—'], ['Assunto', ass], ['Descrição dos fatos', desc], ['Testemunhas', dados.test || 'não informadas'], ['Já tinha sido orientado', dados.ant || 'não informado'],
+      ['Sanções nos últimos 12 meses (painel)', g.s12 ? g.s12 + ' · ' + (g.ult || []).join('; ') : 'nenhuma']].concat(g.exp ? [['Contrato', 'em experiência']] : []);
+    return { tipo:'sancao', mat:CRV_AREA.fm(d.mat), dados, resumo }; } },
+  // envio de sanção ainda aguardando o RH (feito pelo painel ou pelo formulário antigo): volta como 'solicitacoes', que o
+  // formulário do gestor lista como "Aguardando o RH" e usa no aviso "já existe solicitação desta pessoa".
+  pendente(e){
+    if (!e || e.tipo !== 'sancao' || e.status !== 'enviado' || !e.mat || !e.id) return null;
+    const d = e.dados || {};
+    return { colecao:'solicitacoes', doc_id:('e' + String(e.id)).replace(/[^A-Za-z0-9_\-.~:@+]/g, '-').slice(0, 200),
+      dados:{ tipo:d.tipo, mat:CRV_AREA.fm(e.mat), nome:e.colaborador || '', func:d.funcao || '', dep:d.secao || '', adm:d.adm || '',
+        data:d.data || '', hora:d.hora || '', local:d.local || '', assunto:d.assunto || '', desc:d.desc || '', dias:d.tipo === 'sus' ? d.dias : null,
+        test:d.test || '', ant:d.ant || '', solicitadoEm:e.criado_em || '', envio:e.id, _aguardaRH:true } }; },
   // só os campos que o painel usa (sai CPF, quem emitiu, testemunhas/observações internas etc.)
   limparReg(col, d){ if (col !== 'documentos') return d; const o = {};
     ['tipo','titulo','mat','nome','func','dep','ger','adm','data','assunto','desc','cat','dias','ini','fim','excluido','emitidoEm'].forEach(k => { if (d[k] !== undefined) o[k] = d[k]; });
@@ -348,7 +464,34 @@ CRV_AREA.reg({ id:'perfil', nome:'Levantamento de Perfil Profissional', frente:'
     if (repetidos(ctx).has(CRV_AREA.N(dep))) { const q = (ctx.mapa || {})[CRV_AREA.fm(d.mat)]; if (q && q.area) return CRV_AREA.casa(ctx, q.area, dep); }
     return CRV_AREA.casa(ctx, '', dep);
   } },
-  limparReg(col, d){ ['criadoPor','atualizadoPor','por','autor','email'].forEach(k => delete d[k]); return d; }
+  /* informações e avisos do RH (obs, aviso) ficam só com o RH: não vão para o gestor */
+  limparReg(col, d){ ['criadoPor','atualizadoPor','por','autor','email','obs','aviso'].forEach(k => delete d[k]); return d; },
+  /* Rodada 3: o gestor registra o parecer da gestão na própria ficha e envia ao RH (tipo 'perfil', mesmo formato do formPerfil antigo).
+     O painel grava col.doc(id).update({parecer}) e a ponte entrega aqui o documento inteiro já mesclado. */
+  envios:{ colaboradores: (id, d) => {
+    const pr = d && d.parecer; if (!pr || typeof pr !== 'object') return null;
+    const acoes = (Array.isArray(pr.acoes) ? pr.acoes : []).map(a => String(a).trim()).filter(Boolean), txt = String(pr.txt || '').trim(), resp = String(pr.resp || '').trim();
+    if (!acoes.length) throw new Error('Marque pelo menos uma ação da gestão.');
+    if (txt.length < 15) throw new Error('Escreva as observações, com prazo e responsável.');
+    const mat = String(d.mat || id || '').trim(); if (!mat) throw new Error('Colaborador sem matrícula no levantamento. Fale com a Gestão de Pessoas.');
+    const n = k => +d[k] || 0, nums = { atest:n('atest'), falta:n('falta'), fj:n('fj'), adv:n('adv'), susp:n('susp') }, pl = (v, s, p) => v + ' ' + (v === 1 ? s : p);
+    const resumo = [['Colaborador', String(d.nome || '')],
+      ['Números do levantamento', pl(nums.atest, 'atestado', 'atestados') + ' · ' + pl(nums.falta, 'falta', 'faltas') + (nums.fj ? ' (+ ' + nums.fj + ' just.)' : '') + ' · ' + pl(nums.adv, 'advertência', 'advertências') + ' · ' + pl(nums.susp, 'suspensão', 'suspensões')],
+      ['Ação da gestão', acoes.join(', ')], ['Observações, prazos e responsáveis', txt], ['Responsável pelo acompanhamento', resp || '(quem assina)']];
+    if (acoes.includes('Desligamento')) resumo.push(['Atenção', 'Desligamento marcado: o RH vai conferir estabilidade, processos e o histórico antes de qualquer passo.']);
+    // _g: o que o painel precisa para remontar a ficha do envio pendente depois de recarregar (aceitar/verEnvio ignoram)
+    const _g = { id:String(id || ''), nome:String(d.nome || ''), funcao:String(d.funcao || ''), depto:String(d.depto || ''), gerencia:String(d.gerencia || ''), adm:String(d.adm || '') };
+    return { tipo:'perfil', mat, dados:{ ref:new Date().toISOString().slice(0, 10), acoes, txt, resp, nums, _g }, resumo };
+  } },
+  /* envio 'perfil' ainda aguardando o RH → ficha como o painel lê, com o parecer enviado e _aguardaRH */
+  pendente(e){
+    if (!e || e.tipo !== 'perfil' || e.status !== 'enviado') return null;
+    const d = e.dados || {}, g = d._g || {}, n = d.nums || {}, mat = String(e.mat || '').trim(); if (!mat) return null;
+    const doc_id = g.id || mat.replace(/[^A-Za-z0-9_\-.~:@+]/g, '-').slice(0, 100);
+    return { colecao:'colaboradores', doc_id, dados:{ mat:mat, nome:g.nome || String(e.colaborador || '').toUpperCase(), funcao:g.funcao || d.funcao || '', depto:g.depto || d.secao || '', gerencia:g.gerencia || '', adm:g.adm || '',
+      atest:+n.atest || 0, falta:+n.falta || 0, fj:+n.fj || 0, susp:+n.susp || 0, adv:+n.adv || 0,
+      parecer:{ acoes:Array.isArray(d.acoes) ? d.acoes.slice() : [], txt:d.txt || '', resp:d.resp || '', em:String(e.criado_em || d.ref || '').slice(0, 10) }, _aguardaRH:true } };
+  }
 });
 })();
 
