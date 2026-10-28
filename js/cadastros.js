@@ -84,8 +84,8 @@ window.CRV_DOC = (function(){
       A.forEach(a => { doc.setDrawColor(60,66,80); doc.setLineWidth(.3); doc.line(x, yy, x + lw, yy); doc.setFont('helvetica', 'bold'); doc.setFontSize(8.8); doc.setTextColor(...C.INK); doc.text(a.nome, x + lw / 2, yy + 4.5, { align:'center' }); doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...C.MUT); doc.text(a.cargo || '', x + lw / 2, yy + 8.6, { align:'center' }); x += lw + gap; });
       return yy + 14; },
     /* cabeçalho e rodapé em todas as páginas (chamar no fim, antes de salvar) */
-    moldura(doc, quem){ const { W, H } = dims(doc), n = doc.getNumberOfPages(), hj = new Date();
-      for (let i = 1; i <= n; i++) { doc.setPage(i); doc.setFillColor(...C.NAVY); doc.rect(0, 0, W, 4, 'F'); doc.setFont('helvetica', 'bold'); doc.setFontSize(13.5); doc.setTextColor(...C.NAVY); doc.text('CRV INDUSTRIAL', 12, 14);
+    moldura(doc, quem){ const n = doc.getNumberOfPages(), hj = new Date();
+      for (let i = 1; i <= n; i++) { doc.setPage(i); const { W, H } = dims(doc); /* por página: aceita folhas deitadas e em pé no mesmo PDF */ doc.setFillColor(...C.NAVY); doc.rect(0, 0, W, 4, 'F'); doc.setFont('helvetica', 'bold'); doc.setFontSize(13.5); doc.setTextColor(...C.NAVY); doc.text('CRV INDUSTRIAL', 12, 14);
         doc.setFont('helvetica', 'normal'); doc.setFontSize(7.8); doc.setTextColor(...C.MUT); doc.text('UNIDADE CAPINÓPOLIS', 12, 18.5); doc.setDrawColor(...C.GREEN); doc.setLineWidth(.6); doc.line(12, 22, W - 12, 22);
         doc.setDrawColor(215,220,228); doc.setLineWidth(.3); doc.line(12, H - 19, W - 12, H - 19); doc.setFont('helvetica', 'bold'); doc.setFontSize(7.3); doc.setTextColor(...C.INK); doc.text('CRV INDUSTRIAL LTDA - UNIDADE CAPINÓPOLIS | CNPJ 03.937.452/0004-35', W / 2, H - 15, { align:'center' });
         doc.setFont('helvetica', 'normal'); doc.setTextColor(...C.MUT); doc.text('Rodovia MG-226, s/nº, km 63, Zona Rural, Capinópolis/MG - CEP 38.360-000 · Telefone: (34) 3263-8100', W / 2, H - 11.4, { align:'center' });
