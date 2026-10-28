@@ -367,9 +367,12 @@ function moldura(conteudo){
         ${gOpc(p).has('central') ? `<button class="lat-item ${h==='#/central'?'ativo':''}" data-ir="#/central"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg><span>Central de Rotinas</span></button>` : ''}
         ${gOpc(p).has('ficha') ? `<button class="lat-item ${h.startsWith('#/ficha')?'ativo':''}" data-ir="#/ficha"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2.5"/><path d="M5.5 16c.6-1.8 2-2.7 3.5-2.7s2.9.9 3.5 2.7M14 9h4M14 13h4"/></svg><span>Perfil do Colaborador</span></button>` : ''}
         <div class="lat-sec">Frentes</div>
-        ${menuGestor(p).map(([f, itens]) => { const cfg = FRENTES[f] || { cor:'#24427c', ic:'pessoas' }; const aqui = itens.some(([ir]) => h === ir); const ab = aqui || abertas['g:' + f];
+        ${menuGestor(p).map(([f, itens]) => { const cfg = FRENTES[f] || { cor:'#24427c', ic:'pessoas' }; const aqui = itens.some(([ir, , ac]) => h === ir || ac.some(x => x[0] === h)); const ab = aqui || abertas['g:' + f];
           return `<div class="lat-grupo ${ab ? 'aberto' : ''}" data-frente="${esc('g:' + f)}"><button class="lat-frente ${aqui ? 'atual' : ''}" aria-expanded="${ab ? 'true' : 'false'}"><span class="lat-ic" style="background:${cfg.cor}">${svg(cfg.ic, '#fff')}</span><span class="lat-nome">${esc(f)}</span><span class="lat-seta">${CHEV}</span></button>
-            <div class="lat-sub">${itens.map(([ir, n, pn]) => `<button class="lat-painel ${h === ir ? 'ativo atual' : ''}" data-ir="${esc(ir)}" data-busca="${esc(n.toLowerCase())}" style="--cor:${cfg.cor}"><span class="lat-pn">${esc(n)}${pn ? ' <small style="opacity:.7">· painel</small>' : ''}</span></button>`).join('')}</div></div>`; }).join('')}` : `
+            <div class="lat-sub">${itens.map(([ir, n, ac]) => { const bt = `<button class="lat-painel ${h === ir ? 'ativo atual' : ''}" data-ir="${esc(ir)}" data-busca="${esc((n + ' ' + ac.map(x => x[1]).join(' ')).toLowerCase())}" style="--cor:${cfg.cor}"><span class="lat-pn">${esc(n)}</span></button>`;
+              if (!ac.length) return bt; const ab = ac.some(x => x[0] === h) || h === ir || subAbertos['g' + ir];
+              return `<div class="lat-pgrupo ${ab ? 'aberto' : ''}" data-pid="${esc('g' + ir)}"><div class="lat-plinha">${bt}<button class="lat-pseta" aria-label="Mostrar opções de ${esc(n)}" aria-expanded="${ab ? 'true' : 'false'}">${CHEV}</button></div>
+                <div class="lat-psub">${ac.map(([ir2, n2]) => `<button class="lat-acao ${h === ir2 ? 'ativo' : ''}" data-ir="${esc(ir2)}" style="--cor:${cfg.cor}"><i>${icAcao(n2)}</i><span>${esc(n2)}</span></button>`).join('')}</div></div>`; }).join('')}</div></div>`; }).join('')}` : `
         <div class="lat-pgrupo lat-cgrupo ${h==='#/central'||h==='#/desligamento'||h==='#/bases'||h==='#/envios'||h==='#/cadastros'||h.startsWith('#/respostas')||subAbertos.__central?'aberto':''}" data-pid="__central">
           <div class="lat-plinha"><button class="lat-item ${h==='#/central'?'ativo':''}" data-ir="#/central"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg><span>Central de Rotinas do RH</span></button><button class="lat-pseta" aria-label="Mostrar opções da Central de Rotinas do RH" aria-expanded="${h==='#/desligamento'||h==='#/bases'||h==='#/envios'?'true':'false'}">${CHEV}</button></div>
           <div class="lat-psub"><button class="lat-acao ${h==='#/desligamento'?'ativo':''}" data-ir="#/desligamento" style="--cor:var(--coral)"><i>${IA('<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>')}</i><span>Conferência de Desligamentos</span></button><button class="lat-acao ${h==='#/bases'?'ativo':''}" data-ir="#/bases" style="--cor:var(--cane)"><i>${IA('<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>')}</i><span>Qualidade dos Dados</span></button>${ehRH() ? `<button class="lat-acao ${h==='#/cadastros'?'ativo':''}" data-ir="#/cadastros" style="--cor:#7b3fa0"><i>${IA('<path d="M4 4h16v4H4zM4 10h16v4H4zM4 16h10v4H4z"/>')}</i><span>Cadastros do RH</span></button>` : ''}${ehRH() ? `<button class="lat-acao ${h==='#/envios'?'ativo':''}" data-ir="#/envios" style="--cor:#24427c"><i>${IA('<path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/>')}</i><span>Envios dos Gestores</span></button>` : ''}${ehRH() ? `<button class="lat-acao ${h.startsWith('#/respostas')?'ativo':''}" data-ir="#/respostas" style="--cor:#b5731a"><i>${IA('<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/>')}</i><span>Documentos com os gestores</span></button>` : ''}</div>
@@ -455,12 +458,25 @@ function moldura(conteudo){
   $('#m-instalar').onclick = () => { fechar(); instalarApp(); };
 }
 
-/* menu do gestor: itens da equipe + painéis do RH liberados, agrupados pela frente, na ordem das frentes do app */
-function menuGestor(u){ const op = gOpc(u), G = {};
-  GESTOR_MENU.forEach(([f, it]) => it.forEach(([k, n]) => { if (op.has(k)) (G[f] = G[f] || []).push(['#/eq/' + k, n, false]); }));
-  GESTOR_PN().forEach(d => { if (!op.has('p:' + d.id)) return; const pr = (E.paineis || []).find(x => x.id === d.id); const f = (pr && pr.frente) || d.frente; (G[f] = G[f] || []).push(['#/gp/' + d.id, (pr && pr.nome) || d.nome, true]); });
-  const ord = GESTOR_MENU.map(x => x[0]);
-  return Object.keys(G).sort((a, b) => ((ord.indexOf(a) + 1) || ((ORDEM_FRENTES.indexOf(a) + 1) || 99) + 50) - ((ord.indexOf(b) + 1) || ((ORDEM_FRENTES.indexOf(b) + 1) || 99) + 50)).map(f => [f, G[f]]); }
+/* menu do gestor igual ao do RH: os painéis do RH liberados, com os mesmos nomes e frentes, só com a área dele.
+   A tela simplificada da equipe que faz o mesmo papel some do menu (sem duplicar); o que o gestor envia ao RH
+   (avaliar experiência, programar férias, pedir sanção, parecer) vira opção dentro do painel, como as ações do RH. */
+const GSUBST = { absenteismo:{ esc:['freq'] }, sancoes:{ esc:['disc'], ac:[['disc', 'Pedir sanção ao RH']] }, experiencia:{ esc:['exp'], ac:[['exp', 'Avaliar e enviar ao RH']] },
+  ferias:{ esc:['fer'], ac:[['fer', 'Programar férias e enviar ao RH']] }, admissoes:{ esc:['mov'] }, rescisoes:{ esc:['mov'] }, quadro:{ esc:['eq', 'pv'] }, crachas:{ esc:['cr'] },
+  perfil:{ esc:['perfil'], ac:[['perfil', 'Parecer da gestão']] } };
+/* telas da equipe que viraram painel do RH: 'freq' → '#/gp/absenteismo' (usado no menu e nos atalhos da Visão Geral) */
+const gSubst = u => { const op = gOpc(u), o = {}; Object.entries(GSUBST).forEach(([id, r]) => { if (op.has('p:' + id) && window.CRV_AREA && window.CRV_AREA.def(id)) r.esc.forEach(k => { if (!o[k]) o[k] = '#/gp/' + id; }); }); return o; };
+window.CRV_GSUBST = () => gSubst(E.perfil);
+function menuGestor(u){ const op = gOpc(u), sub = gSubst(u), G = {};
+  // ações que o gestor envia ao RH, ficam dentro do painel correspondente
+  const acDe = id => ((GSUBST[id] || {}).ac || []).filter(([k]) => op.has(k)).map(([k, n]) => ['#/eq/' + k, n]);
+  GESTOR_PN().forEach(d => { if (!op.has('p:' + d.id)) return; const pr = (E.paineis || []).find(x => x.id === d.id); const f = (pr && pr.frente) || d.frente;
+    (G[f] = G[f] || []).push(['#/gp/' + d.id, (pr && pr.nome) || d.nome, acDe(d.id), (pr && +pr.ordem) || 999]); });
+  // ação cujo painel não foi liberado: aparece como item próprio
+  GESTOR_MENU.forEach(([f, it]) => it.forEach(([k, n]) => { if (!op.has(k) || sub[k]) return; (G[f] = G[f] || []).push(['#/eq/' + k, n, [], 1000]); }));
+  Object.values(G).forEach(L => L.sort((a, b) => a[3] - b[3]));
+  const ord = ORDEM_FRENTES;
+  return Object.keys(G).sort((a, b) => ((ord.indexOf(a) + 1) || 99) - ((ord.indexOf(b) + 1) || 99)).map(f => [f, G[f]]); }
 
 /* gestor: esconde os botões de lançamento do RH dentro dos painéis (cadastrar, emitir documento, tratativa, autorização) */
 const GESTOR_SO_LER = '<style id="crv-gestor-ler">.nv-btn,.nv-ed,.nv-del,.aut-btn,.ds-btn,.ds-ped,#ftBtn,.ft-trat{display:none!important}</style>';
