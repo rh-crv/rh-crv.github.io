@@ -474,7 +474,7 @@ const R=D.rows.map(r=>{const a=new Date(r[0]+'T00:00'),out=r[6]===2,e=out?new Da
     gap:r[15]?Math.round((a-new Date(r[15]+'T00:00'))/DAY):null,mes:a.getMonth(),dias,out,st:out?(dias<=90?2:3):r[6],e90:out&&dias<=90,mat90:a<=CUT,exp:r[6]===0&&dias<=90,d90:iso(new Date(+a+90*DAY))}});
 R.forEach(r=>r.kind='a');
 
-const NM=Math.max(...R.map(r=>r.mes))+1;
+const NM=window.CRV_GESTOR_AREA&&D.nm?D.nm:Math.max(...R.map(r=>r.mes))+1;   // gestor: mesmo período do RH (D.nm vem do recorte)
 // saídas de 2026 (todas, inclusive de quem entrou em anos anteriores)
 const X=D.exits.map(r=>{const d=new Date(r[0]+'T00:00'),ad=new Date(r[7]+'T00:00'),dias=Math.round((d-ad)/DAY);
   return{kind:'x',rs:r[0],mat:r[1],n:r[2],f:D.funcs[r[3]],dep:D.deps[r[4]],ar:r[5],t:r[6],as:r[7],m:r[8],tx:r[9],se:r[10],cc:r[11],mes:d.getMonth(),dias,out:true,st:dias<=90?2:3,e90:dias<=90,a26:r[7]>='2026-01-01'}});
@@ -747,7 +747,7 @@ function depCalc(mode){
   const get=r=>{const k=mode==='n'?r.dep:r.dep+'|'+r[gk];let o=g.get(k);
     if(!o){const v=HC[mode].get(k)||Z10,gi=mode==='n'?null:r[gk];o={k,d:r.dep,g:gi,gn:mode==='n'?'':(mode==='s'?D.sets:D.ccs)[gi],ar:mode==='n'?D.depA[DI.get(r.dep)]:mode==='s'?D.setA[gi]:D.ccA[gi],A:[],E:[],h:hcMedV(ms,v),hj:v[NM]};g.set(k,o)}return o};
   R.forEach(r=>{if(ms.includes(r.mes))get(r).A.push(r)});X.forEach(r=>{if(ms.includes(r.mes))get(r).E.push(r)});
-  return[...g.values()].filter(o=>S.ar===null||o.ar===S.ar).map(fin);
+  return[...g.values()].filter(o=>S.ar===null?!(window.CRV_GESTOR_AREA&&D.gAr)||D.gAr.includes(o.ar):o.ar===S.ar).map(fin);   // gestor: só as seções dos setores dele, como o RH filtrado
 }
 const DK={n:o=>o.d,hj:o=>o.hj,a:o=>o.A.length,s:o=>o.E.length,sd:o=>o.A.length-o.E.length,tv:o=>o.tv===null?-1:o.tv,st:o=>o.A.length?o.stay.length/o.A.length:-1,e9:o=>o.m.length?o.e90.length/o.m.length:-1,re:o=>o.re.length};
 const dsort=(l,nm)=>{const k=DK[S.ds];return l.sort((x,y)=>(k(x)<k(y)?-1:k(x)>k(y)?1:nm(x)<nm(y)?-1:1)*S.dd)};

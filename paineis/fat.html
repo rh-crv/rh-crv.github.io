@@ -368,7 +368,7 @@ const casa=m=>m<0?'ainda não admitido':m<12?m+(m==1?' mês':' meses'):Math.floo
 const fnGroup=f=>/^MOTORISTA/.test(f)?'Motorista':'Operador de máquinas';
 const fnShort=f=>f.replace('OP. DE MAQUINAS AGRICOLAS','Op. Máq. Agrícolas').replace(/ \(MG\)?$/,'').replace(/ \(MG$/,'').replace('MOTORISTA','Motorista').replace('LIDER','Líder').replace('DIRETORIA','Diretoria');
 
-const P=RAW.map(r=>({mat:r[0],nome:r[1],fun:r[2],fs:fnShort(r[2]),fg:fnGroup(r[2]),set:r[3],setAf:!!r[4],dep:r[5],cc:r[6],ges:r[7],con:r[8],sit:r[9],adm:r[10],nasc:r[11],sexo:r[12],cid:r[13],per:r[14],prog:r[15],temFer:!!r[16],k:(r[1]+' '+r[0]).toLowerCase()}));
+const P=RAW.map(r=>({mat:r[0],nome:r[1],fun:r[2],fs:fnShort(r[2]),fg:fnGroup(r[2]),set:r[3],setAf:!!r[4],dep:r[5],cc:r[6],ges:r[7],con:r[8],sit:r[9],adm:r[10],nasc:r[11],sexo:r[12],cid:r[13],per:r[14],prog:r[15],temFer:!!r[16],pi:r[17],k:(r[1]+' '+r[0]).toLowerCase()}));
 
 
 const ORD=['dir','nao','pap','apo'];
@@ -386,7 +386,7 @@ function calc(){
   P.forEach(p=>{
     p.m=fullMonths(p.adm,R); p.d10=addM(p.adm,12); p.idade=age(p.nasc,R);
     const cut=p.sexo=='F'?st.im:st.ih;
-    p.papIdade=p.idade!=null&&p.idade>=cut;
+    p.papIdade=(window.CRV_GESTOR_AREA&&p.pi!=null)?!!p.pi:p.idade!=null&&p.idade>=cut; // gestor: sem nascimento; vem só a marcação do corte padrão
     const cf=CONF[String(p.mat)]; p.cf=cf?cf.s:null;
     if(p.cf=='apos')p.st='apo';
     else if(p.papIdade&&p.cf!='nao')p.st='pap';
@@ -487,11 +487,11 @@ function renderPen(){
   const base=p=>'<div><div class="nm">'+esc(p.nome)+'</div><div class="meta">'+p.mat+' · '+esc(p.fs)+' · '+esc(p.con)+' · '+esc(p.dep)+'</div></div>';
   PEN={pap,afa,prox,apo,semf,naoConf,ven};
   $('pen').innerHTML=
-    blk('c-plum','','Possíveis aposentados a conferir','Idade igual ou acima do corte, sem confirmação ainda',pap,p=>'<div class="pi">'+base(p)+'<div class="r"><b>'+p.idade+' anos</b>'+(p.sexo=='F'?'Mulher':'Homem')+' · '+casa(p.m)+'</div><div class="acts">'+confBtns(p)+'</div></div>','pap')
+    blk('c-plum','','Possíveis aposentados a conferir','Idade igual ou acima do corte, sem confirmação ainda',pap,p=>'<div class="pi">'+base(p)+'<div class="r"><b>'+(p.idade!=null?p.idade:(p.sexo=='F'?'55+':'60+'))+' anos</b>'+(p.sexo=='F'?'Mulher':'Homem')+' · '+casa(p.m)+'</div><div class="acts">'+confBtns(p)+'</div></div>','pap')
    +blk('c-coral','','Férias com limite vencido','Período completo cujo limite para iniciar já passou na data de referência',ven,p=>'<div class="pi">'+base(p)+'<div class="r"><b>'+br(p.limMin)+'</b>limite · '+nf(p.saldo)+' d de saldo</div></div>','ven')
    +blk('c-wait','','Completam 12 meses nos próximos 2 meses','Entram no direito logo após a data de referência',prox,p=>'<div class="pi">'+base(p)+'<div class="r"><b>'+br(p.d10)+'</b>completa 12 meses</div></div>','prox')
    +blk('c-slate','','Aposentados confirmados','Sem direito no programa',apo,p=>'<div class="pi">'+base(p)+'<div class="r"><b>'+(p.idade??'—')+' anos</b></div><div class="acts">'+confBtns(p)+'</div></div>','apo')
-   +(naoConf.length?blk('c-ok','','Conferidos: não são aposentados','Têm idade acima do corte, mas o RH confirmou que não são aposentados',naoConf,p=>'<div class="pi">'+base(p)+'<div class="r"><b>'+p.idade+' anos</b></div><div class="acts">'+confBtns(p)+'</div></div>','naoConf'):'')
+   +(naoConf.length?blk('c-ok','','Conferidos: não são aposentados','Têm idade acima do corte, mas o RH confirmou que não são aposentados',naoConf,p=>'<div class="pi">'+base(p)+'<div class="r"><b>'+(p.idade!=null?p.idade:(p.sexo=='F'?'55+':'60+'))+' anos</b></div><div class="acts">'+confBtns(p)+'</div></div>','naoConf'):'')
    +(semf.length?blk('c-all','','Sem cadastro no Painel de Férias','Não constam na base de férias de '+FERBASE+'; conferir períodos',semf,p=>'<div class="pi">'+base(p)+'<div class="r"><b>'+br(p.adm)+'</b>admissão</div></div>','semf'):'');
 }
 let PEN={};
@@ -721,4 +721,7 @@ calc();fillFilters();render();
 })();
 </script>
 
+<script>/* gestor de área: sem data de nascimento; o corte de idade fica no padrão do RH (60 homens, 55 mulheres), então os campos de idade não aparecem */
+if(window.CRV_GESTOR_AREA){const st=document.createElement('style');st.textContent='.fld:has(> #fIh),.fld:has(> #fIm){display:none!important}';document.head.appendChild(st);}
+</script>
 </body></html>

@@ -373,7 +373,7 @@ const QB=D.base?D.base.slice(8,10)+'/'+D.base.slice(5,7):'06/10';document.queryS
 const R=D.rows.map(r=>{const d=new Date(r[0]+'T00:00'),a=new Date(r[6]+'T00:00');return{d,ds:r[0],t:r[1],mat:r[2],n:r[3],fi:r[4],di:r[5],gi:D.sd[r[5]],f:D.funcs[r[4]],dep:D.deps[r[5]],dg:D.dgs[D.sd[r[5]]],a,as:r[6],m:r[7],tx:r[8],mes:d.getMonth(),dias:Math.round((d-a)/864e5)}});
 R.forEach(r=>r.bq=BLQ[r.mat]||null);
 const bqTag=r=>r.bq?'<div><span class="tag blq">Bloqueado · '+esc(r.bq[0])+'</span><div class="blqo">'+esc(r.bq[1])+'</div></div>':'';
-const NM=Math.max(...R.map(r=>r.mes))+1;
+const NM=window.CRV_GESTOR_AREA&&D.nm?D.nm:Math.max(...R.map(r=>r.mes))+1;   // gestor: mesmo período do RH (D.nm vem do recorte)
 const S={mes:null,dg:null,dep:null,fun:null,tipo:null,ord:'sd',tab:'v',sort:'d',dir:-1,tg:'dg'};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));

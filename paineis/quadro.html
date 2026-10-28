@@ -816,6 +816,9 @@ const PREV=[
  {g:'Irrigação localizada',dp:'Irrigação Localizada',ref:'necessidade total do setor',un:'função',sc:[{n:'Setor Irrigação Localizada',f:r=>r[AREA]=='Irrigação Localizada'}],
   it:[['Todas as funções do setor',52,r=>true,'Necessidade informada só no total do setor']]}];
 if(window.CRV_GESTOR_AREA){const pv=PREV.filter(G=>(G.sc||[]).slice(0,1).some(s=>D.some(r=>{try{return s.f(r)}catch(_){return false}})));PREV.splice(0,PREV.length,...pv);}
+/* gestor só de seção(ões) (GRE.ar = setores inteiros dele): só blocos por seção e só as linhas com gente dele; previsto por função é do setor todo e não vale para uma seção */
+if(window.CRV_GESTOR_AREA&&typeof GRE=='object'&&GRE&&Array.isArray(GRE.ar)){const nz=t=>String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim(),inteiro=G=>GRE.ar.some(a=>nz(a)==nz(G.dp));
+  const pv=PREV.filter(G=>inteiro(G)||G.un=='seção');pv.forEach(G=>{if(!inteiro(G))G.it=G.it.filter(it=>D.some(r=>{try{return G.sc[0].f(r)&&it[2](r)}catch(_){return false}}))});PREV.splice(0,PREV.length,...pv.filter(G=>G.it.length));}
 const st={emp:null,ano:'',pSel:null,pOpen:null,pSort:'d',pSc:{},fi:null,area:null,fun:'',con:null,sit:null,tab:'g',q:'',dep:'',ges:'',sort:NOME,dir:1,n:50,open:null,dSort:'n',dDir:-1,dAll:false,dq:''};
 const CONS=['Efetivo','Experiência','Safra','Determinado'];
 const cnt=(rows,i)=>{const m=new Map();rows.forEach(r=>{const k=r[i]||'(não informado)';m.set(k,(m.get(k)||0)+1)});return [...m].sort((a,b)=>b[1]-a[1])};
