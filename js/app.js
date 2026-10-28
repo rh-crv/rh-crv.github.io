@@ -70,8 +70,12 @@ const GESTOR_MENU = [
   ['Atendimento e Ouvidoria', [['resp', 'Respostas do RH'], ['env', 'Meus envios ao RH']]] ];
 /* o que o gestor/assistente vê: cada opção do menu da equipe + Central, Perfil do Colaborador e salário.
    Fica em perfis.paineis_ver como 'g:<opção>' (com 'g:_' = configurado); sem configuração, vale tudo liberado. */
-const GESTOR_OPC = [['central', 'Central de Rotinas do departamento'], ['ficha', 'Perfil do Colaborador'], ['sal', 'Salário na ficha e nas listas (nunca de encarregado, supervisor, coordenador ou gerente)']].concat(GESTOR_MENU.flatMap(([f, it]) => it.map(([k, n]) => [k, f + ' · ' + n])));
-const gOpc = u => { const L = (u && Array.isArray(u.paineis_ver)) ? u.paineis_ver : []; if (!L.includes('g:_')) return new Set(GESTOR_OPC.map(o => o[0])); return new Set(L.filter(x => /^g:/.test(x) && x !== 'g:_').map(x => x.slice(2))); };
+/* painéis do RH abertos para o gestor com a base recortada para a área dele (js/area-paineis.js): opção 'p:<painel>' */
+const GESTOR_PN = () => (window.CRV_AREA ? window.CRV_AREA.LISTA : []);
+const GESTOR_OPC = [['central', 'Central de Rotinas do departamento'], ['ficha', 'Perfil do Colaborador'], ['sal', 'Salário na ficha e nas listas (nunca de encarregado, supervisor, coordenador ou gerente)']].concat(GESTOR_MENU.flatMap(([f, it]) => it.map(([k, n]) => [k, f + ' · ' + n])))
+  .concat(GESTOR_PN().map(d => ['p:' + d.id, 'Painel do RH · ' + d.nome + ' (só a área do gestor, sem dados sensíveis)']));
+// sem configuração: tudo do menu da equipe, sem os painéis do RH (esses só quando a administradora marcar)
+const gOpc = u => { const L = (u && Array.isArray(u.paineis_ver)) ? u.paineis_ver : []; if (!L.includes('g:_')) return new Set(GESTOR_OPC.map(o => o[0]).filter(k => !/^p:/.test(k))); return new Set(L.filter(x => /^g:/.test(x) && x !== 'g:_').map(x => x.slice(2))); };
 window.CRV_GOPC = () => gOpc(E.perfil);
 const nomePapel = p => ({admin:'Administrador principal', rh:'Equipe RH', editor:'Editor', leitor:'Leitor', gestor:'Gestor de área'}[p] || p);
 /* assistente (secretária) de gestor: acesso de gestor ligado a um gestor responsável; vê a mesma equipe e lança em nome dele.
@@ -363,9 +367,9 @@ function moldura(conteudo){
         ${gOpc(p).has('central') ? `<button class="lat-item ${h==='#/central'?'ativo':''}" data-ir="#/central"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg><span>Central de Rotinas</span></button>` : ''}
         ${gOpc(p).has('ficha') ? `<button class="lat-item ${h.startsWith('#/ficha')?'ativo':''}" data-ir="#/ficha"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2.5"/><path d="M5.5 16c.6-1.8 2-2.7 3.5-2.7s2.9.9 3.5 2.7M14 9h4M14 13h4"/></svg><span>Perfil do Colaborador</span></button>` : ''}
         <div class="lat-sec">Frentes</div>
-        ${GESTOR_MENU.map(([f, itens0]) => { const itens = itens0.filter(([k]) => gOpc(p).has(k)); if (!itens.length) return ''; const cfg = FRENTES[f] || { cor:'#24427c', ic:'pessoas' }; const aqui = itens.some(([k]) => h === '#/eq/' + k); const ab = aqui || abertas['g:' + f];
+        ${menuGestor(p).map(([f, itens]) => { const cfg = FRENTES[f] || { cor:'#24427c', ic:'pessoas' }; const aqui = itens.some(([ir]) => h === ir); const ab = aqui || abertas['g:' + f];
           return `<div class="lat-grupo ${ab ? 'aberto' : ''}" data-frente="${esc('g:' + f)}"><button class="lat-frente ${aqui ? 'atual' : ''}" aria-expanded="${ab ? 'true' : 'false'}"><span class="lat-ic" style="background:${cfg.cor}">${svg(cfg.ic, '#fff')}</span><span class="lat-nome">${esc(f)}</span><span class="lat-seta">${CHEV}</span></button>
-            <div class="lat-sub">${itens.map(([k, n]) => `<button class="lat-painel ${h === '#/eq/' + k ? 'ativo atual' : ''}" data-ir="#/eq/${k}" data-busca="${esc(n.toLowerCase())}" style="--cor:${cfg.cor}"><span class="lat-pn">${esc(n)}</span></button>`).join('')}</div></div>`; }).join('')}` : `
+            <div class="lat-sub">${itens.map(([ir, n, pn]) => `<button class="lat-painel ${h === ir ? 'ativo atual' : ''}" data-ir="${esc(ir)}" data-busca="${esc(n.toLowerCase())}" style="--cor:${cfg.cor}"><span class="lat-pn">${esc(n)}${pn ? ' <small style="opacity:.7">· painel</small>' : ''}</span></button>`).join('')}</div></div>`; }).join('')}` : `
         <div class="lat-pgrupo lat-cgrupo ${h==='#/central'||h==='#/desligamento'||h==='#/bases'||h==='#/envios'||h==='#/cadastros'||h.startsWith('#/respostas')||subAbertos.__central?'aberto':''}" data-pid="__central">
           <div class="lat-plinha"><button class="lat-item ${h==='#/central'?'ativo':''}" data-ir="#/central"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg><span>Central de Rotinas do RH</span></button><button class="lat-pseta" aria-label="Mostrar opções da Central de Rotinas do RH" aria-expanded="${h==='#/desligamento'||h==='#/bases'||h==='#/envios'?'true':'false'}">${CHEV}</button></div>
           <div class="lat-psub"><button class="lat-acao ${h==='#/desligamento'?'ativo':''}" data-ir="#/desligamento" style="--cor:var(--coral)"><i>${IA('<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>')}</i><span>Conferência de Desligamentos</span></button><button class="lat-acao ${h==='#/bases'?'ativo':''}" data-ir="#/bases" style="--cor:var(--cane)"><i>${IA('<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>')}</i><span>Qualidade dos Dados</span></button>${ehRH() ? `<button class="lat-acao ${h==='#/cadastros'?'ativo':''}" data-ir="#/cadastros" style="--cor:#7b3fa0"><i>${IA('<path d="M4 4h16v4H4zM4 10h16v4H4zM4 16h10v4H4z"/>')}</i><span>Cadastros do RH</span></button>` : ''}${ehRH() ? `<button class="lat-acao ${h==='#/envios'?'ativo':''}" data-ir="#/envios" style="--cor:#24427c"><i>${IA('<path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/>')}</i><span>Envios dos Gestores</span></button>` : ''}${ehRH() ? `<button class="lat-acao ${h.startsWith('#/respostas')?'ativo':''}" data-ir="#/respostas" style="--cor:#b5731a"><i>${IA('<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/>')}</i><span>Documentos com os gestores</span></button>` : ''}</div>
@@ -451,6 +455,49 @@ function moldura(conteudo){
   $('#m-instalar').onclick = () => { fechar(); instalarApp(); };
 }
 
+/* menu do gestor: itens da equipe + painéis do RH liberados, agrupados pela frente, na ordem das frentes do app */
+function menuGestor(u){ const op = gOpc(u), G = {};
+  GESTOR_MENU.forEach(([f, it]) => it.forEach(([k, n]) => { if (op.has(k)) (G[f] = G[f] || []).push(['#/eq/' + k, n, false]); }));
+  GESTOR_PN().forEach(d => { if (!op.has('p:' + d.id)) return; const pr = (E.paineis || []).find(x => x.id === d.id); const f = (pr && pr.frente) || d.frente; (G[f] = G[f] || []).push(['#/gp/' + d.id, (pr && pr.nome) || d.nome, true]); });
+  const ord = GESTOR_MENU.map(x => x[0]);
+  return Object.keys(G).sort((a, b) => ((ord.indexOf(a) + 1) || ((ORDEM_FRENTES.indexOf(a) + 1) || 99) + 50) - ((ord.indexOf(b) + 1) || ((ORDEM_FRENTES.indexOf(b) + 1) || 99) + 50)).map(f => [f, G[f]]); }
+
+/* painel do RH aberto pelo gestor/assistente: mesmo arquivo do painel, com a base recortada para a área (só leitura) */
+async function telaPainelGestor(id){
+  E.painelAberto = null;
+  const D = window.CRV_AREA && window.CRV_AREA.def(id);
+  if (!D || !MODELOS[id]) { location.hash = '#/'; return; }
+  const p = Object.assign({ id, nome:D.nome, frente:D.frente }, (E.paineis || []).find(x => x.id === id) || {});
+  moldura(`<div class="trilha"><button data-ir="#/">Visão Geral</button> › <span>${esc(p.frente)}</span> › <b>${esc(p.nome)}</b></div>
+    <div id="modelo-area" class="cartao vazio"><div class="spinner" style="margin:0 auto"></div><p>Abrindo o painel…</p></div>`);
+  { const t = document.querySelector('.trilha [data-ir]'); if (t) t.onclick = () => location.hash = '#/'; }
+  const a = assistDe(E.perfil), dono = a ? a.id : E.perfil.user_id;
+  const [r, tpl] = await Promise.all([
+    sb.from('area_dados').select('pk:dados->paineis->' + id).eq('chave', 'u:' + dono).maybeSingle(),
+    fetch(MODELOS[id] + '?v=' + CFG.VERSAO, { cache:'no-cache' }).then(x => x.ok ? x.text() : Promise.reject(new Error('Arquivo do painel não encontrado.'))).catch(e => ({ erro:e }))
+  ]);
+  const area = $('#modelo-area'); if (!area || location.hash !== '#/gp/' + id) return;
+  if (r.error) { area.innerHTML = `<div class="erro">${esc(traduzErro(r.error))}</div>`; return; }
+  if (tpl.erro) { area.innerHTML = `<div class="erro">${esc(tpl.erro.message)}</div>`; return; }
+  const row = r.data || {}, pk = row.pk !== undefined ? row.pk : (row.dados && row.dados.paineis && row.dados.paineis[id]);
+  if (!pk || !pk.conteudo) { area.innerHTML = `${svg('planilha')}<h3>${esc(p.nome)}: ainda sem dados da sua área</h3><p>A Gestão de Pessoas ainda não atualizou este painel para a sua área. Tente mais tarde.</p>`; return; }
+  try {
+    window.CRV_QUEM = E.perfil.nome; window.CRV_RECARREGAR = null;
+    const regs = pk.regs || {};
+    window.__CRV_PAINEL = window.CRV_PONTE.criar({ sb, painel:id, perfil:() => E.perfil, quem:() => E.perfil.nome, podeEditar:() => false, ehAdmin:() => false, memoria:regs });
+    let novos = [];
+    if (PAINEIS_COM_NOVOS.includes(id)) { const cols = [].concat(COLECAO_NOVOS[id] || 'novos');
+      cols.forEach(c => (regs[c] || []).forEach(x => { if (x.dados && !x.dados.excluida) novos.push(cols.length > 1 ? { _id:x.doc_id, colecao:c, dados:x.dados } : { _id:x.doc_id, dados:x.dados }); })); }
+    const tplG = tpl.replace(/<head[^>]*>/i, h0 => h0 + '<script>window.CRV_GESTOR_AREA=true;<\/script>');
+    const html = montarModelo(tplG, pk.conteudo, pk.referencia, p, novos);
+    const url = URL.createObjectURL(new Blob([html], { type:'text/html' }));
+    area.className = 'modelo-area';
+    area.innerHTML = `<div style="font-size:12.5px;color:var(--mut);margin:0 0 6px">Somente a sua área · base de ${esc(fmtRef(pk.referencia))}. Os lançamentos deste painel são feitos pela Gestão de Pessoas.</div><iframe id="modelo-frame" title="${esc(p.nome)}" src="${url}"></iframe>`; ajustarFrame(); [300, 1500, 4000].forEach(t => setTimeout(ajustarFrame, t));
+    E.painelAberto = id;
+    $('#modelo-frame').onload = () => setTimeout(() => URL.revokeObjectURL(url), 2000);
+  } catch(e) { area.innerHTML = `<div class="erro">Não consegui montar o painel: ${esc(e.message)}</div>`; }
+}
+
 function rota(){
   if (!E.perfil) return;
   fecharModal();
@@ -458,6 +505,7 @@ function rota(){
   logAcesso('abriu', ondeDe(h));
   if (E.perfil.papel === 'gestor') { if (h === '#/conta') return telaConta();
     if (h === '#/central') return gOpc(E.perfil).has('central') ? telaCentralGestor() : (location.hash = '#/');
+    if (h.startsWith('#/gp/')) { const id = decodeURIComponent(h.slice(5).split('/')[0]); return gOpc(E.perfil).has('p:' + id) ? telaPainelGestor(id) : (location.hash = '#/'); }
     if (h === '#/ficha' || h.startsWith('#/ficha/')) return gOpc(E.perfil).has('ficha') ? telaFicha(h.split('/')[2] || '') : (location.hash = '#/');
     if (window.CRV_RESP_INIT && h === '#/eq/resp' && gOpc(E.perfil).has('resp')) return RESP().telaResp(false).catch(e => console.error(e));
     if (window.CRV_RESP_INIT && h === '#/eq/mdisc' && gOpc(E.perfil).has('mdisc')) return RESP().telaDocsGestor().catch(e => console.error(e));
@@ -1829,6 +1877,10 @@ window.CRV_QUADRO = async function(){
 /* dados de outro painel (para o histórico do colaborador no Quadro) */
 const _pacCache = {};
 window.CRV_SAL = async function(){ if (!ehRH()) return null; const d = await window.CRV_DADOS('salarios'); return d && d.dados && d.dados.SAL ? { SAL:d.dados.SAL, ref:d.referencia } : null; };
+/* base completa de um painel, no formato do pacote (para gerar as cópias recortadas dos gestores) */
+window.CRV_PACOTE_BRUTO = async function(painel){ if (!ehRH()) return null;
+  const { data:d, error } = await sb.from('pacotes').select('referencia,conteudo,atualizado_em').eq('painel', painel).maybeSingle(); if (error || !d) return null;
+  if (d.conteudo && d.conteudo.arquivo) d.conteudo = await lerArquivoPacote(painel, d.conteudo.arquivo); return d; };
 window.CRV_DADOS = async function(painel){
   try {
     const { data: d, error } = await sb.from('pacotes').select('referencia,conteudo,atualizado_em').eq('painel', painel).maybeSingle();
@@ -2446,14 +2498,15 @@ function formUsuario(u, todos){
         const ar = ehAssist ? (gResp.areas || []).slice() : papel === 'gestor' ? [...m.querySelectorAll('#u-areas input:checked:not(:disabled)')].map(x=>x.value).filter(k => GESTOR().chaveOk(k)) : [];
         if (papel === 'gestor' && !ar.length) return erro(ehAssist ? 'O gestor escolhido ainda não tem setor marcado. Marque os setores dele primeiro.' : 'Marque pelo menos um setor ou departamento para o gestor.');
         /* o gestor mudou de setor ou de nome: as assistentes dele acompanham */
-        const syncAssist = async uid => { if (papel !== 'gestor' || ehAssist) return; for (const x of todos.filter(y => assistDe(y) && assistDe(y).id === uid)) { await sb.from('perfis').update({ areas:ar, frentes:['assist:' + uid, 'assistnome:' + nome], paineis_ver:gpv }).eq('user_id', x.user_id); } };
+        const syncAssist = async uid => { if (papel !== 'gestor' || ehAssist) return; for (const x of todos.filter(y => assistDe(y) && assistDe(y).id === uid)) { await sb.from('perfis').update({ areas:ar.concat('u:' + uid), frentes:['assist:' + uid, 'assistnome:' + nome], paineis_ver:gpv }).eq('user_id', x.user_id); } };
         const semPain = papel === 'admin' || papel === 'gestor' || papel === 'rh';
         const pe = semPain ? [] : [...m.querySelectorAll('[data-pe]:checked')].map(x => x.dataset.pe), pv = semPain ? [] : [...m.querySelectorAll('[data-pv]:checked')].map(x => x.dataset.pv).filter(id => !pe.includes(id));
         const gpv = papel !== 'gestor' ? null : ehAssist ? (gResp.paineis_ver || []) : ['g:_'].concat([...m.querySelectorAll('[data-gopc]:checked')].map(x => 'g:' + x.dataset.gopc));
         const comPain = o => gpv ? Object.assign(o, { paineis_ver:gpv, paineis_editar:[] }) : (pv.length || pe.length || (u && u.paineis_ver !== undefined)) ? Object.assign(o, { paineis_ver:pv, paineis_editar:pe }) : o;
         const imp = ['rh', 'editor'].includes(papel) && $('#u-imp').checked;
         const comImp = o => (imp || (u && u.importa !== undefined)) ? Object.assign(o, { importa:imp }) : o;
-        const comAreas = o => comImp(comPain((papel === 'gestor' || (u && u.areas !== undefined)) ? Object.assign(o, { areas:ar }) : o));
+        /* 'u:<id do gestor>' = painéis do RH recortados para a área dele (a assistente usa a do gestor responsável) */
+        const comAreas = o => comImp(comPain((papel === 'gestor' || (u && u.areas !== undefined)) ? Object.assign(o, { areas:papel !== 'gestor' ? ar : ehAssist ? ar.filter(k => !/^u:/.test(k)).concat('u:' + gResp.user_id) : ar.concat('u:' + (o.user_id || (u && u.user_id))) }) : o));
         if (!nome) return erro('Informe o nome.');
         bt.disabled = true; bt.textContent = 'Salvando...';
         try {

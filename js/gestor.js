@@ -22,7 +22,7 @@ const OPC = () => (window.CRV_GOPC ? window.CRV_GOPC() : new Set(['central', 'fi
 const SIM = () => !!(E.perfil && E.perfil.__sim);
 /* dados da área do usuário (no "Ver como gestor" o administrador vê só as áreas do gestor escolhido) */
 async function lerArea(){ let q = sb.from('area_dados').select('chave,dados,atualizado_em').neq('chave', '__meta'); const ar = (E.perfil && E.perfil.areas) || []; if (ar.length) q = q.in('chave', ar);
-  const { data, error } = await q; if (error) throw error; const A = (data || []).map(x => x.dados).filter(Boolean);
+  const { data, error } = await q; if (error) throw error; const A = (data || []).filter(x => chaveOk(x.chave)).map(x => x.dados).filter(x => x && Array.isArray(x.P));
   const P = []; const vis = new Set(); A.forEach(a => a.P.forEach(p => { if (!vis.has(p.m)) { vis.add(p.m); P.push(Object.assign({ chave:a.nome }, p)); } })); P.sort((a, b) => a.n.localeCompare(b.n, 'pt-BR'));
   let ENV = []; try { const r = await sb.from('gestor_envios').select('*').order('criado_em', { ascending:false }); ENV = (r.data || []).filter(e => vis.has(e.mat)); } catch(_){}
   return { A, P, vis, ENV }; }
@@ -161,16 +161,59 @@ async function recortes(chaves){
 /* administrador: gera os recortes para todas as áreas usadas por gestores */
 async function gerar(forcar){
   if (!E.perfil || E.perfil.papel !== 'admin') return { ok:false };
-  const { data: G, error } = await sb.from('perfis').select('areas,papel,ativo').eq('papel', 'gestor');
+  const { data: G, error } = await sb.from('perfis').select('user_id,areas,papel,ativo,frentes,paineis_ver').eq('papel', 'gestor');
   if (error) return { ok:false, erro:error };
   const chaves = [...new Set((G || []).filter(g => g.ativo).flatMap(g => g.areas || []))].filter(chaveOk);
-  const sig = assinatura();
+  const sig = assinatura() + '|' + await assinaturaPaineis(G || []);
   if (!forcar) { try { const { data } = await sb.from('area_dados').select('dados').eq('chave', '__meta').maybeSingle(); if (data && data.dados && data.dados.sig === sig && JSON.stringify(data.dados.chaves) === JSON.stringify(chaves.slice().sort())) return { ok:true, igual:true }; } catch(_){} }
   if (!chaves.length) return { ok:true, n:0 };
   const R = await recortes(chaves);
   for (const r of R) { const { error: e } = await sb.from('area_dados').upsert({ chave:r.chave, dados:r.dados, atualizado_em:new Date().toISOString(), atualizado_por:E.perfil.nome }, { onConflict:'chave' }); if (e) return { ok:false, erro:e }; }
+  try { await gerarPaineis(G || []); } catch(e) { console.warn('painéis dos gestores', e); }
   await sb.from('area_dados').upsert({ chave:'__meta', dados:{ sig, chaves:chaves.slice().sort(), em:new Date().toISOString(), por:E.perfil.nome }, atualizado_em:new Date().toISOString(), atualizado_por:E.perfil.nome }, { onConflict:'chave' });
   return { ok:true, n:R.length };
+}
+/* ---------- painéis do RH recortados por gestor (js/area-paineis.js) ----------
+   Cada gestor com painéis liberados ('g:p:<painel>' em perfis.paineis_ver) ganha uma linha 'u:<id do gestor>' em area_dados
+   com a base de cada painel só com as pessoas dos setores/departamentos dele (inclui quem já saiu) e os lançamentos dessas pessoas.
+   A chave 'u:<id>' entra em perfis.areas do gestor e das assistentes dele, e a regra do banco já deixa ler só a própria. */
+const ehAssistG = g => (g.frentes || []).some(x => /^assist:/.test(x));
+const paineisDe = g => (g.paineis_ver || []).filter(x => /^g:p:/.test(x)).map(x => x.slice(4)).filter(id => window.CRV_AREA && window.CRV_AREA.def(id));
+async function assinaturaPaineis(G){
+  const AR = window.CRV_AREA; if (!AR) return '';
+  const donos = G.filter(g => g.ativo && !ehAssistG(g) && paineisDe(g).length); if (!donos.length) return 'sem';
+  const ids = [...new Set(donos.flatMap(paineisDe))].sort();
+  const falta = G.filter(u => u.ativo && donos.some(g => (u.user_id === g.user_id || (u.frentes || []).includes('assist:' + g.user_id)) && !(u.areas || []).includes('u:' + g.user_id))).length;
+  let ult = ''; try { const { data } = await sb.from('registros').select('atualizado_em').in('painel', ids).order('atualizado_em', { ascending:false }).limit(1); ult = data && data[0] && data[0].atualizado_em || ''; } catch(_){}
+  return 'pn:' + (falta ? 'falta' + Date.now() : '') + (window.CRV_AREA_V || '') + ':' + ult + ':' + ids.map(id => id + '=' + ((E.metas[id] && (E.metas[id].atualizado_em || E.metas[id].referencia)) || '')).join(',') + ':' +
+    donos.map(g => g.user_id + '>' + (g.areas || []).filter(chaveOk).sort().join(';') + '>' + paineisDe(g).sort().join(';')).sort().join('/');
+}
+async function gerarPaineis(G){
+  const AR = window.CRV_AREA; if (!AR || !window.CRV_PACOTE_BRUTO) return 0;
+  const donos = G.filter(g => g.ativo && !ehAssistG(g) && paineisDe(g).length); if (!donos.length) return 0;
+  const Q = await window.CRV_QUADRO(); if (!Q) return 0; const M = Q.mapa;
+  const PAC = {}, REG = {};
+  const pac = async id => { if (!(id in PAC)) { try { PAC[id] = await window.CRV_PACOTE_BRUTO(id); } catch(_) { PAC[id] = null; } } return PAC[id]; };
+  const regs = async (id, col) => { const k = id + '|' + col; if (!REG[k]) { const r = await window.todasLinhas((a, z) => sb.from('registros').select('doc_id,dados').eq('painel', id).eq('colecao', col).order('doc_id').range(a, z)); REG[k] = r.data || []; } return REG[k]; };
+  let n = 0;
+  for (const g of donos) {
+    const ks = (g.areas || []).filter(chaveOk); if (!ks.length) continue;
+    const mm = Object.keys(M).filter(m => ks.some(k => daChave(k, M[m])));
+    const ctx = { mats:new Set(mm.map(AR.fm)), mapa:M, chaves:ks, areas:new Set(mm.map(m => M[m].area).filter(Boolean)), setores:new Set(mm.map(m => M[m].setor).filter(Boolean)),
+      gerencias:new Set(mm.map(m => M[m].gerencia).filter(Boolean)), funcoes:new Set(mm.map(m => M[m].funcao).filter(Boolean)), nomes:new Set(mm.map(m => normal(M[m].nome || '')).filter(Boolean)) };
+    const paineis = {};
+    for (const id of paineisDe(g)) { const d = await pac(id); if (!d || !d.conteudo) continue; const D = AR.def(id);
+      try { const conteudo = AR.filtrar(id, d.conteudo, ctx), rg = {};
+        for (const col of Object.keys(D.regs || {})) rg[col] = (await regs(id, col)).filter(x => AR.regOk(id, col, x.doc_id, x.dados, ctx)).map(x => ({ doc_id:x.doc_id, dados:AR.limparReg ? AR.limparReg(id, col, x.dados) : x.dados }));
+        paineis[id] = { referencia:d.referencia || '', conteudo, regs:rg }; } catch(e) { console.warn('painel ' + id + ' do gestor', e); } }
+    const chave = 'u:' + g.user_id;
+    const { error:e } = await sb.from('area_dados').upsert({ chave, dados:{ tipo:'paineis', paineis, gerado:new Date().toISOString(), por:E.perfil.nome }, atualizado_em:new Date().toISOString(), atualizado_por:E.perfil.nome }, { onConflict:'chave' });
+    if (e) { console.warn('painéis do gestor', e); continue; } n++;
+    // a chave entra no acesso do gestor e das assistentes dele
+    for (const u of G.filter(x => x.user_id === g.user_id || (x.frentes || []).includes('assist:' + g.user_id))) if (!(u.areas || []).includes(chave)) {
+      const ar = (u.areas || []).filter(k => !/^u:/.test(k)).concat(chave); const r = await sb.from('perfis').update({ areas:ar }).eq('user_id', u.user_id); if (!r.error) u.areas = ar; }
+  }
+  return n;
 }
 async function ultimaGeracao(){ try { const { data } = await sb.from('area_dados').select('dados').eq('chave', '__meta').maybeSingle(); return data && data.dados; } catch(_){ return null; } }
 
@@ -190,7 +233,7 @@ async function tela(abaIni){
   let data = null, error = null; { let q0 = sb.from('area_dados').select('chave,dados,atualizado_em').neq('chave', '__meta'); const ar = (E.perfil && E.perfil.areas) || []; if (ar.length) q0 = q0.in('chave', ar); const r0 = await q0; data = r0.data; error = r0.error; }
   const c = $('#gs-corpo'); if (!c) return;
   if (error) { c.innerHTML = `<div class="cartao vazio"><h3>Não consegui abrir os dados da sua equipe</h3><p>${esc(traduzErro(error))}</p></div>`; return; }
-  const A = (data || []).map(x => x.dados).filter(Boolean);
+  const A = (data || []).filter(x => chaveOk(x.chave)).map(x => x.dados).filter(x => x && Array.isArray(x.P));
   if (!A.length) { $('#gs-sub').textContent = ''; c.innerHTML = '<div class="cartao vazio"><h3>Sua equipe ainda não foi liberada</h3><p>O RH precisa vincular sua área ao seu acesso e atualizar a visão dos gestores.</p></div>'; return; }
   const P = []; const vis = new Set(); A.forEach(a => a.P.forEach(p => { if (!vis.has(p.m)) { vis.add(p.m); P.push(Object.assign({ chave:a.nome }, p)); } }));
   P.sort((a, b) => a.n.localeCompare(b.n, 'pt-BR'));

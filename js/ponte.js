@@ -58,12 +58,16 @@ function compara(v, op, x){
 function criarDb(ctx){
   const { sb, painel, quem, podeEditar } = ctx;
 
+  /* gestor/assistente: o painel lê os lançamentos já recortados para a área (só leitura) */
+  const MEM = ctx.memoria || null;
   async function lerDoc(caminho){
+    if (MEM) { const partes = caminho.split('/'), id = partes.pop(), col = partes.join('/'); const d = (MEM[col] || []).find(x => x.doc_id === id); return d || null; }
     const { data, error } = await sb.from('registros').select('doc_id,dados').eq('painel', painel).eq('caminho', caminho).maybeSingle();
     if (error) throw traduz(error);
     return data;
   }
   async function lerColecao(colecao){
+    if (MEM) return (MEM[colecao] || []).slice();
     const todas = [];
     for (let i = 0; ; i += 1000) {
       const { data, error } = await sb.from('registros').select('doc_id,dados').eq('painel', painel).eq('colecao', colecao).order('doc_id').range(i, i + 999);
@@ -74,6 +78,7 @@ function criarDb(ctx){
     return todas;
   }
   async function gravar(caminho, dados){
+    if (MEM) throw erro('not_granted', 'Somente leitura: os lançamentos deste painel são feitos pelo RH.');
     if (!podeEditar()) throw erro('invalid_argument', 'Sem permissão para salvar neste painel.');
     const partes = caminho.split('/');
     const doc_id = partes.pop(), colecao = partes.join('/');
@@ -82,6 +87,7 @@ function criarDb(ctx){
     avisar();
   }
   async function apagar(caminho){
+    if (MEM) throw erro('not_granted', 'Somente leitura: os lançamentos deste painel são feitos pelo RH.');
     if (!podeEditar()) throw erro('invalid_argument', 'Sem permissão para salvar neste painel.');
     const { error } = await sb.from('registros').delete().eq('painel', painel).eq('caminho', caminho);
     if (error) throw traduz(error);
