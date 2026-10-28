@@ -190,7 +190,9 @@ async function gerar(forcar){
    com a base de cada painel só com as pessoas dos setores/departamentos dele (inclui quem já saiu) e os lançamentos dessas pessoas.
    A chave 'u:<id>' entra em perfis.areas do gestor e das assistentes dele, e a regra do banco já deixa ler só a própria. */
 const ehAssistG = g => (g.frentes || []).some(x => /^assist:/.test(x));
-const paineisDe = g => (g.paineis_ver || []).filter(x => /^g:p:/.test(x)).map(x => x.slice(4)).filter(id => window.CRV_AREA && window.CRV_AREA.def(id));
+/* painéis liberados para o gestor: a mesma regra do menu (sem configuração = todos; telas antigas marcadas = painel correspondente) */
+const paineisDe = g => { const op = window.CRV_GOPC_DE ? window.CRV_GOPC_DE(g) : new Set((g.paineis_ver || []).filter(x => /^g:p:/.test(x)).map(x => x.slice(2)));
+  return [...op].filter(k => /^p:/.test(k)).map(k => k.slice(2)).filter(id => window.CRV_AREA && window.CRV_AREA.def(id)); };
 async function assinaturaPaineis(G){
   const AR = window.CRV_AREA; if (!AR) return '';
   const donos = G.filter(g => g.ativo && !ehAssistG(g) && paineisDe(g).length); if (!donos.length) return 'sem';

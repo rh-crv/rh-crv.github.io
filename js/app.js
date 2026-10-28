@@ -86,6 +86,7 @@ const gOpc = u => { const L = (u && Array.isArray(u.paineis_ver)) ? u.paineis_ve
   if (![...o].some(k => /^p:/.test(k))) [...o].forEach(k => (GESTOR_ANTIGO[k] || []).forEach(id => o.add('p:' + id)));
   return o; };
 window.CRV_GOPC = () => gOpc(E.perfil);
+window.CRV_GOPC_DE = u => gOpc(u);
 const nomePapel = p => ({admin:'Administrador principal', rh:'Equipe RH', editor:'Editor', leitor:'Leitor', gestor:'Gestor de área'}[p] || p);
 /* assistente (secretária) de gestor: acesso de gestor ligado a um gestor responsável; vê a mesma equipe e lança em nome dele.
    O vínculo fica em perfis.frentes (que o gestor não usa): 'assist:<user_id do gestor>' e 'assistnome:<nome do gestor>'. */
