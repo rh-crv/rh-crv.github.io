@@ -25,11 +25,13 @@ const ASS_PADRAO = [
   { id:'a2', nome:'Leonardo Dias', cargo:'Gerente Executivo', mat:'', docs:['acid-aut', 'acid-rel', 'acid-reemb', 'conv-folha'] },
   { id:'a3', nome:'', cargo:'Coordenadora de RH', mat:'334', docs:['ferias-dp', 'dispensa'] }
 ];
+/* datas liberadas para início de férias (calendário do RH: início do gozo e data de pagamento); muda pela tela de cadastros */
+const FER0 = [['2026-11-03','2026-10-30'],['2026-11-16','2026-11-13'],['2026-12-01','2026-11-27'],['2026-12-21','2026-12-18'],['2027-01-04','2026-12-30'],['2027-01-18','2027-01-15'],['2027-02-01','2027-01-29'],['2027-02-15','2027-02-12'],['2027-03-01','2027-02-26']].map(([ini, pag]) => ({ ini, pag }));
 let SB = null, CAD = null, _carregando = null;
 async function carregar(forcar){
   if (CAD && !forcar) return CAD; if (_carregando && !forcar) return _carregando;
   _carregando = (async () => { let d = {}; try { const { data } = await SB.from('registros').select('dados').eq('painel', 'quadro').eq('caminho', 'sistema/cadastros').maybeSingle(); d = (data && data.dados) || {}; } catch(_){}
-    CAD = { sin:d.sin || {}, ccNome:d.ccNome || {}, ass:Array.isArray(d.ass) ? d.ass : ASS_PADRAO.map(a => Object.assign({}, a)), em:d.em || '', por:d.por || '' }; return CAD; })();
+    CAD = { sin:d.sin || {}, ccNome:d.ccNome || {}, ass:Array.isArray(d.ass) ? d.ass : ASS_PADRAO.map(a => Object.assign({}, a)), fer:Array.isArray(d.fer) ? d.fer : FER0.map(x => Object.assign({}, x)), em:d.em || '', por:d.por || '' }; return CAD; })();
   return _carregando;
 }
 async function salvarCad(nome){ const dados = Object.assign({}, CAD, { em:new Date().toISOString(), por:nome });
@@ -54,6 +56,8 @@ window.CRV_PADRAO = {
     return { cod:c, nome, existe:!!(q || (CAD && CAD.ccNome[c])) }; },
   temCadastro(){ return !!(_q && _q.ok && _q.cc.size); }
 };
+/* datas liberadas para início de férias: [{ ini, pag }] em ordem (usado pelo painel Férias e pelo gestor) */
+window.CRV_FER_DATAS = async function(){ await carregar(); return (CAD.fer || []).filter(x => x && /^\d{4}-\d{2}-\d{2}$/.test(x.ini)).slice().sort((a, b) => a.ini.localeCompare(b.ini)); };
 /* assinantes de um documento: [{ nome, cargo }] na ordem do cadastro */
 window.CRV_ASSINANTES = async function(doc){ await carregar(); const L = (CAD.ass || []).filter(a => (a.docs || []).includes(doc));
   const out = []; for (const a of L) { let nome = a.nome, cargo = a.cargo;
@@ -99,8 +103,8 @@ const { sb, E, $, esc, moldura, toast, traduzErro, ehAdmin, ehRH, baixar, FRENTE
 const quem = () => (E.perfil && E.perfil.nome) || '';
 let aba = 'cc', q = '';
 async function tela(a){ if (a) aba = a;
-  moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Central de Rotinas do RH</div><h1>Cadastros do RH</h1><div class="ini-data">Centros de custo, setores, assinantes dos documentos e permissões, num lugar só</div></div></section>
-    <nav class="cad-tabs" style="display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--linha,#e4e7ec);margin:0 0 14px">${[['cc', 'Centros de custo'], ['st', 'Setores'], ['ass', 'Assinantes dos documentos'], ['perm', 'Quem pode fazer o quê']].filter(t => t[0] !== 'perm' || ehAdmin()).map(t => `<button data-ab="${t[0]}" style="border:0;background:none;padding:9px 14px;font:700 14px inherit;font-family:inherit;cursor:pointer;color:${aba === t[0] ? '#24427c' : '#667085'};border-bottom:3px solid ${aba === t[0] ? '#e9a23b' : 'transparent'};margin-bottom:-1px">${t[1]}</button>`).join('')}</nav>
+  moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Central de Rotinas do RH</div><h1>Cadastros do RH</h1><div class="ini-data">Centros de custo, setores, assinantes dos documentos, datas de férias e permissões, num lugar só</div></div></section>
+    <nav class="cad-tabs" style="display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--linha,#e4e7ec);margin:0 0 14px">${[['cc', 'Centros de custo'], ['st', 'Setores'], ['ass', 'Assinantes dos documentos'], ['fer', 'Datas de férias'], ['perm', 'Quem pode fazer o quê']].filter(t => t[0] !== 'perm' || ehAdmin()).map(t => `<button data-ab="${t[0]}" style="border:0;background:none;padding:9px 14px;font:700 14px inherit;font-family:inherit;cursor:pointer;color:${aba === t[0] ? '#24427c' : '#667085'};border-bottom:3px solid ${aba === t[0] ? '#e9a23b' : 'transparent'};margin-bottom:-1px">${t[1]}</button>`).join('')}</nav>
     <div id="cad-corpo"><div class="cartao vazio"><div class="spinner" style="margin:0 auto"></div></div></div>`);
   document.querySelectorAll('[data-ab]').forEach(b => b.onclick = () => { aba = b.dataset.ab; q = ''; tela(); });
   await carregar(true); _q = null; const Q = await quadro(); const c = $('#cad-corpo'); if (!c) return;
@@ -109,6 +113,26 @@ async function tela(a){ if (a) aba = a;
   if (aba === 'st') return telaSt(c, Q, pode);
   if (aba === 'ass') return telaAss(c, pode);
   if (aba === 'perm') return telaPerm(c);
+  if (aba === 'fer') return telaFer(c, pode);
+}
+const MESES_F = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const brF = s => { const m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? m[3] + '/' + m[2] + '/' + m[1] : ''; };
+function telaFer(c, pode){
+  const L = (CAD.fer || []).map(x => Object.assign({}, x));
+  const desenhar = () => { L.sort((a, b) => String(a.ini).localeCompare(String(b.ini))); const G = new Map(); L.forEach((x, i) => { const k = String(x.ini).slice(0, 7); if (!G.has(k)) G.set(k, []); G.get(k).push([x, i]); });
+    c.innerHTML = dica('Só estas datas podem ser usadas como <b>início de férias</b>, tanto pelo RH (painel Férias) quanto pelos gestores. Outra data só com autorização do RH, registrada no próprio painel Férias. Quando sair o calendário dos próximos meses, acrescente aqui.') +
+      `<div class="cartao" style="padding:12px"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">${[...G.entries()].map(([k, A]) => `<div style="border:1px solid #e4e7ec;border-radius:10px;overflow:hidden"><div style="background:#2e7d4f;color:#fff;font-weight:800;padding:6px 10px;text-transform:uppercase;font-size:13px">${MESES_F[+k.slice(5, 7) - 1]} ${k.slice(0, 4)}</div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr><th style="text-align:left;padding:5px 10px;color:#667085;font-size:11px">INÍCIO DO GOZO</th><th style="text-align:left;padding:5px 10px;color:#667085;font-size:11px">PAGAMENTO</th><th></th></tr></thead><tbody>
+        ${A.map(([x, i]) => `<tr style="border-top:1px solid #eef0f4"><td style="padding:6px 10px"><b>${brF(x.ini)}</b></td><td style="padding:6px 10px">${brF(x.pag) || '–'}</td><td style="text-align:right;padding:4px 8px">${pode ? `<button class="link" data-rm="${i}" style="color:#a3301c">tirar</button>` : ''}</td></tr>`).join('')}</tbody></table></div>`).join('') || '<p>Nenhuma data liberada.</p>'}</div>
+      ${pode ? `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-top:14px;border-top:1px solid #e4e7ec;padding-top:12px"><label style="font-size:12px;font-weight:700;color:#667085">INÍCIO DO GOZO<br><input type="date" id="fe-i" style="padding:7px 9px;border:1px solid #d5dbe6;border-radius:8px;font:inherit"></label><label style="font-size:12px;font-weight:700;color:#667085">DATA DE PAGAMENTO<br><input type="date" id="fe-p" style="padding:7px 9px;border:1px solid #d5dbe6;border-radius:8px;font:inherit"></label><button class="btn borda" id="fe-a">+ Acrescentar</button><span style="flex:1"></span><span id="fe-m" style="font-size:13px;color:#a3301c"></span><button class="btn prim" id="fe-ok">Salvar calendário</button></div>` : ''}
+      <p style="margin:10px 0 0;font-size:12.5px;color:#667085">Total: ${L.length} datas liberadas${L.length ? ', de ' + brF(L[0].ini) + ' a ' + brF(L[L.length - 1].ini) : ''}.</p></div>`;
+    c.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { L.splice(+b.dataset.rm, 1); desenhar(); });
+    const ad = $('#fe-a'); if (ad) ad.onclick = () => { const i = $('#fe-i').value, p = $('#fe-p').value, m = $('#fe-m');
+      if (!i) { m.textContent = 'Informe o início do gozo.'; return; } if (L.some(x => x.ini === i)) { m.textContent = 'Essa data já está no calendário.'; return; } if (p && p > i) { m.textContent = 'O pagamento costuma ser antes do início: confira a data.'; return; }
+      L.push({ ini:i, pag:p || '' }); desenhar(); };
+    const ok = $('#fe-ok'); if (ok) ok.onclick = async () => { CAD.fer = L.map(x => ({ ini:x.ini, pag:x.pag || '' })); try { await salvarCad(quem()); toast('Calendário de férias salvo.'); } catch(e){ toast(traduzErro(e), true); } };
+  };
+  desenhar();
 }
 const dica = t => `<p style="margin:0 0 12px;color:var(--mut,#667085);font-size:13px">${t}</p>`;
 function telaCC(c, Q, pode){

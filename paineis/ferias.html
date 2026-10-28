@@ -472,6 +472,7 @@ body.has-sel .wrap>.foot{margin-bottom:90px}
     <div class="dlg-b">
       <div class="facts2" id="dlgFacts"></div>
       <div id="pParts" class="pparts"></div>
+      <div class="fld" id="pAutW" hidden><label for="pAut">Autorização para data fora do calendário (quem autorizou e por quê)</label><input id="pAut" maxlength="200" placeholder="Ex.: autorizado pela coordenação de RH, pedido do gestor"></div>
       <div class="quick"><button type="button" class="btn sm" id="pAdd">+ Adicionar parcela</button><div class="fld abf"><label for="pAb">Dias de abono</label><input type="number" id="pAb" min="0" max="10" step="1"></div></div>
       <div class="quick" role="group" aria-label="Atalhos"><span class="small">Atalhos:</span><button type="button" class="btn sm" data-q="30|0">30 dias</button><button type="button" class="btn sm" data-q="20|10">20 + 10 abono</button><button type="button" class="btn sm" data-q="15+15|0">15 + 15</button><button type="button" class="btn sm" data-q="20+10|0">20 + 10</button><button type="button" class="btn sm" data-q="14+8+8|0">14 + 8 + 8</button></div>
       <label class="chk" style="padding:0"><input type="checkbox" id="pRet"> Sem data: aguarda retorno do afastamento</label>
@@ -1021,17 +1022,24 @@ $('gcards').addEventListener('click',e=>{ const g=e.target.closest('[data-gl]');
 // ---------- modal de programação ----------
 let dlgKey=null, lastFocus=null, dlgParts=[];
 
+// calendário de datas liberadas para início de férias (Cadastros do RH); outra data só com autorização registrada
+let CAL=null;
+async function carregarCal(){ try{ const f=window.parent&&window.parent.CRV_FER_DATAS; if(typeof f==='function'){ const L=await f(); CAL=Array.isArray(L)&&L.length?L:null; } }catch(_){ CAL=null; } }
+carregarCal();
+const calDe=d=>CAL&&CAL.find(c=>c.ini===d);
+const foraCal=q=>!!(q.out||(q.inicio&&CAL&&!calDe(q.inicio)));
 function drawParts(){
   const ret=$('pRet').checked;
   $('pParts').innerHTML = dlgParts.map((q,i)=>`<div class="prow">
-    <div class="fld"><label for="pIni${i}">${dlgParts.length>1?`Início da ${i+1}ª parcela`:'Início das férias'}</label><input type="date" id="pIni${i}" data-pi="${i}" value="${q.inicio||''}" ${ret?'disabled':''}></div>
+    <div class="fld"><label for="pIni${i}">${dlgParts.length>1?`Início da ${i+1}ª parcela`:'Início das férias'}</label>${!CAL||foraCal(q)?`<input type="date" id="pIni${i}" data-pi="${i}" value="${q.inicio||''}" ${ret?'disabled':''}>${CAL?`<button type="button" class="btn sm" data-pcal="${i}" style="margin-top:4px" ${ret?'disabled':''}>Voltar às datas liberadas</button>`:''}`
+      :`<select id="pIni${i}" data-pi="${i}" ${ret?'disabled':''}><option value="">Escolha uma data liberada</option>${CAL.filter(c=>pd(c.ini)>=HOJE||c.ini===q.inicio).map(c=>`<option value="${c.ini}" ${c.ini===q.inicio?'selected':''}>${fmtS(c.ini)}${c.pag?` · pagamento ${fmtS(c.pag)}`:''}</option>`).join('')}<option value="__out">Outra data (com autorização)…</option></select>`}</div>
     <div class="fld"><label for="pDias${i}">Dias</label><input type="number" id="pDias${i}" data-pd="${i}" min="5" max="30" step="1" value="${q.dias||''}" ${ret?'disabled':''}></div>
     ${dlgParts.length>1?`<button type="button" class="btn sm danger" data-prm="${i}" aria-label="Remover parcela ${i+1}" ${ret?'disabled':''}>Remover</button>`:''}
   </div>`).join('');
   $('pAdd').hidden = dlgParts.length>=3;
 }
-function openDlg(key){
-  if(!CAN_EDIT) return;
+async function openDlg(key){
+  if(!CAN_EDIT) return; await carregarCal();
   const x=PBYKEY[key]; if(!x) return; dlgKey=key; lastFocus=document.activeElement;
   const p=x.person, g=progOf(x);
   $('dlgT').textContent = g ? 'Editar programação' : 'Programar férias';
@@ -1039,7 +1047,8 @@ function openDlg(key){
   $('dlgFacts').innerHTML = `<div><span>Período</span><b>${fmtSh(x.de)}/${x.de.slice(2,4)} – ${fmtSh(x.ate)}/${x.ate.slice(2,4)}</b></div><div><span>Saldo</span><b>${nf(x.saldo)} dias</b></div><div><span>Data limite</span><b>${fmtS(x.lim)}</b></div>`;
   $('pRet').checked = !!(g&&g.retorno);
   const ps = partsOf(g);
-  dlgParts = ps.length ? ps.map(q=>({inicio:q.inicio,dias:q.dias})) : [{inicio:'',dias:Math.min(30, Math.max(5, Math.round(x.saldo)||30))}];
+  dlgParts = ps.length ? ps.map(q=>({inicio:q.inicio,dias:q.dias,orig:q.inicio})) : [{inicio:'',dias:Math.min(30, Math.max(5, Math.round(x.saldo)||30))}];
+  $('pAut').value = g&&g.autorizacao&&g.autorizacao.txt ? g.autorizacao.txt : '';
   $('pAb').value = g&&g.abono ? g.abono : 0;
   $('pObs').value = g&&g.obs ? g.obs : '';
   $('pDel').hidden = !PROG[key];
@@ -1089,15 +1098,24 @@ function syncDlg(){
       if(names.length){ const sev = (names.length>=3||names.length/M>=0.2)?'mid':'info';
         w.push([sev,`${nm(q)}<b>${names.length} de ${M}</b> colaboradores da seção ${esc(x.person.d)} já têm férias nesse período: ${names.slice(0,4).map(esc).join(', ')}${names.length>4?` e mais ${names.length-4}`:''}.`]); } });
   } else if(!ret) w.push(['mid','Informe a data de início.']);
+  // datas liberadas: pagamento de cada parcela e autorização para data fora do calendário
+  let precisaAut=false;
+  if(!ret && CAL){ const multi=dlgParts.length>1;
+    dated.forEach(q=>{ const c=calDe(q.inicio); if(c){ if(c.pag) w.unshift(['info',`${multi?`${q.i+1}ª parcela: `:''}data liberada no calendário · pagamento em ${fmtS(c.pag)}.`]); }
+      else if(q.inicio!==q.orig){ precisaAut=true; w.unshift(['bad',`${multi?`${q.i+1}ª parcela: `:''}${fmtS(q.inicio)} não é uma data liberada no calendário de férias. Só pode ser salva com autorização: preencha quem autorizou.`]); }
+      else w.push(['info',`${multi?`${q.i+1}ª parcela: `:''}${fmtS(q.inicio)} está fora do calendário de datas liberadas (programação já existente).`]); }); }
+  $('pAutW').hidden = !(CAL && !ret && dlgParts.some(q=>foraCal(q)));
+  const semAut = precisaAut && !$('pAut').value.trim();
   $('pWarn').innerHTML = w.map(([c,t])=>`<div class="warn ${c}">${t.replace(/^[a-zà-ú]/,ch=>ch.toUpperCase())}</div>`).join('');
-  $('pSave').disabled = !ret && !dated.length;
+  $('pSave').disabled = (!ret && !dated.length) || semAut;
 }
-$('pParts').addEventListener('input',e=>{ const t=e.target; if(t.dataset.pi!==undefined) dlgParts[+t.dataset.pi].inicio=t.value; if(t.dataset.pd!==undefined) dlgParts[+t.dataset.pd].dias=t.value; syncDlg(); });
-$('pParts').addEventListener('click',e=>{ const b=e.target.closest('[data-prm]'); if(!b) return; dlgParts.splice(+b.dataset.prm,1); drawParts(); syncDlg(); });
+$('pParts').addEventListener('change',e=>{ const t=e.target; if(t.tagName==='SELECT'&&t.dataset.pi!==undefined){ const q=dlgParts[+t.dataset.pi]; if(t.value==='__out'){ q.out=true; q.inicio=''; drawParts(); syncDlg(); const el=$('pIni'+t.dataset.pi); if(el) el.focus(); } else { q.inicio=t.value; syncDlg(); } } });
+$('pParts').addEventListener('input',e=>{ const t=e.target; if(t.tagName==='SELECT') return; if(t.dataset.pi!==undefined) dlgParts[+t.dataset.pi].inicio=t.value; if(t.dataset.pd!==undefined) dlgParts[+t.dataset.pd].dias=t.value; syncDlg(); });
+$('pParts').addEventListener('click',e=>{ const c=e.target.closest('[data-pcal]'); if(c){ const q=dlgParts[+c.dataset.pcal]; q.out=false; if(q.inicio&&!calDe(q.inicio)) q.inicio=''; drawParts(); syncDlg(); return; } const b=e.target.closest('[data-prm]'); if(!b) return; dlgParts.splice(+b.dataset.prm,1); drawParts(); syncDlg(); });
 $('pAdd').addEventListener('click',()=>{ if(dlgParts.length>=3) return; const x=PBYKEY[dlgKey]; const used=dlgParts.reduce((a,q)=>a+(+q.dias||0),0)+(+$('pAb').value||0); dlgParts.push({inicio:'',dias:Math.max(5,Math.min(30,Math.round(x.saldo-used)||10))}); drawParts(); syncDlg(); const el=$('pIni'+(dlgParts.length-1)); if(el) el.focus(); });
-['pAb','pRet'].forEach(id=>$(id).addEventListener('input',()=>{ if(id==='pRet') drawParts(); syncDlg(); }));
+['pAb','pRet','pAut'].forEach(id=>$(id).addEventListener('input',()=>{ if(id==='pRet') drawParts(); syncDlg(); }));
 document.querySelectorAll('[data-q]').forEach(b=>b.addEventListener('click',()=>{ const [ds,a]=b.dataset.q.split('|'); const arr=ds.split('+').map(Number);
-  dlgParts = arr.map((d,i)=>({inicio:(dlgParts[i]&&dlgParts[i].inicio)||'',dias:d})); $('pAb').value=+a||0; drawParts(); syncDlg(); }));
+  dlgParts = arr.map((d,i)=>({inicio:(dlgParts[i]&&dlgParts[i].inicio)||'',dias:d,orig:dlgParts[i]&&dlgParts[i].orig,out:dlgParts[i]&&dlgParts[i].out})); $('pAb').value=+a||0; drawParts(); syncDlg(); }));
 $('pCancel').onclick=closeDlg;
 $('ov').addEventListener('click',e=>{ if(e.target===$('ov')) closeDlg(); });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&!$('ov').hidden) closeDlg(); });
@@ -1110,6 +1128,7 @@ $('pSave').onclick=async()=>{
   const parc = dlgParts.filter(q=>q.inicio).map(q=>({inicio:q.inicio,dias:Math.max(1,Math.min(30,+q.dias||30))})).sort((a,b)=>a.inicio.localeCompare(b.inicio));
   const body = ret ? {retorno:true, obs:$('pObs').value.trim()||'Quando voltar do afastamento', at:new Date().toISOString()}
                    : {inicio:parc[0].inicio, dias:parc[0].dias, parcelas:parc, abono:Math.max(0,Math.min(10,+$('pAb').value||0)), obs:$('pObs').value.trim(), at:new Date().toISOString()};
+  if(!ret&&CAL){ const fora=parc.filter(q=>!calDe(q.inicio)).map(q=>q.inicio); if(fora.length){ const t=$('pAut').value.trim(); const g0=progOf(PBYKEY[dlgKey]); if(t) body.autorizacao={txt:t,datas:fora,em:(g0&&g0.autorizacao&&g0.autorizacao.txt===t&&g0.autorizacao.em)||new Date().toISOString()}; else if(g0&&g0.autorizacao) body.autorizacao=g0.autorizacao; } }
   const key=dlgKey;
   const done=()=>{ PROG[key]={...body,src:'painel'}; closeDlg(); recompute(); render(); toast('Programação salva.'); };
   try{ await DB.doc('prog/'+key).set(body); done(); }
