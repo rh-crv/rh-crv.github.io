@@ -306,7 +306,7 @@ window.CRV_SANC_CATS=DB.CATS.slice();
 const PP={};Object.keys(DB.P).forEach(m=>{const p=DB.P[m];PP[m]={mat:+m,n:p[0],fu:p[1],de:p[2],ge:p[3],si:p[4],ct:p[5],ad:DT(p[6]),rs:DT(p[7])}});
 const RR=DB.R.map((r,i)=>({i,t:r[0],p:PP[r[1]],ym:r[2].slice(0,7),d:DT(r[2]),sq:r[3],m:r[4],cat:DB.MC[r[4]],di:r[5],in:DT(r[6]),fi:DT(r[7]),lag:r[8],app:r[9]==='app',hist:r[9]==='hist',y:+r[2].slice(0,4)}));
 RR.forEach(r=>{r.casa=r.p.ad?Math.round((r.d-r.p.ad)/864e5):null});
-const MAXD=RR.reduce((a,r)=>r.d>a?r.d:a,RR[0].d),ANOS=[...new Set(RR.map(r=>r.y))].sort((a,b)=>b-a);
+const MAXD=RR.reduce((a,r)=>r.d>a?r.d:a,RR.length?RR[0].d:""),ANOS=[...new Set(RR.map(r=>r.y))].sort((a,b)=>b-a);
 let ANO=MAXD.getFullYear(),YMS=[],MAXDA=MAXD;
 const setAno=()=>{const ra=RR.filter(r=>r.y===ANO);YMS=[...new Set(ra.map(r=>r.ym))].sort();MAXDA=ra.reduce((a,r)=>r.d>a?r.d:a,ra[0]?ra[0].d:MAXD);
   const h=document.getElementById('hAno');if(h)h.textContent=ANO;

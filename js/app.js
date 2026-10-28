@@ -462,6 +462,8 @@ function menuGestor(u){ const op = gOpc(u), G = {};
   const ord = GESTOR_MENU.map(x => x[0]);
   return Object.keys(G).sort((a, b) => ((ord.indexOf(a) + 1) || ((ORDEM_FRENTES.indexOf(a) + 1) || 99) + 50) - ((ord.indexOf(b) + 1) || ((ORDEM_FRENTES.indexOf(b) + 1) || 99) + 50)).map(f => [f, G[f]]); }
 
+/* gestor: esconde os botões de lançamento do RH dentro dos painéis (cadastrar, emitir documento, tratativa, autorização) */
+const GESTOR_SO_LER = '<style id="crv-gestor-ler">.nv-btn,.nv-ed,.nv-del,.aut-btn,.ds-btn,.ds-ped,#ftBtn,.ft-trat{display:none!important}</style>';
 /* painel do RH aberto pelo gestor/assistente: mesmo arquivo do painel, com a base recortada para a área (só leitura) */
 async function telaPainelGestor(id){
   E.painelAberto = null;
@@ -488,7 +490,7 @@ async function telaPainelGestor(id){
     let novos = [];
     if (PAINEIS_COM_NOVOS.includes(id)) { const cols = [].concat(COLECAO_NOVOS[id] || 'novos');
       cols.forEach(c => (regs[c] || []).forEach(x => { if (x.dados && !x.dados.excluida) novos.push(cols.length > 1 ? { _id:x.doc_id, colecao:c, dados:x.dados } : { _id:x.doc_id, dados:x.dados }); })); }
-    const tplG = tpl.replace(/<head[^>]*>/i, h0 => h0 + '<script>window.CRV_GESTOR_AREA=true;<\/script>');
+    const tplG = tpl.replace(/<head[^>]*>/i, h0 => h0 + '<script>window.CRV_GESTOR_AREA=true;<\/script>' + GESTOR_SO_LER);
     const html = montarModelo(tplG, pk.conteudo, pk.referencia, p, novos);
     const url = URL.createObjectURL(new Blob([html], { type:'text/html' }));
     area.className = 'modelo-area';

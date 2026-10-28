@@ -680,14 +680,14 @@ function conf(){const a=sel(),c=PEND.map((p,i)=>a.filter(r=>r.fl.includes(i)).le
   $('fPend').innerHTML='<button class="chip'+(S.pend===null?' on':'')+'" data-p="">Todas ('+c.reduce((s,x)=>s+x,0)+')</button>'+PEND.map((p,i)=>c[i]?'<button class="chip'+(S.pend===i?' on':'')+'" data-p="'+i+'" data-tip="'+esc(PENDX[i])+'">'+p+' ('+c[i]+')</button>':'').join('');
   $('fPend').querySelectorAll('.chip').forEach(b=>b.onclick=()=>{S.pend=b.dataset.p===''?null:+b.dataset.p;conf()});
   drawC();
-  $('cnotes').innerHTML='<h2>Outros pontos da planilha</h2><p class="sub">Não dependem do filtro.</p><p><b>'+D.miss.length+' números de RD não aparecem na sequência</b> entre '+R[0].rd+' e '+R[R.length-1].rd+'. Conferir se foram cancelados ou se faltou lançar:</p><p class="seq">'+D.miss.join(' · ')+'</p><p><b>Linha 601:</b> tem só a matrícula 549, sem RD, data ou ação, e essa matrícula não existe na Base Geral.</p><p><b>Função, departamento e situação</b> vêm da Base Geral por fórmula. Mostram a posição atual do colaborador, não a do dia do dano. Por isso aparecem "Afastados" e "Desistentes" como departamento.</p><p><b>Faltam colunas para análise de causa:</b> equipamento ou frota, tipo de dano, turno, líder e data da tratativa.</p>'}
+  if(window.CRV_GESTOR_AREA||!R.length){const cn=$('cnotes');if(cn)cn.style.display='none';}else{$('cnotes').innerHTML='<h2>Outros pontos da planilha</h2><p class="sub">Não dependem do filtro.</p><p><b>'+D.miss.length+' números de RD não aparecem na sequência</b> entre '+R[0].rd+' e '+R[R.length-1].rd+'. Conferir se foram cancelados ou se faltou lançar:</p><p class="seq">'+D.miss.join(' · ')+'</p><p><b>Linha 601:</b> tem só a matrícula 549, sem RD, data ou ação, e essa matrícula não existe na Base Geral.</p><p><b>Função, departamento e situação</b> vêm da Base Geral por fórmula. Mostram a posição atual do colaborador, não a do dia do dano. Por isso aparecem "Afastados" e "Desistentes" como departamento.</p><p><b>Faltam colunas para análise de causa:</b> equipamento ou frota, tipo de dano, turno, líder e data da tratativa.</p>'}}
 
 function render(){
   ['v','t','r','n','c'].forEach(t=>{$('tab-'+t).hidden=S.tab!==t;$('tb-'+t).classList.toggle('on',S.tab===t)});
   $('fG').value=S.ger;$('fD').value=S.dep;$('fF').value=S.desf;$('fS').value=S.sit;filtersUI();
   if(S.tab==='v')visao();else if(S.tab==='t')trat();else if(S.tab==='r')reinc();else if(S.tab==='n')drawN();else conf()}
 document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{S.tab=b.dataset.tab;render()});
-$('hsub').textContent='Registro de danos · CRV Industrial, Unidade Capinópolis · danos de '+fd(R.reduce((m,r)=>r.ds&&r.ds<m?r.ds:m,'9')).slice(0,10)+' a '+fd(D.base);
+$('hsub').textContent='Registro de danos · CRV Industrial, Unidade Capinópolis · danos de '+fd((R.length?R.reduce((m,r)=>r.ds&&r.ds<m?r.ds:m,"9"):D.base)).slice(0,10)+' a '+fd(D.base);
 $('foot').textContent='Fonte: planilha RDs_2026 (aba RD\'_2026), com '+R.length+' registros, e a Base Geral de Colaboradores de 30/09/2026 (situação, departamento e quadro atual de cada área). Cada registro é um colaborador envolvido em um RD. O último dano lançado é de '+fd(D.base)+'. Dias parados são contados até a data de abertura do painel. Uso restrito ao RH e à gestão.';
 fillSel();render();
 </script>

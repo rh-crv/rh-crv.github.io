@@ -203,7 +203,7 @@ async function gerarPaineis(G){
       gerencias:new Set(mm.map(m => M[m].gerencia).filter(Boolean)), funcoes:new Set(mm.map(m => M[m].funcao).filter(Boolean)), nomes:new Set(mm.map(m => normal(M[m].nome || '')).filter(Boolean)) };
     const paineis = {};
     for (const id of paineisDe(g)) { const d = await pac(id); if (!d || !d.conteudo) continue; const D = AR.def(id);
-      try { const conteudo = AR.filtrar(id, d.conteudo, ctx), rg = {};
+      try { const conteudo = AR.filtrar(id, d.conteudo, ctx), rg = {}; if (D.vazio && D.vazio(conteudo)) continue;   // nada da área neste painel
         for (const col of Object.keys(D.regs || {})) rg[col] = (await regs(id, col)).filter(x => AR.regOk(id, col, x.doc_id, x.dados, ctx)).map(x => ({ doc_id:x.doc_id, dados:AR.limparReg ? AR.limparReg(id, col, x.dados) : x.dados }));
         paineis[id] = { referencia:d.referencia || '', conteudo, regs:rg }; } catch(e) { console.warn('painel ' + id + ' do gestor', e); } }
     const chave = 'u:' + g.user_id;
