@@ -69,6 +69,11 @@ const GESTOR_MENU = [
   ['Alojamentos e Transporte', [['alo', 'Alojamento']]],
   ['Atendimento e Ouvidoria', [['env', 'Meus envios ao RH']]] ];
 const nomePapel = p => ({admin:'Administrador principal', rh:'Equipe RH', editor:'Editor', leitor:'Leitor', gestor:'Gestor de área'}[p] || p);
+/* assistente (secretária) de gestor: acesso de gestor ligado a um gestor responsável; vê a mesma equipe e lança em nome dele.
+   O vínculo fica em perfis.frentes (que o gestor não usa): 'assist:<user_id do gestor>' e 'assistnome:<nome do gestor>'. */
+const assistDe = u => { const f = (u && u.papel === 'gestor' && Array.isArray(u.frentes)) ? u.frentes : []; const id = (f.find(x => /^assist:/.test(x)) || '').slice(7); return id ? { id, nome:(f.find(x => /^assistnome:/.test(x)) || '').slice(11) } : null; };
+window.CRV_ASSIST = () => assistDe(E.perfil);
+const papelDe = u => { const a = assistDe(u); return a ? 'Assistente do gestor' + (a.nome ? ' ' + nomeBonito(a.nome) : '') : nomePapel(u && u.papel); };
 
 function toast(msg, erro=false){
   const t = document.createElement('div');
@@ -374,7 +379,7 @@ function moldura(conteudo){
       </nav>
       <div class="lat-pe">
         <div class="lat-av">${esc(iniciais(p.nome))}</div>
-        <div class="lat-quem"><b>${esc(nomeBonito(p.nome))}</b><span>${esc(nomePapel(p.papel))} · v${esc(CFG.VERSAO)}</span></div>
+        <div class="lat-quem"><b>${esc(nomeBonito(p.nome))}</b><span>${esc(papelDe(p))} · v${esc(CFG.VERSAO)}</span></div>
         <button class="lat-sair" id="m-sair" title="Sair">${svg('sair')}</button>
       </div>
     </aside>
@@ -2283,7 +2288,7 @@ async function adminUsuarios(){
     <p style="color:var(--mut);margin-top:0;font-size:13px"><b>Administrador principal</b> faz tudo: importa bases, cria e tira painéis, cadastra usuários e muda configurações · <b>Equipe RH</b> vê todos os painéis (inclusive restritos) e faz todos os lançamentos, mas não importa bases nem mexe na estrutura · <b>Editor</b> vê e atualiza as frentes liberadas · <b>Leitor</b> só consulta as frentes liberadas · <b>Gestor de área</b> vê só a própria equipe (experiência, férias, frequência, novos e crachás), sem acesso aos painéis. Painéis <span class="selo restrito">restrito</span> são só de administradores.</p>
     ${data.map((u,i)=>`<div class="linha-u ${u.ativo?'':'inativo'}">
       <div class="av" style="background:${PALETA[i%PALETA.length]}">${esc(iniciais(u.nome))}</div>
-      <div class="info"><b>${esc(u.nome)}</b> ${u.ativo?'':'<small>(desativado)</small>'}<br><small>@${esc(u.usuario)} · ${esc(nomePapel(u.papel))}${u.importa && u.papel !== 'admin' ? ' · importa planilhas' : ''}${u.papel==='admin'?' · todas as frentes':u.papel==='rh'?' · todos os painéis'+(u.importa?'':', só lançamentos'):(u.paineis_ver||[]).length||(u.paineis_editar||[]).length?` · ${u.frentes?.length ? esc(u.frentes.join(', ')) + ' + ' : ''}painéis: ${esc([...(u.paineis_ver||[]), ...(u.paineis_editar||[])].map(id => (E.paineis.find(x => x.id === id) || {}).nome || id).join(', '))}`:u.papel==='gestor'?` · ${(u.areas||[]).filter(k=>GESTOR().chaveOk(k)).length ? esc((u.areas||[]).filter(k=>GESTOR().chaveOk(k)).map(k=>(k[0]==='a'?'setor ':'depto. ')+GESTOR().nomeChave(k)).join(', ')) : 'nenhum setor vinculado'}`:` · ${u.frentes?.length ? esc(u.frentes.join(', ')) : 'nenhuma frente liberada'}`}</small></div>
+      <div class="info"><b>${esc(u.nome)}</b> ${u.ativo?'':'<small>(desativado)</small>'}<br><small>@${esc(u.usuario)} · ${esc(papelDe(u))}${u.importa && u.papel !== 'admin' ? ' · importa planilhas' : ''}${u.papel==='admin'?' · todas as frentes':u.papel==='rh'?' · todos os painéis'+(u.importa?'':', só lançamentos'):(u.paineis_ver||[]).length||(u.paineis_editar||[]).length?` · ${u.frentes?.length ? esc(u.frentes.join(', ')) + ' + ' : ''}painéis: ${esc([...(u.paineis_ver||[]), ...(u.paineis_editar||[])].map(id => (E.paineis.find(x => x.id === id) || {}).nome || id).join(', '))}`:u.papel==='gestor'?` · ${(u.areas||[]).filter(k=>GESTOR().chaveOk(k)).length ? esc((u.areas||[]).filter(k=>GESTOR().chaveOk(k)).map(k=>(k[0]==='a'?'setor ':'depto. ')+GESTOR().nomeChave(k)).join(', ')) : 'nenhum setor vinculado'}`:` · ${u.frentes?.length ? esc(u.frentes.join(', ')) : 'nenhuma frente liberada'}`}</small></div>
       <button class="btn peq borda" data-edit="${esc(u.user_id)}">Editar</button>
       <button class="btn peq borda" data-senha="${esc(u.user_id)}">Nova senha</button>
     </div>`).join('')}`;
@@ -2311,6 +2316,10 @@ function formUsuario(u, todos){
         <div class="checks gs-areas u-pain">${E.paineis.filter(x => x.id !== 'curriculos' && x.id !== 'sysprocard-credito').slice().sort((a, b) => a.frente.localeCompare(b.frente, 'pt-BR') || a.nome.localeCompare(b.nome, 'pt-BR')).map(x => { const v = (u?.paineis_ver || []).includes(x.id), ed = (u?.paineis_editar || []).includes(x.id);
           return `<div class="u-pl" data-q="${esc(normal(x.nome + ' ' + x.frente))}"><span><b>${esc(x.nome)}</b><small>${esc(x.frente)}${x.nivel === 'restrito' ? ' · restrito' : ''}</small></span><label><input type="checkbox" data-pv="${esc(x.id)}" ${v || ed ? 'checked' : ''}> Ver e exportar</label><label><input type="checkbox" data-pe="${esc(x.id)}" ${ed ? 'checked' : ''}> Pode lançar</label></div>`; }).join('')}</div>
         <small style="color:var(--mut)">Além das frentes marcadas acima. Use para liberar só alguns painéis, por exemplo para Treinamento e Desenvolvimento. "Ver e exportar" permite consultar e baixar PDF e Excel, sem alterar nada. "Pode lançar" só quando você permitir.</small></div>
+      <div class="campo oculto" id="u-tipo-box"><label>Este acesso é de</label>
+        <div class="checks"><label><input type="radio" name="u-tipo" value="g" ${assistDe(u) ? '' : 'checked'}> Gestor da área</label><label><input type="radio" name="u-tipo" value="a" ${assistDe(u) ? 'checked' : ''}> Assistente / secretária de um gestor</label></div>
+        <div id="u-gresp-box" ${assistDe(u) ? '' : 'hidden'} style="margin-top:6px"><select id="u-gresp" style="width:100%;margin-bottom:6px"><option value="">Escolha o gestor responsável</option>${todos.filter(x => x.papel === 'gestor' && !assistDe(x) && (!u || x.user_id !== u.user_id)).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')).map(x => `<option value="${esc(x.user_id)}" ${assistDe(u) && assistDe(u).id === x.user_id ? 'selected' : ''}>${esc(x.nome)}${x.ativo ? '' : ' (desativado)'}</option>`).join('')}</select>
+        <small style="color:var(--mut);display:block">A assistente vê exatamente a mesma equipe do gestor escolhido e pode lançar tudo o que ele lança (férias, experiência, sanções, perfil). Ela assina com o próprio nome e o documento sai também com o nome do gestor responsável, que autorizou o preenchimento. Se o gestor mudar de setor, a assistente acompanha.</small></div></div>
       <div class="campo oculto" id="u-areas-box"><label>Setor(es) que o gestor vê</label><input id="u-areas-q" type="search" placeholder="Filtrar setores" style="margin-bottom:6px">
         <div class="checks gs-areas" id="u-areas"><small style="color:var(--mut)">Carregando as áreas do Quadro…</small></div>
         <small style="color:var(--mut)">Marque o setor inteiro (coluna Setor da planilha do Quadro) ou, em "escolher departamentos", só os departamentos que ele cuida. Dá para marcar mais de um. O gestor vê só as pessoas desses setores, sem CPF, salário, saúde ou ocorrências sensíveis.</small></div>
@@ -2318,8 +2327,8 @@ function formUsuario(u, todos){
       ${!novo ? `<div class="campo"><label><input type="checkbox" id="u-ativo" ${u.ativo?'checked':''}> Usuário ativo (desmarque para bloquear o acesso)</label></div>` : ''}`,
     pe: `<button class="btn borda" id="u-c">Cancelar</button><button class="btn prim" id="u-ok">${novo?'Criar usuário':'Salvar'}</button>`,
     aoAbrir: m => {
-      const atualizaFrentes = () => { const pp = $('#u-papel').value; $('#u-frentes-box').classList.toggle('oculto', pp === 'admin' || pp === 'gestor' || pp === 'rh'); $('#u-pain-box').classList.toggle('oculto', pp === 'admin' || pp === 'gestor' || pp === 'rh'); $('#u-areas-box').classList.toggle('oculto', pp !== 'gestor'); $('#u-imp-box').classList.toggle('oculto', !['rh', 'editor'].includes(pp)); };
-      $('#u-papel').onchange = atualizaFrentes; atualizaFrentes();
+      const atualizaFrentes = () => { const pp = $('#u-papel').value; $('#u-frentes-box').classList.toggle('oculto', pp === 'admin' || pp === 'gestor' || pp === 'rh'); $('#u-pain-box').classList.toggle('oculto', pp === 'admin' || pp === 'gestor' || pp === 'rh'); $('#u-tipo-box').classList.toggle('oculto', pp !== 'gestor'); const ehA = pp === 'gestor' && (m.querySelector('[name=u-tipo]:checked') || {}).value === 'a'; $('#u-gresp-box').hidden = !ehA; $('#u-areas-box').classList.toggle('oculto', pp !== 'gestor' || ehA); $('#u-imp-box').classList.toggle('oculto', !['rh', 'editor'].includes(pp)); };
+      $('#u-papel').onchange = atualizaFrentes; m.querySelectorAll('[name=u-tipo]').forEach(r => r.onchange = atualizaFrentes); atualizaFrentes();
       m.querySelectorAll('[data-pe]').forEach(i => i.onchange = () => { if (i.checked) m.querySelector(`[data-pv="${i.dataset.pe}"]`).checked = true; });
       m.querySelectorAll('[data-pv]').forEach(i => i.onchange = () => { if (!i.checked) m.querySelector(`[data-pe="${i.dataset.pv}"]`).checked = false; });
       $('#u-pain-q').oninput = e => { const q = normal(e.target.value); m.querySelectorAll('.u-pl').forEach(l => l.style.display = !q || l.dataset.q.includes(q) ? '' : 'none'); };
@@ -2340,9 +2349,14 @@ function formUsuario(u, todos){
         const bt = $('#u-ok'); const erro = t => { $('#u-msg').innerHTML = `<div class="erro">${esc(t)}</div>`; bt.disabled=false; bt.textContent = novo?'Criar usuário':'Salvar'; };
         const nome = $('#u-nome').value.trim();
         const papel = $('#u-papel').value;
-        const fr = papel === 'admin' || papel === 'gestor' || papel === 'rh' ? [] : [...m.querySelectorAll('#u-frentes-box .checks input:checked')].map(x=>x.value);
-        const ar = papel === 'gestor' ? [...m.querySelectorAll('#u-areas input:checked:not(:disabled)')].map(x=>x.value).filter(k => GESTOR().chaveOk(k)) : [];
-        if (papel === 'gestor' && !ar.length) return erro('Marque pelo menos um setor ou departamento para o gestor.');
+        const ehAssist = papel === 'gestor' && (m.querySelector('[name=u-tipo]:checked') || {}).value === 'a';
+        const gResp = ehAssist ? todos.find(x => x.user_id === $('#u-gresp').value) : null;
+        if (ehAssist && !gResp) return erro('Escolha o gestor responsável pela assistente.');
+        const fr = ehAssist ? ['assist:' + gResp.user_id, 'assistnome:' + gResp.nome] : papel === 'admin' || papel === 'gestor' || papel === 'rh' ? [] : [...m.querySelectorAll('#u-frentes-box .checks input:checked')].map(x=>x.value);
+        const ar = ehAssist ? (gResp.areas || []).slice() : papel === 'gestor' ? [...m.querySelectorAll('#u-areas input:checked:not(:disabled)')].map(x=>x.value).filter(k => GESTOR().chaveOk(k)) : [];
+        if (papel === 'gestor' && !ar.length) return erro(ehAssist ? 'O gestor escolhido ainda não tem setor marcado. Marque os setores dele primeiro.' : 'Marque pelo menos um setor ou departamento para o gestor.');
+        /* o gestor mudou de setor ou de nome: as assistentes dele acompanham */
+        const syncAssist = async uid => { if (papel !== 'gestor' || ehAssist) return; for (const x of todos.filter(y => assistDe(y) && assistDe(y).id === uid)) { await sb.from('perfis').update({ areas:ar, frentes:['assist:' + uid, 'assistnome:' + nome] }).eq('user_id', x.user_id); } };
         const semPain = papel === 'admin' || papel === 'gestor' || papel === 'rh';
         const pe = semPain ? [] : [...m.querySelectorAll('[data-pe]:checked')].map(x => x.dataset.pe), pv = semPain ? [] : [...m.querySelectorAll('[data-pv]:checked')].map(x => x.dataset.pv).filter(id => !pe.includes(id));
         const comPain = o => (pv.length || pe.length || (u && u.paineis_ver !== undefined)) ? Object.assign(o, { paineis_ver:pv, paineis_editar:pe }) : o;
@@ -2365,7 +2379,7 @@ function formUsuario(u, todos){
             if (!data.user || (data.user.identities && data.user.identities.length === 0)) return erro('Esse usuário já existe.');
             const r = await sb.from('perfis').insert(comAreas({ user_id:data.user.id, usuario, nome, papel, frentes:fr }));
             if (r.error) throw r.error;
-            registrar(null, 'criou usuário', `${nome} (@${usuario}) · ${nomePapel(papel)}`);
+            registrar(null, 'criou usuário', `${nome} (@${usuario}) · ${ehAssist ? 'Assistente do gestor ' + gResp.nome : nomePapel(papel)}`);
             if (papel === 'gestor') GESTOR().gerar(true).catch(() => {});
             fecharModal();
             abrirModal({ titulo:'Usuário criado', corpo:`<div class="ok">Acesso de <b>${esc(nome)}</b> liberado.</div>
@@ -2379,7 +2393,8 @@ function formUsuario(u, todos){
             if (u.papel === 'admin' && (papel !== 'admin' || !ativo) && adminsAtivos === 0) return erro('Precisa existir pelo menos um administrador ativo.');
             const r = await sb.from('perfis').update(comAreas({ nome, papel, frentes:fr, ativo })).eq('user_id', u.user_id);
             if (r.error) throw r.error;
-            registrar(null, 'alterou acesso', `${nome} · ${nomePapel(papel)}${ativo?'':' · desativado'}`);
+            await syncAssist(u.user_id);
+            registrar(null, 'alterou acesso', `${nome} · ${ehAssist ? 'Assistente do gestor ' + gResp.nome : nomePapel(papel)}${ativo?'':' · desativado'}`);
             if (papel === 'gestor' || u.papel === 'gestor') GESTOR().gerar(true).catch(() => {});
             fecharModal(); toast('Acesso atualizado.');
             if (u.user_id === E.perfil.user_id) { E.perfil = { ...E.perfil, nome, papel, frentes:fr, ativo }; if (papel !== 'admin') { location.hash = '#/'; return; } }
@@ -2537,7 +2552,7 @@ function telaConta(){
   moldura(`<div class="trilha"><button data-ir="#/">Visão Geral</button> › <b>Minha conta</b></div>
     <div class="cartao" style="max-width:520px">
       <div class="cartao-cab"><h3>${esc(p.nome)}</h3><span class="chip-papel">${esc(nomePapel(p.papel))}</span></div>
-      <p style="color:var(--mut);margin-top:0">Usuário: <b>@${esc(p.usuario)}</b><br>Frentes: ${p.papel==='admin' ? 'todas' : (p.frentes?.length ? esc(p.frentes.join(', ')) : 'nenhuma')}</p>
+      <p style="color:var(--mut);margin-top:0">Usuário: <b>@${esc(p.usuario)}</b><br>${assistDe(p) ? 'Gestor responsável: <b>' + esc(nomeBonito(assistDe(p).nome)) + '</b>' : 'Frentes: ' + (p.papel==='admin' ? 'todas' : (p.frentes?.length ? esc(p.frentes.join(', ')) : 'nenhuma'))}</p>
       <hr style="border:0;border-top:1px solid var(--line);margin:16px 0">
       <h3 style="font-size:15px">Trocar minha senha</h3><div id="c-msg"></div>
       <div class="campo"><label>Nova senha</label><input id="c-s1" type="password" minlength="6" autocomplete="new-password"></div>
