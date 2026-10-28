@@ -25,20 +25,22 @@ const preencher = (t, r) => String(t || '').split('{NOME}').join(r.nome || '____
 
 /* ---------- PDF no padrão do RH (cabeçalho CRV, rodapé com os dados da empresa), tudo numa folha ---------- */
 function montar(r, K){
-  const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit:'mm', format:'a4' }); const D = window.CRV_DOC; const L = 12, W = 186;
+  const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit:'mm', format:'a4' }); const D = window.CRV_DOC; const L = 16, W = 178;
   const titulo = String(r.assunto || ASSUNTO0).replace(/^assunto:\s*/i, '');
   let y = D.titulo(doc, titulo, null);
   y = D.caixa(doc, y, [['Colaborador(a):', tc(r.nome)], ['Matrícula:', r.mat || '']]) - 3;
   y = D.caixa(doc, y, [['Cargo:', tc(r.cargo)], ['Modalidade:', (MOD.find(m => m.k === r.mod) || MOD[0]).n]]) + 4;
-  y += 2 * K; doc.setTextColor(30, 36, 48);
-  const fs = 10.4 * K, lh = 5.3 * K; doc.setFont('helvetica', 'normal'); doc.setFontSize(fs);
-  preencher(r.corpo, r).replace(/\r/g, '').split('\n').forEach(pa => { if (!pa.trim()) { y += lh * .6; return; }
-    const ls = doc.splitTextToSize(pa.trim(), W);
-    ls.forEach((ln, i) => { const ws = ln.split(' ').filter(Boolean);
+  /* texto mais arejado: fonte e entrelinha maiores, e a folha distribuída (texto, respiro e assinaturas) em vez de tudo grudado em cima */
+  doc.setTextColor(30, 36, 48); const fs = 12.4 * K, lh = 7.6 * K; doc.setFont('helvetica', 'normal'); doc.setFontSize(fs);
+  const PAR = preencher(r.corpo, r).replace(/\r/g, '').split(/\n\s*\n|\n/).map(t => t.trim()).filter(Boolean).map(t => doc.splitTextToSize(t, W));
+  const gap = 6.5 * K, altTexto = PAR.reduce((a, ls) => a + ls.length * lh, 0) + (PAR.length - 1) * gap;
+  const livre = Math.max(0, 222 - (y + 8) - altTexto);   // espaço que sobra até a área das assinaturas
+  y += 10 + Math.min(8, livre * .15);
+  PAR.forEach((ls, ip) => { ls.forEach((ln, i) => { const ws = ln.split(' ').filter(Boolean);
       if (i < ls.length - 1 && ws.length > 1) { const tw = ws.reduce((s, w) => s + doc.getTextWidth(w), 0), sp = (W - tw) / (ws.length - 1); let x = L; ws.forEach(w => { doc.text(w, x, y); x += doc.getTextWidth(w) + sp; }); }
-      else doc.text(ln, L, y); y += lh; }); y += lh * .4; });
-  /* assinaturas na mesma folha: colaborador (com data) e empresa */
-  const ys = Math.max(y + 18, 228); const yy = D.assinaturas(doc, ys - 16, [{ nome:String(r.nome || '').toUpperCase(), cargo:'Colaborador(a) · Matrícula ' + (r.mat || '') }, { nome:'CRV INDUSTRIAL LTDA', cargo:'Empresa' }]);
+      else doc.text(ln, L, y); y += lh; }); if (ip < PAR.length - 1) y += gap; });
+  y += 30;
+  const ys = Math.min(Math.max(y, 222), 240); const yy = D.assinaturas(doc, ys - 16, [{ nome:String(r.nome || '').toUpperCase(), cargo:'Colaborador(a) · Matrícula ' + (r.mat || '') }, { nome:'CRV INDUSTRIAL LTDA', cargo:'Empresa' }]);
   if (yy != null) { doc.setFont('helvetica', 'normal'); doc.setFontSize(8.4); doc.setTextColor(30, 36, 48); const cx = doc.internal.pageSize.getWidth() / 2; doc.text('Data: ____/____/________', cx - 50, yy + 3, { align:'center' }); }
   D.moldura(doc);
   return { doc, cabe:yy != null && doc.getNumberOfPages() === 1 };
@@ -79,7 +81,7 @@ async function abrir(){
       const g = s => m.querySelector(s), msg = (t, ok) => { const e = g('#dv-msg'); e.style.color = ok ? 'var(--cane)' : ''; e.textContent = t; };
       const carregarTexto = () => { const M = modelo(r.mod); g('#dv-as').value = M.assunto; g('#dv-co').value = M.corpo;
         const av = g('#dv-av'); const proprio = !!TXT[r.mod];
-        if (r.mod !== 'trab' && !proprio) { av.style.display = ''; av.innerHTML = '<b>Atenção:</b> para ' + esc((MOD.find(x => x.k === r.mod) || {}).n || '') + ' ainda não há texto próprio salvo; está carregado o mesmo modelo do aviso trabalhado (com o desconto do período não trabalhado). Confira a redação com o DP e, se for outra, ajuste e clique em “Salvar texto como modelo desta modalidade”.'; }
+        if (r.mod !== 'trab' && !proprio) { av.style.display = ''; av.innerHTML = '<b>Atenção:</b> para ' + esc((MOD.find(x => x.k === r.mod) || {}).n || '') + ' ainda não há texto próprio salvo; o texto carregado é o do <b>pedido de dispensa do aviso trabalhado</b> (feito pelo colaborador), que não serve para esta modalidade. Cole aqui o texto do modelo de vocês e clique em “Salvar texto como modelo desta modalidade”; daí em diante ele já abre certo.'; }
         else av.style.display = 'none'; };
       carregarTexto();
       m.querySelectorAll('[name=dv-mod]').forEach(i => i.onchange = () => { r.mod = i.value; m.querySelectorAll('.dv-mod label').forEach(l => l.classList.toggle('on', l.querySelector('input').checked)); carregarTexto(); });
