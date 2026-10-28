@@ -1575,6 +1575,9 @@ DS.v='r';
 const ALLC=D.concat(DM);
 {const g=new Map();ALLC.forEach(r=>{(g.get(r.p)||g.set(r.p,[]).get(r.p)).push(r)});
  g.forEach(L=>{L.sort((a,b)=>a[ADM]<b[ADM]?-1:a[ADM]>b[ADM]?1:0);L.forEach((r,i)=>r.re=i>0&&L[i-1][ADM]<r[ADM])})}
+/* painel do gestor (base recortada): readmissão e saída anterior vêm prontas da base toda (passagens em outro setor contam) */
+const GREQ=window.CRV_GESTOR_AREA&&typeof GRE=='object'&&GRE&&GRE.D?GRE:null;
+if(GREQ){D.forEach((r,i)=>{const v=GREQ.D[i];r.re=!!(v&&v[0])});DM.forEach((r,i)=>{const v=GREQ.M[i];r.re=!!(v&&v[0])})}
 const mPer=()=>{const M=dMonths();return {M:M,ms:new Set(M)}};
 function aData(){const o=mPer();return {M:o.M,R:ALLC.filter(r=>dFilt(r)&&r[ADM]&&o.ms.has(r[ADM].slice(0,7)))}}
 const pc1=v=>v.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1});
@@ -1671,6 +1674,7 @@ const cp=b=>Object.assign(b.slice(),{p:b.p,em:b.em,dk:b.dk,dl:b.dl,k:b.k,x:b.x,r
 const tipL=(tp,mo,d,tx)=>tp>=0?ATIP[tp]+(tp==4&&tx?' ('+tx+')':'')+(mo&&mo.length?' · '+mo.map(i=>AMOT[i]).join(', '):''):(d&&d>='2026-01-01'?'Tipo não informado (não consta na planilha de rescisões)':'Tipo não informado (rescisão da CRV antes de 2026)');
 const PREVX=new Map();{const g=new Map();ALLC.forEach(r=>{(g.get(r.p)||g.set(r.p,[]).get(r.p)).push(r)});
   g.forEach(L=>L.forEach(r=>{let px='';L.forEach(o=>{if(o!==r&&o.dm&&o[ADM]<r[ADM]&&o[20]<=r[ADM]&&o[20]>px)px=o[20]});PREVX.set(r,px)}))}
+if(GREQ){D.forEach((r,i)=>{const v=GREQ.D[i];PREVX.set(r,(v&&v[1])||'')});DM.forEach((r,i)=>{const v=GREQ.M[i];PREVX.set(r,(v&&v[1])||'')})}
 const RX=new Map(AXD.EXR.filter(e=>e[2]!=null).map(e=>[bref(e[2]),e]));
 const AD=ALLC.filter(b=>b[ADM]).map(b=>{const o=cp(b),e=RX.get(b)||null,adm=b[ADM];o.ad=1;
   let sai=b.dm?b[20]:'';o.tp=-1;o.mo=[];if(e){sai=e[1];o.tp=e[3];o.mo=e[4];o.tx=e[7]||'';o.fo=1}else o.fo=b.dm?2:0;

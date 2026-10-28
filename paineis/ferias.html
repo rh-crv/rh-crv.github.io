@@ -684,7 +684,7 @@ function progChip(x, compact){
   return `<span class="prog ok">${compact?'Sai ':''}${txt}</span>`+falta;
 }
 
-const ACID=new Set(["42470", "22809", "27741", "11083", "27534", "6282", "14680", "40617", "19677", "38751"]);
+const ACID=new Set(window.CRV_GESTOR_AREA===true?[]:["42470", "22809", "27741", "11083", "27534", "6282", "14680", "40617", "19677", "38751"]); /* motivo do afastamento fica só com o RH */
 const tags = p => (GEST.has(String(p.c))?'<span class="gst">'+GEST.get(String(p.c))+'</span>':'')+(ACID.has(String(p.c))?'<span class="gst acd" title="Motivo do afastamento informado pela Gestão de Pessoas em 07/10/2026">Acidente de trabalho</span>':'')+(p.af?'<span class="tag af">Afastado</span>':'')+(p.dobra?'<span class="tag db" title="Dois ou mais períodos adquiridos sem gozo">2+ períodos</span>':'')+(p.nNulo?`<span class="tag" title="Períodos anulados: direito perdido">${p.nNulo} nulo${p.nNulo>1?'s':''}</span>`:'');
 let CAN_EDIT = false;
 function timeline(p){

@@ -694,4 +694,7 @@ body.vh .cf-wrap,body.vh main .wrap>.filters,body.vh .cf-tool{display:none!impor
  S.view='h';render();
 })();
 </script>
+<script>/* gestor de área (só quando o app abre o painel recortado): CID e médico são restritos ao RH, então os quadros de motivos por CID e de emissores de atestado não aparecem */
+if(window.CRV_GESTOR_AREA){const st=document.createElement('style');st.textContent='#tcidc,#doccard,.card:has(> #cid),.card:has(> #hcid){display:none!important}';document.head.appendChild(st);}
+</script>
 </body></html>

@@ -306,11 +306,13 @@ window.CRV_SANC_CATS=DB.CATS.slice();
 const PP={};Object.keys(DB.P).forEach(m=>{const p=DB.P[m];PP[m]={mat:+m,n:p[0],fu:p[1],de:p[2],ge:p[3],si:p[4],ct:p[5],ad:DT(p[6]),rs:DT(p[7])}});
 const RR=DB.R.map((r,i)=>({i,t:r[0],p:PP[r[1]],ym:r[2].slice(0,7),d:DT(r[2]),sq:r[3],m:r[4],cat:DB.MC[r[4]],di:r[5],in:DT(r[6]),fi:DT(r[7]),lag:r[8],app:r[9]==='app',hist:r[9]==='hist',y:+r[2].slice(0,4)}));
 RR.forEach(r=>{r.casa=r.p.ad?Math.round((r.d-r.p.ad)/864e5):null});
-const MAXD=RR.reduce((a,r)=>r.d>a?r.d:a,RR.length?RR[0].d:""),ANOS=[...new Set(RR.map(r=>r.y))].sort((a,b)=>b-a);
+/* painel do gestor (base recortada pelo setor): datas, anos e meses da base inteira do RH, para os meses sem sanção da área aparecerem como no RH filtrado */
+const GREF=window.CRV_GESTOR_AREA&&DB.REF&&DB.REF.max?DB.REF:null;
+const MAXD=(()=>{let m=RR.reduce((a,r)=>r.d>a?r.d:a,RR.length?RR[0].d:"");if(GREF){const g=DT(GREF.max);if(!m||g>m)m=g}return m})(),ANOS=[...new Set(RR.map(r=>r.y).concat(GREF?Object.keys(GREF.anos).map(Number):[]))].sort((a,b)=>b-a);
 let ANO=MAXD.getFullYear(),YMS=[],MAXDA=MAXD;
-const setAno=()=>{const ra=RR.filter(r=>r.y===ANO);YMS=[...new Set(ra.map(r=>r.ym))].sort();MAXDA=ra.reduce((a,r)=>r.d>a?r.d:a,ra[0]?ra[0].d:MAXD);
+const setAno=()=>{const ra=RR.filter(r=>r.y===ANO),ga=GREF&&GREF.anos[ANO];YMS=[...new Set(ra.map(r=>r.ym).concat(ga?ga.ym:[]))].sort();MAXDA=ra.reduce((a,r)=>r.d>a?r.d:a,ra[0]?ra[0].d:(ga?DT(ga.fim):MAXD));if(ga&&DT(ga.fim)>MAXDA)MAXDA=DT(ga.fim);
   const h=document.getElementById('hAno');if(h)h.textContent=ANO;
-  const sb=document.getElementById('hsub');if(sb)sb.textContent='CRV Industrial - Unidade Capinópolis | Gestão de Pessoas | Dados de '+fd(ra.reduce((a,r)=>r.d<a?r.d:a,ra[0]?ra[0].d:MAXD))+' a '+fd(MAXDA)};
+  const sb=document.getElementById('hsub');if(sb)sb.textContent='CRV Industrial - Unidade Capinópolis | Gestão de Pessoas | Dados de '+fd((x=>ga&&DT(ga.ini)<x?DT(ga.ini):x)(ra.reduce((a,r)=>r.d<a?r.d:a,ra[0]?ra[0].d:(ga?DT(ga.ini):MAXD))))+' a '+fd(MAXDA)};
 setAno();
 const R26=RR.filter(r=>r.y===2026);
 const TN=['Advertência','Suspensão'];
@@ -544,7 +546,7 @@ function renderV(rs,ps){
   const a=rs.filter(r=>!r.t),s=rs.filter(r=>r.t),di=s.reduce((x,r)=>x+r.di,0),at=ps.filter(o=>o.p.si!=='DEMITIDO'),re=ps.filter(o=>o.to>=2);
   const cats=split(rs,r=>r.cat).sort(byTot),deps=split(rs,r=>r.p.de).sort(byTot);
   $('heroN').innerHTML=nf(rs.length)+'<small>'+(rs.length===1?'sanção':'sanções')+'</small><small class="cue">Ver quem são ›</small>';$('heroN').onclick=()=>openRecs('Todas as sanções do recorte',rs);$('heroN').onkeydown=e=>{if(e.key==='Enter')$('heroN').onclick()};
-  const full=!Object.values(S).some(v=>v!=='');
+  const full=!window.CRV_GESTOR_AREA&&!Object.values(S).some(v=>v!=='');   // gestor: base já recortada pelo setor, lida como o RH filtrado (sem % do quadro da empresa)
   $('brief').innerHTML=rs.length?'<b>'+pl(a.length,'advertência','advertências')+'</b> ('+P(a.length,rs.length)+') e <b>'+pl(s.length,'suspensão','suspensões')+'</b> ('+P(s.length,rs.length)+') para <b>'+pl(ps.length,'colaborador','colaboradores')+'</b>'+(full?(ANO===MAXD.getFullYear()?', de janeiro a '+fd(MAXD):', em '+ANO):'')+'. O motivo mais frequente é <b>'+esc(CATS[cats[0].k])+'</b>, com '+nf(cats[0].a+cats[0].s)+' registros ('+P(cats[0].a+cats[0].s,rs.length)+')'+(deps.length>1?'. O departamento com mais registros é <b>'+esc(deps[0].k)+'</b>, com '+nf(deps[0].a+deps[0].s)+' ('+P(deps[0].a+deps[0].s,rs.length)+').':'.'):'Nenhuma sanção neste recorte.';
   const KB={'c-adv':'adv','c-sus':'sus','c-pur':'purple','c-teal':'teal','c-navy':'navy'};
   const K=[['Advertências',a.length,'c-adv',P(a.length,rs.length)+' das sanções',()=>openRecs('Advertências',a)],['Suspensões',s.length,'c-sus',P(s.length,rs.length)+' das sanções | '+pl(new Set(s.map(r=>r.p.mat)).size,'colaborador','colaboradores'),()=>openRecs('Suspensões',s)],['Dias de suspensão',di,'c-pur',s.length?P(s.filter(r=>r.di===1).length,s.length)+' das suspensões são de 1 dia | média de '+(di/s.length).toFixed(1).replace('.',','):'sem suspensões',()=>openRecs('Suspensões e dias aplicados',s)],['Colaboradores com sanção',ps.length,'c-teal',full?P(at.length,DB.QUADRO)+' do quadro atual ('+nf(at.length)+' ativos ou afastados de '+nf(DB.QUADRO)+')':nf(at.length)+' ativos ou afastados hoje ('+P(at.length,ps.length)+')',()=>openPeople('Colaboradores com sanção',ps)],['Com 2 ou mais sanções',re.length,'c-navy',P(re.length,ps.length)+' dos colaboradores com sanção',()=>openPeople('Colaboradores com 2 ou mais sanções',re)]];

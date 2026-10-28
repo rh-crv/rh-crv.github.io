@@ -397,7 +397,7 @@ window.CRV_FATO_APP={};
  D.rows.sort((a,b)=>a[0]-b[0]||String(a[1]).localeCompare(String(b[1])));
 })();
 const R=D.rows.map(r=>{const d=dt(r[1]),a=dt(r[7]);return{rd:r[0],ds:r[1],d,ym:r[1].slice(0,7),mat:r[2],n:r[3],f:r[4]<0?'':D.funcs[r[4]],dep:r[5]<0?'':D.deps[r[5]],depi:r[5],ger:D.gers[r[6]],as:r[7],a,sit:r[8],desf:r[9],acao:r[10],val:r[11],par:r[12],md:r[13],obs:r[14],linha:r[15],fl:r[16],dias:d&&a?Math.round((d-a)/864e5):null}});
-const YMS=[...new Set(R.map(r=>r.ym).filter(Boolean))].sort();
+const YMS=[...new Set(R.map(r=>r.ym).concat(window.CRV_GESTOR_AREA&&Array.isArray(D.yms)?D.yms:[]).filter(Boolean))].sort();   // gestor: meses da base inteira do RH (mês sem RD da área aparece zerado, como no RH filtrado)
 const HOJE=new Date();HOJE.setHours(0,0,0,0);
 const S={mes:null,ger:'',dep:'',desf:'',sit:'',tab:'v',pend:null};
 const sel=(o={})=>R.filter(r=>(o.mes===false||S.mes===null||r.ym===S.mes)&&(!S.ger||r.ger===S.ger)&&(!S.dep||r.dep===S.dep)&&(o.desf===false||S.desf===''||r.desf===+S.desf)&&(!S.sit||r.sit===S.sit));

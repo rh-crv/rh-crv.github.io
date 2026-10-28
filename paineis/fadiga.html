@@ -196,9 +196,9 @@ let NAPP=0;
   D.r.push([d.setor,m,+mo,+dia,d.mot,d.turno||'',d.hora||'',d.frota?(+d.frota||d.frota):'',d.med||'Não informada',0,d.oc||'','']);NAPP++;
  });
 })();
-(function(){const mx=Math.max(...D.r.map(r=>r[2]));const ML=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"],MLL=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+(function(){let mx=Math.max(...D.r.map(r=>r[2]));const GR=window.CRV_GESTOR_AREA&&Array.isArray(D.ref)?D.ref:null;if(GR&&GR[0]>mx)mx=GR[0];/* gestor: meses da base inteira do RH */const ML=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"],MLL=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
  while(MES.length<mx){MES.push(ML[MES.length]);MESL.push(MLL[MESL.length]);}
- const ult=D.r.filter(r=>r[2]===mx).reduce((a,r)=>Math.max(a,r[3]),0);
+ let ult=D.r.filter(r=>r[2]===mx).reduce((a,r)=>Math.max(a,r[3]),0);if(GR&&GR[0]===mx&&GR[1]>ult)ult=GR[1];
  if(MES.length>9){const st=document.createElement('style');st.textContent='.cols,.xl{grid-template-columns:repeat('+MES.length+',1fr)!important}';document.head.appendChild(st);}
  document.addEventListener('DOMContentLoaded',()=>{const ft=document.getElementById('fadFoot');if(ft)ft.textContent='Fonte: planilha Fadiga 2026 (telemetria de veículos) · dados de 01/01 a '+String(ult).padStart(2,'0')+'/'+String(mx).padStart(2,'0')+'/2026'+(NAPP?' + '+NAPP+' ocorrência(s) cadastrada(s) no app':'')+' · RH CRV Industrial';const e=document.getElementById('e2s');if(e)e.textContent='Tabela de janeiro a '+MESL[MES.length-1].toLowerCase()});
 })();
