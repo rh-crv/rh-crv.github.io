@@ -1360,29 +1360,32 @@ const ext=n=>n<20?EXT[n]:n<100?DEZ[Math.floor(n/10)]+(n%10?' e '+EXT[n%10]:''):S
 function itensDe(k){const m={};ativos().forEach(a=>(a.eventos||[]).filter(e=>e.k===k).forEach(e=>{const o=(m[a.mat]=m[a.mat]||{mat:a.mat,nome:a.nome,funcao:a.funcao,v:0,ids:new Set()});o.v=r2(o.v+e.v);o.ids.add(a.id)}));
   return Object.values(m).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR')).map(o=>({mat:o.mat,nome:o.nome,funcao:o.funcao,v:o.v,ids:[...o.ids]}))}
 async function logoCRV(){try{return window.parent&&window.parent.CRV_LOGO?await window.parent.CRV_LOGO('logo-crv'):null}catch(_){return null}}
-function montar(d,logo,K){const J=JS();const doc=new J({unit:'mm',format:'a4'}),W=210,L=20,R=190,CW=R-L,INK=[25,25,25];let y=12,quebrou=false;
-  if(logo&&logo.src){try{const h=16,w=h*logo.w/logo.h;doc.addImage(logo.src,'PNG',(W-w)/2,y,w,h)}catch(_){}}y+=30;
-  doc.setFont('helvetica','normal');doc.setFontSize(10.5*K);doc.setTextColor(...INK);doc.text('Capinópolis, '+d.dataExt+'.',R,y,{align:'right'});y+=16*K;
-  doc.setFont('helvetica','bold');doc.setFontSize(11.5*K);doc.text('AUTORIZAÇÃO',W/2,y,{align:'center'});y+=11*K;
+function montar(d,logo,K){const J=JS();const doc=new J({unit:'mm',format:'a4'}),W=210,L=18,R=192,CW=R-L;let quebrou=false;
+  /* padrão dos documentos do RH (Sanções / Serviços Gerais): cabeçalho e rodapé pela moldura única do app */
+  const D=window.parent&&window.parent.CRV_DOC,C=D?D.cores:{NAVY:[31,58,104],INK:[30,36,48],MUT:[110,116,128]},INK=C.INK;
+  let y=36;doc.setFont('helvetica','bold');doc.setFontSize(18);doc.setTextColor(...C.NAVY);doc.text('Autorização',L,y);
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(...INK);doc.text('Capinópolis/MG, '+d.dataExt+'.',L,y+6);
+  doc.setFillColor(238,241,245);doc.roundedRect(L,y+10,CW,10,2,2,'F');doc.setFontSize(9.2);
+  const lab=(t,v,x)=>{doc.setFont('helvetica','bold');doc.text(t,x,y+16.3);const w0=doc.getTextWidth(t);doc.setFont('helvetica','normal');doc.text(String(v),x+w0+1.6,y+16.3)};
+  lab('Assunto:','não desconto · acidente de trabalho',L+4);lab('Competência:',d.comp,L+96);lab('Total:',brl(d.total),L+146);
+  y+=30;
   /* parágrafos com trechos em negrito, justificados */
-  const par=(segs,ind)=>{const fs=10.5*K,lh=fs*.47;doc.setFontSize(fs);const ws=[];segs.forEach(([t,b])=>String(t).split(/\s+/).filter(Boolean).forEach(w=>ws.push({w,b,ng:/^[,.;:]/.test(w)})));
+  const par=(segs,ind)=>{const fs=10*K,lh=fs*.47;doc.setFontSize(fs);doc.setTextColor(...INK);const ws=[];segs.forEach(([t,b])=>String(t).split(/\s+/).filter(Boolean).forEach(w=>ws.push({w,b,ng:/^[,.;:]/.test(w)})));
     const lines=[];let cur=[],wd=ind||0;const sp=()=>{doc.setFont('helvetica','normal');return doc.getTextWidth(' ')};
     ws.forEach(o=>{doc.setFont('helvetica',o.b?'bold':'normal');const t=doc.getTextWidth(o.w);const g0=cur.length&&!o.ng?sp():0;if(cur.length&&!o.ng&&wd+g0+t>CW){lines.push({cur,ind:lines.length?0:ind||0});cur=[];wd=0}wd+=(cur.length&&!o.ng?sp():0)+t;cur.push(Object.assign({t},o))});if(cur.length)lines.push({cur,ind:lines.length?0:ind||0,last:true});
     lines.forEach(l=>{const ini=L+(l.ind||0),tw=l.cur.reduce((s,o)=>s+o.t,0),ng=l.cur.slice(1).filter(o=>!o.ng).length,gap=l.last||!ng?sp():(CW-(l.ind||0)-tw)/ng;let x=ini;l.cur.forEach((o,i)=>{if(i&&!o.ng)x+=gap;doc.setFont('helvetica',o.b?'bold':'normal');doc.text(o.w,x,y);x+=o.t});y+=lh+.6});y+=1.5*K};
   par([['Autorizamos para os devidos fins, que os valores discriminados na relação abaixo'],['não sejam descontados na folha de pagamento referente à competência '+d.comp+',',1],['considerando que as despesas correspondem a atendimentos médicos realizados por meio do plano de saúde'],['Unimed',1],[', decorrentes de'],['acidente de trabalho',1],['.']],10);
   const n=d.itens.length,nn=String(n).padStart(2,'0')+' ('+ext(n)+') '+(n===1?'colaborador':'colaboradores');
   par([['A presente autorização contempla'],[nn,1],[', perfazendo o'],['valor total de '+brl(d.total),1],[', conforme demonstrado na tabela abaixo.']],0);
-  y+=1;doc.autoTable({startY:y,head:[['MAT','NOME','FUNÇÃO','VALOR']],body:d.itens.map(i=>[String(i.mat),i.nome,i.funcao,brl(i.v)]),foot:[[String(n),'','',brl(d.total)]],showFoot:'lastPage',semTotal:true,
-    theme:'grid',styles:{fontSize:8.6*K,cellPadding:1.2*K,halign:'center',lineColor:[150,185,215],lineWidth:.2,textColor:INK},headStyles:{fillColor:[46,134,193],textColor:255,fontStyle:'bold'},footStyles:{fillColor:[255,255,255],textColor:INK,fontStyle:'bold'},
-    columnStyles:{0:{cellWidth:22},3:{cellWidth:30,halign:'right'}},margin:{left:L,right:W-R}});y=doc.lastAutoTable.finalY;if(doc.getNumberOfPages()>1)quebrou=true;
+  y+=1;const ES=D?D.estilo():{theme:'striped',styles:{},headStyles:{fillColor:[36,65,79]},footStyles:{}};
+  doc.autoTable(Object.assign({},ES,{startY:y,head:[['Mat.','Nome','Função','Valor']],body:d.itens.map(i=>[String(i.mat),i.nome,i.funcao,brl(i.v)]),foot:[[{content:'Total: '+n+(n===1?' colaborador':' colaboradores'),colSpan:3},brl(d.total)]],showFoot:'lastPage',semTotal:true,
+    styles:Object.assign({},ES.styles,{fontSize:8.6*K,cellPadding:1.4*K}),columnStyles:{0:{cellWidth:20},3:{cellWidth:30,halign:'right',fontStyle:'bold'}},margin:{left:L,right:W-R,top:30,bottom:26}}));y=doc.lastAutoTable.finalY;if(doc.getNumberOfPages()>1)quebrou=true;
   /* assinaturas na mesma folha */
-  const AS=(d.ass||[]).filter(a=>a&&a[0]);let ys=Math.max(y+30*K,y+22);if(ys+26*Math.max(1,AS.length)-4>268)quebrou=true;
-  const ass=(nome,cargo,yy)=>{doc.setDrawColor(40);doc.setLineWidth(.3);doc.line(W/2-30,yy,W/2+30,yy);doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor(...INK);doc.text(nome,W/2,yy+4.5,{align:'center'});doc.text(cargo,W/2,yy+9,{align:'center'})};
-  AS.forEach((a,i)=>ass(a[0],a[1]||'',ys+26*i));
-  /* rodapé da empresa e do app */
-  doc.setDrawColor(150);doc.setLineWidth(.3);doc.line(L,272,R,272);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(110);doc.text('CRV INDUSTRIAL LTDA – UNIDADE CAPINÓPOLIS',W/2,277,{align:'center'});
-  doc.setFont('helvetica','normal');doc.setFontSize(8.3);doc.text('CNPJ nº 03.937.452/0004-35',W/2,281,{align:'center'});doc.text('Rodovia MG-226, s/nº, km 63, Zona Rural, Capinópolis, Minas Gerais',W/2,284.6,{align:'center'});doc.text('Telefone: (34) 3263-8100 - CEP. 38.360-000',W/2,288.2,{align:'center'});
-  doc.setFontSize(6.8);doc.setTextColor(140);doc.text('Gestão de Pessoas · emitido em '+new Date().toLocaleDateString('pt-BR'),L,293);
+  const AS=(d.ass||[]).filter(a=>a&&a[0]);
+  if(D){const r=D.assinaturas(doc,y+10*K,AS);if(r===null)quebrou=true}
+  else{const ys=y+30;AS.forEach((a,i)=>{doc.line(W/2-30,ys+26*i,W/2+30,ys+26*i);doc.text(a[0],W/2,ys+26*i+4.5,{align:'center'});doc.text(a[1]||'',W/2,ys+26*i+9,{align:'center'})});if(ys+26*AS.length>270)quebrou=true}
+  if(D)D.moldura(doc,(window.parent&&window.parent.CRV_QUEM)||'');
+  if(logo&&logo.src){try{const h=11,w=h*logo.w/logo.h;const n2=doc.getNumberOfPages();for(let p=1;p<=n2;p++){doc.setPage(p);doc.addImage(logo.src,'PNG',W-12-w,7,w,h)}}catch(_){}}
   return {doc,quebrou}}
 async function gerarDoc(d){const logo=await logoCRV();if(!d.ass){if(d.ass1)d.ass=[d.ass1,d.ass2].filter(Boolean);else{let A=[];try{A=window.parent&&window.parent.CRV_ASSINANTES?await window.parent.CRV_ASSINANTES('acid-aut'):[]}catch(_){}d.ass=A.length?A.map(a=>[a.nome,a.cargo]):[['Michelle Pereira','Coordenadora de RH'],['Leonardo Dias','Gerente Executivo']]}}let K=1,B=montar(d,logo,K);while(B.quebrou&&K>.6){K=Math.round((K-.05)*100)/100;B=montar(d,logo,K)}return B.doc}
 function dadosDoc(k,itens,data){const dt=data||hojeI(),total=r2(itens.reduce((s,i)=>s+i.v,0));
