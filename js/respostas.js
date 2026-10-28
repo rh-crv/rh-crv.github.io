@@ -132,6 +132,7 @@ async function telaResp(rh){
     const qi = c.querySelector('#rf-q'); qi.oninput = () => { F.q = qi.value; clearTimeout(qi._t); qi._t = setTimeout(() => { des(); const e = $('#rf-q'); if (e) { e.focus(); e.setSelectionRange(F.q.length, F.q.length); } }, 300); };
     c.querySelectorAll('[data-ab]').forEach(b => b.onclick = () => { const [k, id] = b.dataset.ab.split('|'); if (k === 'd') { location.hash = rh ? '#/respostas/docs' : '#/eq/mdisc'; return; } abrirResp(ENVS.find(e => e.id === id), rh); }); };
   TELA = { h:rh ? '#/respostas' : '#/eq/resp', des }; des();
+  { const it = window.CRV_ABRIR_ITEM; if (it) { window.CRV_ABRIR_ITEM = null; const e = ENVS.find(x => x.id === it); if (e) abrirResp(e, rh); } }   // veio de uma notificação
 }
 async function abrirResp(e, rh){ if (!e) return;
   let anx = []; try { const { data } = await sb.from('gestor_envios').select('rh_anexos').eq('id', e.id).maybeSingle(); anx = (data && data.rh_anexos) || []; } catch(_){}
@@ -211,6 +212,7 @@ async function telaDocsGestor(){
     c.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { F.st = F.st === b.dataset.k ? '' : b.dataset.k; des(); });
     const qi = c.querySelector('#rf-q'); qi.oninput = () => { F.q = qi.value; clearTimeout(qi._t); qi._t = setTimeout(() => { des(); const e = $('#rf-q'); if (e) { e.focus(); e.setSelectionRange(F.q.length, F.q.length); } }, 300); };
     ligarDocs(c, false, des); };
+  { const it = window.CRV_ABRIR_ITEM; if (it) { window.CRV_ABRIR_ITEM = null; const d = DOCS.find(x => x.id === it); if (d) { F.st = ''; F.q = String(d.mat || ''); } } }   // veio de uma notificação
   TELA = { h:'#/eq/mdisc', des }; des();
 }
 
@@ -224,6 +226,7 @@ async function telaRH(aba){
   document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => location.hash = '#/respostas/' + b.dataset.tab);
   await carregar(); vigiar(); const G = await gestoresDe(); const prazo = await prazoCfg(); const central = await souCentral();
   const gestDe = d => G.filter(u => (u.areas || []).some(a => (d.chaves || []).includes(a))).map(u => tc(u.nome) + ((u.frentes || []).some(f => /^assist:/.test(f)) ? ' (assist.)' : '')).join(', ');
+  { const it = window.CRV_ABRIR_ITEM; if (it) { window.CRV_ABRIR_ITEM = null; const d = DOCS.find(x => x.id === it); if (d) F.q = String(d.mat || ''); } }   // veio de uma notificação
   const des = () => { const c = $('#rsp-c'); if (!c) return; const q = nrm(F.q);
     const base = aba === 'pend' ? DOCS.filter(d => ABERTOS.includes(d.status)) : DOCS;
     const L = base.filter(d => (!F.st || (F.st === 'atr' ? atrasado(d) : d.status === F.st)) && (!q || nrm(d.colaborador + ' ' + d.mat + ' ' + (d.area_nome || '')).includes(q)));

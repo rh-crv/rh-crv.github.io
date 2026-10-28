@@ -712,6 +712,7 @@ async function telaEnvios(){
     c.querySelectorAll('[data-st]').forEach(b => b.onclick = () => { F = b.dataset.st; des(); });
     c.querySelectorAll('[data-id]').forEach(b => b.onclick = () => verEnvio(L.find(e => e.id === b.dataset.id), true, async () => { L = await lerEnviosRH() || []; des(); })); };
   des();
+  { const it = window.CRV_ABRIR_ITEM; if (it) { window.CRV_ABRIR_ITEM = null; const e = L.find(x => x.id === it); if (e) { F = ''; des(); verEnvio(e, true, async () => { L = await lerEnviosRH() || []; des(); }); } } }   // veio de uma notificação
 }
 /* ---------- telas do RH reaproveitadas pelo gestor: Perfil do Colaborador e Central de Rotinas do departamento ---------- */
 async function departamentos(){ try { const { A } = await lerArea(); return A.map(a => a.nome); } catch(_){ return []; } }

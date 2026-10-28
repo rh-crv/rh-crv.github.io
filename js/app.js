@@ -162,6 +162,7 @@ async function entrarNoApp(){
     /* respostas do RH e documentos dos gestores: publica os documentos do painel Sanções e mantém os contadores do gestor */
     try { if (window.CRV_RESP_INIT && (ehRH() || perfil.papel === 'gestor')) { RESP();  } } catch(_){}
     if (ehAdmin()) setTimeout(() => GESTOR().gerar(false).catch(() => {}), 8000);
+    try { window.CRV_TOAST = toast; window.CRV_NOTIF && window.CRV_NOTIF.iniciar(sb, E); } catch(_){}   // sininho e push
   } catch(e){
     $('#app').innerHTML = `<div class="login-fundo"><div class="login-card"><img class="logo" src="img/logo-crv.png" alt="CRV Industrial">
       <div class="erro" style="margin-top:18px">${esc(traduzErro(e))}</div>
@@ -307,7 +308,7 @@ function telaSemAcesso(tipo){
   $('#b-sair').onclick = sair;
 }
 
-async function sair(){ try { await logAcesso('saiu'); } catch(_){} await sb.auth.signOut(); E.sessao=null; E.perfil=null; location.hash=''; telaLogin(); }
+async function sair(){ try { await logAcesso('saiu'); } catch(_){} try { window.CRV_NOTIF && await window.CRV_NOTIF.sair(); } catch(_){} await sb.auth.signOut(); E.sessao=null; E.perfil=null; location.hash=''; telaLogin(); }
 
 /* =====================================================================
    ESTRUTURA (topo + rotas)
@@ -535,6 +536,9 @@ async function telaPainelGestor(id){
 function rota(){
   if (!E.perfil) return;
   fecharModal();
+  /* veio de uma notificação: "#/tela?item=<id>&n=<notificação>" abre a tela, marca como lida e abre o item */
+  { const h0 = location.hash || ''; const qi = h0.indexOf('?'); if (qi >= 0) { const ps = new URLSearchParams(h0.slice(qi + 1)); window.CRV_ABRIR_ITEM = ps.get('item') || null;
+      const n = ps.get('n'); if (n && window.CRV_NOTIF) window.CRV_NOTIF.lida(n); try { history.replaceState(null, '', h0.slice(0, qi)); } catch(_){ location.hash = h0.slice(0, qi); return; } } }
   const h = location.hash || '#/';
   logAcesso('abriu', ondeDe(h));
   if (E.perfil.papel === 'gestor') { if (h === '#/conta') return telaConta();
