@@ -557,7 +557,7 @@ table.fmt td.scn{width:46px;padding:4px}
   <div class="arbox"><div class="fld" style="margin:0">Situação informada pela área<div class="opts3" id="regA"><label><input type="radio" name="regAr" value=""> Nenhuma</label><label><input type="radio" name="regAr" value="efetivando"> Área efetivando</label><label><input type="radio" name="regAr" value="encerrando"> Área encerrando</label></div></div>
     <label class="fld" for="regAO" style="margin-bottom:0">Observação da área<input id="regAO" maxlength="300" placeholder="Ex.: gestor confirmou por e-mail que vai efetivar"></label>
     <p class="sub" style="margin:8px 0 0">Use quando a área já sinalizou o caminho, antes ou junto da avaliação formal. Aparece como etiqueta na lista, nos filtros “Área efetivando” / “Área encerrando” e nas exportações.</p></div>
-  <div class="pzbox"><label for="regPz">Prazo total do contrato (com a prorrogação)<select id="regPz"><option value="40">40 dias</option><option value="60">60 dias</option><option value="70">70 dias</option><option value="80">80 dias</option><option value="90">90 dias</option></select></label><p class="sub" style="margin:6px 0 0">O contrato de experiência pode ser prorrogado uma única vez, até 90 dias no total. Ao mudar aqui, o vencimento final e a linha do tempo acompanham.</p></div>
+  <div class="pzbox"><label for="regPz">Prazo total do contrato (com a prorrogação)<select id="regPz"><option value="30">30 dias (sem prorrogação)</option><option value="40">40 dias</option><option value="60">60 dias</option><option value="70">70 dias</option><option value="80">80 dias</option><option value="90">90 dias</option></select></label><p class="sub" style="margin:6px 0 0">O contrato de experiência pode ser prorrogado uma única vez, até 90 dias no total. Com 30 dias, o contrato termina no fim do 1º período, sem prorrogação. Ao mudar aqui, o vencimento final e a linha do tempo acompanham.</p></div>
   <div class="encbox"><label class="ck" for="regEnc"><input type="checkbox" id="regEnc"> RH está encerrando este contrato</label>
     <div class="encf" id="regEncF"><label for="regEncT">Tipo de encerramento<select id="regEncT"><option value="">No vencimento do contrato</option><option value="empresa">Antecipado pela empresa</option><option value="colab">Antecipado a pedido do colaborador</option></select></label><label for="regEncD">Data de encerramento<input type="date" id="regEncD"></label><label for="regEncO">Motivo / observação<input id="regEncO" maxlength="300" placeholder="Ex.: avaliação negativa da área; pedido de desligamento"></label></div><p class="sub" id="regEncI" style="margin:8px 0 0;font-weight:700;color:var(--crit)" hidden></p>
     <p class="sub" style="margin:8px 0 0">Sem data, o contrato fica como <b>RH encerrando</b>. Ao informar a data, ele passa para <b>Encerrado</b>, sai das listas de vencimento e aparece no filtro “Encerrados” e nas exportações.</p></div>
@@ -585,9 +585,11 @@ const DEC={efetivar:["Efetivar","dE"],encerrar:["Encerrar contrato","dX"],prorro
 const MK={pr:"1º período",ef:"Fim do contrato",ef90:"Fim dos 90 dias"};
 function apply(p){
   const rg=REG[p.mat]||null;
-  // prazo total escolhido pelo RH para a prorrogação (40, 60, 70, 80 ou 90 dias; uma prorrogação só)
-  if(p._pz0o===undefined){p._pz0o=p.prazo0;p._vf0o=p.vf0;p._p90o=p.p90b}
+  // prazo total escolhido pelo RH (30 dias = encerra no 1º período, sem prorrogação; 40 a 90 dias com uma prorrogação só)
+  if(p._pz0o===undefined){p._pz0o=p.prazo0;p._vf0o=p.vf0;p._p90o=p.p90b;p._v1o=p.v1}
   const pt=rg&&+rg.prazoT;if(pt){p.prazo0=pt;p.vf0=new Date(p.adm.getTime()+(pt-1)*DAY);p.p90b=false}else{p.prazo0=p._pz0o;p.vf0=p._vf0o;p.p90b=p._p90o}
+  // prazo que termina no 1º período (ex.: 30 dias): não há prorrogação, o contrato vence direto no fim
+  p.v1=p._v1o&&p._v1o<p.vf0?p._v1o:null;p.semPr=!!(p._v1o&&!p.v1);
   const ef=rg&&rg.ef;const ext=!!(ef&&ef.decisao==="prorrogar"&&(p.p90b||(ef.venc&&pd(ef.venc)<p.vf0)));
   p.ext=ext;p.vf=ext&&p.p90b?p.d90:p.vf0;p.prazo=ext&&p.p90b?90:p.prazo0;p.p90=p.p90b&&!ext;
   const pend1=p.v1&&p.v1>=TODAY;
