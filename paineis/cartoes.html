@@ -620,7 +620,7 @@ const STC={ok:['Com saldo','df-ok'],sem:['Fica sem saldo','df-am'],est:['Já est
 function fechar(){}
 async function abrir(){const aba=document.querySelector('#vtabs [data-v=d]');if(aba&&!aba.classList.contains('on'))aba.click();const sec=document.getElementById('vD');if(W===sec){sec.scrollIntoView({behavior:'smooth',block:'start'});return}W=sec;W.className='box df-inline';
   W.innerHTML='<div class="df-modal" role="dialog" aria-modal="true"><div class="df-cab"><h3>Desconto em folha · Cartão Convênio<small>Carregue o TXT de consumo da Sysprocard do fechamento (21 a 20). Metade só para quem tem crédito de R$ 1.080 na Sysprocard (alojados motoristas e operadores de máquinas); os demais pagam 100%, mesmo alojados; o Josail é pago 100% pela empresa. Centro de custo: carregue a planilha atualizada do sistema; desligados ficam com o centro de custo de antes do desligamento.</small></h3>'
-   +'<select class="df-b" id="dfSel"></select><button class="df-b" id="dfTxt">Carregar TXT do fechamento</button><button class="df-b" id="dfCC">Carregar planilha de centros de custo</button><button class="df-b" id="dfAnt">Trazer do mês anterior (Excel do DP)</button><button class="df-b" id="dfSal">Carregar saldos dos centros de custo</button><button class="df-b pri" id="dfXls">Excel</button><button class="df-b" id="dfPdf">PDF</button></div><div class="df-corpo"><p>Carregando…</p></div></div>';
+   +'<select class="df-b" id="dfSel"></select><button class="df-b" id="dfTxt">Carregar TXT do fechamento</button><button class="df-b" id="dfCC">Carregar planilha de centros de custo</button><button class="df-b" id="dfAnt">Trazer do mês anterior (Excel do DP)</button><button class="df-b" id="dfSal">Carregar saldos dos centros de custo</button><button class="df-b pri" id="dfXls">Excel</button><button class="df-b" id="dfPdf">PDF</button><button class="df-b" id="dfTxtF">TXT para a folha</button></div><div class="df-corpo"><p>Carregando…</p></div></div>';
   const g=id=>W.querySelector('#'+id);
   const pick=(acc,fn)=>{const i=document.createElement('input');i.type='file';i.accept=acc;i.onchange=()=>{if(i.files[0])fn(i.files[0])};i.click()};
   g('dfTxt').onclick=()=>pick('.txt,text/plain',async f=>{try{const tx=await lerTxt(f);if(!tx.fim)throw new Error('Não encontrei o período no TXT.');
@@ -648,6 +648,7 @@ async function abrir(){const aba=document.querySelector('#vtabs [data-v=d]');if(
         else{nF++;x.desl=true;x.deslPlan=true;x.conf.push('Desligado (não está mais na planilha de centro de custo): descontar na rescisão; centro de custo de antes do desligamento ('+(x.cc||'sem')+')')}});
       F.ccPlan=ref;F.ccPlanEm=new Date().toISOString();await gravar();desenhar('Planilha de centros de custo aplicada: '+nA+' centros de custo atualizados; '+nF+' pessoa(s) que não estão na planilha foram tratadas como desligadas (descontar na rescisão). Desligados mantêm o centro de custo de antes.')}catch(er){desenhar('',er.message)}})};
   g('dfSel').onchange=()=>{F=FS.find(x=>x._id===g('dfSel').value)||null;desenhar()};
+  g('dfTxtF').onclick=()=>F&&txtFolha().catch(er=>desenhar('',er.message));
   g('dfXls').onclick=()=>F&&excel().catch(er=>desenhar('',er.message));g('dfPdf').onclick=()=>F&&pdfRes().catch(er=>desenhar('',er.message));
   await lerTodos();FS.forEach(f=>(f.itens||[]).forEach(x=>{if(x.manual)return;x.conf=(x.conf||[]).filter(t=>!/alojamento|como no (mês|fechamento) anterior/.test(t)).map(t=>t==='Afastado no Quadro'?'Afastado: desconto em folha normal; bloquear o cartão na Sysprocard durante o afastamento':t);x.marc=V.excEsp[x.mat]?'NÃO':e1080(ROW[x.mat])?'SIM':''}));await ccDesligados();F=FS[0]||null;desenhar()}
 /* desligados: centro de custo = o último em que a pessoa estava (base de demitidos do Quadro); nunca fica em branco */
@@ -660,7 +661,7 @@ async function ccDesligados(lista){let M={};try{const q=window.parent&&window.pa
     if(mud){try{const D=await db();if(D){const o=Object.assign({},f);delete o._id;delete o._ccOk;await D.collection('fechamentos').doc(f._id).set(o)}}catch(e){console.warn('ccDesligados',e)}}}}
 function desenhar(ok,er){if(!W)return;if(F&&!F._ccOk){F._ccOk=true;const f0=F;ccDesligados([f0]).then(()=>{if(F===f0)desenhar(ok,er)})}const g=id=>W.querySelector('#'+id),C=W.querySelector('.df-corpo');
   g('dfSel').innerHTML=FS.length?FS.map(f=>'<option value="'+e_(f._id)+'"'+(F&&F._id===f._id?' selected':'')+'>Fechamento '+br(f.ini)+' a '+br(f.fim)+'</option>').join(''):'<option>Nenhum fechamento</option>';
-  ['dfXls','dfPdf','dfSal','dfAnt','dfCC'].forEach(id=>g(id).disabled=!F);
+  ['dfXls','dfPdf','dfTxtF','dfSal','dfAnt','dfCC'].forEach(id=>g(id).disabled=!F);
   if(!F){C.innerHTML=(er?'<div class="df-av er">'+e_(er)+'</div>':'')+'<div class="df-vazio">Nenhum fechamento carregado. Clique em <b>Carregar TXT do fechamento</b> e escolha o arquivo de consumo da Sysprocard.</div>';return}
   const{T,C:CC}=calc();const sem=CC.filter(c=>c.st==='sem'),est=CC.filter(c=>c.st==='est');
   let h=(ok?'<div class="df-av in">'+e_(ok)+'</div>':'')+(er?'<div class="df-av er">'+e_(er)+'</div>':'');
@@ -734,6 +735,31 @@ async function pdfDP(J,op){const{A,D}=linhasDP(op);const DC=window.parent&&windo
     if(DC)DC.moldura(doc);return{doc,quebrou}};
   let B=build(0);if(B.quebrou)B=build(48);const doc=B.doc;
   await salvarArq(nomeArq('pdf').replace(/\.pdf$/,op==='dp'?' - Lancamento em folha.pdf':' - Desconto final.pdf'),new Uint8Array((await (window.parent.CRV_PDF_LOGOS||window.CRV_PDF_LOGOS||(d=>d))(doc,{syspro:true})).output('arraybuffer')),'application/pdf')}
+/* TXT do desconto final para a folha (para enviar ao DP): uma linha por pessoa; formato ajustável e lembrado neste navegador */
+function txtFolha(){return new Promise(ok=>{let C={sep:';',dec:',',cab:true,nome:true,evento:'',comp:true,desl:false,cod:'ansi'};try{Object.assign(C,JSON.parse(localStorage.getItem('crv-txt-folha')||'{}'))}catch(_){}
+  const o=document.createElement('div');o.className='df-esc';const sel=(id,ops,v)=>'<select id="'+id+'" style="padding:6px 8px;border:1px solid var(--line);border-radius:7px;font:inherit">'+ops.map(([k,t])=>'<option value="'+k+'"'+(k===v?' selected':'')+'>'+t+'</option>').join('')+'</select>';
+  o.innerHTML='<div class="df-esc-c" style="text-align:left;max-width:520px"><h4>TXT do desconto final para a folha</h4><p>Uma linha por pessoa, em ordem alfabética, só quem tem valor a descontar. Se o Departamento Pessoal usar um layout próprio, ajuste aqui.</p>'
+   +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;font-size:13px;margin:8px 0">'
+   +'<label>Separador<br>'+sel('tS',[[';','Ponto e vírgula ( ; )'],['\t','Tabulação'],['|','Barra ( | )'],[',','Vírgula ( , )']],C.sep)+'</label>'
+   +'<label>Casas decimais<br>'+sel('tD',[[',','Vírgula (540,00)'],['.','Ponto (540.00)']],C.dec)+'</label>'
+   +'<label>Código do evento na folha (opcional)<br><input id="tE" value="'+e_(C.evento)+'" placeholder="Ex.: 0450" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:7px;font:inherit"></label>'
+   +'<label>Codificação<br>'+sel('tC',[['ansi','ANSI / Windows (acentos para sistemas antigos)'],['utf8','UTF-8']],C.cod)+'</label></div>'
+   +'<div style="display:flex;flex-direction:column;gap:5px;font-size:13px"><label><input type="checkbox" id="tH"'+(C.cab?' checked':'')+'> Primeira linha com os nomes das colunas</label><label><input type="checkbox" id="tN"'+(C.nome?' checked':'')+'> Incluir o nome</label><label><input type="checkbox" id="tP"'+(C.comp?' checked':'')+'> Incluir a competência (mês do fechamento)</label><label><input type="checkbox" id="tL"'+(C.desl?' checked':'')+'> Incluir desligados (descontar na rescisão)</label></div>'
+   +'<pre id="tV" style="background:#f6f7f9;border:1px solid var(--line);border-radius:8px;padding:8px;font-size:11.5px;max-height:120px;overflow:auto;margin:10px 0 6px;white-space:pre"></pre>'
+   +'<div style="display:flex;gap:8px;justify-content:flex-end"><button data-v="" class="df-esc-x">Cancelar</button><button data-v="ok" style="background:var(--acc,#7d1a2c);color:#fff;border-color:transparent">Gerar TXT</button></div></div>';
+  W.querySelector('.df-modal').appendChild(o);const g2=id=>o.querySelector('#'+id);
+  const ler=()=>({sep:g2('tS').value,dec:g2('tD').value,cab:g2('tH').checked,nome:g2('tN').checked,evento:g2('tE').value.trim(),comp:g2('tP').checked,desl:g2('tL').checked,cod:g2('tC').value});
+  const gerar=c=>{const sp=c.sep==='\t'?'\t':c.sep;const{A,D}=linhasDP('fin');const L=A.map(x=>[x,'']).concat(c.desl?D.map(x=>[x,'RESCISAO']):[]);const comp=F.fim?F.fim.slice(5,7)+'/'+F.fim.slice(0,4):'';
+    const val=v=>{const t=(Math.round(v*100)/100).toFixed(2);return c.dec===','?t.replace('.',','):t};const limpa=t=>String(t||'').replace(new RegExp(sp==='\t'?'\t':'\\'+sp,'g'),' ').trim();
+    const H=[c.evento?'EVENTO':null,'MATRICULA',c.nome?'NOME':null,c.comp?'COMPETENCIA':null,'VALOR',c.desl?'OBS':null].filter(x=>x!==null);
+    const linhas=L.map(([x,ob])=>[c.evento?c.evento:null,x.mat,c.nome?limpa(x.nome):null,c.comp?comp:null,val(descDe(x)),c.desl?ob:null].filter(v=>v!==null).join(sp));
+    return{txt:(c.cab?[H.join(sp)]:[]).concat(linhas).join('\r\n')+'\r\n',n:L.length,tot:L.reduce((s,[x])=>s+descDe(x),0)}};
+  const prev=()=>{const r=gerar(ler());g2('tV').textContent=r.txt.split('\r\n').slice(0,6).join('\n')+(r.n>5?'\n…':'')+'\n\nTotal: '+r.n+' pessoa(s) · R$ '+brl(r.tot)};
+  o.querySelectorAll('select,input').forEach(i=>i.oninput=i.onchange=prev);prev();
+  o.querySelectorAll('[data-v]').forEach(b=>b.onclick=async()=>{if(!b.dataset.v){o.remove();return ok()}const c=ler();try{localStorage.setItem('crv-txt-folha',JSON.stringify(c))}catch(_){}const r=gerar(c);let bytes;
+    if(c.cod==='ansi'){const W1252={'€':128,'‚':130,'ƒ':131,'„':132,'…':133,'†':134,'‡':135,'ˆ':136,'‰':137,'Š':138,'‹':139,'Œ':140,'Ž':142,'‘':145,'’':146,'“':147,'”':148,'•':149,'–':150,'—':151,'˜':152,'™':153,'š':154,'›':155,'œ':156,'ž':158,'Ÿ':159};bytes=new Uint8Array([...r.txt].map(ch=>{const k=ch.charCodeAt(0);return k<256?k:(W1252[ch]||63)}))}
+    else bytes=new TextEncoder().encode(r.txt);
+    o.remove();await salvarArq(nomeArq('txt').replace(/\.txt$/,' - Desconto final.txt'),bytes,'text/plain');ok()})})}
 function escolher(tipo){return new Promise(ok=>{const o=document.createElement('div');o.className='df-esc';
   o.innerHTML='<div class="df-esc-c"><h4>'+(tipo==='xlsx'?'Excel':'PDF')+' para impressão</h4><p>O que você quer imprimir?</p>'
    +'<button data-v="dp"><b>Lançamento em folha</b><small>Nome, matrícula, valor cheio, desconto (de quem tem) e valor a descontar na folha</small></button>'
