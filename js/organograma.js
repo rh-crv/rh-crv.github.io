@@ -94,7 +94,7 @@ const PADRAO_SG = {
 "q:17644": {
 "faz": "Fazer café\nAuditorio, salas (ambulatorio, RH, portaria)\nBanheiros femininos e masculinos\nSala do agricola\nSala PCM oficina\nRefeitorio (recolhimento do lixo e manutenção)",
 "local": "Predio portaria central / oficina / agricola",
-"horario": "Turno C · 15:00 às 23:20",
+"horario": "Turno B · 15:00 às 23:20",
 "obs": "Limpeza realizada na parte da tarde e manutenção após Janta."
 },
 "q:17670": {
