@@ -76,7 +76,7 @@ async function recortes(chaves){
   const M = Q.mapa, h = hoje();
   // trajetória (departamentos e funções) dos relatórios da folha; o histórico de férias fica só com o RH
   let HD = {}, HC = {}; try { HD = await window.CRV_HIST('depto'); HC = await window.CRV_HIST('cargo'); } catch(_){}
-  const traj = m => (HD[m] || []).map(x => [x[0], 'd', x[1], x[2]]).concat((HC[m] || []).map(x => [x[0], 'f', x[1], x[2]])).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 25);
+  const traj = m => (HD[m] || []).map(x => [x[0], 'd', x[1], x[2]]).concat((HC[m] || []).map(x => [x[0], 'f', x[1], x[2]])).sort((a, b) => b[0].localeCompare(a[0]));   // trajetória completa
   const dentro = (p, k) => p.situacao !== 'Desligado' && daChave(k, p);
   // levantamento de perfil profissional: só os números e o parecer da gestão (as informações do RH e os avisos ficam só com o RH)
   const PFL = {}; try { (await window.CRV_REGS('perfil', 'colaboradores')).forEach(x => { if (x.mat) PFL[fMat(x.mat)] = x; }); } catch(_){}
@@ -87,7 +87,7 @@ async function recortes(chaves){
     [['', HO[m] || []]].concat(HOE[m] || []).forEach(([emp, L]) => { const ep = []; L.forEach(x => { if (!'fjs'.includes(x[1])) return; const r = yr(x[0].slice(0, 4), emp); r[{ f:1, j:2, s:3 }[x[1]]]++;
         const u = ep[ep.length - 1]; if (u && u[2] === x[1] && fDias(u[1], x[0]) === 1) { u[1] = x[0]; u[3]++; } else ep.push([x[0], x[0], x[1], 1, emp]); }); EP.push(...ep); });
     [['', HA[m] || []]].concat(HAE[m] || []).forEach(([emp, L]) => L.forEach(a => { yr(a[0].slice(0, 4), emp)[5] += a[1]; EP.push([a[0], a[1] > 1 ? addD(a[0], a[1] - 1) : a[0], 'a', a[1], emp]); }));
-    const YL = Object.values(Y); return YL.length ? { y:YL.sort((a, b) => b[0].localeCompare(a[0]) || a[4].localeCompare(b[4])), ep:EP.sort((a, b) => b[0].localeCompare(a[0])).slice(0, 20) } : null; };
+    const YL = Object.values(Y); return YL.length ? { y:YL.sort((a, b) => b[0].localeCompare(a[0]) || a[4].localeCompare(b[4])), ep:EP.sort((a, b) => b[0].localeCompare(a[0])) } : null; };   // todo o histórico
   // bases auxiliares (lidas uma vez)
   const EXP = {}; let refExp = '';
   try { const d = await window.CRV_DADOS('experiencia'); refExp = d && d.referencia || ''; const R = d && d.dados.RAW || []; const reg = {}; (await window.CRV_REGS('experiencia', 'registros')).forEach(x => reg[x._id] = x);
@@ -116,11 +116,17 @@ async function recortes(chaves){
   let SAL = null; try { const o = window.CRV_SAL ? await window.CRV_SAL() : null; SAL = o && o.SAL; } catch(_){}
   const nTok = t => String(t || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').split(/\s+/).filter(Boolean);
   const salDe = (m, nome, func) => { if (!SAL || !SAL[m] || LIDER(func)) return null; const v = SAL[m], a = nTok(v[4]), b = nTok(nome); if (a.length && (a[0] !== b[0] || a[a.length - 1] !== b[b.length - 1])) return null; return +v[0] || null; };
-  const d400 = addD(h, -400);
+  /* dias de ausência de todo o histórico, por tipo (f falta, j falta justificada, s suspensão, a atestado):
+     junta a planilha de absenteísmo e o histórico do sistema (CRV e outras empresas do grupo), sem repetir o mesmo dia */
+  const diasOc = (m, o) => { const T = { f:new Set(), j:new Set(), s:new Set(), a:new Set() };
+    (o.fa || []).forEach(d => T.f.add(d)); (o.su || []).forEach(d => T.s.add(d)); (o.at || []).forEach(d => T.a.add(d));
+    [HO[m] || []].concat((HOE[m] || []).map(x => x[1])).forEach(L => L.forEach(x => { if (T[x[1]] && x[1] !== 'a') T[x[1]].add(x[0]); }));
+    [HA[m] || []].concat((HAE[m] || []).map(x => x[1])).forEach(L => L.forEach(a => { for (let i = 0; i < Math.min(+a[1] || 1, 400); i++) T.a.add(i ? addD(a[0], i) : a[0]); }));
+    const r = {}; Object.keys(T).forEach(k => { if (T[k].size) r[k] = [...T[k]].sort(); }); return r; };
   const out = [];
   for (const k of chaves) {
-    const mats = Object.keys(M).filter(m => dentro(M[m], k));
-    const O = await window.CRV_OCORR(mats, '2000-01-01', h); const ate = O.abs || '';
+    const mats = Object.keys(M).filter(m => dentro(M[m], k)), matsD = Object.keys(M).filter(m => M[m].situacao === 'Desligado' && daChave(k, M[m]));
+    const O = await window.CRV_OCORR(mats.concat(matsD), '2000-01-01', h); const ate = O.abs || '';
     const d90 = ate ? addD(ate, -90) : '', d30 = ate ? addD(ate, -30) : '';
     const P = mats.map(m => { const p = M[m], o = O.P[m] || { at:[], fa:[], adv:[], sus:[] };
       const casa = p.admissao ? fDias(p.admissao, h) : null, ob = casa != null && casa <= 120 ? { falta: ONB.itens.filter(i => !(ONB.ck[m] || {})[i.id]).map(i => i.nome), conv: ONB.cv[m] || [] } : null;
@@ -130,14 +136,20 @@ async function recortes(chaves){
         ger:p.gerencia || '', area:p.area || '',
         san: o.adv.map(x => ({ d:x.data, t:'Advertência', mot:x.motivo || '' })).concat(o.sus.map(x => ({ d:x.data, t:'Suspensão' + (x.dias ? ' (' + x.dias + 'd)' : ''), mot:x.motivo || '' }))).sort((a, b) => String(b.d).localeCompare(String(a.d))),
         rd: (RD[m] || []).sort((a, b) => String(b.d).localeCompare(String(a.d))),
-        exp: p.vinculo === 'Experiência' || (EXP[m] && EXP[m].v2 >= addD(h, -30)) ? EXP[m] || null : null, fer: FER[m] || [], cr:(CR[m] || []).filter(x => !x.fim || x.fim >= addD(h, -30)), ob };
+        exp: p.vinculo === 'Experiência' || (EXP[m] && EXP[m].v2 >= addD(h, -30)) ? EXP[m] || null : null, fer: FER[m] || [], cr:(CR[m] || []).filter(x => !x.fim || x.fim >= addD(h, -30)), ob, od:diasOc(m, o) };
     }).sort((a, b) => a.n.localeCompare(b.n, 'pt-BR'));
     P.forEach(p => { const sv = salDe(p.m, p.n, p.f); if (sv) p.sal = sv; p.cid = CID[p.m] || ''; p.alo = ALO[p.m] || null; const t = traj(p.m); if (t.length) p.tr = t; const oh = ocHist(p.m); if (oh) p.oh = oh; const pf = PFL[p.m]; if (pf) p.pf = { atest:+pf.atest || 0, falta:+pf.falta || 0, fj:+pf.fj || 0, susp:+pf.susp || 0, adv:+pf.adv || 0, par:pf.parecer && ((pf.parecer.acoes || []).length || String(pf.parecer.txt || '').trim()) ? { acoes:pf.parecer.acoes || [], txt:pf.parecer.txt || '', resp:pf.parecer.resp || '', em:pf.parecer.em || '' } : null }; });
-    // movimentação dos últimos 13 meses (inclui quem já saiu)
+    const PD = matsD.map(m => { const p = M[m], o = O.P[m] || { at:[], fa:[], adv:[], sus:[] };
+      return { m, n:p.nome, f:p.funcao, s:p.setor, adm:p.admissao, v:p.vinculo, sit:'Desligado', deslig:p.deslig || '', ger:p.gerencia || '', area:p.area || '',
+        san: o.adv.map(x => ({ d:x.data, t:'Advertência', mot:x.motivo || '' })).concat(o.sus.map(x => ({ d:x.data, t:'Suspensão' + (x.dias ? ' (' + x.dias + 'd)' : ''), mot:x.motivo || '' }))).sort((a, b) => String(b.d).localeCompare(String(a.d))),
+        rd:(RD[m] || []).sort((a, b) => String(b.d).localeCompare(String(a.d))), od:diasOc(m, o) }; })
+      .filter(p => p.san.length || p.rd.length || Object.keys(p.od).length).sort((a, b) => a.n.localeCompare(b.n, 'pt-BR'));
+    PD.forEach(p => { const t = traj(p.m); if (t.length) p.tr = t; const oh = ocHist(p.m); if (oh) p.oh = oh; });
+    // movimentação de todo o histórico do Quadro (inclui quem já saiu)
     const MOV = { adm:[], sai:[] };
     Object.entries(M).forEach(([m, p]) => { if (!casa(k, p)) return;
-      if (p.admissao && p.admissao >= d400) MOV.adm.push({ m, n:p.nome, f:p.funcao, s:p.setor, d:p.admissao, v:p.vinculo, saiu: p.situacao === 'Desligado' ? p.deslig : '' });
-      if (p.situacao === 'Desligado' && p.deslig && p.deslig >= d400) { const e = EXR[m]; MOV.sai.push({ m, n:p.nome, f:p.funcao, s:p.setor, d:p.deslig, adm:p.admissao, casa:p.admissao ? fDias(p.admissao, p.deslig) : null, tipo:e ? TIP[e[3]] || '' : '', mot:e ? (e[4] || []).map(i => MOTN[i]).filter(Boolean) : [] }); } });
+      if (p.admissao) MOV.adm.push({ m, n:p.nome, f:p.funcao, s:p.setor, d:p.admissao, v:p.vinculo, saiu: p.situacao === 'Desligado' ? p.deslig : '' });
+      if (p.situacao === 'Desligado' && p.deslig) { const e = EXR[m]; MOV.sai.push({ m, n:p.nome, f:p.funcao, s:p.setor, d:p.deslig, adm:p.admissao, casa:p.admissao ? fDias(p.admissao, p.deslig) : null, tipo:e ? TIP[e[3]] || '' : '', mot:e ? (e[4] || []).map(i => MOTN[i]).filter(Boolean) : [] }); } });
     // quadro x previsto: seções da equipe (ou o grupo da área) na previsão de quadro
     let PV = null;
     if (PREV && Array.isArray(PREV.grupos)) { const sec = new Set(P.map(p => normal(p.s)));
@@ -153,7 +165,7 @@ async function recortes(chaves){
         const L = P.filter(p => p.sit === 'Ativo' && (porSecao ? normal(p.s) === n : dono[p.m] === it));
         itens.push({ n:it.n, g:g.g || g.dp || '', p:+it.p || 0, t:L.length, x:L.filter(p => p.v === 'Experiência').length }); });
       PV = { itens, posicao: PREV.posicao || PREV.atualizadoEm || '' }; }
-    out.push({ chave:k, dados:{ chave:k, nome:nomeChave(k), tipo:tipoChave(k), P, MOV, PV, ref:{ quadro:Q.referencia, abs:ate, exp:refExp, fer:refFer, sai:(Object.values(EXR).length ? '' : '') }, gerado:new Date().toISOString(), por:E.perfil.nome } });
+    out.push({ chave:k, dados:{ chave:k, nome:nomeChave(k), tipo:tipoChave(k), P, PD, MOV, PV, ref:{ quadro:Q.referencia, abs:ate, exp:refExp, fer:refFer, sai:(Object.values(EXR).length ? '' : '') }, gerado:new Date().toISOString(), por:E.perfil.nome } });
   }
   return out;
 }
@@ -192,20 +204,23 @@ async function gerarPaineis(G){
   const AR = window.CRV_AREA; if (!AR || !window.CRV_PACOTE_BRUTO) return 0;
   const donos = G.filter(g => g.ativo && !ehAssistG(g) && paineisDe(g).length); if (!donos.length) return 0;
   const Q = await window.CRV_QUADRO(); if (!Q) return 0; const M = Q.mapa;
-  const PAC = {}, REG = {};
+  const PAC = {}, REG = {}, FONTE = {};
+  // dados que o app injeta no painel do RH (montados uma vez, recortados por gestor pelo próprio painel em area-filtros.js)
+  const FONTES_RH = { CRV_OC:() => window.CRV_OC_RH && window.CRV_OC_RH(), CRV_QSIT:() => window.CRV_QSIT_RH && window.CRV_QSIT_RH() };
   const pac = async id => { if (!(id in PAC)) { try { PAC[id] = await window.CRV_PACOTE_BRUTO(id); } catch(_) { PAC[id] = null; } } return PAC[id]; };
   const regs = async (id, col) => { const k = id + '|' + col; if (!REG[k]) { const r = await window.todasLinhas((a, z) => sb.from('registros').select('doc_id,dados').eq('painel', id).eq('colecao', col).order('doc_id').range(a, z)); REG[k] = r.data || []; } return REG[k]; };
   let n = 0;
   for (const g of donos) {
     const ks = (g.areas || []).filter(chaveOk); if (!ks.length) continue;
-    const mm = Object.keys(M).filter(m => ks.some(k => daChave(k, M[m])));
-    const ctx = { mats:new Set(mm.map(AR.fm)), mapa:M, chaves:ks, areas:new Set(mm.map(m => M[m].area).filter(Boolean)), setores:new Set(mm.map(m => M[m].setor).filter(Boolean)),
-      gerencias:new Set(mm.map(m => M[m].gerencia).filter(Boolean)), funcoes:new Set(mm.map(m => M[m].funcao).filter(Boolean)), nomes:new Set(mm.map(m => normal(M[m].nome || '')).filter(Boolean)) };
-    const paineis = {};
-    for (const id of paineisDe(g)) { const d = await pac(id); if (!d || !d.conteudo) continue; const D = AR.def(id);
+    const ctx = AR.contexto(ks, M);
+    const paineis = {}, ids = paineisDe(g);
+    // Admissões e Desligamentos abrem também na visão "Todas as empresas e anos", que usa a base do Quadro recortada
+    if ((ids.includes('admissoes') || ids.includes('rescisoes')) && !ids.includes('quadro') && AR.def('quadro')) ids.push('__quadro');
+    for (const id0 of ids) { const id = id0 === '__quadro' ? 'quadro' : id0; const d = await pac(id); if (!d || !d.conteudo) continue; const D = AR.def(id);
       try { const conteudo = AR.filtrar(id, d.conteudo, ctx), rg = {}; if (D.vazio && D.vazio(conteudo)) continue;   // nada da área neste painel
         for (const col of Object.keys(D.regs || {})) rg[col] = (await regs(id, col)).filter(x => AR.regOk(id, col, x.doc_id, x.dados, ctx)).map(x => ({ doc_id:x.doc_id, dados:AR.limparReg ? AR.limparReg(id, col, x.dados) : x.dados }));
-        paineis[id] = { referencia:d.referencia || '', conteudo, regs:rg }; } catch(e) { console.warn('painel ' + id + ' do gestor', e); } }
+        const inj = {}; for (const k of Object.keys(D.injetar || {})) { if (!(k in FONTE)) { FONTE[k] = null; try { FONTE[k] = await (FONTES_RH[k] ? FONTES_RH[k]() : null); } catch(_){} } if (FONTE[k]) { try { const v = D.injetar[k](AR.clonar(FONTE[k]), ctx); if (v) inj[k] = v; } catch(e) { console.warn('injeção ' + k, e); } } }
+        paineis[id0] = { referencia:d.referencia || '', conteudo, regs:rg, inj }; } catch(e) { console.warn('painel ' + id + ' do gestor', e); } }
     const chave = 'u:' + g.user_id;
     const { error:e } = await sb.from('area_dados').upsert({ chave, dados:{ tipo:'paineis', paineis, gerado:new Date().toISOString(), por:E.perfil.nome }, atualizado_em:new Date().toISOString(), atualizado_por:E.perfil.nome }, { onConflict:'chave' });
     if (e) { console.warn('painéis do gestor', e); continue; } n++;
@@ -218,10 +233,10 @@ async function gerarPaineis(G){
 async function ultimaGeracao(){ try { const { data } = await sb.from('area_dados').select('dados').eq('chave', '__meta').maybeSingle(); return data && data.dados; } catch(_){ return null; } }
 
 /* tela do gestor: resumo (#/) ou um painel da equipe (#/eq/<painel>) */
-const PAINEL_G = { eq:['Gestão de Colaboradores', 'Equipe', 'Quem é da sua equipe: função, departamento, contrato e cidade.'], mov:['Gestão de Colaboradores', 'Admissões e saídas', 'Quem entrou e quem saiu, com tipo e motivo das saídas por período.'],
+const PAINEL_G = { eq:['Gestão de Colaboradores', 'Equipe', 'Quem é da sua equipe: função, departamento, contrato e cidade.'], mov:['Gestão de Colaboradores', 'Admissões e saídas', 'Quem entrou e quem saiu, com tipo e motivo das saídas, por período: mês, ano, intervalo ou todo o histórico.'],
   pv:['Gestão de Colaboradores', 'Quadro x previsto', 'Quantas pessoas a previsão de quadro pede e quantas a equipe tem hoje.'], exp:['Gestão de Colaboradores', 'Período de experiência', 'Vencimentos e avaliação de experiência: avalie e envie ao RH pelo app.'],
   nov:['Gestão de Colaboradores', 'Novos colaboradores', 'Quem entrou nos últimos 120 dias: integração e conversas do RH.'], fer:['Absenteísmo e Férias', 'Férias', 'Períodos, data limite e saldo: programe e envie ao RH até o dia 15 do mês anterior.'],
-  freq:['Absenteísmo e Férias', 'Frequência', 'Faltas e dias de atestado (só a quantidade) nos últimos 30 e 90 dias.'], disc:['Ocorrências e Relações Trabalhistas', 'Disciplina e RD', 'Advertências, suspensões e registros de dano da equipe.'],
+  freq:['Absenteísmo e Férias', 'Frequência', 'Faltas, faltas justificadas, dias de atestado (só a quantidade) e de suspensão, por período: mês, ano, intervalo ou todo o histórico.'], disc:['Ocorrências e Relações Trabalhistas', 'Disciplina e RD', 'Advertências, suspensões e registros de dano da equipe, por período: mês, ano, intervalo ou todo o histórico.'],
   cr:['T&D | Desenvolvimento de Pessoas', 'Em treinamento', 'Quem está com crachá de treinamento e até quando.'], alo:['Alojamentos e Transporte', 'Alojamento', 'Quem da equipe está alojado, onde e de qual cidade veio.'],
   perfil:['Seleção e Perfil Profissional', 'Perfil profissional', 'Quem da sua equipe está no levantamento de perfil profissional: veja os números e registre seu parecer e o plano de ação.'],
   env:['Atendimento e Ouvidoria', 'Meus envios ao RH', 'Tudo o que você programou ou avaliou e enviou, com a situação de cada envio.'] };
@@ -247,8 +262,21 @@ async function tela(abaIni){
     const dono = {}; at.forEach(p => { let best = null; PVI.forEach(it => { if (secs.has(normal(it.n)) || !(tem(p.f, it.n) || tem(p.s, it.n))) return; if (!best || pal(it.n).length > pal(best.n).length) best = it; }); if (best) dono[p.m] = best; });
     PVI.forEach(it => { const L = secs.has(normal(it.n)) ? at.filter(p => normal(p.s) === normal(it.n)) : at.filter(p => dono[p.m] === it); it.t = L.length; it.x = L.filter(p => p.v === 'Experiência').length; it.mats = L.map(p => p.m); }); }
   const pvPos = (A.find(a => a.PV) || {}).PV;
-  let per = 3; const PERS = [[1, 'Último mês'], [3, '3 meses'], [6, '6 meses'], [12, '12 meses']];
-  const desde = () => addD(h, -30 * per - (per === 12 ? 5 : 0));
+  /* período (igual aos painéis do RH): 30/90 dias, 12 meses, ano, mês, intervalo ou todo o histórico */
+  const PD = []; { const vs = new Set(P.map(p => p.m)); A.forEach(a => (a.PD || []).forEach(p => { if (!vs.has(p.m)) { vs.add(p.m); PD.push(Object.assign({ chave:a.nome }, p)); } })); }
+  const PALL = P.concat(PD);
+  const PER = { t:'ano', ano:h.slice(0, 4), mes:h.slice(0, 7), de:addD(h, -29), ate:h };
+  const pIni = () => ({ '30d':addD(h, -29), '90d':addD(h, -89), '12m':addD(h, -364), ano:PER.ano + '-01-01', mes:PER.mes + '-01', int:PER.de || '0000', tudo:'0000' })[PER.t];
+  const pFim = () => ({ ano:PER.ano + '-12-31', mes:PER.mes + '-31', int:PER.ate || '9999' })[PER.t] || '9999';
+  const noP = d => !!d && String(d).slice(0, 10) >= pIni() && String(d).slice(0, 10) <= pFim();
+  const MESN3 = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+  const perTxt = () => ({ '30d':'últimos 30 dias', '90d':'últimos 90 dias', '12m':'últimos 12 meses', ano:'ano de ' + PER.ano, mes:MESN3[+PER.mes.slice(5, 7) - 1] + '/' + PER.mes.slice(0, 4), int:brD(PER.de) + ' a ' + brD(PER.ate), tudo:'todo o histórico' })[PER.t];
+  const ANOS = (() => { const S = new Set([h.slice(0, 4)]); PALL.forEach(p => { (p.san || []).forEach(x => x.d && S.add(String(x.d).slice(0, 4))); (p.rd || []).forEach(x => x.d && S.add(String(x.d).slice(0, 4))); Object.values(p.od || {}).forEach(L => L.forEach(d => S.add(d.slice(0, 4)))); });
+    MADM.concat(MSAI).forEach(x => x.d && S.add(x.d.slice(0, 4))); return [...S].filter(y => /^\d{4}$/.test(y)).sort().reverse(); })();
+  const perHTML = () => `<div class="gs-res gs-per"><span>Período</span>${[['30d', '30 dias'], ['90d', '90 dias'], ['12m', '12 meses'], ['ano', 'Ano'], ['mes', 'Mês'], ['int', 'Intervalo'], ['tudo', 'Todo o histórico']].map(([k, t]) => `<button class="gs-c ${PER.t === k ? 'on' : ''}" data-pt="${k}">${t}</button>`).join('')}
+    ${PER.t === 'ano' ? `<select id="gs-pano">${ANOS.map(y => `<option ${y === PER.ano ? 'selected' : ''}>${y}</option>`).join('')}</select>` : ''}${PER.t === 'mes' ? `<input type="month" id="gs-pmes" value="${esc(PER.mes)}">` : ''}${PER.t === 'int' ? `<input type="date" id="gs-pde" value="${esc(PER.de)}"> a <input type="date" id="gs-pate" value="${esc(PER.ate)}">` : ''}</div>`;
+  const ocP = p => { const o = p.od || {}, c = k => (o[k] || []).filter(noP).length; return { f:c('f'), j:c('j'), s:c('s'), a:c('a') }; };
+  const sanP = p => (p.san || []).filter(x => noP(x.d)), rdP = p => (p.rd || []).filter(x => noP(x.d));
   const aloL = P.filter(p => p.alo);
   $('#gs-sub').innerHTML = `${ASSIST() ? `<span class="gs-ch">Assistente de ${esc(tcG(ASSIST().nome))}</span>` : ''}${A.map(a => `<span class="gs-ch">${esc(a.tipo)}: ${esc(a.nome)}</span>`).join('')} <span>Atualizado pelo RH em ${esc(new Date(A.map(a => a.gerado).sort().pop()).toLocaleDateString('pt-BR'))}</span>`;
   const H = h, em15 = addD(H, 15);
@@ -262,28 +290,28 @@ async function tela(abaIni){
   const novos = P.filter(p => p.ob);
   const crL = P.flatMap(p => p.cr.map(x => Object.assign({ p }, x))).sort((a, b) => String(a.fim).localeCompare(String(b.fim)));
   const d12 = addD(h, -365), s12 = p => (p.san || []).filter(x => x.d >= d12);
-  const discL = P.filter(p => (p.san || []).length || (p.rd || []).length).sort((a, b) => s12(b).length - s12(a).length || (b.san || []).length - (a.san || []).length);
   const pfPrio = x => x.susp > 0 || x.falta > 10 || x.adv >= 3 ? 0 : x.adv >= 1 ? 1 : 2, pfL = P.filter(p => p.pf).sort((a, b) => pfPrio(a.pf) - pfPrio(b.pf) || (b.pf.susp * 100 + b.pf.adv * 10 + b.pf.falta) - (a.pf.susp * 100 + a.pf.adv * 10 + a.pf.falta));
   const pfPend = p => !p.pf.par && !(ultEnv('perfil', p.m) || {}).id;
   const ABAS = [['eq', 'Equipe', P.length], ['mov', 'Admissões e saídas', MSAI.filter(x => x.d >= addD(h, -90)).length], ['pv', 'Quadro x previsto', PVI.reduce((t, x) => t + Math.max(0, x.p - x.t), 0)], ['exp', 'Experiência', expL.filter(p => p.prox && p.prox <= em15).length], ['fer', 'Férias', ferL.filter(f => /Vencido|Vence/.test(f.st)).length], ['freq', 'Frequência', P.filter(p => p.fa30).length], ['disc', 'Disciplina', P.filter(p => s12(p).length).length], ['nov', 'Novos colaboradores', novos.length], ['alo', 'Alojamento', aloL.length], ['cr', 'Em treinamento', crL.length], ['perfil', 'Perfil profissional', pfL.filter(pfPend).length], ['env', 'Meus envios', ENV.filter(e => e.status === 'devolvido').length]];
   for (let i = ABAS.length - 1; i >= 0; i--) if (!OP.has(ABAS[i][0])) ABAS.splice(i, 1);
-  const FQ = P.filter(p => p.fa90 || p.at90).sort((a, b) => b.fa90 - a.fa90 || b.at90 - a.at90);
+  const FQ = () => PALL.map(p => Object.assign({ p }, ocP(p))).filter(x => x.f || x.j || x.s || x.a).sort((a, b) => b.f - a.f || b.a - a.a || a.p.n.localeCompare(b.p.n, 'pt-BR'));
+  const discL = () => PALL.filter(p => sanP(p).length || rdP(p).length).sort((a, b) => sanP(b).length - sanP(a).length || rdP(b).length - rdP(a).length || a.n.localeCompare(b.n, 'pt-BR'));
   let aba = abaIni && PAINEL_G[abaIni] && OP.has(abaIni) ? abaIni : 'resumo', q = ''; const fq = { v:'', c:'' };
   if (aba !== 'resumo') { $('#gs-eye').textContent = PAINEL_G[aba][0]; $('#gs-h1').textContent = PAINEL_G[aba][1]; $('#gs-sub').innerHTML = `<span class="gs-desc">${esc(PAINEL_G[aba][2])}</span> ` + $('#gs-sub').innerHTML; }
   const tabelas = {
-    eq: () => { const L = P.filter(p => (!fq.v || p.v === fq.v) && (!fq.c || (p.cid || '(sem cidade)') === fq.c)); const sal = OP.has('sal') && L.some(p => p.sal); return { t:'Equipe', cab:['Colaborador', 'Matrícula', 'Função', 'Seção', 'Contrato', 'Cidade', 'Admissão', 'Situação', 'Sanções 12 meses', 'Faltas no ano'].concat(sal ? ['Salário'] : []), lin:L.map(p => [p.n, p.m, p.f, p.s, p.v, p.cid || '', brD(p.adm), p.sit, s12(p).length, p.faAno || 0].concat(sal ? [p.sal && !LIDER(p.f) ? R$(p.sal) : ''] : [])), mats:L.map(p => p.m), hl:L.map(p => s12(p).length >= 3) }; },
-    mov: () => { const de = desde(), Ad = MADM.filter(x => x.d >= de), Sa = MSAI.filter(x => x.d >= de); const L = [...Ad.map(x => ['Admissão', x]), ...Sa.map(x => ['Saída', x])].sort((a, b) => b[1].d.localeCompare(a[1].d));
-      return { t:`Admissões e saídas · ${PERS.find(x => x[0] === per)[1].toLowerCase()}`, cab:['Colaborador', 'Movimento', 'Data', 'Função', 'Seção', 'Tipo / contrato', 'Motivo da saída', 'Dias de casa'], lin:L.map(([t, x]) => [x.n, t, brD(x.d), x.f, x.s, t === 'Saída' ? x.tipo || '—' : x.v + (x.saiu ? ' · saiu em ' + brD(x.saiu) : ''), t === 'Saída' ? x.mot.join(', ') || '—' : '', t === 'Saída' && x.casa != null ? x.casa : '']), hl:L.map(([t, x]) => t === 'Saída' && x.casa != null && x.casa <= 90), pess:L.map(([t, x]) => ({ n:x.n, m:x.m, f:x.f })) }; },
+    eq: () => { const L = P.filter(p => (!fq.v || p.v === fq.v) && (!fq.c || (p.cid || '(sem cidade)') === fq.c)); const sal = OP.has('sal') && L.some(p => p.sal); return { t:'Equipe', cab:['Colaborador', 'Matrícula', 'Função', 'Seção', 'Contrato', 'Cidade', 'Admissão', 'Situação', 'Sanções no período', 'Faltas no período'].concat(sal ? ['Salário'] : []), lin:L.map(p => [p.n, p.m, p.f, p.s, p.v, p.cid || '', brD(p.adm), p.sit, sanP(p).length, ocP(p).f].concat(sal ? [p.sal && !LIDER(p.f) ? R$(p.sal) : ''] : [])), mats:L.map(p => p.m), hl:L.map(p => sanP(p).length >= 3) }; },
+    mov: () => { const Ad = MADM.filter(x => noP(x.d)), Sa = MSAI.filter(x => noP(x.d)); const L = [...Ad.map(x => ['Admissão', x]), ...Sa.map(x => ['Saída', x])].sort((a, b) => b[1].d.localeCompare(a[1].d));
+      return { t:`Admissões e saídas · ${perTxt()}`, cab:['Colaborador', 'Movimento', 'Data', 'Função', 'Seção', 'Tipo / contrato', 'Motivo da saída', 'Dias de casa'], lin:L.map(([t, x]) => [x.n, t, brD(x.d), x.f, x.s, t === 'Saída' ? x.tipo || '—' : x.v + (x.saiu ? ' · saiu em ' + brD(x.saiu) : ''), t === 'Saída' ? x.mot.join(', ') || '—' : '', t === 'Saída' && x.casa != null ? x.casa : '']), hl:L.map(([t, x]) => t === 'Saída' && x.casa != null && x.casa <= 90), pess:L.map(([t, x]) => ({ n:x.n, m:x.m, f:x.f })) }; },
     pv: () => ({ t:'Quadro x previsto' + (pvPos && pvPos.posicao ? ` (previsão de ${brD(pvPos.posicao)})` : ''), cab:['Seção', 'Grupo', 'Previsto', 'Atual', 'Em experiência', 'Falta contratar', 'Acima do previsto'], lin:PVI.slice().sort((a, b) => (b.p - b.t) - (a.p - a.t)).map(x => [x.n, x.g, x.p, x.t, x.x, Math.max(0, x.p - x.t) || '—', Math.max(0, x.t - x.p) || '—']), hl:PVI.slice().sort((a, b) => (b.p - b.t) - (a.p - a.t)).map(x => x.p > x.t) }),
     alo: () => ({ t:'Alojamento', cab:['Colaborador', 'Função', 'Seção', 'Contrato', 'Alojamento', 'Quarto', 'Cidade de origem'], lin:aloL.map(p => [p.n, p.f, p.s, p.v, p.alo.casa, p.alo.q, p.alo.orig || '']), mats:aloL.map(p => p.m) }),
-    disc: () => ({ t:'Disciplina', cab:['Colaborador', 'Função', 'Advertências 12 meses', 'Suspensões 12 meses', 'Total no histórico', 'Última', 'RD'], lin:discL.map(p => { const L = s12(p); return [p.n, p.f, L.filter(x => /^Adv/.test(x.t)).length, L.filter(x => /^Sus/.test(x.t)).length, (p.san || []).length, p.san && p.san[0] ? brD(p.san[0].d) + ' · ' + p.san[0].t : '—', (p.rd || []).length]; }), mats:discL.map(p => p.m), hl:discL.map(p => s12(p).length >= 3 || s12(p).some(x => /^Sus/.test(x.t))),
-      acao: discL.map(p => { const e = ultEnv('sancao', p.m); return (e && e.status === 'enviado' ? stChip(e) + ` <button class="link" data-ve="${esc(e.id)}">ver</button> · ` : '') + `<button class="btn peq borda" data-ps="${esc(p.m)}">Pedir sanção</button>`; }), acaoT:'Pedido ao RH' }),
+    disc: () => { const DL = discL(); return { t:'Disciplina · ' + perTxt(), cab:['Colaborador', 'Função', 'Situação', 'Advertências', 'Suspensões', 'Dias de suspensão', 'Total no histórico', 'Última', 'RD no período'], lin:DL.map(p => { const L = sanP(p); return [p.n, p.f, p.sit || '', L.filter(x => /^Adv/.test(x.t)).length, L.filter(x => /^Sus/.test(x.t)).length, L.reduce((t, x) => t + (+((x.t.match(/\((\d+)d\)/) || [])[1]) || 0), 0), (p.san || []).length, p.san && p.san[0] ? brD(p.san[0].d) + ' · ' + p.san[0].t : '—', rdP(p).length]; }), mats:DL.map(p => p.m), hl:DL.map(p => sanP(p).length >= 3 || sanP(p).some(x => /^Sus/.test(x.t))),
+      acao: DL.map(p => p.sit === 'Desligado' ? '' : (p => { const e = ultEnv('sancao', p.m); return (e && e.status === 'enviado' ? stChip(e) + ` <button class="link" data-ve="${esc(e.id)}">ver</button> · ` : '') + `<button class="btn peq borda" data-ps="${esc(p.m)}">Pedir sanção</button>`; })(p)), acaoT:'Pedido ao RH' }; },
     exp: () => ({ t:'Período de experiência', cab:['Colaborador', 'Função', '1º vencimento', 'Avaliação', 'Vencimento final', 'Avaliação', 'Encerramento: enviar até', 'Faltas', 'Sanções'], lin:expL.map(p => { const et = etapaExp(p.exp, h); return [p.n, p.f, brD(p.exp.v1), p.exp.dec1 || 'pendente', brD(p.exp.v2), p.exp.dec2 || 'pendente', et ? brD(prazoEnc(et.venc)) : '', p.faAno || 0, (p.san || []).length]; }), mats:expL.map(p => p.m), hl:expL.map(p => p.prox && p.prox <= em15),
       acao: expL.map(p => { const et = etapaExp(p.exp, h); const e = et && ultEnv('experiencia', p.m, et.k + '|' + et.venc); return e && e.status !== 'devolvido' ? stChip(e) + ` <button class="link" data-ve="${esc(e.id)}">ver</button>` : `${e ? stChip(e) + ' ' : ''}<button class="btn peq prim" data-av="${esc(p.m)}">Avaliar</button>`; }), acaoT:'Avaliação do gestor' }),
     fer: () => ({ t:'Férias', cab:['Colaborador', 'Período aquisitivo', 'Data limite', 'Saldo', 'Programação', 'Situação'], lin:ferL.map(f => [f.p.n, brD(f.de) + ' a ' + brD(f.ate), brD(f.lim), f.saldo + 'd', f.prog || '—', f.st]), mats:ferL.map(f => f.p.m), hl:ferL.map(f => /Vencido|Vence/.test(f.st)),
       acao: ferL.map((f, i) => { const e = ultEnv('ferias', f.p.m, f.de); return e && e.status !== 'devolvido' ? stChip(e) + ` <button class="link" data-ve="${esc(e.id)}">ver</button>` : f.prog && !e ? '<span class="gs-st ok">Programado</span>' : `${e ? stChip(e) + ' ' : ''}<button class="btn peq prim" data-pf="${i}">Programar</button>`; }), acaoT:'Programação pelo gestor' }),
     env: () => ({ t:'Meus envios ao RH', cab:['Enviado em', 'Tipo', 'Colaborador', 'Resumo', 'Situação', 'Retorno do RH'], lin:ENV.map(e => [dataHora(e.criado_em), TIPO_ENV[e.tipo] || e.tipo, e.colaborador || e.mat, resumoEnvio(e), STE[e.status][0], e.rh_obs || '']), pcol:2, pess:ENV.map(e => ({ n:e.colaborador || '', m:e.mat || '', f:'' })), acao:ENV.map(e => `<button class="link" data-ve="${esc(e.id)}">ver</button>${e.status === 'enviado' ? ` · <button class="link" data-cx="${esc(e.id)}">cancelar</button>` : ''}`), acaoT:'' }),
-    freq: () => ({ t:`Frequência (até ${brD(ref.abs)})`, cab:['Colaborador', 'Função', 'Faltas 30 dias', 'Faltas 90 dias', 'Dias de atestado 90 dias'], lin:FQ.map(p => [p.n, p.f, p.fa30, p.fa90, p.at90]), mats:FQ.map(p => p.m) }),
+    freq: () => { const L = FQ(); return { t:'Frequência · ' + perTxt() + (ref.abs ? ` (dados até ${brD(ref.abs)})` : ''), cab:['Colaborador', 'Função', 'Situação', 'Faltas', 'Faltas justificadas', 'Dias de atestado', 'Dias de suspensão'], lin:L.map(x => [x.p.n, x.p.f, x.p.sit || '', x.f, x.j, x.a, x.s]), mats:L.map(x => x.p.m) }; },
     nov: () => ({ t:'Novos colaboradores', cab:['Colaborador', 'Função', 'Admissão', 'Dias de casa', 'Integração pendente', 'Conversas do RH'], lin:novos.map(p => [p.n, p.f, brD(p.adm), fDias(p.adm, h), p.ob.falta.join(', ') || 'completa', [30, 60, 90].filter(k => p.ob.conv.includes(k)).map(k => k + 'd').join(', ') || '—']), mats:novos.map(p => p.m) }),
     perfil: () => ({ t:'Perfil profissional', cab:['Colaborador', 'Função', 'Prioridade', 'Atestados', 'Faltas', 'Advertências', 'Suspensões', 'Parecer da gestão'], lin:pfL.map(p => [p.n, p.f, ['Alta', 'Média', 'Acompanhar'][pfPrio(p.pf)], p.pf.atest, p.pf.falta + (p.pf.fj ? ' + ' + p.pf.fj + ' just.' : ''), p.pf.adv, p.pf.susp, p.pf.par ? p.pf.par.acoes.join(', ') || 'preenchido' : 'pendente']), mats:pfL.map(p => p.m), hl:pfL.map(p => pfPrio(p.pf) === 0),
       acao: pfL.map(p => { const e = ultEnv('perfil', p.m); return e && e.status === 'enviado' ? stChip(e) + ` <button class="link" data-ve="${esc(e.id)}">ver</button>` : `${e ? stChip(e) + ' ' : ''}<button class="btn peq ${p.pf.par ? 'borda' : 'prim'}" data-pp="${esc(p.m)}">${p.pf.par ? 'Atualizar parecer' : 'Preencher parecer'}</button>`; }), acaoT:'Seu parecer' }),
@@ -291,10 +319,11 @@ async function tela(abaIni){
   const conta = (L, f) => { const o = {}; L.forEach(x => { const k = f(x); o[k] = (o[k] || 0) + 1; }); return Object.entries(o).sort((a, b) => b[1] - a[1]); };
   const chips = (tit, L, campo) => `<div class="gs-res"><span>${tit}</span>${L.map(([k, n]) => `<button class="gs-c ${fq[campo] === k ? 'on' : ''}" data-fq="${campo}|${esc(k)}">${esc(k)} <b>${n}</b></button>`).join('')}</div>`;
   const extra = () => {
-    if (aba === 'eq') return `<section class="cartao gs-resw">${chips('Contrato', conta(P, p => p.v || '—'), 'v')}${chips('Cidade de residência', conta(P, p => p.cid || '(sem cidade)'), 'c')}${fq.v || fq.c ? '<button class="link" id="gs-lf">limpar</button>' : ''}</section>`;
-    if (aba === 'mov') { const de = desde(), Ad = MADM.filter(x => x.d >= de), Sa = MSAI.filter(x => x.d >= de), at = P.filter(p => p.sit === 'Ativo').length || 1;
+    if (aba === 'freq') { const L = FQ(), t = k => L.reduce((s, x) => s + x[k], 0); return `<section class="cartao gs-resw">${perHTML()}<div class="gs-mv"><div><small>Faltas</small><b>${t('f')}</b></div><div><small>Faltas justificadas</small><b>${t('j')}</b></div><div><small>Dias de atestado</small><b>${t('a')}</b></div><div><small>Dias de suspensão</small><b>${t('s')}</b></div></div><p class="nr-nota" style="padding:6px 0 0">Inclui quem já saiu da área (situação "Desligado"). Atestado: só a quantidade de dias; o CID fica com o RH.</p></section>`; }
+    if (aba === 'eq') return `<section class="cartao gs-resw">${perHTML()}${chips('Contrato', conta(P, p => p.v || '—'), 'v')}${chips('Cidade de residência', conta(P, p => p.cid || '(sem cidade)'), 'c')}${fq.v || fq.c ? '<button class="link" id="gs-lf">limpar</button>' : ''}</section>`;
+    if (aba === 'mov') { const Ad = MADM.filter(x => noP(x.d)), Sa = MSAI.filter(x => noP(x.d)), at = P.filter(p => p.sit === 'Ativo').length || 1;
       const tp = conta(Sa, x => x.tipo || 'Não informado'), mt = conta(Sa.flatMap(x => x.mot.length ? x.mot.map(m => ({ m })) : [{ m:'Não informado' }]), x => x.m), mx = Math.max(1, ...mt.map(x => x[1]));
-      return `<section class="cartao gs-resw"><div class="gs-res"><span>Período</span>${PERS.map(([n, t]) => `<button class="gs-c ${per === n ? 'on' : ''}" data-per="${n}">${t}</button>`).join('')}</div>
+      return `<section class="cartao gs-resw">${perHTML()}
         <div class="gs-mv"><div><small>Admissões</small><b>${Ad.length}</b></div><div><small>Saídas</small><b>${Sa.length}</b></div><div><small>Saídas com até 90 dias</small><b>${Sa.filter(x => x.casa != null && x.casa <= 90).length}</b></div><div><small>Turnover no período</small><b>${(100 * Sa.length / at).toLocaleString('pt-BR', { maximumFractionDigits:1 })}%</b></div></div>
         ${Sa.length ? `<div class="gs-mt"><div><h4>Tipo de saída</h4>${tp.map(([k, n]) => `<div class="gs-b"><span>${esc(k)}</span><i style="width:${Math.round(100 * n / Sa.length)}%"></i><b>${n}</b></div>`).join('')}</div><div><h4>Motivos das saídas</h4>${mt.map(([k, n]) => `<div class="gs-b"><span>${esc(k)}</span><i style="width:${Math.round(100 * n / mx)}%"></i><b>${n}</b></div>`).join('')}</div></div>` : ''}</section>`; }
     if (aba === 'fer') { const mi = minInicioFerias(h); return `<section class="cartao gs-resw gs-pz"><div><b>Prazo:</b> férias que começam em ${esc(MESN[+mi.slice(5, 7) - 1])} podem ser enviadas até ${esc(brD(prazoFerias(mi)))}. Hoje, a data mais cedo que dá para programar é ${esc(brD(mi))}.</div><button class="btn borda" id="gs-impf">Imprimir formulário da equipe</button></section>`; }
@@ -302,7 +331,7 @@ async function tela(abaIni){
     if (aba === 'env') return ENV.length ? '' : '<section class="cartao gs-resw"><p class="nr-nota" style="padding:0">Você ainda não enviou nada ao RH. Programe férias no painel Férias, avalie a experiência no painel Experiência e peça sanções no painel Disciplina e RD.</p></section>';
     if (aba === 'perfil') return `<section class="cartao gs-resw gs-pz"><div><b>Como funciona:</b> o RH reuniu os números de cada um (atestados, faltas, advertências e suspensões). Você conhece o dia a dia: diga qual ação a gestão vai tomar, com prazo e responsável. O RH recebe, confere e lança no levantamento. ${pfL.length ? pfL.filter(pfPend).length + ' de ' + pfL.length + ' ainda sem parecer.' : 'Ninguém da sua equipe está no levantamento agora.'}</div></section>`;
     if (aba === 'disc') { const pend = ENV.filter(e => e.tipo === 'sancao' && e.status === 'enviado').length;
-      return `<section class="cartao gs-resw gs-pz"><div><b>Pedido de sanção:</b> descreva ao RH o que aconteceu, a data e todos os fatos, e diga qual medida você sugere (orientação, advertência ou suspensão com os dias). O RH analisa o caso e o histórico, define a medida e emite o documento para o colaborador assinar.${pend ? ` <span class="gs-st pend">${pend} pedido${pend > 1 ? 's' : ''} aguardando o RH</span>` : ''}</div><button class="btn prim" id="gs-psan">Pedir sanção ao RH</button></section>`; }
+      return `<section class="cartao gs-resw">${perHTML()}</section><section class="cartao gs-resw gs-pz"><div><b>Pedido de sanção:</b> descreva ao RH o que aconteceu, a data e todos os fatos, e diga qual medida você sugere (orientação, advertência ou suspensão com os dias). O RH analisa o caso e o histórico, define a medida e emite o documento para o colaborador assinar.${pend ? ` <span class="gs-st pend">${pend} pedido${pend > 1 ? 's' : ''} aguardando o RH</span>` : ''}</div><button class="btn prim" id="gs-psan">Pedir sanção ao RH</button></section>`; }
     if (aba === 'pv') { const f = PVI.reduce((t, x) => t + Math.max(0, x.p - x.t), 0), pr = PVI.reduce((t, x) => t + x.p, 0), at = PVI.reduce((t, x) => t + x.t, 0);
       return PVI.length ? `<section class="cartao gs-resw"><div class="gs-mv"><div><small>Previsto</small><b>${pr}</b></div><div><small>Atual</small><b>${at}</b></div><div><small>Falta contratar</small><b style="color:#a3301c">${f}</b></div><div><small>Em experiência</small><b>${PVI.reduce((t, x) => t + x.x, 0)}</b></div></div><p class="nr-nota" style="padding:6px 0 0">A falta mostra onde o quadro está abaixo do previsto; não é vaga aprovada. Para abrir vaga, fale com a Gestão de Pessoas.</p></section>`
         : '<section class="cartao gs-resw"><p class="nr-nota" style="padding:0">A previsão de quadro desta área ainda não foi cadastrada.</p></section>'; }
@@ -319,14 +348,14 @@ async function tela(abaIni){
   const COL_CHIP = /^(Avaliação|Situação|Parecer da gestão|Prioridade|Resultado|Movimento|Integração pendente)$/;
   function tabelaG(T, idx){
     const pc = T.pcol || 0, temP = !!(T.pess || T.mats);
-    const pessoa = i => T.pess ? T.pess[i] : (() => { const x = P.find(p => p.m === T.mats[i]); return x ? { n:x.n, m:x.m, f:x.f } : { n:T.lin[i][pc], m:T.mats[i], f:'' }; })();
+    const pessoa = i => T.pess ? T.pess[i] : (() => { const x = PALL.find(p => p.m === T.mats[i]); return x ? { n:x.n, m:x.m, f:x.f } : { n:T.lin[i][pc], m:T.mats[i], f:'' }; })();
     const tira = temP ? T.cab.map((h, j) => j !== pc && /^(Matrícula|Função)$/.test(h)) : T.cab.map(() => false);
     const cab = T.cab.filter((h, j) => !tira[j]);
     const cel = (v, h) => { if (v === '' || v == null) return '<span class="gt-z">—</span>';
       if (typeof v === 'number' || /^\d+$/.test(String(v))) { const n = +v; return `<span class="gt-n ${n > 0 ? (/Falta|Sanç|Advert|Suspens|Atest|RD|contratar|Acima/i.test(h) ? 'on' : 'nt') : ''}">${n}</span>`; }
       if (COL_CHIP.test(h)) return `<span class="gs-st ${TOM(v)}">${esc(v)}</span>`;
       const t = String(v); return esc(t.length > 3 && t === t.toUpperCase() && /[A-Z]/.test(t) ? tcN(t) : t); };
-    const pcel = i => { const x = pessoa(i) || {}; const clic = T.mats || P.some(p => p.m === x.m);
+    const pcel = i => { const x = pessoa(i) || {}; const clic = T.mats || PALL.some(p => p.m === x.m);
       return `<div class="gt-p"><span class="gt-av" style="--av:${hueN(x.n)}">${esc(iniN(x.n).toUpperCase())}</span><div class="gt-pt">${clic ? `<button class="gt-nm" data-f="${esc(x.m)}">${esc(tcN(x.n))}</button>` : `<b class="gt-nm0">${esc(tcN(x.n))}</b>`}<small>${x.m ? `<span class="gt-mat">Mat. ${esc(x.m)}</span>` : ''}${x.f ? `<span>${esc(tcN(x.f))}</span>` : ''}</small></div></div>`; };
     return `<div class="fc-tw"><table class="gt-t"><thead><tr>${cab.map(x => `<th>${esc(x)}</th>`).join('')}${T.acao ? `<th>${esc(T.acaoT || '')}</th>` : ''}</tr></thead><tbody>${idx.map(i => `<tr class="${T.hl && T.hl[i] ? 'gt-hl' : ''}">${T.lin[i].map((v, j) => tira[j] ? '' : (j === pc && temP ? `<td class="gt-pc" data-l="${esc(T.cab[j])}">${pcel(i)}</td>` : `<td data-l="${esc(T.cab[j])}">${cel(v, T.cab[j])}</td>`)).join('')}${T.acao ? `<td class="gs-ac" data-l="${esc(T.acaoT || '')}">${T.acao[i] || ''}</td>` : ''}</tr>`).join('')}</tbody></table></div>`;
   }
@@ -342,9 +371,11 @@ async function tela(abaIni){
       <section class="fc-sec cartao gt-sec"><header><h3>${esc(T.t)}</h3><span class="gt-cnt">${idx.length} ${idx.length === 1 ? 'registro' : 'registros'}</span></header>${idx.length ? tabelaG(T, idx) : '<p class="fc-vz">Nada aqui.</p>'}</section>
       <p class="nr-fonte">Clique no nome para abrir a ficha do colaborador. Quadro de ${esc(brD(ref.quadro))}${ref.abs ? ' · faltas e atestados até ' + esc(brD(ref.abs)) : ''}${ref.exp ? ' · experiência de ' + esc(brD(ref.exp)) : ''}${ref.fer ? ' · férias de ' + esc(brD(ref.fer)) : ''}. Dúvidas ou correções: fale com a Gestão de Pessoas.</p>`;
     c.querySelectorAll('[data-a]').forEach(b => b.onclick = () => { aba = b.dataset.a; desenhar(); });
-    c.querySelectorAll('[data-f]').forEach(b => b.onclick = () => OP.has('ficha') ? (location.hash = '#/ficha/' + b.dataset.f) : ficha(P.find(p => p.m === b.dataset.f)));
+    c.querySelectorAll('[data-f]').forEach(b => b.onclick = () => OP.has('ficha') ? (location.hash = '#/ficha/' + b.dataset.f) : ficha(PALL.find(p => p.m === b.dataset.f)));
     c.querySelectorAll('[data-fq]').forEach(b => b.onclick = () => { const [k, v] = b.dataset.fq.split('|'); fq[k] = fq[k] === v ? '' : v; desenhar(); });
-    c.querySelectorAll('[data-per]').forEach(b => b.onclick = () => { per = +b.dataset.per; desenhar(); });
+    c.querySelectorAll('[data-pt]').forEach(b => b.onclick = () => { PER.t = b.dataset.pt; desenhar(); });
+    { const a = $('#gs-pano'); if (a) a.onchange = () => { PER.ano = a.value; desenhar(); }; const m = $('#gs-pmes'); if (m) m.onchange = () => { if (m.value) { PER.mes = m.value; desenhar(); } };
+      const d1 = $('#gs-pde'), d2 = $('#gs-pate'); if (d1) d1.onchange = () => { PER.de = d1.value; desenhar(); }; if (d2) d2.onchange = () => { PER.ate = d2.value; desenhar(); }; }
     const lf = $('#gs-lf'); if (lf) lf.onclick = () => { fq.v = ''; fq.c = ''; desenhar(); };
     c.querySelectorAll('[data-av]').forEach(b => b.onclick = () => formExp(expL.find(p => p.m === b.dataset.av)));
     c.querySelectorAll('[data-pf]').forEach(b => b.onclick = () => formFer(ferL[+b.dataset.pf]));
@@ -649,7 +680,7 @@ async function departamentos(){ try { const { A } = await lerArea(); return A.ma
 async function pessoas(){ const { A, P } = await lerArea(); const mapa = {};
   P.forEach(p => { mapa[p.m] = { nome:p.n, funcao:p.f, setor:p.s, area:p.area || '', situacao:p.sit || 'Ativo', vinculo:p.v || '', admissao:p.adm || '', gerencia:p.ger || '', deslig:'' }; });
   return { mapa, referencia:(A[0] && A[0].ref && A[0].ref.quadro) || '' }; }
-async function fichaDados(mat){ const { A, P } = await lerArea(); const p = P.find(x => x.m === String(mat)); if (!p) return null; const OP = OPC(), h = hoje(), ref = (A[0] && A[0].ref) || {};
+async function fichaDados(mat){ const { A, P } = await lerArea(); const p0 = P.find(x => x.m === String(mat)) || A.flatMap(a => a.PD || []).find(x => x.m === String(mat)); if (!p0) return null; const p = Object.assign({ fer:[], cr:[], san:[], rd:[], fa30:0, fa90:0, at90:0, faAno:0, atAno:0 }, p0); const OP = OPC(), h = hoje(), ref = (A[0] && A[0].ref) || {};
   const c = { nome:p.n, funcao:p.f, setor:p.s, area:p.area || p.chave || '', situacao:p.sit || 'Ativo', vinculo:p.v || '', admissao:p.adm || '', gerencia:p.ger || '', deslig:'' };
   const sec = [];
   if (OP.has('sal') && p.sal && !LIDER(p.f)) sec.push({ k:'sal', t:'Remuneração', resumo:[['Salário', R$(p.sal)], ['Função', p.f]] });

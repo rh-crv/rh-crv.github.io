@@ -23,17 +23,28 @@ function regOk(id, colecao, docId, dados, ctx){ const D = def(id); if (!D || !D.
 const reg = d => { if (!def(d.id)) LISTA.push(d); };
 const matDoId = rx => (id, d, ctx) => { const m = (String(id).match(rx) || [])[1]; return !!m && ctx.mats.has(fm(m)); };
 
-/* ---------- Período de experiência ---------- */
-reg({ id:'experiencia', nome:'Período de experiência', frente:'Gestão de Colaboradores',
-  filtro(c, ctx){ set(c, 'RAW', (get(c, 'RAW') || []).filter(r => ctx.mats.has(fm(r[0])))); },
-  regs:{ registros:matDoId(/^m?(\d+)/) } });
-
-/* ---------- Férias (sem gestantes: informação de saúde fica só com o RH) ---------- */
-reg({ id:'ferias', nome:'Férias', frente:'Absenteísmo e Férias',
-  filtro(c, ctx){ set(c, 'DATA', (get(c, 'DATA') || []).filter(p => ctx.mats.has(fm(p.c)))); set(c, 'GEST', []); },
-  regs:{ prog:matDoId(/^(\d+)_/) } });
+/* ---------- o registro é do gestor? ----------
+   Regra (out/2026, definida pela RH): vale o departamento ATUAL que o próprio painel do RH usa no filtro dele
+   (o da planilha/base do painel), para os números do gestor baterem com o painel do RH filtrado pelo mesmo setor.
+   ctx.areasN: setores inteiros do gestor (chave 'a:'); ctx.depSelN: 'setor|departamento' (chave 'd:');
+   ctx.depsN: todos os departamentos dos setores inteiros (pelo Quadro, inclui desligados) + os departamentos marcados. */
+const N = s => String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/\s+/g, ' ').trim();
+function casa(ctx, area, dep){ const a = N(area), d = N(dep);
+  if (a) { if (ctx.areasN.has(a)) return true; if (d && ctx.depSelN.has(a + '|' + d)) return true; if (ctx.areasConhecidasN && ctx.areasConhecidasN.has(a)) return false; }
+  return !!d && ctx.depsN.has(d); }
+/* monta o contexto a partir das chaves do gestor e do mapa do Quadro (usado no app e nos testes) */
+function contexto(chaves, mapa){ const M = mapa || {}, ks = (chaves || []).filter(k => /^[ad]:/.test(k));
+  const areasN = new Set(ks.filter(k => k[0] === 'a').map(k => N(k.slice(2)))), depSelN = new Set(ks.filter(k => k[0] === 'd').map(k => N(k.slice(2).split('|')[0]) + '|' + N(k.slice(2).split('|')[1])));
+  const depsN = new Set([...depSelN].map(x => x.split('|')[1])), areasConhecidasN = new Set();
+  const mm = [];
+  Object.keys(M).forEach(m => { const p = M[m] || {}, a = N(p.area), d = N(p.setor); if (a) areasConhecidasN.add(a);
+    if (areasN.has(a)) { if (d) depsN.add(d); mm.push(m); } else if (depSelN.has(a + '|' + d)) mm.push(m); });
+  const nomeN = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  return { chaves:ks, mapa:M, mats:new Set(mm.map(fm)), areasN, depSelN, depsN, areasConhecidasN,
+    areas:new Set(mm.map(m => M[m].area).filter(Boolean)), setores:new Set(mm.map(m => M[m].setor).filter(Boolean)), gerencias:new Set(mm.map(m => M[m].gerencia).filter(Boolean)),
+    funcoes:new Set(mm.map(m => M[m].funcao).filter(Boolean)), nomes:new Set(mm.map(m => nomeN(M[m].nome)).filter(Boolean)) }; }
 
 /* tira campos sensíveis de um lançamento antes de ir para o gestor (opcional, por painel) */
 function limparReg(id, colecao, dados){ const D = def(id); return D && D.limparReg ? D.limparReg(colecao, clonar(dados)) : dados; }
-return { LISTA, reg, def, get, set, fm, clonar, filtrar, regOk, limparReg, matDoId };
+return { LISTA, reg, def, get, set, fm, clonar, filtrar, regOk, limparReg, matDoId, casa, contexto, N };
 })();

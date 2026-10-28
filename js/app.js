@@ -470,31 +470,39 @@ async function telaPainelGestor(id){
   const D = window.CRV_AREA && window.CRV_AREA.def(id);
   if (!D || !MODELOS[id]) { location.hash = '#/'; return; }
   const p = Object.assign({ id, nome:D.nome, frente:D.frente }, (E.paineis || []).find(x => x.id === id) || {});
+  /* Admissões e Desligamentos: as mesmas duas visões do RH (todas as empresas e anos, pela base do Quadro; e o acompanhamento 2026) */
+  const vq = VISTA_QUADRO[id], sel = vq ? vistaDe(id) : '', nomeV = id === 'admissoes' ? 'Admissões' : 'Desligamentos';
   moldura(`<div class="trilha"><button data-ir="#/">Visão Geral</button> › <span>${esc(p.frente)}</span> › <b>${esc(p.nome)}</b></div>
+    ${vq ? `<div class="vista-seg" role="tablist"><button data-vq="q" class="${sel === 'q' ? 'on' : ''}">Todas as empresas e anos</button><button data-vq="p" class="${sel === 'p' ? 'on' : ''}">${nomeV} 2026 · acompanhamento</button></div>` : ''}
     <div id="modelo-area" class="cartao vazio"><div class="spinner" style="margin:0 auto"></div><p>Abrindo o painel…</p></div>`);
   { const t = document.querySelector('.trilha [data-ir]'); if (t) t.onclick = () => location.hash = '#/'; }
+  if (vq) document.querySelectorAll('.vista-seg [data-vq]').forEach(b => b.onclick = () => { try { localStorage.setItem('crv-vista-' + id, b.dataset.vq); } catch(_){} telaPainelGestor(id); });
+  const usaQ = vq && sel === 'q', chaveP = usaQ ? '__quadro' : id, arq = usaQ ? MODELOS.quadro : MODELOS[id];
   const a = assistDe(E.perfil), dono = a ? a.id : E.perfil.user_id;
-  const [r, tpl] = await Promise.all([
-    sb.from('area_dados').select('pk:dados->paineis->' + id).eq('chave', 'u:' + dono).maybeSingle(),
-    fetch(MODELOS[id] + '?v=' + CFG.VERSAO, { cache:'no-cache' }).then(x => x.ok ? x.text() : Promise.reject(new Error('Arquivo do painel não encontrado.'))).catch(e => ({ erro:e }))
+  const ler = k => sb.from('area_dados').select('pk:dados->paineis->' + k).eq('chave', 'u:' + dono).maybeSingle();
+  const [r, r2, tpl] = await Promise.all([ler(chaveP), usaQ ? ler('quadro') : Promise.resolve(null),
+    fetch(arq + '?v=' + CFG.VERSAO, { cache:'no-cache' }).then(x => x.ok ? x.text() : Promise.reject(new Error('Arquivo do painel não encontrado.'))).catch(e => ({ erro:e }))
   ]);
   const area = $('#modelo-area'); if (!area || location.hash !== '#/gp/' + id) return;
   if (r.error) { area.innerHTML = `<div class="erro">${esc(traduzErro(r.error))}</div>`; return; }
   if (tpl.erro) { area.innerHTML = `<div class="erro">${esc(tpl.erro.message)}</div>`; return; }
-  const row = r.data || {}, pk = row.pk !== undefined ? row.pk : (row.dados && row.dados.paineis && row.dados.paineis[id]);
+  const pega = (row, k) => { row = row || {}; return row.pk !== undefined && row.pk !== null ? row.pk : (row.dados && row.dados.paineis && row.dados.paineis[k]); };
+  const pk = pega(r.data, chaveP) || (usaQ && r2 && pega(r2.data, 'quadro'));
   if (!pk || !pk.conteudo) { area.innerHTML = `${svg('planilha')}<h3>${esc(p.nome)}: ainda sem dados da sua área</h3><p>A Gestão de Pessoas ainda não atualizou este painel para a sua área. Tente mais tarde.</p>`; return; }
   try {
     window.CRV_QUEM = E.perfil.nome; window.CRV_RECARREGAR = null;
-    const regs = pk.regs || {};
-    window.__CRV_PAINEL = window.CRV_PONTE.criar({ sb, painel:id, perfil:() => E.perfil, quem:() => E.perfil.nome, podeEditar:() => false, ehAdmin:() => false, memoria:regs });
+    const regs = pk.regs || {}, pid = usaQ ? 'quadro' : id;
+    window.__CRV_PAINEL = window.CRV_PONTE.criar({ sb, painel:pid, perfil:() => E.perfil, quem:() => E.perfil.nome, podeEditar:() => false, ehAdmin:() => false, memoria:regs });
     let novos = [];
-    if (PAINEIS_COM_NOVOS.includes(id)) { const cols = [].concat(COLECAO_NOVOS[id] || 'novos');
+    if (!usaQ && PAINEIS_COM_NOVOS.includes(id)) { const cols = [].concat(COLECAO_NOVOS[id] || 'novos');
       cols.forEach(c => (regs[c] || []).forEach(x => { if (x.dados && !x.dados.excluida) novos.push(cols.length > 1 ? { _id:x.doc_id, colecao:c, dados:x.dados } : { _id:x.doc_id, dados:x.dados }); })); }
-    const tplG = tpl.replace(/<head[^>]*>/i, h0 => h0 + '<script>window.CRV_GESTOR_AREA=true;<\/script>' + GESTOR_SO_LER);
-    const html = montarModelo(tplG, pk.conteudo, pk.referencia, p, novos);
+    // o que o app injeta no painel do RH (ex.: histórico do sistema no Absenteísmo), já recortado para a área
+    const inj = Object.entries(pk.inj || {}).filter(([k]) => /^CRV_[A-Z_]+$/.test(k)).map(([k, v]) => '<script>window.' + k + '=' + JSON.stringify(v).replace(/</g, '\\u003c') + ';<\/script>').join('');
+    const tplG = tpl.replace(/<head[^>]*>/i, h0 => h0 + '<script>window.CRV_GESTOR_AREA=true;' + (usaQ ? 'window.CRV_MODO_QUADRO=' + JSON.stringify(vq) + ';' : '') + '<\/script>' + inj + GESTOR_SO_LER);
+    const html = montarModelo(tplG, pk.conteudo, pk.referencia, usaQ ? Object.assign({}, p, { id:'quadro' }) : p, novos);
     const url = URL.createObjectURL(new Blob([html], { type:'text/html' }));
     area.className = 'modelo-area';
-    area.innerHTML = `<div style="font-size:12.5px;color:var(--mut);margin:0 0 6px">Somente a sua área · base de ${esc(fmtRef(pk.referencia))}. Os lançamentos deste painel são feitos pela Gestão de Pessoas.</div><iframe id="modelo-frame" title="${esc(p.nome)}" src="${url}"></iframe>`; ajustarFrame(); [300, 1500, 4000].forEach(t => setTimeout(ajustarFrame, t));
+    area.innerHTML = `<div style="font-size:12.5px;color:var(--mut);margin:0 0 6px">Somente a sua área · todo o histórico da base de ${esc(fmtRef(pk.referencia))}. Os lançamentos deste painel são feitos pela Gestão de Pessoas.</div><iframe id="modelo-frame" title="${esc(p.nome)}" src="${url}"></iframe>`; ajustarFrame(); [300, 1500, 4000].forEach(t => setTimeout(ajustarFrame, t));
     E.painelAberto = id;
     $('#modelo-frame').onload = () => setTimeout(() => URL.revokeObjectURL(url), 2000);
   } catch(e) { area.innerHTML = `<div class="erro">Não consegui montar o painel: ${esc(e.message)}</div>`; }
@@ -1715,17 +1723,8 @@ async function telaModelo(p, cfg, acao){
     if (p.id === 'ferias' && ehRH()) { try { const HF = await window.CRV_HIST('ferias'); if (Object.keys(HF).length > 1) tplU = tplU.replace(/<head[^>]*>/i, h => h + '<script>window.CRV_HF=' + JSON.stringify(HF).replace(/</g, '\\u003c') + ';<\/script>'); } catch(_) {} }
     if (p.id === 'sancoes') { try { const pj = E.paineis.find(x => x.id === 'justa-causa'); if (pj && podeVer(pj) && window.CRV_JC_INIT) { const J = (await JC().regs()).map(r => ({ mat:String(r.mat), nome:r.nome || '', doc:r.dataDoc || '', oc:r.dataOc || '', al:JC().resumoAl(r), desc:String(r.desc || '').slice(0, 600) }));
         if (J.length) tplU = tplU.replace(/<head[^>]*>/i, h => h + '<script>window.CRV_JC=' + JSON.stringify(J).replace(/</g, '\\u003c') + ';<\/script>'); } } catch(_) {} }
-    if (p.id === 'absenteismo') { try { const Q = await window.CRV_QUADRO(); if (Q && Q.mapa) { // situação atual de cada um pelo Quadro Geral (a planilha de atestados pode estar mais antiga)
-        const QS = {}; Object.entries(Q.mapa).forEach(([m, o]) => { QS[m] = [o.situacao === 'Desligado' ? 'DEMITIDO' : o.situacao === 'Afastado' ? 'AFASTADO' : 'ATIVO', o.situacao === 'Desligado' ? (o.deslig || '') : ''] });
-        tplU = tplU.replace(/<head[^>]*>/i, h => h + '<script>window.CRV_QSIT=' + JSON.stringify({ ref:Q.referencia || '', S:QS }).replace(/</g, '\\u003c') + ';<\/script>'); } } catch(_) {} }
-    if (p.id === 'absenteismo' && ehRH()) { try { const HO = await window.CRV_HIST('ocor'), HA = await window.CRV_HIST('atest'), Q = await window.CRV_QUADRO(); if (Q && Q.mapa && (Object.keys(HO).length > 1 || Object.keys(HA).length > 1)) {
-        const CIDD = {}, enx = L => (L || []).map(x => { if (x[2] && x[3] && !CIDD[x[2]]) CIDD[x[2]] = x[3]; return [x[0], x[1], x[2]]; }); // atestados: [início, dias, CID] (o médico fica só na ficha)
-        const P = {}, LA = {}; Object.keys(HA).forEach(m => { if (m !== '__ref' && HA[m].length) LA[m] = enx(HA[m]); });
-        new Set(Object.keys(HO).concat(Object.keys(LA))).forEach(m => { if (m === '__ref') return; const o = Q.mapa[m] || {}; P[m] = [o.nome || '', o.funcao || '', o.area || '', o.setor || '', o.gerencia || '', o.situacao || '', o.admissao || '', o.deslig || '']; });
-        const EMP = {}; for (const e of EMPRESAS_GRUPO) { const A = { n:e[1], P:{}, L:{}, AT:{}, C:{} };
-          for (const [col, k] of [['hist_ocor', 'L'], ['hist_atest', 'AT']]) { try { (await window.CRV_REGS('quadro', col + e[0])).forEach(x => { if (!String(x._id || '').startsWith('a') || !x.mat || !(x.l || []).length) return; A[k][x.mat] = k === 'AT' ? enx(x.l) : x.l; if (x.p && (!A.P[x.mat] || !A.P[x.mat][2])) A.P[x.mat] = x.p; if (x.crv) A.C[x.mat] = x.crv; if (x.emp) A.n = x.emp; }); } catch(_) {} }
-          if (Object.keys(A.L).length || Object.keys(A.AT).length) EMP[e[0]] = A; }
-        tplU = tplU.replace(/<head[^>]*>/i, h => h + '<script>window.CRV_OC=' + JSON.stringify({ ref:HO.__ref || HA.__ref, P, L:HO, AT:LA, EMP, CIDD }).replace(/</g, '\\u003c') + ';<\/script>'); } } catch(e) { console.warn('absenteísmo', e); } }
+    if (p.id === 'absenteismo') { try { const QS = await window.CRV_QSIT_RH(); if (QS) tplU = tplU.replace(/<head[^>]*>/i, h => h + '<script>window.CRV_QSIT=' + JSON.stringify(QS).replace(/</g, '\\u003c') + ';<\/script>'); } catch(_) {} }
+    if (p.id === 'absenteismo' && ehRH()) { try { const OC = await window.CRV_OC_RH(); if (OC) tplU = tplU.replace(/<head[^>]*>/i, h => h + '<script>window.CRV_OC=' + JSON.stringify(OC).replace(/</g, '\\u003c') + ';<\/script>'); } catch(e) { console.warn('absenteísmo', e); } }
     if (['unimed', 'uniodonto'].includes(PAC_DE[p.id] || p.id)) { // Unimed e Uniodonto cruzam com o Quadro atual do app
       try { const Q = await window.CRV_QUADRO(); if (Q && Q.mapa) {
         const dig = v => String(v || '').replace(/\D/g, ''), P = [], DL = {};
@@ -1883,6 +1882,21 @@ window.CRV_SAL = async function(){ if (!ehRH()) return null; const d = await win
 window.CRV_PACOTE_BRUTO = async function(painel){ if (!ehRH()) return null;
   const { data:d, error } = await sb.from('pacotes').select('referencia,conteudo,atualizado_em').eq('painel', painel).maybeSingle(); if (error || !d) return null;
   if (d.conteudo && d.conteudo.arquivo) d.conteudo = await lerArquivoPacote(painel, d.conteudo.arquivo); return d; };
+/* Absenteísmo: situação atual de cada um pelo Quadro (a planilha de atestados pode estar mais antiga) */
+window.CRV_QSIT_RH = async function(){ const Q = await window.CRV_QUADRO(); if (!Q || !Q.mapa) return null;
+  const QS = {}; Object.entries(Q.mapa).forEach(([m, o]) => { QS[m] = [o.situacao === 'Desligado' ? 'DEMITIDO' : o.situacao === 'Afastado' ? 'AFASTADO' : 'ATIVO', o.situacao === 'Desligado' ? (o.deslig || '') : ''] });
+  return { ref:Q.referencia || '', S:QS }; };
+/* Absenteísmo: histórico do sistema (todas as ocorrências e atestados, CRV e outras empresas do grupo), aba "Histórico (sistema)" */
+window.CRV_OC_RH = async function(){ if (!ehRH()) return null;
+  const HO = await window.CRV_HIST('ocor'), HA = await window.CRV_HIST('atest'), Q = await window.CRV_QUADRO(); if (Q && Q.mapa && (Object.keys(HO).length > 1 || Object.keys(HA).length > 1)) {
+        const CIDD = {}, enx = L => (L || []).map(x => { if (x[2] && x[3] && !CIDD[x[2]]) CIDD[x[2]] = x[3]; return [x[0], x[1], x[2]]; }); // atestados: [início, dias, CID] (o médico fica só na ficha)
+        const P = {}, LA = {}; Object.keys(HA).forEach(m => { if (m !== '__ref' && HA[m].length) LA[m] = enx(HA[m]); });
+        new Set(Object.keys(HO).concat(Object.keys(LA))).forEach(m => { if (m === '__ref') return; const o = Q.mapa[m] || {}; P[m] = [o.nome || '', o.funcao || '', o.area || '', o.setor || '', o.gerencia || '', o.situacao || '', o.admissao || '', o.deslig || '']; });
+        const EMP = {}; for (const e of EMPRESAS_GRUPO) { const A = { n:e[1], P:{}, L:{}, AT:{}, C:{} };
+          for (const [col, k] of [['hist_ocor', 'L'], ['hist_atest', 'AT']]) { try { (await window.CRV_REGS('quadro', col + e[0])).forEach(x => { if (!String(x._id || '').startsWith('a') || !x.mat || !(x.l || []).length) return; A[k][x.mat] = k === 'AT' ? enx(x.l) : x.l; if (x.p && (!A.P[x.mat] || !A.P[x.mat][2])) A.P[x.mat] = x.p; if (x.crv) A.C[x.mat] = x.crv; if (x.emp) A.n = x.emp; }); } catch(_) {} }
+          if (Object.keys(A.L).length || Object.keys(A.AT).length) EMP[e[0]] = A; }
+        
+  return { ref:HO.__ref || HA.__ref, P, L:HO, AT:LA, EMP, CIDD }; } return null; };
 window.CRV_DADOS = async function(painel){
   try {
     const { data: d, error } = await sb.from('pacotes').select('referencia,conteudo,atualizado_em').eq('painel', painel).maybeSingle();

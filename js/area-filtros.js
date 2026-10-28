@@ -1,6 +1,15 @@
 /* Recortes por área dos painéis do RH para o gestor (registrados em CRV_AREA, js/area-paineis.js). */
 (function(){ 'use strict'; if (!window.CRV_AREA) return; const CRV_AREA = window.CRV_AREA;
 
+/* ---------- Período de experiência ---------- */
+CRV_AREA.reg({ id:'experiencia', nome:'Período de experiência', frente:'Gestão de Colaboradores',
+  filtro(c, ctx){ CRV_AREA.set(c, 'RAW', (CRV_AREA.get(c, 'RAW') || []).filter(r => ctx.mats.has(CRV_AREA.fm(r[0])))); },
+  regs:{ registros:CRV_AREA.matDoId(/^m?(\d+)/) } });
+/* ---------- Férias (sem gestantes) ---------- */
+CRV_AREA.reg({ id:'ferias', nome:'Férias', frente:'Absenteísmo e Férias',
+  filtro(c, ctx){ CRV_AREA.set(c, 'DATA', (CRV_AREA.get(c, 'DATA') || []).filter(p => ctx.mats.has(CRV_AREA.fm(p.c)))); CRV_AREA.set(c, 'GEST', []); },
+  regs:{ prog:CRV_AREA.matDoId(/^(\d+)_/) } });
+
 /* ---------- Registro de Danos (RD) ----------
    D.rows: [rd, data, matrícula, nome, i_func, i_dep, i_ger, admissão, situação, desfecho, ação, valor, parcelas, mês desc., obs, linha, flags]
    D.funcs / D.deps / D.gers: listas apontadas por índice nas linhas; D.hc: quadro por índice de departamento; EMP: matrícula → dados da Base Geral */
