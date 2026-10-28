@@ -706,8 +706,34 @@ function dadosExp(){const{C:CC}=calc();const it=F.itens.slice().sort((a,b)=>a.no
   const N=it.filter(x=>descDe(x)>0&&!x.desl),DL=it.filter(x=>x.desl);
   const CL=CC.slice().sort((a,b)=>String(a.cc).localeCompare(String(b.cc),'pt',{numeric:true}));
   return{it,N,DL,CL}}
+/* relatórios para o Departamento Pessoal: lançamento completo (valor cheio, desconto e valor a descontar) e só o desconto final */
+const abat=x=>Math.round((x.valor-descDe(x))*100)/100;
+function linhasDP(op){const it=F.itens.slice().sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));const A=it.filter(x=>!x.desl),D=it.filter(x=>x.desl);return op==='fin'?{A:A.filter(x=>descDe(x)>0),D:D.filter(x=>descDe(x)>0)}:{A,D}}
+async function excelDP(X,op){const{A,D}=linhasDP(op);const RS='"R$"\\ #,##0.00',per='Fechamento '+br(F.ini)+' a '+br(F.fim);const wb=X.utils.book_new();
+  const H=op==='dp'?['Nome','Matrícula','Valor cheio','Desconto','Valor a descontar na folha']:['Nome','Matrícula','Valor a descontar na folha'];
+  const lin=x=>op==='dp'?[x.nome,+x.mat,{v:x.valor,t:'n',z:RS},{v:abat(x),t:'n',z:RS},{v:descDe(x),t:'n',z:RS}]:[x.nome,+x.mat,{v:descDe(x),t:'n',z:RS}];
+  const aba=(L,tit,nome)=>{const a=[['CRV INDUSTRIAL · Cartão Convênio Sysprocard · '+tit],[per],[],H].concat(L.map(lin));const e=L.length+4,cols=op==='dp'?['C','D','E']:['C'];
+    a.push(['Total: '+L.length+(L.length===1?' pessoa':' pessoas'),null].concat(cols.map(c=>({f:'SUM('+c+'5:'+c+e+')',t:'n',z:RS}))));const ws=X.utils.aoa_to_sheet(a);ws['!cols']=(op==='dp'?[44,11,15,15,22]:[44,11,22]).map(w=>({wch:w}));X.utils.book_append_sheet(wb,ws,nome,{semTotal:true})};
+  aba(A,op==='dp'?'Lançamento para o Departamento Pessoal':'Desconto final para a folha',op==='dp'?'Lançamento DP':'Desconto final');if(D.length)aba(D,'Desligados · descontar na rescisão','Desligados - rescisão');
+  await salvarArq(nomeArq('xlsx').replace(/\.xlsx$/,op==='dp'?' - Lancamento DP.xlsx':' - Desconto final.xlsx'),new Uint8Array(X.write(wb,{bookType:'xlsx',type:'array'})),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}
+async function pdfDP(J,op){const{A,D}=linhasDP(op);const doc=new J({unit:'mm',format:'a4'});const DC=window.parent&&window.parent.CRV_DOC;const ES=DC?DC.estilo():{theme:'striped',styles:{},headStyles:{fillColor:[36,65,79]},footStyles:{}};const M=DC?DC.margem:{top:30,bottom:26,left:12,right:12};
+  const tit=op==='dp'?'Cartão Convênio · Lançamento para o Departamento Pessoal':'Cartão Convênio · Desconto final para a folha';
+  let y=DC?DC.titulo(doc,tit,'Sysprocard · empresa nº '+EMPC+' · fechamento de '+br(F.ini)+' a '+br(F.fim)):24;
+  const tot=(L,f)=>L.reduce((s,x)=>s+f(x),0);
+  if(DC)y=DC.caixa(doc,y,op==='dp'?[['Pessoas:',A.length],['Valor cheio:','R$ '+brl(tot(A,x=>x.valor))],['Desconto:','R$ '+brl(tot(A,abat))],['A descontar na folha:','R$ '+brl(tot(A,descDe))]]:[['Pessoas:',A.length],['A descontar na folha:','R$ '+brl(tot(A,descDe))]]);
+  const tab=(L)=>{const H=op==='dp'?[['Nome','Matrícula','Valor cheio','Desconto','Valor a descontar na folha']]:[['Nome','Matrícula','Valor a descontar na folha']];
+    const body=L.map(x=>op==='dp'?[tcx(x.nome),x.mat,'R$ '+brl(x.valor),abat(x)>0?'R$ '+brl(abat(x)):'—','R$ '+brl(descDe(x))]:[tcx(x.nome),x.mat,'R$ '+brl(descDe(x))]);
+    const foot=op==='dp'?[[{content:'Total: '+L.length+(L.length===1?' pessoa':' pessoas'),colSpan:2},'R$ '+brl(tot(L,x=>x.valor)),'R$ '+brl(tot(L,abat)),'R$ '+brl(tot(L,descDe))]]:[[{content:'Total: '+L.length+(L.length===1?' pessoa':' pessoas'),colSpan:2},'R$ '+brl(tot(L,descDe))]];
+    doc.autoTable(Object.assign({},ES,{startY:y,head:H,body,foot,showFoot:'lastPage',semTotal:true,margin:M,columnStyles:op==='dp'?{1:{halign:'center',cellWidth:20},2:{halign:'right',cellWidth:28},3:{halign:'right',cellWidth:26},4:{halign:'right',cellWidth:40,fontStyle:'bold'}}:{1:{halign:'center',cellWidth:24},2:{halign:'right',cellWidth:48,fontStyle:'bold'}}}));y=doc.lastAutoTable.finalY+8};
+  tab(A);
+  if(D.length){if(DC)y=DC.secao(doc,y,'Desligados · descontar na rescisão');tab(D)}
+  if(op==='dp'){doc.setFont('helvetica','normal');doc.setFontSize(7.8);doc.setTextColor(110,116,128);const t=doc.splitTextToSize('Desconto: metade do consumo para quem tem crédito de R$ 1.080 na Sysprocard (alojados motoristas e operadores de máquinas) e o valor todo para quem é pago pela empresa. Valor a descontar = valor cheio − desconto.',186);if(y>255){doc.addPage();y=34}doc.text(t,12,y)}
+  if(DC)DC.moldura(doc,quem());
+  await salvarArq(nomeArq('pdf').replace(/\.pdf$/,op==='dp'?' - Lancamento DP.pdf':' - Desconto final.pdf'),new Uint8Array((await (window.parent.CRV_PDF_LOGOS||window.CRV_PDF_LOGOS||(d=>d))(doc,{syspro:true})).output('arraybuffer')),'application/pdf')}
 function escolher(tipo){return new Promise(ok=>{const o=document.createElement('div');o.className='df-esc';
   o.innerHTML='<div class="df-esc-c"><h4>'+(tipo==='xlsx'?'Excel':'PDF')+' para impressão</h4><p>O que você quer imprimir?</p>'
+   +'<button data-v="dp"><b>Lançamento para o Departamento Pessoal</b><small>Nome, matrícula, valor cheio, desconto (de quem tem) e valor a descontar na folha</small></button>'
+   +'<button data-v="fin"><b>Desconto final para a folha</b><small>Só nome, matrícula e valor a descontar, depois dos descontos</small></button>'
    +'<button data-v="nom"><b>Nominal</b><small>Desconto de cada pessoa (e desligados para a rescisão)</small></button>'
    +'<button data-v="cc"><b>Por centro de custo</b><small>Só os totais de cada centro de custo, para lançamento</small></button>'
    +'<button data-v="ambos"><b>Nominal e por centro de custo</b><small>Os dois no mesmo arquivo</small></button>'
@@ -715,7 +741,7 @@ function escolher(tipo){return new Promise(ok=>{const o=document.createElement('
    +'<button data-v="" class="df-esc-x">Cancelar</button></div>';
   W.querySelector('.df-modal').appendChild(o);o.querySelectorAll('button').forEach(b=>b.onclick=()=>{if(b.disabled)return;o.remove();ok(b.dataset.v)})})}
 async function excel(fix){const X=window.XLSX||(window.parent&&window.parent.XLSX);if(!X)throw new Error('Excel indisponível.');
-  const op=fix||await escolher('xlsx');if(!op)return;if(op==='sal')return excelSal(X);const{N,DL,CL}=dadosExp();const RS='"R$"\\ #,##0.00';const per='Fechamento '+br(F.ini)+' a '+br(F.fim);
+  const op=fix||await escolher('xlsx');if(!op)return;if(op==='sal')return excelSal(X);if(op==='dp'||op==='fin')return excelDP(X,op);const{N,DL,CL}=dadosExp();const RS='"R$"\\ #,##0.00';const per='Fechamento '+br(F.ini)+' a '+br(F.fim);
   const wb=X.utils.book_new();
   if(op!=='cc'){
     const H8=['Nome','Matricula','CPF','Nascimento','Admissão','C.CUSTO','DESC. C. CUSTO','Desconto(R$)'],lin=x=>{const i=inf(x);return [x.nome,+x.mat,i.cpf,i.nasc,i.adm,ccN(x.cc),x.ccd,{v:descDe(x),t:'n',z:RS}]};
@@ -733,7 +759,7 @@ async function excel(fix){const X=window.XLSX||(window.parent&&window.parent.XLS
   const suf=op==='nom'?' - Nominal':op==='cc'?' - Por centro de custo':'';
   await salvarArq(nomeArq('xlsx').replace(/\.xlsx$/,suf+'.xlsx'),new Uint8Array(X.write(wb,{bookType:'xlsx',type:'array'})),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}
 async function pdfRes(fix){const J=(window.jspdf&&window.jspdf.jsPDF)||(window.parent&&window.parent.jspdf&&window.parent.jspdf.jsPDF);if(!J)throw new Error('PDF indisponível.');
-  const op=fix||await escolher('pdf');if(!op)return;if(op==='sal')return pdfSal(J);const{N,DL,CL}=dadosExp();const VI=[125,26,44];
+  const op=fix||await escolher('pdf');if(!op)return;if(op==='sal')return pdfSal(J);if(op==='dp'||op==='fin')return pdfDP(J,op);const{N,DL,CL}=dadosExp();const VI=[125,26,44];
   const doc=new J({unit:'mm',format:'a4'});const W=210;
   const cab=(tit)=>{doc.setFillColor(...VI);doc.rect(0,0,W,2,'F');doc.setFont('helvetica','bold');doc.setFontSize(12.5);doc.setTextColor(92,18,32);doc.text('Cartão Convênio Sysprocard · '+tit,10,10);
     doc.setFont('helvetica','normal');doc.setFontSize(8.6);doc.setTextColor(60,66,80);doc.text('CRV Industrial · Empresa Sysprocard nº '+EMPC,10,15.5);doc.text('Fechamento de '+br(F.ini)+' a '+br(F.fim)+' · emitido em '+new Date().toLocaleDateString('pt-BR'),10,19.6)};
