@@ -6,6 +6,8 @@
    Cada painel registra aqui: como recortar a base (filtro) e quais lançamentos do painel o gestor pode ler (regs).
    Contexto do recorte: { mats:Set de matrículas da área (ativos e desligados), setores, areas, gerencias, funcoes, mapa }.
    ===================================================================== */
+/* muda quando a regra de recorte muda: força gerar de novo as cópias dos gestores */
+window.CRV_AREA_V = 'r2-setor-do-painel';
 window.CRV_AREA = (function(){
 'use strict';
 const LISTA = [];
