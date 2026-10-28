@@ -30,6 +30,7 @@ const PADRAO = { 'q:6932':{ faz:ASSIST }, 'q:15441':{ faz:ASSIST },
   'q:2471':{ faz:'Onboarding\nAcompanhamento de experiência\nFérias\nVida funcional\nTreinamentos (controle) relacionados à jornada\nJovem Aprendiz\nDemissões\nRH Externo\nAplicativo Gestão de Pessoas\nSocial (eventos)\nMídia / comunicação\nNotas fiscais (lançamentos) e pedidos\nSanções disciplinares\nIndicadores (acompanhamento)' },
   'q:16068':{ faz:'Gestão dos benefícios\nAtendimento de demandas\nOuvidorias\nRegistro das manifestações\nEncaminhamento\nAcompanhamento das soluções\nNotas fiscais (lançamentos) e pedidos\nSanções disciplinares\nIndicadores (acompanhamento)' },
   'q:334':{ faz:'Gestão estratégica de pessoas\nCoordenação da equipe de RH\nGestão de desempenho\nClima organizacional e engajamento\nApoio às lideranças e gestão de conflitos\nSupervisão das rotinas de administração de pessoas\nGestão de políticas e procedimentos de RH\nGestão de indicadores de pessoas\nSocial (eventos)\nMídia / comunicação' },
+  'j:jovem:123':{ faz:'Checklist\nContratos\nArquivo' },
   'q:45433':{ faz:'Recepção e atendimento interno\nConexão com contratos\nColeta de assinaturas\nApoio na chegada à área\nOrientação inicial\nWhatsApp interno e externo' } };
 let CFG = null, FOTOS = {}, PESS = [], ACHADOS = [], VIEW = '';
 async function lerCfg(){ const { data } = await sb.from('registros').select('dados').eq('painel', 'quadro').eq('caminho', 'sistema/organograma').maybeSingle();
