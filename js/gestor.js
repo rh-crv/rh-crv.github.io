@@ -503,12 +503,20 @@ function verEnvio(e, rh, aposAcao){ if (!e) return; const d = e.dados || {}, a =
     corpo:`<div class="gs-env-h"><span class="gs-st ${STE[e.status][1]}">${STE[e.status][0]}</span><span>Matrícula ${esc(e.mat)}${d.funcao ? ' · ' + esc(d.funcao) : ''}${d.secao ? ' · ' + esc(d.secao) : ''}</span></div>${det}
       <div class="gs-ass-v"><b>Assinado eletronicamente por ${esc(a.nome || e.autor_nome || '')}${a.gestorResp ? ' (assistente)' : ''}</b>${a.gestorResp ? `<span><b>${esc(linhaResp(a))}</b></span>` : ''}<span>${esc(dataHora(a.em || e.criado_em))} · usuário ${esc(a.usuario || '')} · ${esc(e.autor_nome || '')}</span><small>${esc(a.declaracao || '')}</small></div>
       ${e.status !== 'enviado' && (e.rh_por || e.rh_obs) ? `<p class="fc-vz">${esc(STE[e.status][0])}${e.rh_por ? ' por ' + esc(e.rh_por) : ''}${e.rh_em ? ' em ' + esc(dataHora(e.rh_em)) : ''}${e.rh_obs ? '<br>Retorno do RH: ' + esc(e.rh_obs) : ''}</p>` : ''}
-      ${rh && e.status === 'enviado' ? `<label class="gs-obs">Retorno ao gestor (obrigatório para devolver)<textarea id="rh-obs" rows="2" maxlength="600"></textarea></label><p class="nr-msg" id="rh-msg"></p>` : ''}`,
+      ${e.status !== 'enviado' ? '<div id="ev-anx"></div>' : ''}
+      ${rh && e.status === 'enviado' ? `<label class="gs-obs">Retorno ao gestor (obrigatório para devolver)<textarea id="rh-obs" rows="2" maxlength="600"></textarea></label><label class="gs-obs">Anexos para o gestor (opcional: foto ou PDF)<input type="file" id="rh-anx" multiple accept="image/*,application/pdf"></label><p class="nr-msg" id="rh-msg"></p>` : ''}`,
     pe:`<button class="btn borda" id="ev-pdf">PDF</button><span style="flex:1"></span>${rh && e.status === 'enviado' ? '<button class="btn perigo" id="rh-dev">Devolver ao gestor</button><button class="btn prim" id="rh-ok">' + (e.tipo === 'sancao' ? 'Aceitar e encaminhar para emissão' : 'Aceitar e lançar') + '</button>' : '<button class="btn prim" id="ev-x">Fechar</button>'}`,
     aoAbrir: m => { const x = m.querySelector('#ev-x'); if (x) x.onclick = fecharModal; m.querySelector('#ev-pdf').onclick = () => pdfEnvio(e);
-      const ok = m.querySelector('#rh-ok'); if (ok) ok.onclick = async () => { ok.disabled = true; try { await aceitar(e, m.querySelector('#rh-obs').value.trim()); fecharModal(); toast(e.tipo === 'sancao' ? 'Aceito. O pedido está no painel Sanções, em Pedidos dos gestores, para emitir o documento.' : 'Lançado no painel e devolvido como aceito ao gestor.'); aposAcao && aposAcao(); } catch(er){ m.querySelector('#rh-msg').textContent = traduzErro(er); ok.disabled = false; } };
+      /* resposta do RH: anexos e marca de leitura pela área */
+      if (e.status === 'aceito' || e.status === 'devolvido') { sb.from('gestor_envios').select('rh_anexos').eq('id', e.id).maybeSingle().then(({ data }) => { const A = (data && data.rh_anexos) || [], el = m.querySelector('#ev-anx'); if (!A.length || !el) return;
+          el.innerHTML = '<p class="fc-vz"><b>Anexos do RH:</b> ' + A.map((a, i) => `<button class="btn borda peq" data-ax="${i}">${esc(a.nome)}</button>`).join(' ') + '</p>';
+          el.querySelectorAll('[data-ax]').forEach(b => b.onclick = () => { const a = A[+b.dataset.ax], bin = atob(String(a.data).split(',').pop()), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); baixar(new Blob([u], { type:a.tipo }), a.nome); }); }, () => {});
+        if (!rh && !e.lido_em) sb.rpc('marcar_envio_lido', { p_id:e.id }).then(() => {}, () => {}); }
+      const anx = async () => { const f = m.querySelector('#rh-anx'); return f && f.files.length && window.CRV_RESP_LER_ANEXOS ? await window.CRV_RESP_LER_ANEXOS(f.files) : []; };
+      const ok = m.querySelector('#rh-ok'); if (ok) ok.onclick = async () => { ok.disabled = true; try { await aceitar(e, m.querySelector('#rh-obs').value.trim(), await anx()); fecharModal(); toast(e.tipo === 'sancao' ? 'Aceito. O pedido está no painel Sanções, em Pedidos dos gestores, para emitir o documento.' : 'Lançado no painel e devolvido como aceito ao gestor.'); aposAcao && aposAcao(); } catch(er){ m.querySelector('#rh-msg').textContent = traduzErro(er); ok.disabled = false; } };
       const dv = m.querySelector('#rh-dev'); if (dv) dv.onclick = async () => { const o = m.querySelector('#rh-obs').value.trim(); if (o.length < 5) { m.querySelector('#rh-msg').textContent = 'Escreva o motivo da devolução.'; return; }
-        const { error } = await sb.from('gestor_envios').update({ status:'devolvido', rh_obs:o, rh_em:new Date().toISOString(), rh_por:E.perfil.nome }).eq('id', e.id); if (error) { m.querySelector('#rh-msg').textContent = traduzErro(error); return; } fecharModal(); toast('Devolvido ao gestor.'); aposAcao && aposAcao(); }; } });
+        let A = []; try { A = await anx(); } catch(er){ m.querySelector('#rh-msg').textContent = er.message || String(er); return; }
+        const { error } = await sb.from('gestor_envios').update(Object.assign({ status:'devolvido', rh_obs:o, rh_em:new Date().toISOString(), rh_por:E.perfil.nome }, A.length ? { rh_anexos:A } : {})).eq('id', e.id); if (error) { m.querySelector('#rh-msg').textContent = traduzErro(error); return; } fecharModal(); toast('Devolvido ao gestor.'); aposAcao && aposAcao(); }; } });
 }
 function pdfEnvio(e){ const d = e.dados || {}, a = e.assinatura || {}; const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit:'pt', format:'a4' });
   cabecalhoPDF(doc, TIPO_ENV[e.tipo] || e.tipo, e.colaborador || e.mat);
@@ -526,7 +534,7 @@ function pdfEnvio(e){ const d = e.dados || {}, a = e.assinatura || {}; const { j
   if (e.status !== 'enviado' && e.rh_por) doc.text((STE[e.status][0]) + ' por ' + e.rh_por + ' em ' + dataHora(e.rh_em) + (e.rh_obs ? ' · ' + e.rh_obs : ''), 30, y + 50);
   rodapePDF(doc); baixar(doc.output('blob'), ({ ferias:'Férias ', sancao:'Pedido de sanção ', perfil:'Parecer perfil profissional ' }[e.tipo] || 'Avaliação ') + (e.colaborador || e.mat) + '.pdf'); }
 /* RH aceita: lança no painel de Férias (programação) ou de Experiência (avaliação da área) */
-async function aceitar(e, obs){ const d = e.dados || {}, a = e.assinatura || {}, agora = new Date().toISOString();
+async function aceitar(e, obs, anexos){ const d = e.dados || {}, a = e.assinatura || {}, agora = new Date().toISOString();
   if (e.tipo === 'perfil') { const id = String(e.mat).trim().replace(/[^A-Za-z0-9_\-.~:@+]/g, '-').slice(0, 100), cam = 'colaboradores/' + id;
     const { data: r0 } = await sb.from('registros').select('dados').eq('painel', 'perfil').eq('caminho', cam).maybeSingle();
     if (!r0) throw new Error('Este colaborador não está mais no levantamento de perfil profissional.');
@@ -542,7 +550,7 @@ async function aceitar(e, obs){ const d = e.dados || {}, a = e.assinatura || {},
     const form = d.notas ? { tipo:'exp', gestor:quemG(a, e), cargoG:'', notas:d.notas.slice(), coment:d.obs || '', resultado:d.decisao === 'encerrar' ? 'nao' : 'efetivar', dataRec:agora.slice(0, 10), verif:E.perfil.nome, dataVerif:agora.slice(0, 10), pct:d.pct } : undefined;
     cur[d.etapa] = { decisao:d.decisao, data:agora.slice(0, 10), venc:d.venc, form, obs:['Avaliação do gestor ' + (quemG(a, e)) + ' (' + dataHora(a.em || e.criado_em) + ')', (d.crit || []).map(x => x[0] + ': ' + x[1]).join('; '), d.obs, obs].filter(Boolean).join(' · ').slice(0, 2000), gestor:{ nome:quemG(a, e), em:a.em || e.criado_em, crit:d.crit, envio:e.id } };
     const { error } = await sb.from('registros').upsert({ painel:'experiencia', caminho:'registros/' + id, colecao:'registros', doc_id:id, dados:cur, atualizado_por:E.perfil.nome }, { onConflict:'painel,caminho' }); if (error) throw error; }
-  const { error } = await sb.from('gestor_envios').update({ status:'aceito', rh_obs:obs || '', rh_em:agora, rh_por:E.perfil.nome }).eq('id', e.id); if (error) throw error;
+  const { error } = await sb.from('gestor_envios').update(Object.assign({ status:'aceito', rh_obs:obs || '', rh_em:agora, rh_por:E.perfil.nome }, anexos && anexos.length ? { rh_anexos:anexos } : {})).eq('id', e.id); if (error) throw error;
   gerar(true).catch(() => {});
 }
 async function lerEnviosRH(){ try { const r = await sb.from('gestor_envios').select('*').order('criado_em', { ascending:false }); return r.error ? null : (r.data || []); } catch(_){ return null; } }

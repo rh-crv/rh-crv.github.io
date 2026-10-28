@@ -792,9 +792,12 @@ function abrir(pre){
     const falta=[!d.mat&&'matrícula',!d.nome&&'nome',tipo!=='ori'&&!d.assunto&&'assunto',tipo!=='ori'&&!d.desc&&'descrição',(tipo==='ori'||d.junto)&&!d.obj&&'objetivo da orientação',tipo==='sus'&&!d.ini&&'início da suspensão'].filter(Boolean);
     if(falta.length){msg.style.color='#a3301c';msg.textContent='Falta preencher: '+falta.join(', ')+'.';return}
     if(tipo==='ori'&&!d.oAss)d.oAss=d.assunto;
-    try{await pdf(d);const D=await db();if(D){try{await D.collection('documentos').add(Object.assign({},d,{emitidoEm:new Date().toISOString(),por:quem()},e._ped?{pedido:e._ped}:{}));MUDOU=true;listar()}catch(_){}
+    try{window.__ULT_PDF=null;await pdf(d);
+      /* o documento fica pronto para o gestor da área imprimir (aba Medidas disciplinares) */
+      let pub=null;try{const f=window.parent&&window.parent.CRV_GDOC_PUB;if(f&&window.__ULT_PDF)pub=await f(d,window.__ULT_PDF.bytes,window.__ULT_PDF.nome)}catch(_){}
+      const D=await db();if(D){try{await D.collection('documentos').add(Object.assign({},d,{emitidoEm:new Date().toISOString(),por:quem()},e._ped?{pedido:e._ped}:{}));MUDOU=true;listar()}catch(_){}
       if(e._ped){try{await D.collection('pedidos').doc(e._ped).update({emitido:true,emitidoEm:new Date().toISOString(),emitidoPor:quem(),docTipo:d.tipo});e._ped=null;window.CRV_PED_ATU&&window.CRV_PED_ATU()}catch(_){}}}
-      msg.style.color='#1d5c3a';msg.textContent=tipo==='ori'?'PDF gerado. Imprima, colha as assinaturas e arquive.':'PDF gerado e lançado no painel e no histórico do colaborador (atualiza ao fechar esta janela).'}catch(er){msg.style.color='#a3301c';msg.textContent='Não consegui gerar: '+(er.message||er)}};
+      msg.style.color='#1d5c3a';msg.textContent=(tipo==='ori'?'PDF gerado. Imprima, colha as assinaturas e arquive.':'PDF gerado e lançado no painel e no histórico do colaborador (atualiza ao fechar esta janela).')+(pub?(pub.ok?' Liberado para o gestor da área imprimir.':' Não foi para o gestor: '+pub.erro):'')}catch(er){msg.style.color='#a3301c';msg.textContent='Não consegui gerar: '+(er.message||er)}};
   if(!e.mat)setTimeout(()=>g('dM').focus(),60);
 }
 
@@ -855,7 +858,7 @@ async function pdf(d){
   return {doc,quebrou}};
   let K=1,B=build(K);while(B.quebrou&&K>0.62){K=Math.round((K-0.04)*100)/100;B=build(K)}const doc=B.doc;
   const nome=`${d.tipo==='adv'?'Advertencia':d.tipo==='sus'?'Suspensao':'Orientacao'}${d.junto?' e Orientacao':''} - ${String(d.nome).split(' ')[0]} ${d.mat} - ${br(d.data).split('/').join('-')}.pdf`;
-  const bytes=new Uint8Array((await (window.parent.CRV_PDF_LOGOS||window.CRV_PDF_LOGOS||(d=>d))(doc)).output('arraybuffer'));
+  const bytes=new Uint8Array((await (window.parent.CRV_PDF_LOGOS||window.CRV_PDF_LOGOS||(d=>d))(doc)).output('arraybuffer'));window.__ULT_PDF={bytes,nome};
   const DL=window.claude&&window.claude.use?await window.claude.use('downloads'):null;
   if(DL)return DL.save({filename:nome,data:bytes});
   const u=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));const a=document.createElement('a');a.href=u;a.download=nome;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},4000);

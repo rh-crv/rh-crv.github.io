@@ -63,11 +63,11 @@ const podeImportar = () => E.perfil?.papel === 'admin' || (!!E.perfil?.importa &
 const GESTOR_MENU = [
   ['Gestão de Colaboradores', [['eq', 'Equipe'], ['mov', 'Admissões e saídas'], ['pv', 'Quadro x previsto'], ['exp', 'Período de experiência'], ['nov', 'Novos colaboradores']]],
   ['Absenteísmo e Férias', [['fer', 'Férias'], ['freq', 'Frequência']]],
-  ['Ocorrências e Relações Trabalhistas', [['disc', 'Disciplina e RD']]],
+  ['Ocorrências e Relações Trabalhistas', [['disc', 'Disciplina e RD'], ['mdisc', 'Medidas disciplinares']]],
   ['Seleção e Perfil Profissional', [['perfil', 'Perfil profissional']]],
   ['T&D | Desenvolvimento de Pessoas', [['cr', 'Em treinamento']]],
   ['Alojamentos e Transporte', [['alo', 'Alojamento']]],
-  ['Atendimento e Ouvidoria', [['env', 'Meus envios ao RH']]] ];
+  ['Atendimento e Ouvidoria', [['resp', 'Respostas do RH'], ['env', 'Meus envios ao RH']]] ];
 const nomePapel = p => ({admin:'Administrador principal', rh:'Equipe RH', editor:'Editor', leitor:'Leitor', gestor:'Gestor de área'}[p] || p);
 /* assistente (secretária) de gestor: acesso de gestor ligado a um gestor responsável; vê a mesma equipe e lança em nome dele.
    O vínculo fica em perfis.frentes (que o gestor não usa): 'assist:<user_id do gestor>' e 'assistnome:<nome do gestor>'. */
@@ -140,6 +140,8 @@ async function entrarNoApp(){
     try { const kk = 'crv-ent-' + perfil.user_id; if (!sessionStorage.getItem(kk)) { sessionStorage.setItem(kk, '1'); const mob = /Mobi|Android|iPhone/i.test(navigator.userAgent), inst = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches; logAcesso('entrou', null, (mob ? 'celular' : 'computador') + (inst ? ' · app instalado' : ' · navegador')); } } catch(_){}
     rota();
     if (window.CRV_PADRAO && perfil.papel !== 'gestor') setTimeout(() => window.CRV_PADRAO.carregar().catch(() => {}), 3000);
+    /* respostas do RH e documentos dos gestores: publica os documentos do painel Sanções e mantém os contadores do gestor */
+    try { if (window.CRV_RESP_INIT && (ehRH() || perfil.papel === 'gestor')) { RESP(); if (perfil.papel === 'gestor') setTimeout(() => RESP().iniciarGestor(), 1500); } } catch(_){}
     if (ehAdmin()) setTimeout(() => GESTOR().gerar(false).catch(() => {}), 8000);
   } catch(e){
     $('#app').innerHTML = `<div class="login-fundo"><div class="login-card"><img class="logo" src="img/logo-crv.png" alt="CRV Industrial">
@@ -357,9 +359,9 @@ function moldura(conteudo){
         ${GESTOR_MENU.map(([f, itens]) => { const cfg = FRENTES[f] || { cor:'#24427c', ic:'pessoas' }; const aqui = itens.some(([k]) => h === '#/eq/' + k); const ab = aqui || abertas['g:' + f];
           return `<div class="lat-grupo ${ab ? 'aberto' : ''}" data-frente="${esc('g:' + f)}"><button class="lat-frente ${aqui ? 'atual' : ''}" aria-expanded="${ab ? 'true' : 'false'}"><span class="lat-ic" style="background:${cfg.cor}">${svg(cfg.ic, '#fff')}</span><span class="lat-nome">${esc(f)}</span><span class="lat-seta">${CHEV}</span></button>
             <div class="lat-sub">${itens.map(([k, n]) => `<button class="lat-painel ${h === '#/eq/' + k ? 'ativo atual' : ''}" data-ir="#/eq/${k}" data-busca="${esc(n.toLowerCase())}" style="--cor:${cfg.cor}"><span class="lat-pn">${esc(n)}</span></button>`).join('')}</div></div>`; }).join('')}` : `
-        <div class="lat-pgrupo lat-cgrupo ${h==='#/central'||h==='#/desligamento'||h==='#/bases'||h==='#/envios'||h==='#/cadastros'||subAbertos.__central?'aberto':''}" data-pid="__central">
+        <div class="lat-pgrupo lat-cgrupo ${h==='#/central'||h==='#/desligamento'||h==='#/bases'||h==='#/envios'||h==='#/cadastros'||h.startsWith('#/respostas')||subAbertos.__central?'aberto':''}" data-pid="__central">
           <div class="lat-plinha"><button class="lat-item ${h==='#/central'?'ativo':''}" data-ir="#/central"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg><span>Central de Rotinas do RH</span></button><button class="lat-pseta" aria-label="Mostrar opções da Central de Rotinas do RH" aria-expanded="${h==='#/desligamento'||h==='#/bases'||h==='#/envios'?'true':'false'}">${CHEV}</button></div>
-          <div class="lat-psub"><button class="lat-acao ${h==='#/desligamento'?'ativo':''}" data-ir="#/desligamento" style="--cor:var(--coral)"><i>${IA('<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>')}</i><span>Conferência de Desligamentos</span></button><button class="lat-acao ${h==='#/bases'?'ativo':''}" data-ir="#/bases" style="--cor:var(--cane)"><i>${IA('<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>')}</i><span>Qualidade dos Dados</span></button>${ehRH() ? `<button class="lat-acao ${h==='#/cadastros'?'ativo':''}" data-ir="#/cadastros" style="--cor:#7b3fa0"><i>${IA('<path d="M4 4h16v4H4zM4 10h16v4H4zM4 16h10v4H4z"/>')}</i><span>Cadastros do RH</span></button>` : ''}${ehRH() ? `<button class="lat-acao ${h==='#/envios'?'ativo':''}" data-ir="#/envios" style="--cor:#24427c"><i>${IA('<path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/>')}</i><span>Envios dos Gestores</span></button>` : ''}</div>
+          <div class="lat-psub"><button class="lat-acao ${h==='#/desligamento'?'ativo':''}" data-ir="#/desligamento" style="--cor:var(--coral)"><i>${IA('<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>')}</i><span>Conferência de Desligamentos</span></button><button class="lat-acao ${h==='#/bases'?'ativo':''}" data-ir="#/bases" style="--cor:var(--cane)"><i>${IA('<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>')}</i><span>Qualidade dos Dados</span></button>${ehRH() ? `<button class="lat-acao ${h==='#/cadastros'?'ativo':''}" data-ir="#/cadastros" style="--cor:#7b3fa0"><i>${IA('<path d="M4 4h16v4H4zM4 10h16v4H4zM4 16h10v4H4z"/>')}</i><span>Cadastros do RH</span></button>` : ''}${ehRH() ? `<button class="lat-acao ${h==='#/envios'?'ativo':''}" data-ir="#/envios" style="--cor:#24427c"><i>${IA('<path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/>')}</i><span>Envios dos Gestores</span></button>` : ''}${ehRH() ? `<button class="lat-acao ${h.startsWith('#/respostas')?'ativo':''}" data-ir="#/respostas" style="--cor:#b5731a"><i>${IA('<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/>')}</i><span>Documentos com os gestores</span></button>` : ''}</div>
         </div>
         ${temQuadro ? `<button class="lat-item ${h.startsWith('#/ficha')?'ativo':''}" data-ir="#/ficha"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2.5"/><path d="M5.5 17c.6-1.8 2-2.7 3.5-2.7s2.9.9 3.5 2.7M14 9h4M14 13h4"/></svg><span>Perfil do Colaborador</span></button>` : ''}
         ${temQuadro ? `<button class="lat-item ${h==='#/consulta'?'ativo':''}" data-ir="#/consulta"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="6"/><path d="M20 20l-5.6-5.6M8 10h4M10 8v4"/></svg><span>Consulta de Candidatos</span></button>` : ''}
@@ -446,8 +448,10 @@ function rota(){
   const h = location.hash || '#/';
   logAcesso('abriu', ondeDe(h));
   if (E.perfil.papel === 'gestor') { if (h === '#/conta') return telaConta();
+    if (window.CRV_RESP_INIT && h === '#/eq/resp') return RESP().telaResp(false).then(() => RESP().badges()).catch(e => console.error(e));
+    if (window.CRV_RESP_INIT && h === '#/eq/mdisc') return RESP().telaDocsGestor().then(() => RESP().badges()).catch(e => console.error(e));
     /* se algo falhar ao montar a tela, mostra o erro em vez de ficar carregando para sempre */
-    return Promise.resolve().then(() => GESTOR().tela(h.startsWith('#/eq/') ? h.slice(5) : '')).catch(e => { console.error(e); const c = $('#gs-corpo') || $('#app'); if (c) c.innerHTML = `<div class="cartao vazio"><h3>Não consegui abrir a sua equipe</h3><p>Atualize a página. Se continuar, avise a Gestão de Pessoas. Detalhe: ${esc(e && e.message || String(e))}</p></div>`; }); }
+    return Promise.resolve().then(() => GESTOR().tela(h.startsWith('#/eq/') ? h.slice(5) : '')).then(() => { if (window.CRV_RESP_INIT) RESP().iniciarGestor().then(() => { if (h === '#/' || h === '' || h === '#') RESP().porFaixa(); }); }).catch(e => { console.error(e); const c = $('#gs-corpo') || $('#app'); if (c) c.innerHTML = `<div class="cartao vazio"><h3>Não consegui abrir a sua equipe</h3><p>Atualize a página. Se continuar, avise a Gestão de Pessoas. Detalhe: ${esc(e && e.message || String(e))}</p></div>`; }); }
   if (h.startsWith('#/p/')) { const [id, acao] = h.slice(4).split('/'); return telaPainel(decodeURIComponent(id), acao || ''); }
   if (h === '#/admin' && ehAdmin()) return telaAdmin();
   if (h === '#/importar' && podeImportar()) return telaImportar();
@@ -459,6 +463,7 @@ function rota(){
   if (h === '#/cadastros' && ehRH()) return CADS().tela();
   if (h === '#/organograma' && E.perfil && E.perfil.papel !== 'gestor') return ORG().tela();
   if (h === '#/envios' && ehRH()) return GESTOR().telaEnvios();
+  if (h.startsWith('#/respostas') && ehRH() && window.CRV_RESP_INIT) return RESP().telaRH(h.split('/')[2] || 'pend');
   if (h === '#/desligamento') return telaDesligamento();
   if (h === '#/conta') return telaConta();
   telaInicio();
@@ -612,6 +617,7 @@ const ctxMod = () => ({ sb, E, $, esc, normal, brD, fMat, fDias, podeVer, podeEd
 const NR1 = () => _nr1 || (_nr1 = window.CRV_NR1_INIT ? window.CRV_NR1_INIT(ctxMod()) : null);
 let _risco = null; const RISCO = () => _risco || (_risco = window.CRV_RISCO_INIT(ctxMod()));
 let _rel = null; const REL = () => _rel || (_rel = window.CRV_REL_INIT(Object.assign(ctxMod(), { NR1, RISCO, BASES })));
+let _rsp = null; const RESP = () => _rsp || (_rsp = window.CRV_RESP_INIT(ctxMod()));
 let _dav = null; const DAV = () => _dav || (_dav = window.CRV_DAV_INIT(ctxMod()));
 let _org = null; const ORG = () => _org || (_org = window.CRV_ORG_INIT(ctxMod()));
 let _cad = null; const CADS = () => _cad || (_cad = window.CRV_CAD_INIT(Object.assign(ctxMod(), { FRENTES })));
@@ -662,6 +668,8 @@ async function fichaDados(mat){
     if (fPode('sancoes')) { const L = (o ? o.adv.map(x => [brD(x.data), 'Advertência', x.motivo || '']).concat(o.sus.map(x => [brD(x.data), 'Suspensão' + (x.dias ? ' (' + x.dias + 'd)' : ''), x.motivo || ''])) : []).concat(JCL.map(r => [brD(r.dataDoc), 'Justa causa', 'Art. 482 da CLT, alínea(s) ' + JC().resumoAl(r)]));
       L.sort((a, b) => b[0].split('/').reverse().join('').localeCompare(a[0].split('/').reverse().join('')));
       F.sec.push({ k:'sanc', t:'Sanções disciplinares', painel:'sancoes', cab:['Data', 'Tipo', 'Motivo'], linhas:L, alerta: o && o.sus.length >= 3 ? o.sus.length + 'ª suspensão ou mais' : '' }); }
+    if (fPode('sancoes') && window.CRV_RESP_INIT) { const GD = await RESP().daPessoa(mat); if (GD.length) F.sec.push({ k:'gdocs', t:'Documentos disciplinares com o gestor', painel:'', cab:['Liberado em', 'Documento', 'Situação', 'Aplicado em', 'Documento assinado'],
+      linhas:GD.map(d => [brD(String(d.criado_em).slice(0, 10)), (d.titulo || '') + (d.dados && d.dados.assunto ? ' · ' + d.dados.assunto : ''), (RESP().ST[d.status] || [d.status])[0] + (d.recusa ? ' · recusa de assinatura' : ''), brD(d.aplicado_em), d.status === 'recebido' ? 'Recebido em ' + brD(String(d.recebido_em || '').slice(0, 10)) + ' (ver em Documentos com os gestores)' : '']) }); }
   })());
   // RD
   if (fPode('rd')) tarefas.push((async () => { const d = await window.CRV_DADOS('rd'); const D = d && d.dados.D; if (!D) return;
@@ -1020,6 +1028,7 @@ async function coletarCentral(){
     try { out.push(...await BASES().pendencias()); } catch(e){ console.warn('central bases', e); }
     try { const pa = E.paineis.find(x => x.id === 'aprendiz-pos'); if (pa && podeVer(pa)) out.push(...await APOS().pendencias()); } catch(e){ console.warn('central aproveitamento', e); }
     try { out.push(...await GESTOR().pendenciasEnvios()); } catch(e){ console.warn('central envios', e); }
+    try { if (window.CRV_RESP_INIT) out.push(...await RESP().pendencias()); } catch(e){ console.warn('central documentos gestores', e); }
     if (ehAdmin()) try { const u = await ultimoBackup(); const d = u && u.em ? Math.floor((Date.now() - new Date(u.em)) / 864e5) : null;
       if (d == null || d > 7) out.push({ id:'bk', sev:'info', t:'Cópia de segurança do app', d: d == null ? 'Nenhuma cópia feita ainda.' : `A última foi há ${d} dias. Recomendado: uma vez por semana.`, painel:'', rota:'#/admin', pnome:'Administração', n: d == null ? '!' : d + 'd', itens:[{ nome:'Baixar a cópia em Administração → Cópia de segurança', mat:'', det:'Guarda tudo o que foi lançado no app e não existe nas planilhas.' }] }); } catch(_){}
     for (const id of CENTRAL_FONTES) {
@@ -1094,7 +1103,7 @@ const SUBACOES = {
   rs: [{ acao:'ctr', nome:'Contratações em Andamento' }],
   jovem:    [{ acao:'novo', nome:'Cadastrar jovem' }, { acao:'dslj', nome:'Registrar desligamento' }, { acao:'atj', nome:'Atestados' }],
   renapsi:  [{ acao:'novo', nome:'Cadastrar jovem' }, { acao:'dslj', nome:'Registrar desligamento' }, { acao:'atj', nome:'Atestados' }],
-  sancoes:  [{ acao:'doc', nome:'Emitir advertência / suspensão / orientação' }],
+  sancoes:  [{ acao:'doc', nome:'Emitir advertência / suspensão / orientação' }, { acao:'pdev', nome:'Pendentes de devolução (gestores)' }],
   'justa-causa': [{ acao:'jcn', nome:'Nova comunicação de justa causa' }, { acao:'dav', nome:'Documento de dispensa' }],
   ouvidorias: [{ acao:'nova', nome:'Cadastrar ouvidoria' }],
   rd:       [{ acao:'novo', nome:'Cadastrar RD' }, { acao:'aut', nome:'Autorização de desconto' }, { acao:'hist', nome:'Histórico de autorizações' }],
@@ -1120,6 +1129,7 @@ function executarAcao(acao){
   const f = document.getElementById('modelo-frame');
   const w = f && f.contentWindow;
   if (acao === 'dav' && window.CRV_DAV_INIT) { DAV().abrir(); return true; }
+  if (acao === 'pdev') { location.hash = '#/respostas/pend'; return true; }
   if (acao === 'decl' && window.CRV_DAV_INIT) { DAV().abrirDecl(); return true; }
   if (acao === 'aut' && w && typeof w.CRV_AUTORIZACAO === 'function') { fecharJanelasAut(w); w.CRV_AUTORIZACAO(); return true; }
   if (acao === 'hist' && w && typeof w.CRV_AUT_HIST === 'function') { fecharJanelasAut(w); w.CRV_AUT_HIST(); return true; }
@@ -1527,7 +1537,7 @@ async function logAcesso(acao, onde, detalhe){
 window.CRV_LOG_ACESSO = logAcesso;
 const ondeDe = h => { if (h.startsWith('#/p/')) { const id = decodeURIComponent(h.slice(4).split('/')[0]); return 'Painel: ' + ((E.paineis || []).find(p => p.id === id)?.nome || id); }
   if (h.startsWith('#/eq/')) { const k = h.slice(5); return 'Minha equipe: ' + ({ eq:'Equipe', mov:'Admissões e saídas', pv:'Quadro x previsto', exp:'Experiência', nov:'Novos colaboradores', perfil:'Perfil profissional', fer:'Férias', freq:'Frequência', disc:'Disciplina e RD', cr:'Em treinamento', alo:'Alojamento', env:'Meus envios' }[k] || k); }
-  return ({ '#/':'Visão Geral', '#/central':'Central de Rotinas do RH', '#/admin':'Administração', '#/conta':'Minha conta', '#/relatorio':'Relatórios Gerenciais', '#/bases':'Qualidade dos Dados', '#/cadastros':'Cadastros do RH', '#/organograma':'Organograma do RH', '#/envios':'Envios dos Gestores' })[h] || (h.startsWith('#/ficha') ? 'Perfil do Colaborador' : h.startsWith('#/desligamento') ? 'Conferência de Desligamentos' : h.replace(/^#\//, '') || 'Início'); };
+  return ({ '#/':'Visão Geral', '#/central':'Central de Rotinas do RH', '#/admin':'Administração', '#/conta':'Minha conta', '#/relatorio':'Relatórios Gerenciais', '#/bases':'Qualidade dos Dados', '#/cadastros':'Cadastros do RH', '#/organograma':'Organograma do RH', '#/envios':'Envios dos Gestores', '#/respostas':'Documentos com os gestores', '#/respostas/pend':'Documentos com os gestores', '#/respostas/docs':'Documentos com os gestores', '#/respostas/resp':'Respostas aos gestores' })[h] || (h.startsWith('#/ficha') ? 'Perfil do Colaborador' : h.startsWith('#/desligamento') ? 'Conferência de Desligamentos' : h.replace(/^#\//, '') || 'Início'); };
 async function registrar(painel, acao, detalhe){
   try { await sb.from('historico').insert({ painel, acao, detalhe, usuario: E.perfil?.nome }); } catch(_){}
 }
