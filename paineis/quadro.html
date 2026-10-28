@@ -815,6 +815,7 @@ const PREV=[
   it:[['Todas as funções do setor',80,r=>true,'Necessidade informada só no total do setor']]},
  {g:'Irrigação localizada',dp:'Irrigação Localizada',ref:'necessidade total do setor',un:'função',sc:[{n:'Setor Irrigação Localizada',f:r=>r[AREA]=='Irrigação Localizada'}],
   it:[['Todas as funções do setor',52,r=>true,'Necessidade informada só no total do setor']]}];
+if(window.CRV_GESTOR_AREA){const pv=PREV.filter(G=>(G.sc||[]).slice(0,1).some(s=>D.some(r=>{try{return s.f(r)}catch(_){return false}})));PREV.splice(0,PREV.length,...pv);}
 const st={emp:null,ano:'',pSel:null,pOpen:null,pSort:'d',pSc:{},fi:null,area:null,fun:'',con:null,sit:null,tab:'g',q:'',dep:'',ges:'',sort:NOME,dir:1,n:50,open:null,dSort:'n',dDir:-1,dAll:false,dq:''};
 const CONS=['Efetivo','Experiência','Safra','Determinado'];
 const cnt=(rows,i)=>{const m=new Map();rows.forEach(r=>{const k=r[i]||'(não informado)';m.set(k,(m.get(k)||0)+1)});return [...m].sort((a,b)=>b[1]-a[1])};
@@ -936,7 +937,7 @@ function geral(){
   $('subTen').textContent='Mediana de '+(N?casa(med):'—')+'. Em destaque, quem tem menos de 1 ano: '+pct(novo.length,N)+'%.';
   const ab=[['18 a 25',0,26],['26 a 35',26,36],['36 a 45',36,46],['46 a 55',46,56],['56 a 59',56,60],['60 +',60,200]];
   cols('cAge','xAge',ab.map(b=>[b[0],R.filter(r=>r[AGE]>=b[1]&&r[AGE]<b[2])]),i=>i==5,'Faixa etária');
-  $('subAge').textContent='Idade média de '+idade+' anos. Em destaque, '+nf(s60.length)+' com 60 anos ou mais.';
+  $('subAge').textContent=window.CRV_GESTOR_AREA?'Idade restrita ao RH.':'Idade média de '+idade+' anos. Em destaque, '+nf(s60.length)+' com 60 anos ou mais.';
   rowsBar('bCon',R,CON,N,'Contrato');
   rowsBar('bCid',R,CID,N,'Cidade',6);
   const cc=rowsBar('bCC',R,CC,N,'Centro de custo',10);$('subCC').textContent=cc.length+' centros de custo nesta seleção.';
@@ -1413,7 +1414,7 @@ function capaQuadro(tab){
   k.boxes([['Quadro',N],['Ativos',at,pct(at,N)+'%'],['Afastados',N-at,pct(N-at,N)+'%'],['Experiência',ex,pct(ex,N)+'%'],['Safra',sf,pct(sf,N)+'%'],['Mulheres',fem,pct(fem,N)+'%'],['Até 1 ano de casa',nv,pct(nv,N)+'%']]);
   if(!N){k.note('Ninguém nesta seleção.');k.foot();return k}
   const ts=R.map(r=>r.t).sort((a,b)=>a-b),med=ts[Math.floor(ts.length/2)],idade=Math.round(R.reduce((s,r)=>s+r[AGE],0)/N);
-  k.note('Quadro soma ativos e afastados. Tempo de casa mediano: '+casa(med)+'. Idade média: '+idade+' anos.'+(SEL.size?' Esta capa considera só os nomes marcados.':''));k.y+=2;
+  k.note('Quadro soma ativos e afastados. Tempo de casa mediano: '+casa(med)+'.'+(window.CRV_GESTOR_AREA?'':' Idade média: '+idade+' anos.')+(SEL.size?' Esta capa considera só os nomes marcados.':''));k.y+=2;
   /* quadro principal */
   const grp=(key)=>{const m=new Map();R.forEach(r=>{const v=typeof key=='function'?key(r):r[key];(m.get(v)||m.set(v,[]).get(v)).push(r)});
     return [...m].sort((a,b)=>b[1].length-a[1].length).map(([v,L])=>[v||'(não informado)',L.length,L.filter(r=>r[SIT]=='Ativo').length,L.filter(r=>r[SIT]!='Ativo').length,L.filter(r=>r[CON]=='Experiência').length,L.filter(r=>r[CON]=='Safra').length,L.filter(r=>r[SEX]=='F').length,L.filter(r=>r.t<365).length])};
