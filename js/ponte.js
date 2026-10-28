@@ -78,7 +78,11 @@ function criarDb(ctx){
     return todas;
   }
   async function gravar(caminho, dados){
-    if (MEM) throw erro('not_granted', 'Somente leitura: os lançamentos deste painel são feitos pelo RH.');
+    if (MEM) {   // gestor/assistente: o que ele pode fazer neste painel vai ao RH como solicitação (o RH aceita e aí entra no painel)
+      if (ctx.enviar) { const r = await ctx.enviar(caminho, clonar(dados));
+        if (r) { const ps = caminho.split('/'), id = ps.pop(), col = ps.join('/'), L = MEM[col] || (MEM[col] = []), v = { doc_id:id, dados:Object.assign({}, dados, { _aguardaRH:true }) };
+          const i = L.findIndex(x => x.doc_id === id); if (i >= 0) L[i] = v; else L.push(v); avisar(); return; } }
+      throw erro('not_granted', 'Somente leitura: este lançamento é feito pela Gestão de Pessoas.'); }
     if (!podeEditar()) throw erro('invalid_argument', 'Sem permissão para salvar neste painel.');
     const partes = caminho.split('/');
     const doc_id = partes.pop(), colecao = partes.join('/');
