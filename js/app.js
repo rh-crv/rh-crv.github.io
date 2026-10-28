@@ -507,6 +507,10 @@ async function telaPainelGestor(id){
   try {
     window.CRV_QUEM = E.perfil.nome; window.CRV_RECARREGAR = null;
     const regs = pk.regs || {}, pid = usaQ ? 'quadro' : id;
+    // o que o gestor já enviou e ainda aguarda o RH aparece no painel como "Aguardando o RH" (mesmo depois de recarregar)
+    if (!usaQ && D.pendente) { try { const { data:EV } = await sb.from('gestor_envios').select('id,tipo,mat,colaborador,dados,status,criado_em').eq('status', 'enviado');
+      (EV || []).forEach(e => { let r = null; try { r = D.pendente(e); } catch(_){} if (!r || !r.colecao || !r.doc_id) return; const L = regs[r.colecao] || (regs[r.colecao] = []);
+        const i = L.findIndex(x => x.doc_id === r.doc_id), v = { doc_id:r.doc_id, dados:Object.assign({}, r.dados, { _aguardaRH:true }) }; if (i >= 0) L[i] = v; else L.push(v); }); } catch(_){} }
     const lanca = !usaQ && !!(D.envios && Object.keys(D.envios).length);
     window.__CRV_PAINEL = window.CRV_PONTE.criar({ sb, painel:pid, perfil:() => E.perfil, quem:() => E.perfil.nome, podeEditar:() => lanca, ehAdmin:() => false, memoria:regs,
       enviar: lanca ? (caminho, dados) => GESTOR().enviarPainel(id, caminho, dados) : null });
