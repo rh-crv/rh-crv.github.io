@@ -15,7 +15,7 @@ const mesTxt = k => { const [a, m] = k.split('-'); return MESES[+m - 1] + '/' + 
 const fimMes = k => { const [a, m] = k.split('-').map(Number); return new Date(Date.UTC(a, m, 0)).toISOString().slice(0, 10); };
 const mesAnt = k => { const [a, m] = k.split('-').map(Number); return m === 1 ? (a - 1) + '-12' : a + '-' + String(m - 1).padStart(2, '0'); };
 const nf = (v, d = 0) => v == null || isNaN(v) ? '—' : Number(v).toLocaleString('pt-BR', { minimumFractionDigits:d, maximumFractionDigits:d });
-const SEC = [['mov', 'Movimentação'], ['freq', 'Frequência'], ['disc', 'Disciplina'], ['esc', 'Escuta e risco'], ['seg', 'Segurança do trabalho'], ['dev', 'Desenvolvimento']];
+const SEC = [['mov', 'Movimentação'], ['freq', 'Frequência'], ['disc', 'Disciplina'], ['esc', 'Escuta e risco'], ['seg', 'Acidentes de trabalho'], ['dev', 'Desenvolvimento']];
 
 async function calcular(mes){
   const Q = await window.CRV_QUADRO(); if (!Q) return null;
@@ -93,7 +93,7 @@ async function calcular(mes){
       I('esc', 'Risco alto de saída (hoje)', L.length, null, { pior:'up', foto:1, lista:() => ['Risco alto de saída', ['Colaborador', 'Matrícula', 'Função', 'Área', 'Sinais'], L.map(([m, v]) => pes(m, v.S.join(', ')))] }); } } catch(_){}
   try { const pn = E.paineis.find(x => x.id === 'nr1'); if (pn && podeVer(pn)) { const L = (await window.CRV_REGS('nr1', 'acoes')).filter(a => !a.excluida && a.status !== 'ok'); const h = new Date().toISOString().slice(0, 10);
       I('esc', 'Ações NR-1 em aberto (hoje)', L.length, null, { neutro:1, foto:1, extra: L.filter(a => a.prazo && a.prazo < h).length + ' com prazo vencido' }); } } catch(_){}
-  // segurança do trabalho: acidentes registrados no painel da Unimed (aba Acidente de trabalho), pela data do acidente
+  // acidentes de trabalho: registrados no painel da Unimed (aba Acidente de trabalho), pela data do acidente
   try { const pu = E.paineis.find(x => x.id === 'unimed'); if (pu && podeVer(pu)) { const AC = (await window.CRV_REGS('unimed', 'acidentes')).filter(a => !a.excluido && a.data);
       if (AC.length) { const doM = k => AC.filter(a => String(a.data).slice(0, 7) === k), a1 = doM(mes), b1 = doM(mesAnt(mes)), af = L => L.filter(a => (+a.dias || 0) > 0 || a.afast === 'sim');
         const lAc = (t, L) => () => [t, ['Colaborador', 'Matrícula', 'Função', 'Área', 'Acidente'], L.map(a => { const r = pes(String(a.mat), brD(a.data) + (a.diag ? ' · ' + a.diag : '') + (a.parte ? ' · ' + a.parte : '') + ((+a.dias || 0) > 0 ? ' · ' + a.dias + ' dia(s) afastado' : '')); if (!M[String(a.mat)]) r[0] = a.nome || r[0]; return r; })];
