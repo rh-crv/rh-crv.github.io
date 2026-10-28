@@ -48,6 +48,7 @@ td{padding:8px 10px;border-top:1px solid var(--line);vertical-align:top}td .sm{f
 .mini.pri{background:var(--acc);border-color:var(--acc);color:#fff}
 .more{display:block;margin:10px auto 0}
 .foot{color:var(--mut);font-size:12px;margin-top:14px}
+.verif.verif-ok{background:var(--okbg,#e6f3ec)!important;border-color:#b9dcc7!important;padding:10px 14px!important}
 .verif{background:#fff7e6;border:2px solid #e9a23b;border-radius:12px;padding:12px 16px;margin-bottom:14px}
 .verif h2{margin:0 0 2px;font-size:16px;color:#7a4a00}.verif .sub{margin:0 0 8px;font-size:12.5px;color:#7a5a20}
 .verif table{background:#fff;border-radius:8px;overflow:hidden}.verif td,.verif th{font-size:13px}
@@ -223,13 +224,17 @@ function render(){
     const AV=R.filter(r=>difLim(r)==='acima');
     const pend=AV.filter(r=>!(VER[r.mat]&&VER[r.mat].ok)),feitos=AV.filter(r=>VER[r.mat]&&VER[r.mat].ok);
     $('verif').hidden=!AV.length;
-    $('verif').innerHTML=AV.length?`<h2>⚠ A verificar: limite acima da regra (${pend.length}${feitos.length?' · '+feitos.length+' já verificado'+(feitos.length>1?'s':''):''})</h2>
+    /* tudo verificado: some o destaque e fica só uma linha discreta (abre a lista ao clicar) */
+    if(AV.length&&!pend.length&&!window.__verAberto){$('verif').classList.add('verif-ok');$('verif').innerHTML=`<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13.5px"><span style="color:var(--ok);font-weight:700">✓ Limites acima da regra: todos verificados (${feitos.length})</span><button class="mini" id="verAbrir">Ver os verificados</button></div>`;$('verAbrir').onclick=()=>{window.__verAberto=1;render()};}
+    else{$('verif').classList.remove('verif-ok');
+    $('verif').innerHTML=AV.length?`<h2>${pend.length?'⚠ A verificar: limite acima da regra ('+pend.length+(feitos.length?' · '+feitos.length+' já verificado'+(feitos.length>1?'s':''):'')+')':'✓ Limites acima da regra: '+feitos.length+' verificado'+(feitos.length>1?'s':'')}</h2>
       <p class="sub">Liberados com limite maior que o permitido e que não estão nas exceções. Confira e marque como verificado (pode anotar o que foi visto).</p>
       <div class="tab"><table><thead><tr><th>Colaborador</th><th>Setor</th><th>Limite atual</th><th>Regra</th><th>Por que está aqui</th><th></th></tr></thead><tbody>${AV.sort((a,b)=>(VER[a.mat]&&VER[a.mat].ok?1:0)-(VER[b.mat]&&VER[b.mat].ok?1:0)).map(r=>{const g=regra(r),v=VER[r.mat]&&VER[r.mat].ok?VER[r.mat]:null;
         const pq=limAtual(r)===1080&&!r.aloj?'Tem R$ 1.080 mas não está na base de alojamento de '+br(C.alojRef):g.v===180&&limAtual(r)===200?'É da Indústria (regra R$ 180) e tem R$ 200':'Limite maior que a faixa da regra';
         return `<tr style="${v?'opacity:.55':''}"><td><b>${esc(r.N)}</b><div class="sm">${esc(r.mat)} · ${esc(r.F)}</div></td><td>${esc(tc(r.dep))}</td><td><b>${moeda(limAtual(r))}</b></td><td>${moeda(g.v)}</td><td>${esc(pq)}${v?`<div class="sm">Verificado em ${br(v.em)}${v.por?' por '+esc(String(v.por).split(' ')[0]):''}${v.nota?' · '+esc(v.nota):''}</div>`:''}</td>
           <td style="text-align:right;white-space:nowrap">${v?`<button class="mini" data-ver="${esc(r.mat)}" data-ok="0">Desfazer</button>`:`<input data-nota="${esc(r.mat)}" placeholder="Anotação (opcional)" style="border:1px solid var(--line);border-radius:6px;padding:4px 6px;font:inherit;font-size:12px;width:150px"> <button class="mini pri" data-ver="${esc(r.mat)}" data-ok="1">Verificado</button>`}</td></tr>`}).join('')}</tbody></table></div>`:'';
     $('verif').querySelectorAll('[data-ver]').forEach(b=>b.onclick=()=>verificar(b.dataset.ver,b.dataset.ok==='1'));
+    if(!pend.length&&window.__verAberto){$('verif').insertAdjacentHTML('afterbegin','<div style="text-align:right"><button class="mini" id="verFechar">Esconder</button></div>');$('verFechar').onclick=()=>{window.__verAberto=0;render()}}}
   }
   /* kpis */
   $('kpis').innerHTML=ORD.filter(k=>k==='ok'||n(k)).map(k=>{const tot=n(k);const pd=PEDE.has(k)?R.filter(r=>r.k===k&&PED[r.mat]&&!DEM[r.mat]).length:0,dm=PEDE.has(k)?R.filter(r=>r.k===k&&DEM[r.mat]).length:0;const v=tot-pd-dm;
