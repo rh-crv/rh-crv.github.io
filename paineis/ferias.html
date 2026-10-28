@@ -1205,18 +1205,18 @@ function pdfRows(scope, semProg){
   return rows.sort((a,b)=>a.person.dp.localeCompare(b.person.dp,'pt-BR')||a.person.d.localeCompare(b.person.d,'pt-BR')||a.person.n.localeCompare(b.person.n,'pt-BR')||a.limD-b.limD);
 }
 function buildPdf(scope, prazo, semProg){
-  const rows=pdfRows(scope, semProg); const doc=new MiniPDF(); const M=30, BOT=548;
+  const rows=pdfRows(scope, semProg); const doc=new MiniPDF(); const M=30, BOT=534;
   const desc=pdfFilterDesc(); doc.title=`Programação de Férias - ${desc}`;
   const cols=[{t:'Contrato',w:46},{t:'Colaborador / Função',w:182},{t:'Período aquisitivo',w:92},{t:'Saldo',w:34,al:'right'},{t:'Data limite',w:56},{t:'Situação',w:70},{t:'Programação atual',w:100},{t:'Início',w:60,f:1},{t:'Dias',w:34,f:1},{t:'Abono',w:36,f:1},{t:'Visto gestor',w:72,f:1}];
   let y=0, first=true;
   const header=()=>{
     doc.addPage();
-    const lh=26, lw=lh*LOGOJ.w/LOGOJ.h; doc.image(M,22,lw,lh);
-    doc.text('Programação de Férias',M+lw+14,36,{size:15,bold:true,color:'#1a3c6e'});
-    doc.text(fit(desc,false,9.5,430),M+lw+14,50,{size:9.5,color:'#45536c'});
-    doc.text(`Emitido em ${HOJE.toLocaleDateString('pt-BR')}`,842-M,34,{size:8.5,color:'#6c788e',align:'right'});
-    if(prazo) doc.text(`Devolver ao RH até ${fmtS(prazo)}`,842-M,49,{size:10,bold:true,color:'#c3352f',align:'right'});
-    doc.line(M,60,842-M,60,'#24508f',1.2); y=70;
+    doc.rect(0,0,842,11,'#1f3a68'); doc.text('CRV INDUSTRIAL',M,40,{size:13.5,bold:true,color:'#1f3a68'}); doc.text('UNIDADE CAPINÓPOLIS',M,52,{size:7.8,color:'#6e7480'});
+    const lh=30, lw=lh*LOGOJ.w/LOGOJ.h; doc.image(842-M-lw,18,lw,lh); doc.line(M,62,842-M,62,'#6e963c',1.7);
+    doc.text('Programação de Férias',M,86,{size:15,bold:true,color:'#1f3a68'});
+    doc.text(fit(desc,false,9,520),M,100,{size:9,color:'#45536c'});
+    if(prazo) doc.text(`Devolver ao RH até ${fmtS(prazo)}`,842-M,86,{size:10,bold:true,color:'#c3352f',align:'right'});
+    y=110;
     if(first){
       doc.rect(M,y,782,34,'#eef3fa');
       doc.text('Como preencher: para cada colaborador, informe a data de início, os dias de férias e, se houver, os dias de abono (no máximo 1/3 do saldo).',M+10,y+14,{size:8.5,bold:true,color:'#15213a'});
@@ -1268,7 +1268,9 @@ function buildPdf(scope, prazo, semProg){
   doc.text('Responsável pela área (nome e assinatura)',M,y+11,{size:8,color:'#45536c'}); doc.text('Data',M+360,y+11,{size:8,color:'#45536c'});
   // rodapés
   const N=doc.pages.length;
-  doc.pages.forEach((ops,i)=>{ doc.cur=ops; doc.line(M,566,842-M,566,'#d8dee9',0.5); doc.text(`Gestão de Pessoas · Painel de Férias · CRV Industrial · emitido em ${HOJE.toLocaleDateString('pt-BR')}`,M,578,{size:7.5,color:'#6c788e'}); doc.text(`Página ${i+1} de ${N}`,842-M,578,{size:7.5,color:'#6c788e',align:'right'}); });
+  doc.pages.forEach((ops,i)=>{ doc.cur=ops; doc.line(M,541,842-M,541,'#d7dce4',0.8); doc.text('CRV INDUSTRIAL LTDA - UNIDADE CAPINÓPOLIS | CNPJ 03.937.452/0004-35',421,553,{size:7.3,bold:true,color:'#1e2430',align:'center'});
+    doc.text('Rodovia MG-226, s/nº, km 63, Zona Rural, Capinópolis/MG - CEP 38.360-000 · Telefone: (34) 3263-8100',421,563,{size:7.3,color:'#6e7480',align:'center'});
+    doc.text(`Gestão de Pessoas · emitido em ${HOJE.toLocaleDateString('pt-BR')} · Página ${i+1} de ${N}`,842-M,581,{size:7,color:'#828894',align:'right'}); });
   return {bytes:doc.output(), rows};
 }
 // ---------- PDF: lista de saídas programadas ----------
@@ -1282,16 +1284,17 @@ function saidasRows(incSaiu){
 }
 const ASSH=78;
 function buildPdfSaidas(incSaiu,ass){
-  const rows=saidasRows(incSaiu); const doc=new MiniPDF(); const M=30, BOT=548; const desc=[faixaTxt(),pdfFilterDesc()].filter(Boolean).join(' · '); doc.title=`Saídas de férias - ${desc}`;
+  const rows=saidasRows(incSaiu); const doc=new MiniPDF(); const M=30, BOT=534; const desc=[faixaTxt(),pdfFilterDesc()].filter(Boolean).join(' · '); doc.title=`Saídas de férias - ${desc}`;
   const cols=[{t:'Contrato',w:46},{t:'Colaborador / Função',w:180},{t:'Seção / Setor',w:130},{t:'Início',w:58},{t:'Fim',w:58},{t:'Dias',w:32,al:'right'},{t:'Abono',w:36,al:'right'},{t:'Retorno',w:60},{t:'Parcela',w:42},{t:'Situação',w:60},{t:'Observação',w:80}];
   let y=0, first=true;
   const mLong=k=>{ const [yy,m]=k.split('-'); return `${MESES_L[+m-1]} de ${yy}`; };
   const tableHead=()=>{ doc.rect(M,y,782,20,'#24508f'); let x=M; cols.forEach(c=>{ doc.text(c.t.toUpperCase(),c.al==='right'?x+c.w-5:x+5,y+13,{size:6.8,bold:true,color:'#ffffff',align:c.al==='right'?'right':'left'}); x+=c.w; }); y+=20; };
-  const header=()=>{ doc.addPage(); const lh=26, lw=lh*LOGOJ.w/LOGOJ.h; doc.image(M,22,lw,lh);
-    doc.text('Relação de Saídas de Férias · Departamento Pessoal',M+lw+14,36,{size:15,bold:true,color:'#1a3c6e'});
-    doc.text(fit(desc,false,9.5,430),M+lw+14,50,{size:9.5,color:'#45536c'});
-    doc.text(`Emitido em ${HOJE.toLocaleDateString('pt-BR')}`,842-M,34,{size:8.5,color:'#6c788e',align:'right'});
-    doc.line(M,60,842-M,60,'#24508f',1.2); y=70;
+  /* padrão único dos documentos do RH: faixa azul, CRV INDUSTRIAL, linha verde, logo à direita; rodapé com os dados da empresa */
+  const header=()=>{ doc.addPage(); doc.rect(0,0,842,11,'#1f3a68'); doc.text('CRV INDUSTRIAL',M,40,{size:13.5,bold:true,color:'#1f3a68'}); doc.text('UNIDADE CAPINÓPOLIS',M,52,{size:7.8,color:'#6e7480'});
+    const lh=30, lw=lh*LOGOJ.w/LOGOJ.h; doc.image(842-M-lw,18,lw,lh); doc.line(M,62,842-M,62,'#6e963c',1.7);
+    doc.text('Relação de Saídas de Férias · Departamento Pessoal',M,86,{size:15,bold:true,color:'#1f3a68'});
+    doc.text(fit(desc,false,9,600),M,100,{size:9,color:'#45536c'});
+    y=110;
     if(first){ const ppl=new Set(rows.map(r=>r.x.person.c)).size, dias=rows.reduce((a,r)=>a+r.q.dias,0), ab=rows.reduce((a,r)=>a+(r.q.abono||0),0);
       doc.text(`${rows.length} saída${rows.length!==1?'s':''}  ·  ${ppl} colaborador${ppl!==1?'es':''}  ·  ${dias} dias de férias  ·  ${ab} dias de abono`,M,y+8,{size:9,bold:true,color:'#15213a'}); y+=18; first=false; }
     tableHead(); };
@@ -1315,7 +1318,9 @@ function buildPdfSaidas(incSaiu,ass){
   if(rows.length&&ass){ const yy=y+22+42, x0=M+782-260; doc.line(x0,yy,x0+260,yy,'#15213a',0.8); doc.text(ass.nome,x0+130,yy+12,{size:9,bold:true,color:'#15213a',align:'center'}); doc.text([ass.funcao,ass.mat?'Matrícula '+ass.mat:''].filter(Boolean).join(' · '),x0+130,yy+23,{size:7.8,color:'#45536c',align:'center'});
     doc.text('Data: ____/____/________',M,yy+12,{size:8.5,color:'#45536c'}); }
   const N=doc.pages.length;
-  doc.pages.forEach((ops,i)=>{ doc.cur=ops; doc.line(M,566,842-M,566,'#d8dee9',0.5); doc.text(`Gestão de Pessoas · Painel de Férias · CRV Industrial · emitido em ${HOJE.toLocaleDateString('pt-BR')}`,M,578,{size:7.5,color:'#6c788e'}); doc.text(`Página ${i+1} de ${N}`,842-M,578,{size:7.5,color:'#6c788e',align:'right'}); });
+  doc.pages.forEach((ops,i)=>{ doc.cur=ops; doc.line(M,541,842-M,541,'#d7dce4',0.8); doc.text('CRV INDUSTRIAL LTDA - UNIDADE CAPINÓPOLIS | CNPJ 03.937.452/0004-35',421,553,{size:7.3,bold:true,color:'#1e2430',align:'center'});
+    doc.text('Rodovia MG-226, s/nº, km 63, Zona Rural, Capinópolis/MG - CEP 38.360-000 · Telefone: (34) 3263-8100',421,563,{size:7.3,color:'#6e7480',align:'center'});
+    doc.text(`Gestão de Pessoas · emitido em ${HOJE.toLocaleDateString('pt-BR')} · Página ${i+1} de ${N}`,842-M,581,{size:7,color:'#828894',align:'right'}); });
   return {bytes:doc.output(), rows};
 }
 // ---------- tela de PDF ----------

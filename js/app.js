@@ -1006,6 +1006,7 @@ async function coletarCentral(){
       if (A.length) out.push({ id:'sg-acoes', sev:'warn', t:'Plano de ação de Serviços Gerais: ações atrasadas', painel:'', rota:'#/p/servicos-gerais/spa', pnome:'Plano de ação · Serviços Gerais', d:'Não conformidades das inspeções semanais com prazo vencido. Registre a tratativa no plano de ação.',
         itens: A.map(a => ({ nome:(a.area ? a.area + ' · ' : '') + (a.oc || ''), mat:'', det:`${a.acao || ''} · responsável: ${a.resp || '—'} · prazo ${brD(a.prazo)} (${Math.round((Date.now() - new Date(a.prazo + 'T12:00:00')) / 864e5)} dias de atraso)` })) }); } } catch(e){ console.warn('central serviços gerais', e); }
     try { out.push(...await BASES().pendencias()); } catch(e){ console.warn('central bases', e); }
+    try { const pa = E.paineis.find(x => x.id === 'aprendiz-pos'); if (pa && podeVer(pa)) out.push(...await APOS().pendencias()); } catch(e){ console.warn('central aproveitamento', e); }
     try { out.push(...await GESTOR().pendenciasEnvios()); } catch(e){ console.warn('central envios', e); }
     if (ehAdmin()) try { const u = await ultimoBackup(); const d = u && u.em ? Math.floor((Date.now() - new Date(u.em)) / 864e5) : null;
       if (d == null || d > 7) out.push({ id:'bk', sev:'info', t:'Cópia de segurança do app', d: d == null ? 'Nenhuma cópia feita ainda.' : `A última foi há ${d} dias. Recomendado: uma vez por semana.`, painel:'', rota:'#/admin', pnome:'Administração', n: d == null ? '!' : d + 'd', itens:[{ nome:'Baixar a cópia em Administração → Cópia de segurança', mat:'', det:'Guarda tudo o que foi lançado no app e não existe nas planilhas.' }] }); } catch(_){}
@@ -1098,6 +1099,10 @@ const SUBACOES = {
   farmacia: [{ acao:'aut', nome:'Autorização de desconto' }, { acao:'hist', nome:'Histórico de autorizações' }],
   'servicos-gerais': [{ acao:'she', nome:'Lançar horas extras' }, { acao:'sab', nome:'Lançar abonos' }, { acao:'sgr', nome:'Gratificação do mês' }, { acao:'sin', nome:'Nova inspeção semanal' }, { acao:'spa', nome:'Plano de ação' }]
 };
+/* altura do painel: ocupa só o espaço visível da tela, para as janelas de dentro do painel (com o botão Salvar) caberem sem rolar a página */
+function ajustarFrame(){ const f = document.getElementById('modelo-frame'); if (!f) return; const top = f.getBoundingClientRect().top + window.scrollY; const h = Math.max(460, Math.round(window.innerHeight - top - 12)); f.style.minHeight = '0'; f.style.height = h + 'px'; }
+window.CRV_AJUSTAR_FRAME = () => ajustarFrame();
+window.addEventListener('resize', () => { clearTimeout(ajustarFrame._t); ajustarFrame._t = setTimeout(ajustarFrame, 150); });
 function fecharJanelasAut(w){ try { w.document.querySelectorAll('.aut-fundo,.ent-fundo,.er-fundo,.of-fundo,.nv-fundo,.rl-fundo,.es-fundo,.ds-fundo,.ct-fundo,.jf-fundo,.ft-fundo,.df-fundo').forEach(x => x.remove()); } catch(_){} }
 function executarAcao(acao){
   const f = document.getElementById('modelo-frame');
@@ -1550,8 +1555,8 @@ async function telaModelo(p, cfg, acao){
   { const bi = document.getElementById('imp-painel'); if (bi) bi.onclick = () => escolherPacotes(PAC_DE[p.id] || p.id); }
   { const dk = DICAS[p.id], ck = 'crv-dica-' + p.id + '-' + (dk ? dk.v : '');
     let visto = false; try { visto = !!localStorage.getItem(ck); } catch(_){}
-    if (dk && !visto) { const area0 = $('#modelo-area'); if (area0) { area0.insertAdjacentHTML('beforebegin', `<div class="cartao" id="dica-painel" style="display:flex;gap:10px;align-items:center;padding:6px 12px;margin-bottom:10px;border-left:4px solid #e9a23b;background:#fffaf0"><details style="flex:1;font-size:13px;line-height:1.5"><summary style="cursor:pointer"><b>Como usar este painel</b> <span style="color:var(--mut)">· clique para ver as dicas</span></summary><ul style="margin:4px 0 2px;padding-left:18px">${dk.t.map(x => '<li>' + x + '</li>').join('')}</ul></details><button class="btn borda peq" id="dica-ok">Entendi</button></div>`);
-      $('#dica-ok').onclick = () => { try { localStorage.setItem(ck, '1'); } catch(_){} const d = $('#dica-painel'); if (d) d.remove(); }; } } }
+    if (dk && !visto) { const area0 = $('#modelo-area'); if (area0) { area0.insertAdjacentHTML('beforebegin', `<div class="cartao" id="dica-painel" style="display:flex;gap:10px;align-items:center;padding:6px 12px;margin-bottom:10px;border-left:4px solid #e9a23b;background:#fffaf0"><details style="flex:1;font-size:13px;line-height:1.5" ontoggle="window.CRV_AJUSTAR_FRAME&&window.CRV_AJUSTAR_FRAME()"><summary style="cursor:pointer"><b>Como usar este painel</b> <span style="color:var(--mut)">· clique para ver as dicas</span></summary><ul style="margin:4px 0 2px;padding-left:18px">${dk.t.map(x => '<li>' + x + '</li>').join('')}</ul></details><button class="btn borda peq" id="dica-ok">Entendi</button></div>`);
+      $('#dica-ok').onclick = () => { try { localStorage.setItem(ck, '1'); } catch(_){} const d = $('#dica-painel'); if (d) d.remove(); ajustarFrame(); }; } } }
   if (vq) document.querySelectorAll('.vista-seg [data-vq]').forEach(b => b.onclick = () => { try { localStorage.setItem('crv-vista-' + p.id, b.dataset.vq); } catch(_){} telaModelo(p, cfg); });
   if (vq && sel === 'q') return telaVistaQuadro(p, vq, acao);
   const meta = { set innerHTML(v){}, set textContent(v){} };   // informações do painel ficam só em Administração
@@ -1615,7 +1620,7 @@ async function telaModelo(p, cfg, acao){
     const html = montarModelo(tplU, d.conteudo, d.referencia, p, novos);
     const url = URL.createObjectURL(new Blob([html], { type:'text/html' }));
     area.className = 'modelo-area';
-    area.innerHTML = `<iframe id="modelo-frame" title="${esc(p.nome)}" src="${url}"></iframe>`;
+    area.innerHTML = `<iframe id="modelo-frame" title="${esc(p.nome)}" src="${url}"></iframe>`; ajustarFrame(); [300, 1500, 4000].forEach(t => setTimeout(ajustarFrame, t));
     BASES().aviso(PAC_DE[p.id] || p.id).then(h => { if (!h || !$('#modelo-frame')) return; area.insertAdjacentHTML('afterbegin', h); area.querySelectorAll('.sb-av [data-ir]').forEach(b => b.onclick = () => location.hash = b.dataset.ir); }).catch(() => {});
     E.painelAberto = p.id;
     $('#modelo-frame').onload = () => {
@@ -1651,7 +1656,7 @@ async function telaVistaQuadro(p, vq, acao){
     const html = montarModelo(tplM, d.conteudo, d.referencia, Object.assign({}, q, { frente: p.frente }), []);
     const url = URL.createObjectURL(new Blob([html], { type:'text/html' }));
     area.className = 'modelo-area';
-    area.innerHTML = `<iframe id="modelo-frame" title="${esc(p.nome)}" src="${url}"></iframe>`;
+    area.innerHTML = `<iframe id="modelo-frame" title="${esc(p.nome)}" src="${url}"></iframe>`; ajustarFrame(); [300, 1500, 4000].forEach(t => setTimeout(ajustarFrame, t));
     BASES().aviso(PAC_DE[p.id] || p.id).then(h => { if (!h || !$('#modelo-frame')) return; area.insertAdjacentHTML('afterbegin', h); area.querySelectorAll('.sb-av [data-ir]').forEach(b => b.onclick = () => location.hash = b.dataset.ir); }).catch(() => {});
     E.painelAberto = p.id;
     $('#modelo-frame').onload = () => setTimeout(() => URL.revokeObjectURL(url), 2000);

@@ -309,25 +309,25 @@ async function xls(R,o){o=Object.assign({},o);if(o.t)o.c=true;const X=XL();if(!X
 const sufx=o=>{const k=[o.d&&'Desconto',o.t&&'Lancamento da nota',o.n&&'Lista',o.c&&!o.t&&'Centros de custo'].filter(Boolean);return k.length===1?' - '+k[0]:''};
 async function pdf(R,o){o=Object.assign({},o);if(o.t)o.c=true;const J=JS();if(!J)throw new Error('PDF indisponível.');if(!R.length)throw new Error('Nada para exportar.');
   const doc=new J({unit:'mm',format:'a4'}),W=210;
-  doc.setFillColor(18,63,45);doc.rect(0,0,W,2.2,'F');doc.setFillColor(201,138,23);doc.rect(0,2.2,W,.9,'F');
-  doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(18,63,45);doc.text('Capinópolis Clube · '+mesCap(MES),10,13);
-  doc.setFont('helvetica','normal');doc.setFontSize(8.8);doc.setTextColor(80,90,86);doc.text('CRV Industrial · Gestão de Benefícios'+(FQ||FT||FCC?' · filtros aplicados':''),10,18.5);
-  let y=25;const st={fontSize:8,cellPadding:1.6,lineColor:[225,230,226],lineWidth:.15},hs={fillColor:[31,107,74],textColor:255,fontStyle:'bold'};
-  const RN=R.slice().sort((a,b)=>a.nome.localeCompare(b.nome)),fsP={fillColor:[238,241,239],textColor:[20,33,30],fontStyle:'bold',halign:'right'};let sec=0;
-  const titulo=t=>{if(sec++){doc.addPage();y=16}doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(18,63,45);doc.text(t,10,y);y+=3};
+  /* padrão único dos documentos do RH (cabeçalho e rodapé das Sanções) */
+  const D=window.parent&&window.parent.CRV_DOC;const ES=D?D.estilo():{styles:{},headStyles:{fillColor:[36,65,79]},footStyles:{}};const MG=D?D.margem:{top:30,bottom:26,left:12,right:12};
+  let y=D?D.titulo(doc,'Capinópolis Clube · '+mesCap(MES),'Gestão de Benefícios'+(FQ||FT||FCC?' · filtros aplicados':'')):25;
+  const st=Object.assign({},ES.styles,{fontSize:8}),hs=ES.headStyles;
+  const RN=R.slice().sort((a,b)=>a.nome.localeCompare(b.nome)),fsP=Object.assign({},ES.footStyles,{halign:'right'});let sec=0;
+  const NV=D?D.cores.NAVY:[31,58,104];const titulo=t=>{if(sec++){doc.addPage();y=34}doc.setFont('helvetica','bold');doc.setFontSize(10.5);doc.setTextColor(...NV);doc.text(t,12,y);y+=3};
   if(o.d){titulo('Relatório de desconto');doc.autoTable({startY:y,head:[['Matrícula','Nome','Mensalidade','Desconto','Valor a descontar','Movimentação']],body:RN.map(r=>[r.mat,r.nome,brl(r.valor),+r.desc?brl(r.desc):'-',brl(r.liq),movTxt(r)]),
     foot:[[{content:'Total: '+RN.length+(RN.length===1?' pessoa':' pessoas'),colSpan:2,styles:{halign:'left'}},brl(soma(RN,'valor')),brl(soma(RN,'desc')),brl(soma(RN,'liq')),'']],showFoot:'lastPage',footStyles:fsP,styles:st,headStyles:hs,
-    columnStyles:{0:{cellWidth:20},2:{halign:'right',cellWidth:24},3:{halign:'right',cellWidth:21},4:{halign:'right',cellWidth:27},5:{cellWidth:38}},margin:{left:10,right:10}});y=doc.lastAutoTable.finalY+8}
+    columnStyles:{0:{cellWidth:20},2:{halign:'right',cellWidth:24},3:{halign:'right',cellWidth:21},4:{halign:'right',cellWidth:27},5:{cellWidth:38}},theme:'striped',alternateRowStyles:{fillColor:[250,249,246]},margin:MG});y=doc.lastAutoTable.finalY+8}
   if(o.t){titulo('Lançamento da nota');doc.autoTable({startY:y,head:[['Matrícula','Nome','Centro de custo','Valor total']],body:RN.map(r=>[r.mat,r.nome,r.cc?r.cc+' - '+r.ccd:'-',brl(r.valor)]),
-    foot:[[{content:'Total: '+RN.length+(RN.length===1?' pessoa':' pessoas'),colSpan:3,styles:{halign:'left'}},brl(soma(RN,'valor'))]],showFoot:'lastPage',footStyles:fsP,styles:st,headStyles:{fillColor:[29,122,136],textColor:255,fontStyle:'bold'},
-    columnStyles:{0:{cellWidth:22},3:{halign:'right',cellWidth:30}},margin:{left:10,right:10}});y=doc.lastAutoTable.finalY+8}
+    foot:[[{content:'Total: '+RN.length+(RN.length===1?' pessoa':' pessoas'),colSpan:3,styles:{halign:'left'}},brl(soma(RN,'valor'))]],showFoot:'lastPage',footStyles:fsP,styles:st,headStyles:hs,
+    columnStyles:{0:{cellWidth:22},3:{halign:'right',cellWidth:30}},theme:'striped',alternateRowStyles:{fillColor:[250,249,246]},margin:MG});y=doc.lastAutoTable.finalY+8}
   if(o.n){titulo('Lista nominal');doc.autoTable({startY:y,head:[['Mat.','Nome','Centro de custo','Tipo','Mensalidade','Desconto','A descontar']],body:R.map(r=>[r.mat,r.nome+(r.sit!=='Ativo'?' ('+r.sit+')':''),(r.cc?r.cc+' · ':'')+r.ccd,r.tipo==='F'?'Familiar':r.tipo==='I'?'Individual':'Outro',brl(r.valor),+r.desc?brl(r.desc):'-',brl(r.liq)]),
-    foot:[[{content:'Total: '+R.length+(R.length===1?' pessoa':' pessoas'),colSpan:4,styles:{halign:'left'}},brl(soma(R,'valor')),brl(soma(R,'desc')),brl(soma(R,'liq'))]],showFoot:'lastPage',footStyles:{fillColor:[238,241,239],textColor:[20,33,30],fontStyle:'bold',halign:'right'},styles:st,headStyles:hs,columnStyles:{0:{cellWidth:13},4:{halign:'right',cellWidth:22},5:{halign:'right',cellWidth:19},6:{halign:'right',cellWidth:22}},margin:{left:10,right:10}});y=doc.lastAutoTable.finalY+8}
-  if(o.c){const C=porCC(R);if(o.t){y+=2;if(y>230){doc.addPage();y=16}doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(18,63,45);doc.text('Resumo por centro de custo (valor da nota)',10,y);y+=3}else titulo('Resumo por centro de custo (valor da nota)');
+    foot:[[{content:'Total: '+R.length+(R.length===1?' pessoa':' pessoas'),colSpan:4,styles:{halign:'left'}},brl(soma(R,'valor')),brl(soma(R,'desc')),brl(soma(R,'liq'))]],showFoot:'lastPage',footStyles:fsP,styles:st,headStyles:hs,columnStyles:{0:{cellWidth:13},4:{halign:'right',cellWidth:22},5:{halign:'right',cellWidth:19},6:{halign:'right',cellWidth:22}},theme:'striped',alternateRowStyles:{fillColor:[250,249,246]},margin:MG});y=doc.lastAutoTable.finalY+8}
+  if(o.c){const C=porCC(R);if(o.t){y+=2;if(y>230){doc.addPage();y=34}doc.setFont('helvetica','bold');doc.setFontSize(10.5);doc.setTextColor(...NV);doc.text('Resumo por centro de custo (valor da nota)',12,y);y+=3}else titulo('Resumo por centro de custo (valor da nota)');
     doc.autoTable({startY:y,head:[['Centro de custo','Departamento','Sócios','Familiar','Individual','Valor da nota']],body:C.map(c=>[c.cc||'—',c.ccd||c.n,c.q,c.f,c.i,brl(c.v)]),
       foot:[['Total: '+R.length+' pessoas',C.length+' centros de custo',R.length,R.filter(r=>r.tipo==='F').length,R.filter(r=>r.tipo==='I').length,brl(soma(R,'valor'))]],showFoot:'lastPage',
-      styles:st,headStyles:{fillColor:[29,122,136],textColor:255,fontStyle:'bold'},footStyles:{fillColor:[238,241,239],textColor:[20,33,30],fontStyle:'bold'},columnStyles:{2:{halign:'right'},3:{halign:'right'},4:{halign:'right'},5:{halign:'right'}},margin:{left:10,right:10}})}
-  const n=doc.getNumberOfPages();for(let i=1;i<=n;i++){doc.setPage(i);doc.setFontSize(7.5);doc.setTextColor(120);doc.text('Gestão de Pessoas · gerado em '+new Date().toLocaleDateString('pt-BR')+(quem()?' por '+quem():'')+' · página '+i+' de '+n,10,290)}
+      styles:st,headStyles:hs,footStyles:ES.footStyles,theme:'striped',alternateRowStyles:{fillColor:[250,249,246]},columnStyles:{2:{halign:'right'},3:{halign:'right'},4:{halign:'right'},5:{halign:'right'}},margin:MG})}
+  if(D)D.moldura(doc,quem());else{const n=doc.getNumberOfPages();for(let i=1;i<=n;i++){doc.setPage(i);doc.setFontSize(7.5);doc.setTextColor(120);doc.text('Gestão de Pessoas · gerado em '+new Date().toLocaleDateString('pt-BR')+(quem()?' por '+quem():'')+' · página '+i+' de '+n,10,290)}}
   const out=await logos(doc);await salvarArq(arq()+sufx(o)+'.pdf',new Uint8Array((out||doc).output('arraybuffer')),'application/pdf')}
 
 /* ---------- eventos ---------- */

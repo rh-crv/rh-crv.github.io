@@ -16,6 +16,10 @@ const ALVO = {
   'farmacia':'#filt', 'perfil':'.gfilters', 'pesquisas':'#fbar', 'recepcao':'.filters', 'fat':'main .fbar', 'gratificacao':'.fbar'
 };
 const CSS = `
+/* janelas dos painéis: cabem na tela, o meio rola e o rodapé com os botões fica sempre visível */
+.ac-m{max-height:calc(100vh - 48px);display:flex;flex-direction:column}.ac-m>.ac-mb{overflow:auto;flex:1 1 auto;min-height:0}.ac-m>.ac-mh,.ac-m>.ac-mf{flex:none}
+.fundo>.modal{max-height:calc(100vh - 32px);display:flex;flex-direction:column}.fundo>.modal>.mcab,.fundo>.modal>.mpe{flex:none}.fundo>.modal>:not(.mcab):not(.mpe){overflow:auto;flex:1 1 auto;min-height:0}
+
 .cf-tool{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#fff;border:1px solid rgba(20,33,61,.12);border-radius:14px;box-shadow:0 1px 2px rgba(20,33,61,.05),0 6px 18px rgba(20,33,61,.06);padding:9px 12px;margin:0 0 14px;font-size:14px;color:#14213d}
 .cf-b{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(20,33,61,.14);background:#f2f4f8;color:#14213d;border-radius:10px;padding:8px 14px;font:700 14px inherit;font-family:inherit;cursor:pointer;white-space:nowrap}
 .cf-b:hover{border-color:#3b5a9a}.cf-b svg{width:16px;height:16px}

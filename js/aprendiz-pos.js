@@ -364,5 +364,16 @@ async function tela(p){
     xls:() => xls([{ tit:t, head:tipo === 't' ? TH : NH, rows:L.map(tipo === 't' ? tRow : nRow), L }]) });
   await carregar();
 }
-return { tela };
+/* pendências para a Central de Rotinas do RH: casos "A conferir" e passagens sem setor */
+async function pendencias(){
+  const [J, B, V] = await Promise.all([lerJovens(), baseColab(), lerValid(), carregarSetores()]); if (!J || !J.rows || !J.rows.length || !B) return [];
+  let CFG = {}; try { CFG = (await window.CRV_REGS(PAINEL, 'cfg')).find(x => x._id === 'geral') || {}; } catch(_){}
+  const PS = cruzar(J, B, V, CFG.crvBase !== false), R = [];
+  const K = PS.filter(x => x.st === 'conf').sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
+  if (K.length) R.push({ id:'apos-conf', sev:'info', t:'Aproveitamento pós-programa: casos a conferir', d:'Jovens com cruzamento duvidoso pelo CPF. Só entram no indicador depois de validados.', painel:'aprendiz-pos', pnome:'Aproveitamento pós-programa', itens:K.map(x => ({ nome:x.nome, mat:'', det:(x.origem || '') + ' · ' + x.mot })) });
+  const S = PS.filter(x => !x.setorA);
+  if (S.length) R.push({ id:'apos-set', sev:'info', t:'Aproveitamento pós-programa: passagens sem setor', d:'Informe o setor pelo lápis ✎ na lista "Passaram pelo programa".', painel:'aprendiz-pos', pnome:'Aproveitamento pós-programa', n:S.length, itens:S.sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR')).map(x => ({ nome:x.nome, mat:'', det:(x.origem || '') + ' · ' + brD(x.ini) + ' a ' + brD(x.fim) })) });
+  return R;
+}
+return { tela, pendencias };
 };
