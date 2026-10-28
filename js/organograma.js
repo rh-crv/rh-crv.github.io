@@ -29,7 +29,149 @@ const pessoasTxt = n => n + (n === 1 ? ' pessoa' : ' pessoas');
 
 /* atividades informadas pelo RH (preenchimento inicial; depois de salvo na ficha, vale o que estiver salvo) */
 const ASSIST = 'Triagem de candidatos\nOrganização documental\nContratos físicos\nConferência das informações\nInterface com áreas\nCumprimento de prazos\nSanções disciplinares\nIndicadores (acompanhamento)\nWhatsApp interno e externo';
-const PADRAO = { 'q:6932':{ faz:ASSIST }, 'q:15441':{ faz:ASSIST },
+/* Serviços Gerais: atividades, local e horário de serviço (planilha ATIVIDADES_EQUIPE_SOL, equipe da Solange, 28/10/2026) */
+const PADRAO_SG = {
+"q:6373": {
+"faz": "Recepção da portaria\nBanheiro feminino\nBanheiro masculino\nSala de monitoramento e supervisor\nSala do Tenente Ricardo\nSala de arquivo\nSala do operacional CTT\nSala DML\nBalança",
+"local": "Portaria dos veiculos / balança",
+"horario": "Turno A · 07:00 às 15:20",
+"obs": "Limpeza realizada na parte da manhã e manutenção após Almoço."
+},
+"q:38581": {
+"faz": "Capela\nSala Dr. Paulo Filho\nSala de reunião\nSala Dr. Leonardo\nRecepção\nJuridico\nTI\nFaturamento\nCopa\nBanheiro ADM masculino/feminino\nBanheiro masculino agricola\nSala DML",
+"local": "Diretoria / ADM central / ADM agricola",
+"horario": "Turno A · 06:00 às 16:00",
+"obs": "Limpeza realizada na parte da manhã e manutenção após Almoço. (Na parte da manhã colaboradora auxilia na manutenção da Sala Agrícola)"
+},
+"q:17036": {
+"faz": "Salas\nBanheiros almoxarifado masculino / feminino\nSala do PCM\nSala reunião oficina\nSala ferramentaria/hidraulica\nBanheiro masculino e feminino do escritorio oficina\nBanheiros masculinos oficina I e II",
+"local": "Almoxarifado / oficina",
+"horario": "Turno A · 07:00 às 15:20",
+"obs": "Limpeza realizada na parte da manhã e manutenção após Almoço. Colaboradora da Apoio no banheiro da Caldeiraria."
+},
+"q:17103": {
+"faz": "Sala Dr. Ludeir\nSala (projeto, TI, Pedro e Dean)\nRecepção\nBanheiro masculino e feminino ADM\nPCM industria\nSala Bruno armazém\nSala qualidade\nSala reunião\nSala fabrica\nBanheiro masculino / feminino (PCM)\nSala eletrica, ferramentaria e instrumentação",
+"local": "ADM industrial",
+"horario": "Turno A · 07:00 às 15:20",
+"obs": "Limpeza realizada na parte da manhã e manutenção após Almoço."
+},
+"q:36870": {
+"faz": "Auditorio, salas (ambulatorio, RH, portaria,segurança do trabalho)\nSala do agricola\nSala PCM oficina\n(recolhimento do lixo e manutenção)",
+"local": "Auditorio / ambulatorio / segurança do trabalho / sala agricola / PCM oficina",
+"horario": "Turno B · 15:00 às 23:20",
+"obs": "Limpeza realizada na parte da tarde e manutenção após Janta."
+},
+"q:18776": {
+"faz": "Conforto dos motoristas\nSala da herbicida\nVestiario masculino (herbicida)\nManutençao nos banheiros",
+"local": "Herbicida",
+"horario": "Turno A · 07:00 às 15:20",
+"obs": "Limpeza realizada na parte da manhã e manutenção após Almoço. Apoio em limpeza de bebedouros e outros setores."
+},
+"q:11400": {
+"faz": "Vestiario feminino e masculino\nSala vigilantes\nSala recepção\nSala ambulatorio e segurança do trabalho\nSala RH",
+"local": "Vestiarios / salas predio portaria pedestre",
+"horario": "Turno A · 07:00 às 15:20",
+"obs": "Limpeza realizada na parte da manhã e manutenção após Almoço."
+},
+"q:36729": {
+"faz": "Fazer café\nLimpeza do refeitorio I e II, limpeza da copa\nHigienização estufas e freezer",
+"local": "Refeitorio e copa",
+"horario": "Turno A · 07:00 às 15:20",
+"obs": "Limpeza realizada na parte da manhã e manutenção após Almoço."
+},
+"q:17851": {
+"faz": "Limpeza geral refeitorio I e II\nLimpeza das calçadas\nManutenção nas lixeiras\nApoio no almoço no refeitorio",
+"local": "Refeitorio",
+"horario": "Turno A · 07:00 às 15:20",
+"obs": "Limpeza realizada na parte da manhã e manutenção após Almoço. Apoio sempre que necessario nos outros setores."
+},
+"q:25677": {
+"faz": "Limpeza de bebedouros e purificadores\nTroca e manutenção em todos os objetos danificados na empresa (maçaneta, vasos, mictorios, montagem de moveis e etc...) reposição de materiais de limpeza nos DML",
+"local": "Manutenção (prefeito)",
+"horario": "Turno A · 07:00 às 15:20",
+"obs": "Limpeza realizada na parte da manhã e manutenção após Almoço. Apoio sempre que necessario nos outros setores."
+},
+"q:17644": {
+"faz": "Fazer café\nAuditorio, salas (ambulatorio, RH, portaria)\nBanheiros femininos e masculinos\nSala do agricola\nSala PCM oficina\nRefeitorio (recolhimento do lixo e manutenção)",
+"local": "Predio portaria central / oficina / agricola",
+"horario": "Turno C · 15:00 às 23:20",
+"obs": "Limpeza realizada na parte da tarde e manutenção após Janta."
+},
+"q:17670": {
+"faz": "Limpeza de salas (destilaria, casa de força, caldeira, difusor e limpeza e manutenção de bebedouros da area industrial.) apoio apos o almoço nas salas (RH, DP , segurança do trabalho.)",
+"local": "Supervisorios da industria",
+"horario": "Turno A · 07:00 às 15:20",
+"obs": "Limpeza realizada na parte da manhã e manutenção após Almoço."
+},
+"q:22147": {
+"faz": "Limpeza do predio\nLimpeza de bebedouros e purificadores\nLavar roupas de cama",
+"local": "Alojamentos - Pombo / casa do Alan e casa da Bia",
+"horario": "Turno A · 07:00 às 16:00",
+"obs": "Limpeza realizada na parte da manhã e manutenção após Almoço."
+},
+"q:4182": {
+"faz": "Limpeza do predio\nLimpeza de bebedouros e purificadores\nLavar roupas de cama",
+"local": "Alojamentos - Zebrina I / Andes e casa da Bia",
+"horario": "Turno A · 07:00 às 16:00",
+"obs": "Limpeza realizada na parte da manhã e manutenção após Almoço."
+},
+"q:21040": {
+"faz": "Limpeza do predio\nLimpeza de bebedouros e purificadores\nLavar roupas de cama",
+"local": "Alojamentos - Zebrinha II e Roma",
+"horario": "Turno A · 07:00 às 16:00",
+"obs": "Limpeza realizada na parte da manhã e manutenção após Almoço."
+},
+"q:42420": {
+"faz": "Fazer café\nLimpeza salas (meio ambiente, COA, COI, armazém)\nSala Dr. Cristiano\nBanheiro masculino e feminino\nSala guarita\nRefeitorio\nSala DML\nLimpeza bebedouros",
+"local": "Deposito fechado (armazém externo)",
+"horario": "Turno A · 06:00 às 15:20",
+"obs": "Limpeza realizada na parte da manhã e manutenção após Almoço. Apoio sala armazém durante a Safra."
+},
+"q:1090": {
+"faz": "Dr. Marcos Coutinho, Pedro e Dean\nDr. Ronaldo",
+"local": "Casas de apoio",
+"horario": "Turno A · 07:00 às 16:00",
+"obs": "Limpeza realizada na parte da manhã e manutenção após Almoço. Apoio nos alojamentos quando necessario (menos banheiros)."
+},
+"q:42419": {
+"faz": "Limpeza e organização de todos os banheiros industriais",
+"local": "Banheiros femininos / masculinos industria (caldeiraria / sacarose / destilaria)",
+"horario": "Turno A · 06:00 às 15:20",
+"obs": "Limpeza realizada na parte da manhã e manutenção após Almoço."
+},
+"q:44258": {
+"faz": "Limpeza do predio\nLimpeza de bebedouros e purificadores\nLavar roupas de cama",
+"local": "Alojamentos - Ituiutaba Japungu",
+"horario": "Turno A · 07:00 às 16:00",
+"obs": "Limpeza realizada na parte da manhã e manutenção após Almoço."
+},
+"q:42018": {
+"faz": "Tira folga de 5 colaboradores turno a",
+"local": "Folguista",
+"horario": "Turno A · 06:00 às 15:20",
+"obs": "Limpeza realizada na parte da manhã e manutenção após Almoço."
+},
+"q:16809": {
+"faz": "Jardinagem",
+"local": "Casa diretoria",
+"horario": "Horário administrativo",
+"obs": ""
+},
+"q:5897": {
+"faz": "Cozinheira",
+"local": "Casa diretoria",
+"horario": "Horário administrativo",
+"obs": ""
+},
+"q:18442": {
+"faz": "Auxiliar nas tarefas limpeza residencial",
+"local": "Casa diretoria",
+"horario": "Horário administrativo",
+"obs": ""
+}
+};
+
+const PADRAO0 = { 'q:6932':{ faz:ASSIST }, 'q:15441':{ faz:ASSIST },
   'q:2471':{ faz:'Onboarding\nAcompanhamento de experiência\nFérias\nVida funcional\nTreinamentos (controle) relacionados à jornada\nJovem Aprendiz\nDemissões\nRH Externo\nAplicativo Gestão de Pessoas\nSocial (eventos)\nMídia / comunicação\nNotas fiscais (lançamentos) e pedidos\nSanções disciplinares\nIndicadores (acompanhamento)' },
   'q:16068':{ faz:'Gestão dos benefícios\nAtendimento de demandas\nOuvidorias\nRegistro das manifestações\nEncaminhamento\nAcompanhamento das soluções\nNotas fiscais (lançamentos) e pedidos\nSanções disciplinares\nIndicadores (acompanhamento)' },
   'q:334':{ faz:'Gestão estratégica de pessoas\nCoordenação da equipe de RH\nGestão de desempenho\nClima organizacional e engajamento\nApoio às lideranças e gestão de conflitos\nSupervisão das rotinas de administração de pessoas\nGestão de políticas e procedimentos de RH\nGestão de indicadores de pessoas\nSocial (eventos)\nMídia / comunicação' },
@@ -38,6 +180,8 @@ const PADRAO = { 'q:6932':{ faz:ASSIST }, 'q:15441':{ faz:ASSIST },
   'j:jovem:158':{ faz:'Arquivo de treinamentos\nChecklist\nProtocolar documentos\nLançar treinamentos' },
   'j:jovem:93':{ faz:'Transmitir a integração (em vídeo)\nResponder o WhatsApp do RH (interno e externo)\nFiltrar currículos' },
   'q:45433':{ faz:'Recepção e atendimento interno\nConexão com contratos\nColeta de assinaturas\nApoio na chegada à área\nOrientação inicial\nWhatsApp interno e externo' } };
+const PADRAO = Object.assign({}, PADRAO0, PADRAO_SG);
+const infoDe = k => Object.assign({}, PADRAO[k] || {}, CFG.info[k] || {});
 
 /* ---------- seções (as fixas aqui; as acrescentadas pelo RH ficam em CFG.extras) ---------- */
 const IC = {
@@ -152,7 +296,7 @@ const CSS = `.og-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;marg
 function estilo(){ if (!document.getElementById('og-css')) { const s = document.createElement('style'); s.id = 'og-css'; s.textContent = CSS; document.head.appendChild(s); } }
 const svgIc = (d, t) => `<svg viewBox="0 0 24 24" width="${t || 20}" height="${t || 20}" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 const fotoHtml = (p, tam) => FOTOS[p.key] ? `<img src="${FOTOS[p.key]}" alt="">` : `<span style="font-size:${tam ? Math.round(tam / 2.9) : 22}px">${esc(iniciais(p.nome))}</span>`;
-const cartao = (p, st) => { const c = NIV[p.nivel].c; return `<div class="og-c" data-k="${esc(p.key)}" style="--c:${c};${st || ''}"><div class="og-f" style="background:${corDe(p.key)}">${fotoHtml(p)}</div><div class="og-n">${esc(tc(p.nome))}</div><div class="og-fu">${esc(tc(p.funcao))}</div>${p.jovem ? `<div class="og-t">${esc(p.entidade)}</div><span class="og-sel">JOVEM APRENDIZ</span>` : `<div class="og-t">${esc(tempoCasa(p.adm))}${tempoCasa(p.adm) ? ' de casa' : ''}</div>`}${p.sit === 'Afastado' ? '<span class="og-af">Afastado</span>' : ''}</div>`; };
+const cartao = (p, st) => { const c = NIV[p.nivel].c; return `<div class="og-c" data-k="${esc(p.key)}" style="--c:${c};${st || ''}"><div class="og-f" style="background:${corDe(p.key)}">${fotoHtml(p)}</div><div class="og-n">${esc(tc(p.nome))}</div><div class="og-fu">${esc(tc(p.funcao))}</div>${p.jovem ? `<div class="og-t">${esc(p.entidade)}</div><span class="og-sel">JOVEM APRENDIZ</span>` : `<div class="og-t">${esc(tempoCasa(p.adm))}${tempoCasa(p.adm) ? ' de casa' : ''}</div>${infoDe(p.key).horario ? `<div class="og-t" style="color:#5d6a85;font-weight:700">${esc(infoDe(p.key).horario)}</div>` : ''}`}${p.sit === 'Afastado' ? '<span class="og-af">Afastado</span>' : ''}</div>`; };
 
 async function tela(){
   estilo(); const pode = ehRH();
@@ -245,7 +389,7 @@ async function novoSetor(){
 
 /* ---------- ficha da pessoa ---------- */
 function ficha(k){
-  const [p, g] = acharP(k); if (!p) return; const P = g.pess, pode = ehRH(); const info = CFG.info[k] || PADRAO[k] || {};
+  const [p, g] = acharP(k); if (!p) return; const P = g.pess, pode = ehRH(); const info = infoDe(k);
   const faz = String(info.faz || '').split(/\n/).map(t => t.replace(/^[-•·\s]+/, '').trim()).filter(Boolean), proc = String(info.procure || '').split(/[,;\n]/).map(t => t.trim()).filter(Boolean);
   const chefe = P.find(x => x.key === p.chefe);
   const w = janela(esc(tc(p.nome)), `<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:12px"><div class="og-f" style="width:120px;height:120px;margin:0;background:${corDe(p.key)};--c:${NIV[p.nivel].c}">${fotoHtml(p, 120)}</div>
@@ -253,11 +397,15 @@ function ficha(k){
       <div style="font-size:12.5px;color:${g.s.cor};font-weight:700;margin-top:3px">${esc(g.s.nome)}</div>
       <div style="font-size:13px;color:#5d6a85;margin-top:6px">${p.jovem ? 'Contrato de ' + esc(brD(p.ini)) + ' a ' + esc(brD(p.fim)) : (tempoCasa(p.adm) ? esc(tempoCasa(p.adm)) + ' de casa (desde ' + esc(brD(p.adm)) + ')' : '')}${chefe ? '<br>Responde a: <b>' + esc(tc(chefe.nome)) + '</b>' : ''}</div>
       ${p.jovem ? '<span class="og-sel">JOVEM APRENDIZ</span>' : ''}</div></div>
+    ${info.local || info.horario ? `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:0 0 12px">${info.local ? `<div style="background:#f6f7f9;border-radius:10px;padding:8px 12px"><small style="display:block;font-size:11px;font-weight:800;color:#667085;text-transform:uppercase">Local de trabalho</small><b>${esc(info.local)}</b></div>` : ''}${info.horario ? `<div style="background:#f6f7f9;border-radius:10px;padding:8px 12px"><small style="display:block;font-size:11px;font-weight:800;color:#667085;text-transform:uppercase">Horário de serviço</small><b>${esc(info.horario)}</b></div>` : ''}</div>` : ''}
     <h4 style="margin:6px 0 6px;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:${g.s.cor}">O que faz no departamento</h4>
     ${faz.length ? '<ul style="margin:0 0 10px;padding-left:18px;line-height:1.6;' + (faz.length > 7 ? 'columns:2 220px;column-gap:24px' : '') + '">' + faz.map(t => '<li>' + esc(t) + '</li>').join('') + '</ul>' : '<p style="color:#8a94a8;margin:0 0 10px">Ainda não preenchido.</p>'}
+    ${info.obs ? `<p style="margin:0 0 10px;font-size:13px;color:#5d6a85"><b>Observação:</b> ${esc(info.obs)}</p>` : ''}
     ${proc.length ? `<h4 style="margin:6px 0 6px;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:${g.s.cor}">Procure para</h4><div style="display:flex;gap:6px;flex-wrap:wrap">${proc.map(t => `<span style="background:#eef1f5;border-radius:99px;padding:3px 10px;font-size:12.5px">${esc(t)}</span>`).join('')}</div>` : ''}
     ${pode ? `<details style="margin-top:14px;border-top:1px solid #e4e7ec;padding-top:10px"><summary style="cursor:pointer;font-weight:700">Editar (RH)</summary>
       <label style="display:block;font-size:12px;font-weight:700;color:#667085;margin-top:10px">O QUE FAZ NO DEPARTAMENTO (um tópico por linha)<textarea id="og-faz" rows="6" style="width:100%;margin-top:4px;padding:8px;border:1px solid #d5dbe6;border-radius:8px;font:inherit">${esc(faz.join('\n'))}</textarea></label>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px"><label style="flex:2;min-width:200px;font-size:12px;font-weight:700;color:#667085">LOCAL DE TRABALHO<input id="og-loc" value="${esc(info.local || '')}" style="width:100%;margin-top:4px;padding:8px;border:1px solid #d5dbe6;border-radius:8px;font:inherit"></label><label style="flex:1;min-width:180px;font-size:12px;font-weight:700;color:#667085">HORÁRIO DE SERVIÇO<input id="og-hor" value="${esc(info.horario || '')}" placeholder="Ex.: Turno A · 07:00 às 15:20" style="width:100%;margin-top:4px;padding:8px;border:1px solid #d5dbe6;border-radius:8px;font:inherit"></label></div>
+      <label style="display:block;font-size:12px;font-weight:700;color:#667085;margin-top:8px">OBSERVAÇÃO<input id="og-obs" value="${esc(info.obs || '')}" style="width:100%;margin-top:4px;padding:8px;border:1px solid #d5dbe6;border-radius:8px;font:inherit"></label>
       <label style="display:block;font-size:12px;font-weight:700;color:#667085;margin-top:8px">PROCURE PARA (separe por vírgula)<input id="og-pro" value="${esc(proc.join(', '))}" placeholder="Ex.: atestados, benefícios, admissão" style="width:100%;margin-top:4px;padding:8px;border:1px solid #d5dbe6;border-radius:8px;font:inherit"></label>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px"><label style="flex:1;min-width:180px;font-size:12px;font-weight:700;color:#667085">NÍVEL<select id="og-niv" style="width:100%;margin-top:4px;padding:8px;border:1px solid #d5dbe6;border-radius:8px;font:inherit">${NIV.map((n, i) => `<option value="${i}" ${p.nivel === i ? 'selected' : ''}>${n.n}${CFG.nivel[k] == null && nivelAuto(p) === i ? ' (pela função)' : ''}</option>`).join('')}</select></label>
       <label style="flex:1;min-width:180px;font-size:12px;font-weight:700;color:#667085">RESPONDE A<select id="og-che" style="width:100%;margin-top:4px;padding:8px;border:1px solid #d5dbe6;border-radius:8px;font:inherit"><option value="">(automático)</option><option value="-" ${CFG.chefe[k] === '-' ? 'selected' : ''}>Ninguém (topo da seção)</option>${P.filter(x => x.key !== k).map(x => `<option value="${esc(x.key)}" ${CFG.chefe[k] === x.key ? 'selected' : ''}>${esc(tc(x.nome))} · ${esc(tc(x.funcao))}</option>`).join('')}</select></label></div></details>` : ''}`,
@@ -266,7 +414,7 @@ function ficha(k){
   w.querySelector('#og-foto').onclick = () => recortar(k, () => { w.remove(); desenhar(); ficha(k); });
   const fx = w.querySelector('#og-fx'); if (fx) fx.onclick = async () => { if (!confirm('Tirar a foto de ' + tc(p.nome) + '?')) return; try { await salvarFoto(k, ''); w.remove(); desenhar(); toast('Foto retirada.'); } catch(e){ toast(traduzErro(e), true); } };
   w.querySelector('#og-sv').onclick = async () => { const b = w.querySelector('#og-sv'); b.disabled = true;
-    CFG.info[k] = { faz:w.querySelector('#og-faz').value.trim(), procure:w.querySelector('#og-pro').value.trim() };
+    CFG.info[k] = { faz:w.querySelector('#og-faz').value.trim(), procure:w.querySelector('#og-pro').value.trim(), local:w.querySelector('#og-loc').value.trim(), horario:w.querySelector('#og-hor').value.trim(), obs:w.querySelector('#og-obs').value.trim() };
     const nv = +w.querySelector('#og-niv').value; if (nv === nivelAuto(p)) delete CFG.nivel[k]; else CFG.nivel[k] = nv;
     const ch = w.querySelector('#og-che').value; if (ch === '-') CFG.chefe[k] = '-'; else if (ch) CFG.chefe[k] = ch; else delete CFG.chefe[k];
     try { await salvarCfg(); await montar(); w.remove(); desenhar(); toast('Salvo.'); } catch(e){ b.disabled = false; toast(traduzErro(e), true); } };
@@ -328,9 +476,10 @@ async function pdf(LG){
   /* cartão deitado (seções grandes, agrupadas por função) */
   const cartaoH = (p, x, y, cw, ch, k) => { doc.setFillColor(255, 255, 255); doc.setDrawColor(227, 230, 236); doc.setLineWidth(.25); doc.roundedRect(x, y, cw, ch, 1.6 * k, 1.6 * k, 'FD'); doc.setFillColor(...hex(NIV[p.nivel].c)); doc.rect(x, y + .6 * k, 1 * k, ch - 1.2 * k, 'F');
     const r = 5 * k; foto(p, x + 3 * k + r, y + ch / 2, r, k); const tx = x + 6 * k + 2 * r, tw = cw - (tx - x) - 2 * k;
-    doc.setTextColor(20, 33, 61); doc.setFont('helvetica', 'bold'); doc.setFontSize(6.8 * k); const nm = doc.splitTextToSize(tc(p.nome), tw).slice(0, 2); let ty = y + ch / 2 - (nm.length - 1) * 1.4 * k - .6 * k; nm.forEach(t => { doc.text(t, tx, ty); ty += 2.8 * k; });
+    doc.setTextColor(20, 33, 61); doc.setFont('helvetica', 'bold'); doc.setFontSize(6.8 * k); const nm = doc.splitTextToSize(tc(p.nome), tw).slice(0, 2); let ty = y + ch / 2 - (nm.length - 1) * 1.4 * k - 2.2 * k; nm.forEach(t => { doc.text(t, tx, ty); ty += 2.8 * k; });
     doc.setFont('helvetica', 'normal'); doc.setFontSize(5.6 * k); doc.setTextColor(93, 106, 133); doc.text(doc.splitTextToSize(tc(p.funcao), tw)[0] || '', tx, ty + .2 * k);
-    if (tempoCasa(p.adm)) { doc.setFontSize(5.2 * k); doc.setTextColor(138, 148, 168); doc.text(tempoCasa(p.adm) + ' de casa', tx, ty + 2.6 * k); } };
+    if (tempoCasa(p.adm)) { doc.setFontSize(5.2 * k); doc.setTextColor(138, 148, 168); doc.text(tempoCasa(p.adm) + ' de casa', tx, ty + 2.6 * k); }
+    const hi = infoDe(p.key); if (hi.horario || hi.local) { doc.setFontSize(5 * k); doc.setTextColor(93, 106, 133); doc.setFont('helvetica', 'bold'); doc.text(doc.splitTextToSize([hi.horario, hi.local].filter(Boolean).join(' · '), tw)[0], tx, ty + 5 * k); } };
   LG.forEach((g, gi) => { if (gi) doc.addPage('a4', ori(g)); const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(); const s = g.s, P = g.pess;
     let y0 = D ? D.titulo(doc, s.id === 'gp' ? 'Organograma do RH' : 'Organograma · ' + s.nome, (s.ligado ? 'Setor ligado à Gestão de Pessoas' : 'Gestão de Pessoas') + ' · CRV Industrial · Unidade Capinópolis') : 30;
     const lg = NIV.filter((n, i) => P.some(p => p.nivel === i)); let lx = 12; doc.setFontSize(7.5); doc.setFont('helvetica', 'normal');
@@ -340,7 +489,7 @@ async function pdf(LG){
       const cw = 34 * k, ch = 40 * k, gy = 12 * k; const L = layout(P, cw, ch, 5 * k, gy); const ox = 12 + (areaW - L.W) / 2, oy = y0;
       doc.setDrawColor(195, 202, 214); doc.setLineWidth(.4); linhas(P, L.pos, cw, ch, gy).forEach(pts => { for (let i = 1; i < pts.length; i++) doc.line(ox + pts[i - 1][0], oy + pts[i - 1][1], ox + pts[i][0], oy + pts[i][1]); });
       P.forEach(p => { const o = L.pos[p.key]; cartaoV(p, ox + o.x, oy + o.y, cw, ch, k); }); }
-    else { const { lid, B } = grupos(P); const COL = 3, CW = 58, CH = 16, GX = 4, GY = 3, HD = 7; const gw = COL * CW + (COL - 1) * GX;
+    else { const { lid, B } = grupos(P); const COL = 3, CW = 58, CH = 19, GX = 4, GY = 3, HD = 7; const gw = COL * CW + (COL - 1) * GX;
       const LL = lid.length ? layout(lid, 34, 40, 5, 12) : { W:0, H:0, pos:{} };
       const hU = (lid.length ? LL.H + 10 : 0) + B.reduce((t, b) => t + HD + Math.ceil(b.L.length / COL) * (CH + GY) + 3, 0);
       const k = Math.min(1.25, areaW / Math.max(gw, LL.W), areaH / hU); let y = y0; const ox = 12 + (areaW - gw * k) / 2;
