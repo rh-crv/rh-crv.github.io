@@ -43,10 +43,10 @@ const etapaExp = (e, h) => e && e.v1 && !e.dec1 && e.v1 >= addD(h, -10) ? { k:'p
 const assinaturaOk = (dig, nome) => { const a = normal(dig).replace(/\s+/g, ' ').trim(), b = normal(nome).replace(/\s+/g, ' ').trim(); return a.length >= 5 && a.split(' ').length >= 2 && (a === b || b.startsWith(a) || a.startsWith(b)); };
 /* assistente (secretária) do gestor: assina com o próprio nome e o envio sai também com o gestor responsável, que autorizou */
 const ASSIST = () => (window.CRV_ASSIST && window.CRV_ASSIST()) || null;
-const tcN = n => String(n || '').toLowerCase().replace(/(^|\s)(\S)/g, (m, e, l) => e + l.toUpperCase()).replace(/\b(Da|De|Do|Das|Dos|E)\b/g, x => x.toLowerCase());
+const tcG = n => String(n || '').toLowerCase().replace(/(^|\s)(\S)/g, (m, e, l) => e + l.toUpperCase()).replace(/\b(Da|De|Do|Das|Dos|E)\b/g, x => x.toLowerCase());
 const quemG = (a, e) => a && a.gestorResp ? a.gestorResp + ' (preenchido por ' + (a.nome || e.autor_nome || '') + ', assistente)' : (a && a.nome) || e.autor_nome || '';
 const linhaResp = a => a && a.gestorResp ? 'Gestor responsável que autorizou o preenchimento: ' + a.gestorResp : '';
-const blocoAssinatura = (pref, nome) => `<div class="gs-ass">${ASSIST() ? `<p style="margin:0 0 6px;font-size:13px">Você assina como <b>assistente</b>. O envio sai também com o nome do gestor responsável que autorizou o preenchimento: <b>${esc(tcN(ASSIST().nome))}</b>.</p>` : ''}<label><input type="checkbox" id="${pref}-dec"> ${ASSIST() ? 'Declaro que preenchi com autorização do gestor responsável, que as informações estão corretas e autorizo a Gestão de Pessoas a dar continuidade.' : 'Declaro que as informações estão corretas e autorizo a Gestão de Pessoas a dar continuidade.'}</label>
+const blocoAssinatura = (pref, nome) => `<div class="gs-ass">${ASSIST() ? `<p style="margin:0 0 6px;font-size:13px">Você assina como <b>assistente</b>. O envio sai também com o nome do gestor responsável que autorizou o preenchimento: <b>${esc(tcG(ASSIST().nome))}</b>.</p>` : ''}<label><input type="checkbox" id="${pref}-dec"> ${ASSIST() ? 'Declaro que preenchi com autorização do gestor responsável, que as informações estão corretas e autorizo a Gestão de Pessoas a dar continuidade.' : 'Declaro que as informações estão corretas e autorizo a Gestão de Pessoas a dar continuidade.'}</label>
   <label class="gs-assn">Assinatura: digite seu nome completo<input id="${pref}-nm" autocomplete="off" placeholder="${esc(nome)}"></label><small>A assinatura fica registrada com data e hora e o seu usuário do app.</small></div>`;
 
 /* opções de área/gerência para o cadastro do gestor */
@@ -191,7 +191,7 @@ async function tela(abaIni){
   let per = 3; const PERS = [[1, 'Último mês'], [3, '3 meses'], [6, '6 meses'], [12, '12 meses']];
   const desde = () => addD(h, -30 * per - (per === 12 ? 5 : 0));
   const aloL = P.filter(p => p.alo);
-  $('#gs-sub').innerHTML = `${ASSIST() ? `<span class="gs-ch">Assistente de ${esc(tcN(ASSIST().nome))}</span>` : ''}${A.map(a => `<span class="gs-ch">${esc(a.tipo)}: ${esc(a.nome)}</span>`).join('')} <span>Atualizado pelo RH em ${esc(new Date(A.map(a => a.gerado).sort().pop()).toLocaleDateString('pt-BR'))}</span>`;
+  $('#gs-sub').innerHTML = `${ASSIST() ? `<span class="gs-ch">Assistente de ${esc(tcG(ASSIST().nome))}</span>` : ''}${A.map(a => `<span class="gs-ch">${esc(a.tipo)}: ${esc(a.nome)}</span>`).join('')} <span>Atualizado pelo RH em ${esc(new Date(A.map(a => a.gerado).sort().pop()).toLocaleDateString('pt-BR'))}</span>`;
   const H = h, em15 = addD(H, 15);
   let ENV = []; const lerEnv = async () => { try { const r = await sb.from('gestor_envios').select('*').order('criado_em', { ascending:false }); ENV = r.error ? [] : (r.data || []); } catch(_){ ENV = []; } };
   await lerEnv();
@@ -338,7 +338,7 @@ async function tela(abaIni){
     const { error } = await sb.from('gestor_envios').insert(row); if (error) throw error; try { window.CRV_LOG_ACESSO && window.CRV_LOG_ACESSO('enviou', TIPO_ENV[tipo] || tipo, p.n + ' (' + p.m + ')'); } catch(_){} await lerEnv(); return row; };
   const lerAss = (m, pref) => { const nm = m.querySelector('#' + pref + '-nm').value.trim(), ok = m.querySelector('#' + pref + '-dec').checked;
     if (!ok) return [null, 'Marque a declaração de autorização.']; if (!assinaturaOk(nm, E.perfil.nome)) return [null, 'A assinatura precisa ser o seu nome completo, como no seu acesso: ' + E.perfil.nome + '.'];
-    const as = ASSIST(); if (as) return [{ nome:nm, em:new Date().toISOString(), usuario:E.perfil.usuario || '', assistente:true, gestorResp:tcN(as.nome), gestorRespId:as.id, declaracao:'Preenchido por ' + nm + ', assistente, com autorização do gestor responsável ' + tcN(as.nome) + '. Declaro que as informações estão corretas e autorizo a Gestão de Pessoas a dar continuidade.' }, ''];
+    const as = ASSIST(); if (as) return [{ nome:nm, em:new Date().toISOString(), usuario:E.perfil.usuario || '', assistente:true, gestorResp:tcG(as.nome), gestorRespId:as.id, declaracao:'Preenchido por ' + nm + ', assistente, com autorização do gestor responsável ' + tcG(as.nome) + '. Declaro que as informações estão corretas e autorizo a Gestão de Pessoas a dar continuidade.' }, ''];
     return [{ nome:nm, em:new Date().toISOString(), usuario:E.perfil.usuario || '', declaracao:'Declaro que as informações estão corretas e autorizo a Gestão de Pessoas a dar continuidade.' }, '']; };
   function formExp(p){ if (!p) return; const et = etapaExp(p.exp, h); if (!et) return; const lim = prazoEnc(et.venc), tarde = h > lim, venceu = h > et.venc;
     abrirModal({ titulo:`Avaliação de experiência · ${p.n}`, largo:true, corpo:`<div class="gs-fid" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div><small>Função</small><b>${esc(p.f)}</b></div><div><small>Etapa</small><b>${esc(et.t)}</b></div><div><small>Vencimento</small><b>${esc(brD(et.venc))}</b></div><div><small>Admissão</small><b>${esc(brD(p.adm))}</b></div><div><small>Faltas no ano · sanções</small><b>${p.faAno || 0} · ${(p.san || []).length}</b></div><div><small>Encerramento: enviar até</small><b class="${tarde ? 'nr-atr' : ''}">${esc(brD(lim))}</b></div></div>
@@ -457,7 +457,7 @@ async function tela(abaIni){
     cabecalhoPDF(doc, 'Programação de férias da equipe', A.map(a => a.nome).join(', ') + ' · prazo: até o dia 15 do mês anterior');
     doc.autoTable({ startY:104, head:[['Colaborador', 'Matrícula', 'Função', 'Período aquisitivo', 'Data limite', 'Saldo', '1ª parcela (início / dias)', '2ª parcela', '3ª parcela', 'Abono', 'Ciente do colaborador']], body:L.map(f => [f.p.n, f.p.m, f.p.f, brD(f.de) + ' a ' + brD(f.ate), brD(f.lim), f.saldo + 'd', f.prog || '', '', '', '', '']), margin:{ left:24, right:24 }, styles:{ fontSize:7.5, cellPadding:4, minCellHeight:20 }, headStyles:{ fillColor:[36,66,124] }, columnStyles:{ 0:{ cellWidth:130 }, 9:{ cellWidth:90 } } });
     const y = Math.min(doc.lastAutoTable.finalY + 40, 560); doc.setDrawColor(120); doc.line(60, y, 300, y); doc.line(480, y, 720, y); doc.setFontSize(8.5); doc.setTextColor(60, 70, 90);
-    doc.text(ASSIST() ? 'Gestor da área: ' + tcN(ASSIST().nome) + ' · preenchido por ' + E.perfil.nome : 'Gestor da área: ' + E.perfil.nome, 60, y + 12); doc.text('Data: ____/____/______', 480, y + 12);
+    doc.text(ASSIST() ? 'Gestor da área: ' + tcG(ASSIST().nome) + ' · preenchido por ' + E.perfil.nome : 'Gestor da área: ' + E.perfil.nome, 60, y + 12); doc.text('Data: ____/____/______', 480, y + 12);
     rodapePDF(doc); baixar(doc.output('blob'), 'Programação de férias da equipe.pdf'); }
   function imprimirAvaliacoes(L){ const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit:'pt', format:'a4' }); let first = true;
     L.forEach(p => { const et = etapaExp(p.exp, h); if (!et) return; if (!first) doc.addPage(); first = false;

@@ -443,7 +443,9 @@ function rota(){
   fecharModal();
   const h = location.hash || '#/';
   logAcesso('abriu', ondeDe(h));
-  if (E.perfil.papel === 'gestor') return h === '#/conta' ? telaConta() : GESTOR().tela(h.startsWith('#/eq/') ? h.slice(5) : '');
+  if (E.perfil.papel === 'gestor') { if (h === '#/conta') return telaConta();
+    /* se algo falhar ao montar a tela, mostra o erro em vez de ficar carregando para sempre */
+    return Promise.resolve().then(() => GESTOR().tela(h.startsWith('#/eq/') ? h.slice(5) : '')).catch(e => { console.error(e); const c = $('#gs-corpo') || $('#app'); if (c) c.innerHTML = `<div class="cartao vazio"><h3>Não consegui abrir a sua equipe</h3><p>Atualize a página. Se continuar, avise a Gestão de Pessoas. Detalhe: ${esc(e && e.message || String(e))}</p></div>`; }); }
   if (h.startsWith('#/p/')) { const [id, acao] = h.slice(4).split('/'); return telaPainel(decodeURIComponent(id), acao || ''); }
   if (h === '#/admin' && ehAdmin()) return telaAdmin();
   if (h === '#/importar' && podeImportar()) return telaImportar();
