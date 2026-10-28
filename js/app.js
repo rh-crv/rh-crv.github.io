@@ -88,6 +88,8 @@ function traduzErro(e){
   const m = (e?.message || String(e||'')).toLowerCase();
   if (m.includes('invalid login')) return 'Usuário ou senha incorretos.';
   if (m.includes('already registered') || m.includes('already been registered') || m.includes('duplicate key')) return 'Esse usuário já existe. Escolha outro nome de usuário.';
+  if (m.includes('different from the old') || m.includes('same_password') || m.includes('same password')) return 'A nova senha precisa ser diferente da senha atual.';
+  if (m.includes('session missing') || m.includes('session not found') || m.includes('jwt expired') || m.includes('invalid jwt') || m.includes('reauthenticat')) return 'Sua sessão expirou. Clique em Sair, entre de novo com a senha atual e troque a senha logo em seguida.';
   if (m.includes('password should be at least') || m.includes('weak')) return 'A senha precisa ter pelo menos 6 caracteres.';
   if (m.includes('email not confirmed')) return 'Login ainda não liberado. No Supabase, desative a opção "Confirm email" (veja o passo a passo).';
   if (m.includes('signups not allowed') || m.includes('signup is disabled')) return 'Cadastro desativado no Supabase. Ative "Allow new users to sign up" (veja o passo a passo).';
@@ -2568,9 +2570,14 @@ function telaConta(){
     const msg = (t, ok) => $('#c-msg').innerHTML = `<div class="${ok?'ok':'erro'}">${esc(t)}</div>`;
     if (a.length < 6) return msg('A senha precisa ter pelo menos 6 caracteres.');
     if (a !== b) return msg('As senhas não conferem.');
-    const { error } = await sb.auth.updateUser({ password: a });
-    if (error) return msg(traduzErro(error));
-    msg('Senha alterada.', true); $('#c-s1').value = $('#c-s2').value = '';
+    const bt = $('#c-ok'); bt.disabled = true; bt.textContent = 'Salvando…';
+    try {
+      /* renova a sessão antes: sessão antiga (app aberto há muito tempo) faz a troca falhar sem explicar */
+      try { await sb.auth.refreshSession(); } catch(_){}
+      const { error } = await sb.auth.updateUser({ password: a });
+      if (error) { console.warn('troca de senha', error); return msg(traduzErro(error)); }
+      registrar(null, 'trocou a própria senha', ''); msg('Senha alterada. Na próxima entrada, use a nova senha.', true); $('#c-s1').value = $('#c-s2').value = '';
+    } catch(e){ msg(traduzErro(e)); } finally { bt.disabled = false; bt.textContent = 'Salvar nova senha'; }
   };
 }
 
