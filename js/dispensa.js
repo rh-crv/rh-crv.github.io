@@ -1,101 +1,115 @@
 /* =====================================================================
-   DISPENSA DO AVISO PRÉVIO (documento entregue junto com o papel de demissão)
-   Escolhe a modalidade (aviso trabalhado, aviso indenizado ou justa causa) e o colaborador pela matrícula;
-   os dados vêm da Base Geral de Colaboradores (Quadro). Gera o PDF no padrão único dos documentos do RH,
-   com as assinaturas na mesma folha. O texto de cada modalidade pode ser ajustado e salvo como modelo
-   (registros do Quadro, caminho 'sistema/dispensa-aviso'); o texto padrão é o modelo que o RH já usa.
+   DOCUMENTOS DE DISPENSA (entregues junto com o papel de demissão)
+   1) Dispensa (da empresa): aviso indenizado, aviso trabalhado ou justa causa — modelo
+      DISPENSA_SEM_JUSTA_CAUSA_AVISO_INDENIZADO_CRV.docx, assinado pela coordenação de RH.
+   2) Pedido do colaborador para não cumprir o aviso prévio trabalhado — modelo Dispensa_Aviso_Previo_trabalhado.docx.
+   O colaborador vem da Base Geral de Colaboradores (Quadro) pela matrícula. PDF no padrão único dos documentos
+   do RH (cabeçalho CRV, rodapé com os dados da empresa), tudo numa folha, sem mostrar quem emitiu.
    ===================================================================== */
 window.CRV_DAV_INIT = function(X){
 'use strict';
-const { sb, E, $, esc, brD, abrirModal, fecharModal, toast, traduzErro, baixar } = X;
-const quem = () => (E.perfil && E.perfil.nome) || '';
+const { esc, brD, abrirModal, fecharModal, toast, baixar } = X;
 const tc = s => String(s || '').toLowerCase().replace(/(^|[\s\/(.-])(\S)/g, (m, a, b) => a + b.toUpperCase()).replace(/ (Da|De|Do|Dos|Das|E) /g, m => m.toLowerCase()).replace(/\b(Ii|Iii|Iv|Rh|Crv|Dp|Td)\b/g, m => m.toUpperCase());
 const fCPF = c => { c = String(c || '').replace(/\D/g, ''); if (c.length && c.length < 11) c = c.padStart(11, '0'); return c.length === 11 ? c.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : c; };
-const MOD = [ { k:'trab', n:'Aviso prévio trabalhado' }, { k:'inde', n:'Aviso prévio indenizado' }, { k:'jc', n:'Justa causa' } ];
-/* texto do modelo que o RH já usa (Dispensa_Aviso_Previo_trabalhado.docx); campos entre chaves são preenchidos sozinhos */
-const ASSUNTO0 = 'Solicitação de dispensa do Aviso Prévio Trabalhado';
-const CORPO0 = 'Eu, {NOME}, portador(a) do CPF {CPF} e matrícula {MATRICULA}, atualmente exercendo o cargo de {CARGO}, venho, por meio desta, solicitar formalmente minha dispensa do cumprimento do aviso prévio trabalhado, iniciado em {DATA_AVISO}.\n\nPor motivos {MOTIVO}, necessito encerrar minhas atividades imediatamente, não podendo continuar cumprindo o aviso prévio até a data inicialmente prevista. Estou ciente que será efetuado o desconto correspondente ao período não trabalhado, conforme previsto na legislação vigente.\n\nAgradeço pela atenção.';
-let TXT = null, Q = null;
-async function textos(){ if (TXT) return TXT; TXT = {};
-  try { const { data } = await sb.from('registros').select('dados').eq('painel', 'quadro').eq('caminho', 'sistema/dispensa-aviso').maybeSingle(); TXT = (data && data.dados && data.dados.mod) || {}; } catch(_){} return TXT; }
-async function salvarTextos(){ const { error } = await sb.from('registros').upsert({ painel:'quadro', caminho:'sistema/dispensa-aviso', colecao:'sistema', doc_id:'dispensa-aviso', dados:{ mod:TXT, em:new Date().toISOString(), por:quem() }, atualizado_por:quem() }, { onConflict:'painel,caminho' }); if (error) throw error; }
-const modelo = k => Object.assign({ assunto:ASSUNTO0, corpo:CORPO0 }, TXT[k] || {});
-const preencher = (t, r) => String(t || '').split('{NOME}').join(r.nome || '____________________').split('{CPF}').join(r.cpf || '___.___.___-__').split('{MATRICULA}').join(r.mat || '______').split('{CARGO}').join(r.cargo || '____________________')
-  .split('{DATA_AVISO}').join(brD(r.dataAviso) || '____/____/______').split('{MOTIVO}').join(r.motivo || 'pessoais');
+const hoje = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+const extenso = iso => { const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/); if (!m) return ''; const M = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro']; return 'Capinópolis/MG, ' + m[3] + ' de ' + M[+m[2] - 1] + ' de ' + m[1] + '.'; };
+/* dispensa da empresa: título e como a modalidade aparece no texto */
+const MOD = [ { k:'inde', n:'Aviso indenizado', tit:'Dispensa sem Justa Causa – Aviso Indenizado', txt:'aviso indenizado' },
+              { k:'trab', n:'Aviso trabalhado', tit:'Dispensa sem Justa Causa – Aviso Trabalhado', txt:'aviso trabalhado' },
+              { k:'jc',   n:'Justa causa',      tit:'Dispensa por Justa Causa',                    txt:'por justa causa' } ];
+const DOCS = [ { k:'emp', n:'Dispensa (entregue pela empresa)', d:'Aviso indenizado, aviso trabalhado ou justa causa · assinado pela coordenação de RH' },
+               { k:'ped', n:'Pedido do colaborador', d:'Quando o colaborador não quer cumprir o aviso prévio trabalhado' } ];
+let Q = null;
 
-/* ---------- PDF no padrão do RH (cabeçalho CRV, rodapé com os dados da empresa), tudo numa folha ---------- */
-function montar(r, K){
-  const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit:'mm', format:'a4' }); const D = window.CRV_DOC; const L = 16, W = 178;
-  const titulo = String(r.assunto || ASSUNTO0).replace(/^assunto:\s*/i, '');
-  let y = D.titulo(doc, titulo, null);
-  y = D.caixa(doc, y, [['Colaborador(a):', tc(r.nome)], ['Matrícula:', r.mat || '']]) - 3;
-  y = D.caixa(doc, y, [['Cargo:', tc(r.cargo)], ['Modalidade:', (MOD.find(m => m.k === r.mod) || MOD[0]).n]]) + 4;
-  /* texto mais arejado: fonte e entrelinha maiores, e a folha distribuída (texto, respiro e assinaturas) em vez de tudo grudado em cima */
-  doc.setTextColor(30, 36, 48); const fs = 12.4 * K, lh = 7.6 * K; doc.setFont('helvetica', 'normal'); doc.setFontSize(fs);
-  const PAR = preencher(r.corpo, r).replace(/\r/g, '').split(/\n\s*\n|\n/).map(t => t.trim()).filter(Boolean).map(t => doc.splitTextToSize(t, W));
-  const gap = 6.5 * K, altTexto = PAR.reduce((a, ls) => a + ls.length * lh, 0) + (PAR.length - 1) * gap;
-  const livre = Math.max(0, 222 - (y + 8) - altTexto);   // espaço que sobra até a área das assinaturas
-  y += 10 + Math.min(8, livre * .15);
+/* ---------- PDF ---------- */
+function cabecalho(doc, titulo, dataIso){ const C = window.CRV_DOC.cores; const y = 36;
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(...C.NAVY); doc.text(titulo, 12, y);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...C.INK); doc.text(extenso(dataIso), 12, y + 5.5); return y + 10; }
+/* parágrafos justificados, com a folha distribuída: texto arejado e as assinaturas embaixo */
+function paragrafos(doc, txts, y, K, L, W){ const fs = 12.4 * K, lh = 7.6 * K, gap = 6.5 * K; doc.setFont('helvetica', 'normal'); doc.setFontSize(fs); doc.setTextColor(30, 36, 48);
+  const PAR = txts.map(t => String(t || '').trim()).filter(Boolean).map(t => doc.splitTextToSize(t, W));
+  const alt = PAR.reduce((a, ls) => a + ls.length * lh, 0) + (PAR.length - 1) * gap, livre = Math.max(0, 222 - (y + 8) - alt);
+  y += 10 + Math.min(14, livre * .12);
   PAR.forEach((ls, ip) => { ls.forEach((ln, i) => { const ws = ln.split(' ').filter(Boolean);
       if (i < ls.length - 1 && ws.length > 1) { const tw = ws.reduce((s, w) => s + doc.getTextWidth(w), 0), sp = (W - tw) / (ws.length - 1); let x = L; ws.forEach(w => { doc.text(w, x, y); x += doc.getTextWidth(w) + sp; }); }
       else doc.text(ln, L, y); y += lh; }); if (ip < PAR.length - 1) y += gap; });
-  y += 30;
-  const ys = Math.min(Math.max(y, 222), 240); const yy = D.assinaturas(doc, ys - 16, [{ nome:String(r.nome || '').toUpperCase(), cargo:'Colaborador(a) · Matrícula ' + (r.mat || '') }, { nome:'CRV INDUSTRIAL LTDA', cargo:'Empresa' }]);
-  if (yy != null) { doc.setFont('helvetica', 'normal'); doc.setFontSize(8.4); doc.setTextColor(30, 36, 48); const cx = doc.internal.pageSize.getWidth() / 2; doc.text('Data: ____/____/________', cx - 50, yy + 3, { align:'center' }); }
+  return y; }
+function montar(r, K){
+  const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit:'mm', format:'a4' }); const D = window.CRV_DOC; const L = 16, W = 178; let y, ass, extraData = false;
+  if (r.doc === 'emp') { const M = MOD.find(m => m.k === r.mod) || MOD[0], fem = r.trat === 'a';
+    y = cabecalho(doc, M.tit, r.dataDoc);
+    y = D.caixa(doc, y, [['Colaborador(a):', tc(r.nome)], ['Matrícula:', r.mat || '']]) - 3;
+    y = D.caixa(doc, y, [['Cargo:', tc(r.cargo)], ['Dispensa:', brD(r.dataDisp) + ' · ' + M.n]]) + 4;
+    y = paragrafos(doc, [(fem ? 'A colaboradora ' : 'O colaborador ') + String(r.nome || '').toUpperCase() + ', matrícula ' + (r.mat || '') + ', está sendo ' + (fem ? 'dispensada' : 'dispensado') + ' no dia ' + brD(r.dataDisp) + ', ' + M.txt + '.', 'Por ser verdade, firmo o presente.'], y, K, L, W);
+    ass = r.ass && r.ass.length ? r.ass : [{ nome:'Michelle Patrícia Alves Pereira', cargo:'Coordenadora de RH' }]; }
+  else { y = cabecalho(doc, 'Solicitação de Dispensa do Aviso Prévio Trabalhado', r.dataDoc);
+    y = D.caixa(doc, y, [['Colaborador(a):', tc(r.nome)], ['Matrícula:', r.mat || '']]) - 3;
+    y = D.caixa(doc, y, [['Cargo:', tc(r.cargo)], ['Início do aviso:', brD(r.dataAviso)]]) + 4;
+    y = paragrafos(doc, ['Eu, ' + String(r.nome || '').toUpperCase() + ', portador(a) do CPF ' + (r.cpf || '___.___.___-__') + ' e matrícula ' + (r.mat || '') + ', atualmente exercendo o cargo de ' + tc(r.cargo) + ', venho, por meio desta, solicitar formalmente minha dispensa do cumprimento do aviso prévio trabalhado, iniciado em ' + brD(r.dataAviso) + '.',
+      'Por motivos ' + (r.motivo || 'pessoais') + ', necessito encerrar minhas atividades imediatamente, não podendo continuar cumprindo o aviso prévio até a data inicialmente prevista. Estou ciente que será efetuado o desconto correspondente ao período não trabalhado, conforme previsto na legislação vigente.',
+      'Agradeço pela atenção.'], y, K, L, W);
+    ass = [{ nome:String(r.nome || '').toUpperCase(), cargo:'Colaborador(a) · Matrícula ' + (r.mat || '') }, { nome:'CRV INDUSTRIAL LTDA', cargo:'Empresa' }]; extraData = true; }
+  /* assinaturas na mesma folha */
+  /* texto curto (dispensa da empresa): assinatura mais perto do texto, sem buraco no meio da folha */
+  y += extraData ? 30 : 42; const ys = Math.min(Math.max(y, extraData ? 222 : 178), 240); const yy = D.assinaturas(doc, ys - 16, ass);
+  if (yy != null && extraData) { doc.setFont('helvetica', 'normal'); doc.setFontSize(8.4); doc.setTextColor(30, 36, 48); doc.text('Data: ____/____/________', doc.internal.pageSize.getWidth() / 2 - 50, yy + 3, { align:'center' }); }
   D.moldura(doc);
   return { doc, cabe:yy != null && doc.getNumberOfPages() === 1 };
 }
-async function gerar(r){ let K = 1, B = montar(r, K); while (!B.cabe && K > .7) { K = Math.round((K - .05) * 100) / 100; B = montar(r, K); }
+async function gerar(r){ if (r.doc === 'emp') { try { const A = window.CRV_ASSINANTES ? await window.CRV_ASSINANTES('dispensa') : []; if (A && A.length) r.ass = A.map(a => ({ nome:tc(a.nome), cargo:a.cargo })); } catch(_){} }
+  let K = 1, B = montar(r, K); while (!B.cabe && K > .7) { K = Math.round((K - .05) * 100) / 100; B = montar(r, K); }
   try { if (window.CRV_PDF_LOGOS) await window.CRV_PDF_LOGOS(B.doc); } catch(_){} return B.doc; }
-const nomeArq = r => 'Dispensa do aviso previo - ' + String(r.nome || '').split(' ').slice(0, 2).map(tc).join(' ') + ' ' + (r.mat || '') + '.pdf';
+const nomeArq = r => (r.doc === 'emp' ? 'Dispensa - ' + ((MOD.find(m => m.k === r.mod) || MOD[0]).n) : 'Pedido de dispensa do aviso') + ' - ' + String(r.nome || '').split(' ').slice(0, 2).map(tc).join(' ') + ' ' + (r.mat || '') + '.pdf';
 
 /* ---------- formulário ---------- */
 const CSS = `.dv-g{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:10px 12px}.dv-g label{display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--mut)}
-.dv-g input,.dv-g textarea,.dv-g select{font:inherit;font-size:14px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#fff}
-.dv-g .s3{grid-column:span 3}.dv-g .s4{grid-column:span 4}.dv-g .s5{grid-column:span 5}.dv-g .s6{grid-column:span 6}.dv-g .s8{grid-column:span 8}.dv-g .s9{grid-column:span 9}.dv-g .s12{grid-column:span 12}
+.dv-g input,.dv-g select{font:inherit;font-size:14px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#fff}
+.dv-g .s3{grid-column:span 3}.dv-g .s4{grid-column:span 4}.dv-g .s6{grid-column:span 6}.dv-g .s8{grid-column:span 8}.dv-g .s12{grid-column:span 12}
 .dv-h{grid-column:span 12;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#1f3a68;border-bottom:1px solid var(--line);padding-bottom:4px;margin-top:4px}
-.dv-mod{grid-column:span 12;display:flex;gap:8px;flex-wrap:wrap}.dv-mod label{flex:1;min-width:170px;flex-direction:row;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer;text-transform:none;letter-spacing:0;font-size:14px;color:var(--ink)}
-.dv-mod label.on{border-color:#2e7d4f;background:#eef7f1;box-shadow:0 0 0 1px #2e7d4f inset}
-.dv-st{grid-column:span 9;align-self:end;font-size:13px;color:var(--mut);padding-bottom:9px}.dv-av{grid-column:span 12;background:#fff7e6;border:1px solid #f0d199;border-radius:10px;padding:8px 12px;font-size:13px;color:#5c3b00}
-.dv-tags{font-size:12px;color:var(--mut);text-transform:none;letter-spacing:0;font-weight:500}
+.dv-op{grid-column:span 12;display:flex;gap:8px;flex-wrap:wrap}.dv-op label{flex:1;min-width:170px;flex-direction:row;align-items:flex-start;gap:8px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer;text-transform:none;letter-spacing:0;font-size:14px;color:var(--ink)}
+.dv-op label small{display:block;font-size:12px;font-weight:500;color:var(--mut);margin-top:2px}.dv-op label.on{border-color:#2e7d4f;background:#eef7f1;box-shadow:0 0 0 1px #2e7d4f inset}
+.dv-st{grid-column:span 9;align-self:end;font-size:13px;color:var(--mut);padding-bottom:9px}.dv-prev{grid-column:span 12;background:#f6f7f9;border-radius:10px;padding:10px 14px;font-size:13.5px;color:var(--ink);line-height:1.5}
 @media(max-width:700px){.dv-g>*{grid-column:span 12!important}}`;
 function css(){ if (!document.getElementById('dv-css')) { const s = document.createElement('style'); s.id = 'dv-css'; s.textContent = CSS; document.head.appendChild(s); } }
 async function abrir(){
-  css(); await textos(); if (!Q) { try { Q = await window.CRV_QUADRO(); } catch(_){ Q = null; } }
-  const r = { mod:'trab', motivo:'pessoais' };
-  abrirModal({ titulo:'Dispensa do aviso prévio', largo:true,
+  css(); if (!Q) { try { Q = await window.CRV_QUADRO(); } catch(_){ Q = null; } }
+  const r = { doc:'emp', mod:'inde' };
+  const ops = (nm, L, val) => L.map(m => `<label class="${m.k === val ? 'on' : ''}"><input type="radio" name="${nm}" value="${m.k}" ${m.k === val ? 'checked' : ''}><span><b>${esc(m.n)}</b>${m.d ? `<small>${esc(m.d)}</small>` : ''}</span></label>`).join('');
+  abrirModal({ titulo:'Documento de dispensa', largo:true,
     corpo:`<div class="dv-g">
-      <div class="dv-h">Para qual modalidade</div>
-      <div class="dv-mod">${MOD.map(m => `<label class="${m.k === r.mod ? 'on' : ''}"><input type="radio" name="dv-mod" value="${m.k}" ${m.k === r.mod ? 'checked' : ''}> ${m.n}</label>`).join('')}</div>
+      <div class="dv-h">Qual documento</div><div class="dv-op">${ops('dv-doc', DOCS, r.doc)}</div>
+      <div class="dv-h dv-emp">Modalidade</div><div class="dv-op dv-emp">${ops('dv-mod', MOD, r.mod)}</div>
       <div class="dv-h">Colaborador</div>
       <label class="s3">Matrícula<input id="dv-mat" inputmode="numeric" placeholder="Digite a matrícula"></label><div class="dv-st" id="dv-st">Ao digitar a matrícula, os dados vêm da Base Geral de Colaboradores (Quadro).</div>
-      <label class="s8">Nome completo<input data-k="nome"></label><label class="s4">CPF<input data-k="cpf"></label>
-      <label class="s6">Cargo<input data-k="cargo"></label><label class="s3">Início do aviso<input type="date" data-k="dataAviso"></label><label class="s3">Motivo<select data-k="motivo"><option value="pessoais">Pessoais</option><option value="profissionais">Profissionais</option><option value="pessoais e profissionais">Pessoais e profissionais</option></select></label>
-      <div class="dv-h">Texto do documento</div>
-      <div id="dv-av" class="dv-av" style="display:none"></div>
-      <label class="s12">Assunto<input id="dv-as"></label>
-      <label class="s12">Texto <span class="dv-tags">Campos preenchidos sozinhos: {NOME} {CPF} {MATRICULA} {CARGO} {DATA_AVISO} {MOTIVO}</span><textarea id="dv-co" rows="9"></textarea></label>
+      <label class="s8">Nome completo<input data-k="nome"></label><label class="s4 dv-emp">Tratamento<select data-k="trat"><option value="o">O colaborador</option><option value="a">A colaboradora</option></select></label><label class="s4 dv-ped">CPF<input data-k="cpf"></label>
+      <label class="s6">Cargo<input data-k="cargo"></label>
+      <label class="s3 dv-emp">Data da dispensa<input type="date" data-k="dataDisp" value="${hoje()}"></label>
+      <label class="s3 dv-ped">Início do aviso<input type="date" data-k="dataAviso"></label><label class="s3 dv-ped">Motivo<select data-k="motivo"><option value="pessoais">Pessoais</option><option value="profissionais">Profissionais</option><option value="pessoais e profissionais">Pessoais e profissionais</option></select></label>
+      <label class="s3">Data do documento<input type="date" data-k="dataDoc" value="${hoje()}"></label>
+      <div class="dv-h">Como vai sair o texto</div><div class="dv-prev" id="dv-prev"></div>
       <p class="nr-msg" id="dv-msg" style="grid-column:span 12;margin:0"></p></div>`,
-    pe:`<button class="btn borda" id="dv-sm">Salvar texto como modelo desta modalidade</button><span style="flex:1"></span><button class="btn borda" id="dv-c">Cancelar</button><button class="btn borda" id="dv-ver">Visualizar</button><button class="btn prim" id="dv-ok">Imprimir / Gerar PDF</button>`,
+    pe:`<span style="flex:1"></span><button class="btn borda" id="dv-c">Cancelar</button><button class="btn borda" id="dv-ver">Visualizar</button><button class="btn prim" id="dv-ok">Imprimir / Gerar PDF</button>`,
     aoAbrir: m => {
-      const g = s => m.querySelector(s), msg = (t, ok) => { const e = g('#dv-msg'); e.style.color = ok ? 'var(--cane)' : ''; e.textContent = t; };
-      const carregarTexto = () => { const M = modelo(r.mod); g('#dv-as').value = M.assunto; g('#dv-co').value = M.corpo;
-        const av = g('#dv-av'); const proprio = !!TXT[r.mod];
-        if (r.mod !== 'trab' && !proprio) { av.style.display = ''; av.innerHTML = '<b>Atenção:</b> para ' + esc((MOD.find(x => x.k === r.mod) || {}).n || '') + ' ainda não há texto próprio salvo; o texto carregado é o do <b>pedido de dispensa do aviso trabalhado</b> (feito pelo colaborador), que não serve para esta modalidade. Cole aqui o texto do modelo de vocês e clique em “Salvar texto como modelo desta modalidade”; daí em diante ele já abre certo.'; }
-        else av.style.display = 'none'; };
-      carregarTexto();
-      m.querySelectorAll('[name=dv-mod]').forEach(i => i.onchange = () => { r.mod = i.value; m.querySelectorAll('.dv-mod label').forEach(l => l.classList.toggle('on', l.querySelector('input').checked)); carregarTexto(); });
+      const g = s => m.querySelector(s), msg = t => { g('#dv-msg').textContent = t; };
+      const ler = () => { const o = Object.assign({}, r, { mat:g('#dv-mat').value.replace(/\D/g, '').replace(/^0+(?=\d)/, '') }); m.querySelectorAll('[data-k]').forEach(e => o[e.dataset.k] = e.value.trim()); return o; };
+      const prev = () => { const o = ler(), N = String(o.nome || '(nome)').toUpperCase();
+        if (o.doc === 'emp') { const M = MOD.find(x => x.k === o.mod), f = o.trat === 'a'; g('#dv-prev').innerHTML = `<b>${esc(M.tit)}</b><br>${f ? 'A colaboradora' : 'O colaborador'} ${esc(N)}, matrícula ${esc(o.mat || '(matrícula)')}, está sendo ${f ? 'dispensada' : 'dispensado'} no dia ${esc(brD(o.dataDisp) || '(data)')}, ${esc(M.txt)}.<br>Por ser verdade, firmo o presente.<br><span style="color:var(--mut)">Assinatura: coordenação de RH</span>`; }
+        else g('#dv-prev').innerHTML = `<b>Solicitação de Dispensa do Aviso Prévio Trabalhado</b><br>Eu, ${esc(N)}, portador(a) do CPF ${esc(o.cpf || '(CPF)')} e matrícula ${esc(o.mat || '(matrícula)')}, … solicitar formalmente minha dispensa do cumprimento do aviso prévio trabalhado, iniciado em ${esc(brD(o.dataAviso) || '(data)')}. Por motivos ${esc(o.motivo)}, … desconto correspondente ao período não trabalhado …<br><span style="color:var(--mut)">Assinaturas: colaborador(a) e empresa</span>`; };
+      const vis = () => { m.querySelectorAll('.dv-emp').forEach(e => e.style.display = r.doc === 'emp' ? '' : 'none'); m.querySelectorAll('.dv-ped').forEach(e => e.style.display = r.doc === 'ped' ? '' : 'none'); prev(); };
+      const radios = (nm, k) => m.querySelectorAll(`[name=${nm}]`).forEach(i => i.onchange = () => { r[k] = i.value; i.closest('.dv-op').querySelectorAll('label').forEach(l => l.classList.toggle('on', l.querySelector('input').checked)); vis(); });
+      radios('dv-doc', 'doc'); radios('dv-mod', 'mod'); vis();
+      m.querySelectorAll('[data-k]').forEach(e => { e.addEventListener('input', prev); e.addEventListener('change', prev); });
       const set = (k, v) => { const e = m.querySelector(`[data-k="${k}"]`); if (e) e.value = v || ''; };
       g('#dv-mat').oninput = () => { const k = g('#dv-mat').value.replace(/\D/g, '').replace(/^0+(?=\d)/, ''); const c = Q && Q.mapa && Q.mapa[k]; const st = g('#dv-st');
-        if (!k) { st.textContent = 'Ao digitar a matrícula, os dados vêm da Base Geral de Colaboradores (Quadro).'; return; }
-        if (!c) { st.innerHTML = '<span style="color:#a3301c">Matrícula não encontrada no Quadro. Preencha os dados à mão.</span>'; return; }
-        set('nome', c.nome); set('cpf', fCPF(c.cpf)); set('cargo', tc(c.funcao));
-        st.innerHTML = `<b>${esc(tc(c.nome))}</b> · ${esc(tc(c.funcao))} · ${esc(tc(c.setor))} · ${c.situacao === 'Desligado' ? 'desligado em ' + esc(brD(c.deslig)) : esc(c.situacao || '')}`; };
-      const ler = () => { const o = Object.assign({}, r, { mat:g('#dv-mat').value.replace(/\D/g, '').replace(/^0+(?=\d)/, ''), assunto:g('#dv-as').value.trim() || ASSUNTO0, corpo:g('#dv-co').value });
-        m.querySelectorAll('[data-k]').forEach(e => o[e.dataset.k] = e.value.trim()); return o; };
-      const valida = o => { if (!o.nome) { msg('Informe a matrícula (ou o nome) do colaborador.'); return false; } if (/\{DATA_AVISO\}/.test(o.corpo) && !o.dataAviso) { msg('Informe a data de início do aviso (ou tire {DATA_AVISO} do texto).'); return false; } msg(''); return true; };
+        if (!k) st.textContent = 'Ao digitar a matrícula, os dados vêm da Base Geral de Colaboradores (Quadro).';
+        else if (!c) st.innerHTML = '<span style="color:#a3301c">Matrícula não encontrada no Quadro. Preencha os dados à mão.</span>';
+        else { set('nome', c.nome); set('cpf', fCPF(c.cpf)); set('cargo', tc(c.funcao)); if (/^F/i.test(c.sexo || '')) set('trat', 'a'); else if (/^M/i.test(c.sexo || '')) set('trat', 'o');
+          if (c.situacao === 'Desligado' && /^\d{4}-\d{2}-\d{2}/.test(c.deslig || '')) set('dataDisp', String(c.deslig).slice(0, 10));
+          st.innerHTML = `<b>${esc(tc(c.nome))}</b> · ${esc(tc(c.funcao))} · ${esc(tc(c.setor))} · ${c.situacao === 'Desligado' ? 'desligado em ' + esc(brD(c.deslig)) : esc(c.situacao || '')}`; }
+        prev(); };
+      const valida = o => { if (!o.nome) { msg('Informe a matrícula (ou o nome) do colaborador.'); return false; }
+        if (o.doc === 'emp' && !o.dataDisp) { msg('Informe a data da dispensa.'); return false; } if (o.doc === 'ped' && !o.dataAviso) { msg('Informe a data de início do aviso.'); return false; } msg(''); return true; };
       g('#dv-c').onclick = fecharModal;
-      g('#dv-sm').onclick = async () => { const b = g('#dv-sm'); b.disabled = true; try { TXT[r.mod] = { assunto:g('#dv-as').value.trim() || ASSUNTO0, corpo:g('#dv-co').value }; await salvarTextos(); carregarTexto(); msg('Texto salvo como modelo de ' + MOD.find(x => x.k === r.mod).n + '.', true); } catch(e){ msg(traduzErro(e)); } b.disabled = false; };
       g('#dv-ver').onclick = async () => { const o = ler(); if (!valida(o)) return; const u = URL.createObjectURL((await gerar(o)).output('blob')); window.open(u, '_blank'); setTimeout(() => URL.revokeObjectURL(u), 60000); };
       g('#dv-ok').onclick = async () => { const o = ler(); if (!valida(o)) return; const b = g('#dv-ok'); b.disabled = true; try { baixar((await gerar(o)).output('blob'), nomeArq(o)); toast('Documento gerado.'); fecharModal(); } catch(e){ b.disabled = false; msg('Não consegui gerar o PDF: ' + (e.message || e)); } };
     } });

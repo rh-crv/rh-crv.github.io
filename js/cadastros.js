@@ -16,13 +16,14 @@ const DOCS = [
   { k:'acid-rel', n:'Unimed · Relatório de acidentes de trabalho' },
   { k:'conv-folha', n:'Cartão Convênio · Lançamento em folha e desconto final' },
   { k:'acid-reemb', n:'Unimed · Reembolso de desconto indevido (acidente de trabalho)' },
-  { k:'ferias-dp', n:'Férias · Relação de saídas de férias' }
+  { k:'ferias-dp', n:'Férias · Relação de saídas de férias' },
+  { k:'dispensa', n:'Desligamento · Documento de dispensa (aviso indenizado, trabalhado ou justa causa)' }
 ];
 /* como está hoje nos documentos (pedidos do RH em 27/10/2026); muda pela tela de cadastros */
 const ASS_PADRAO = [
   { id:'a1', nome:'Michelle Pereira', cargo:'Coordenadora de RH', mat:'', docs:['acid-aut', 'acid-rel', 'acid-reemb', 'conv-folha'] },
   { id:'a2', nome:'Leonardo Dias', cargo:'Gerente Executivo', mat:'', docs:['acid-aut', 'acid-rel', 'acid-reemb', 'conv-folha'] },
-  { id:'a3', nome:'', cargo:'Coordenadora de RH', mat:'334', docs:['ferias-dp'] }
+  { id:'a3', nome:'', cargo:'Coordenadora de RH', mat:'334', docs:['ferias-dp', 'dispensa'] }
 ];
 let SB = null, CAD = null, _carregando = null;
 async function carregar(forcar){
