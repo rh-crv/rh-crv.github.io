@@ -447,7 +447,7 @@ $('bNovo').onclick=()=>abrirForm(null);
 $('bSem').onclick=abrirSemana;window.CRV_SEMANA=abrirSemana;
 $('bRel').onclick=abrirRel;
 window.CRV_NOVO=()=>abrirForm(null);window.CRV_RELATORIO=abrirRel;
-render();carregar().then(fechCarregar);
+render();carregar().then(fechCarregar).then(()=>{window.__crvPend=1});
 /* =====================================================================
    Fechamento por centro de custo (pedido do RH, 27/10/2026)
    Importa o "Fechamento Syspro ADM" (abas Geral + abas de rateio: Indústria, Ferramentaria, Armazém...),
@@ -512,6 +512,8 @@ function analisar(F,QM){const L0=F.linhas,L=temRubi(F)?L0.filter(x=>!ehRubi(x)):
   if(temRubi(F)){const RB=L0.filter(ehRubi),t=r2(RB.reduce((s,x)=>s+x.cons,0)),rr=r2(F.rubi.reduce((s,r)=>s+(+r.valor||0),0)),ok=Math.abs(t-rr)<0.01;
     add(ok?'info':'alto','Rateio RUBI S.A.',`${RB.length} lançamentos da RUBI S.A. (consumido ${moeda(t)}) divididos pelo rateio do RH em ${F.rubi.length} centro(s) de custo${ok?', com a mesma soma.':': o rateio soma '+moeda(rr)+' (diferença de '+moeda(rr-t)+').'} O centro de custo de cada linha da RUBI no Geral não entra no resumo.`,RB.map(x=>x.i))}
   else{const RB=L0.filter(ehRubi);if(RB.length)add('medio','RUBI S.A. sem rateio',`${RB.length} lançamentos da RUBI S.A. (${moeda(r2(RB.reduce((s,x)=>s+x.cons,0)))}) estão no centro de custo de cada linha do Geral. Informe o rateio da RUBI para dividir pelos centros de custo certos.`,RB.map(x=>x.i))}
+  {const pd=PAD();if(pd&&pd.temCadastro()){const cods=new Map();efetivas(F).forEach(x=>String(x.cc||'').split(/[\/;,]/).map(z=>z.trim()).filter(Boolean).forEach(c=>{if(!cods.has(c))cods.set(c,[]);cods.get(c).push(x)}));
+    cods.forEach((X2,c)=>{const o=pd.cc(c);if(o&&!o.existe)add('alto','Código fora do cadastro de centros de custo',`O código ${c} (${X2[0].ccd||''}) não existe no Quadro Geral nem em Cadastros do RH → Centros de custo. Confira se o código está certo ou cadastre o nome oficial.`,X2.filter(x=>!x.rubiR).map(x=>x.i))})}}
   const sm=L0.filter(x=>!/^\d+$/.test(x.mat));if(sm.length)add('info','Sem matrícula',`${sm.length} lançamento(s) sem matrícula (terceiros da RUBI S.A., prestadores, cartões de área). Não dá para cruzar com o Quadro.`,sm.map(x=>x.i));
   return P}
 /* RUBI S.A. (terceiros): o consumido do Geral é dividido pelo rateio informado pelo RH (centro de custo + valor), não pelo centro de custo de cada linha */
@@ -519,9 +521,10 @@ const ehRubi=x=>/RUBI/i.test(x.setor||'');
 const temRubi=F=>Array.isArray(F.rubi)&&F.rubi.length>0;
 function efetivas(F){const L=F.linhas;if(!temRubi(F))return L;return L.filter(x=>!ehRubi(x)).concat(F.rubi.map((r,j)=>({i:'r'+j,cc:String(r.cc),ccd:r.ccd||'',cons:r2(r.valor),cred:0,nome:'RUBI S.A. (rateio)',rubiR:true})))}
 function resumoCC(L){const m=new Map();L.forEach(x=>{const k=x.cc||'—';if(!m.has(k))m.set(k,{cc:k,ds:new Map(),n:0,cred:0,cons:0,ids:[],pes:new Set()});const o=m.get(k);o.n++;o.cred+=x.cred||0;o.cons+=x.cons;o.ids.push(x.i);o.pes.add(nrm(x.nome));o.ds.set(x.ccd,(o.ds.get(x.ccd)||0)+1)});
-  return [...m.values()].map(o=>({cc:o.cc,ccd:[...o.ds.entries()].sort((a,b)=>b[1]-a[1])[0][0],n:o.n,pes:o.pes.size,cred:r2(o.cred),cons:r2(o.cons),ids:o.ids})).sort((a,b)=>b.cons-a.cons)}
+  const pd=PAD();return [...m.values()].map(o=>({cc:o.cc,ccd:(pd&&pd.cc(o.cc)&&pd.cc(o.cc).existe&&pd.cc(o.cc).nome)||[...o.ds.entries()].sort((a,b)=>b[1]-a[1])[0][0],n:o.n,pes:o.pes.size,cred:r2(o.cred),cons:r2(o.cons),ids:o.ids})).sort((a,b)=>b.cons-a.cons)}
 let QMAP=null;
-async function quadro(){if(QMAP)return QMAP;try{const f=window.parent&&window.parent.CRV_QUADRO;const q=typeof f==='function'?await f():null;QMAP=q&&q.mapa||{}}catch(_){QMAP={}}return QMAP}
+const PAD=()=>window.parent&&window.parent.CRV_PADRAO;
+async function quadro(){if(QMAP)return QMAP;try{const pd=PAD();if(pd)await pd.carregar()}catch(_){}try{const f=window.parent&&window.parent.CRV_QUADRO;const q=typeof f==='function'?await f():null;QMAP=q&&q.mapa||{}}catch(_){QMAP={}}return QMAP}
 function fechImportar(){if(!DB)return toast('Não dá para salvar nesta visualização.');const X=window.XLSX||(window.parent&&window.parent.XLSX);if(!X)return toast('Leitor de Excel indisponível.');
   const inp=document.createElement('input');inp.type='file';inp.accept='.xlsx,.xls';inp.onchange=async()=>{const fl=inp.files[0];if(!fl)return;let F;
     try{const wb=X.read(new Uint8Array(await fl.arrayBuffer()),{type:'array',cellDates:false});F=lerFechamento(wb,X)}catch(e){return toast('Não consegui ler: '+(e.message||e))}
@@ -703,6 +706,16 @@ async function fechPdf(F,L,R,P,o){o=o||{r:1,rb:1,a:1,l:1};const J=(window.jspdf&
     doc.setFontSize(7);doc.setTextColor(130,136,148);doc.text('Gestão de Pessoas · emitido em '+hj.toLocaleDateString('pt-BR')+' por '+((window.parent&&window.parent.CRV_QUEM)||'')+' · Página '+i+' de '+n,W-12,H-5,{align:'right'})}
   await salvar('Fechamento Syspro ADM - '+perTxt(F.periodo).replace(/\//g,'-')+'.pdf',new Uint8Array((await (window.parent.CRV_PDF_LOGOS||window.CRV_PDF_LOGOS||(d=>d))(doc,{syspro:true})).output('arraybuffer')),'application/pdf')}
 window.CRV_FECH=()=>{S.v='f';render()};
+/* pendências para a Central de Rotinas do RH: análise do último fechamento e cartões com problema */
+window.CRV_PENDENCIAS=async function(forcar){if(!window.__crvPend&&!forcar)return null;const R=[];
+  const ps=Object.keys(FE).sort(),F=FE[ps[ps.length-1]];
+  if(F){const QM=await quadro();const P=analisar(F,QM),ok=F.okP||{},pk=p=>p.tipo+'|'+p.txt,A=P.filter(p=>p.nivel==='alto'&&!ok[pk(p)]);
+    if(A.length)R.push({id:'adm-fech',sev:'warn',t:'Cartão ADM: fechamento '+perTxt(F.periodo)+' com pontos a conferir',d:'Centros de custo e matrículas para conferir antes de lançar a nota.',acao:'fech',itens:A.map(p=>({nome:p.tipo,mat:'',det:p.txt}))});
+    if(!temRubi(F)&&F.linhas.some(ehRubi))R.push({id:'adm-rubi',sev:'info',t:'Cartão ADM: rateio da RUBI S.A. não informado',d:'Fechamento '+perTxt(F.periodo)+'.',acao:'fech',itens:[{nome:'Informar o rateio da RUBI S.A. por centro de custo',mat:'',det:F.linhas.filter(ehRubi).length+' lançamentos da RUBI no Geral'}]})}
+  const ult={};U.slice().sort((a,b)=>(a.periodo+a.entrega+(a.cadastradoEm||'')).localeCompare(b.periodo+b.entrega+(b.cadastradoEm||''))).forEach(x=>{if(x.cartao)ult[x.cartao]=x});
+  const pb=Object.values(ult).filter(x=>/troca|não devolvido|extraviado/i.test(x.situacao||''));
+  if(pb.length)R.push({id:'adm-prob',sev:'warn',t:'Cartão ADM: cartões com problema',d:'Aguardando troca, não devolvidos ou extraviados.',itens:pb.map(x=>({nome:x.nome,mat:x.mat||'',det:'cartão '+x.cartao+' · '+x.situacao+' · '+perTxt(x.periodo)}))});
+  return R};
 
 })();
 </script>

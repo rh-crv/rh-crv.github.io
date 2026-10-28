@@ -507,7 +507,11 @@ window.CRV_TERMO=abrirTermo;
 $('bR').onclick=abrirRel;
 window.CRV_RELATORIO=abrirRel;
 window.CRV_CONV={T,rows:C.rows,regra,excEsp:C.excEsp||{}};
-render();lerPedidos();
+render();lerPedidos().then(()=>{window.__crvPend=1});
+/* pendências para a Central de Rotinas do RH */
+window.CRV_PENDENCIAS=function(forcar){if(!window.__crvPend&&!forcar)return null;
+  const ks=['desl','falta','regra','fora'].concat(T==='convenio'?[]:['bloq']),SEV={desl:'crit',falta:'warn',regra:'warn',fora:'info',bloq:'info'};
+  return ks.map(k=>{const L=R.filter(r=>r.k===k&&!feito(r.mat)).sort((a,b)=>a.N.localeCompare(b.N,'pt-BR'));return L.length?{id:'sys-'+T+'-'+k,sev:SEV[k],t:NOMET+': '+CATS[k].l,d:CATS[k].acao+'.',itens:L.map(r=>({nome:r.N,mat:r.mat,det:[r.F,tc(r.dep)].filter(Boolean).join(' · ')}))}:null}).filter(Boolean)};
 })();
 </script>
 <style>

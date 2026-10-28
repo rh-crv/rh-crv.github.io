@@ -1081,7 +1081,7 @@ async function carregar(){try{ADB=window.claude&&window.claude.use?await window.
   if(!ADB)return;
   try{const s=await ADB.collection('acidentes').get();AC.L=s.docs.map(d=>Object.assign({id:d.id},d.data()))}catch(_){AC.L=[]}
   try{const s=await ADB.collection('autorizacoes').get();AC.AUT={};s.docs.forEach(d=>AC.AUT[d.id]=d.data())}catch(_){}
-  aplicar();if(typeof setMes==='function'&&READY)setMes(MES);render()}
+  aplicar();AC.ok=true;if(typeof setMes==='function'&&READY)setMes(MES);render()}
 /* aviso: atendimentos do titular em faturas posteriores, ainda não conferidos */
 function novos(a){if(!a.data)return [];const ja=new Set((a.eventos||[]).map(ekey).concat(a.desc||[])),vis=new Set(a.vistos||[]);
   return DATA.MK.filter(k=>!DATA.M[k].A.pend&&!vis.has(k)).map(k=>({k,ev:evTit(k,a.mat).filter(e=>e.d>=a.data&&!ja.has(ekey(e)))})).filter(x=>x.ev.length)}
@@ -1241,6 +1241,15 @@ function importar(arq){if(!ADB)return toast('Não dá para salvar nesta visualiz
       aplicar();setMes(MES);render();w.remove();toast(n+' ocorrência(s) importada(s)'+(f?' · '+f+' com erro':'')+'.')}};
   if(arq)inp.onchange();else inp.click()}
 window.CRV_ACID_IMP=f=>{window.tab('x');importar(f)};
+/* pendências de acidente de trabalho para a Central de Rotinas do RH */
+window.CRV_PENDENCIAS=function(forcar){if(!AC.ok&&!forcar)return null;const R=[];
+  const A=autoL();if(A.length)R.push({id:'acid-auto',sev:'crit',t:'Acidente de trabalho: utilizações marcadas todas de uma vez',d:'Desfaça o lançamento automático e decida caso a caso o que desconta.',acao:'acid',itens:A.map(a=>({nome:a.nome,mat:String(a.mat),det:(a.eventos||[]).length+' atendimento(s) não descontados'}))});
+  const KS=DATA.MK.filter(k=>!DATA.M[k].A.pend),P=aposAcidente(KS).filter(x=>!decisao(x.a,x.e));
+  if(P.length){const g=new Map();P.forEach(x=>{if(!g.has(x.a))g.set(x.a,[]);g.get(x.a).push(x.e)});
+    R.push({id:'acid-dec',sev:'warn',t:'Acidente de trabalho: atendimentos para decidir se descontam',d:P.length+' atendimento(s) do titular depois do acidente, ainda sem decisão. Sem decisão, seguem a regra normal de desconto.',acao:'acid',n:P.length,
+      itens:[...g.entries()].sort((a,b)=>a[0].nome.localeCompare(b[0].nome,'pt-BR')).map(([a,E])=>({nome:a.nome,mat:String(a.mat),det:E.length+' atendimento(s) · '+brl(E.reduce((s,e)=>s+e.v,0))+' · acidente em '+dbr(a.data)}))})}
+  const SD=ativos().filter(a=>!a.data);if(SD.length)R.push({id:'acid-sd',sev:'info',t:'Acidente de trabalho sem data',d:'Informe a data para o painel achar os atendimentos depois do acidente.',acao:'acid',itens:SD.map(a=>({nome:a.nome,mat:String(a.mat),det:(a.diag||'')+(a.digit?' · digitação '+a.digit:'')}))});
+  return R};
 /* ---------- lançar de uma vez: todos os atendimentos do titular depois da data do acidente, fatura por fatura ---------- */
 /* cada atendimento fica em um acidente só: o acidente mais recente da pessoa com data até o dia do atendimento */
 function aposAcidente(ks){const out=[],porMat={};ativos().filter(a=>a.data&&a.mat).forEach(a=>(porMat[a.mat]=porMat[a.mat]||[]).push(a));
@@ -1312,6 +1321,7 @@ function exportar(){const T=ativos().filter(a=>noAno(a,F.ano)&&(!F.dep||a.depto=
      assinaturas na mesma folha da última tabela e os dados da empresa no rodapé */
   const NAVY=[31,58,104],INK=[30,36,48],MUT=[110,116,128],GREEN=[110,150,60],W=297,H=210,L=12,R=W-12,TOPO=28,BASE=H-22;
   const hj=new Date(),dataTxt='Capinópolis/MG, '+String(hj.getDate()).padStart(2,'0')+' de '+MESL[hj.getMonth()]+' de '+hj.getFullYear()+'.';
+  let ASR=[];try{ASR=window.parent&&window.parent.CRV_ASSINANTES?(await window.parent.CRV_ASSINANTES('acid-rel')).map(a=>[a.nome,a.cargo]):[]}catch(_){}if(!ASR.length)ASR=[['Michelle Pereira','Coordenadora de RH'],['Leonardo Dias','Gerente Executivo']];
   const build=extra=>{const doc=new J({unit:'mm',format:'a4',orientation:'landscape'});
     const st={fontSize:7.6,cellPadding:1.3,lineColor:[225,222,216],lineWidth:.1,textColor:INK},hs={fillColor:[36,65,79],textColor:255,fontStyle:'bold',fontSize:7.6},fs={fillColor:[246,240,233],textColor:INK,fontStyle:'bold'};
     const _at=doc.autoTable.bind(doc);doc.autoTable=c=>_at(Object.assign({theme:'striped',alternateRowStyles:{fillColor:[250,249,246]}},c,{margin:Object.assign({top:TOPO+4,bottom:H-BASE+4+extra},c.margin||{})}));
@@ -1331,7 +1341,7 @@ function exportar(){const T=ativos().filter(a=>noAno(a,F.ano)&&(!F.dep||a.depto=
       if(o.d){const R=dr();tt('Resumo por departamento');doc.autoTable({startY:y,head:[['Departamento','Acidentes','Pessoas','Valor não descontado']],body:R.map(r=>[r[0],r[1],r[2],brl(r[3])]),foot:[['Total: '+nP+' pessoas',String(T.length),String(nP),brl(tv)]],showFoot:'lastPage',styles:st,headStyles:hs,footStyles:fs,margin:{left:12,right:12},semTotal:true})}
       /* assinaturas na mesma folha do conteúdo */
       const ya=Math.max(y+14,doc.lastAutoTable?doc.lastAutoTable.finalY+20:y+14);const fits=ya+12<=BASE;
-      if(fits){[['Michelle Pereira','Coordenadora de RH'],['Leonardo Dias','Gerente Executivo']].forEach((a,i)=>{const x=W/2+(i?20:-90),lw=70;doc.setDrawColor(60,66,80);doc.setLineWidth(.3);doc.line(x,ya,x+lw,ya);doc.setFont('helvetica','bold');doc.setFontSize(8.8);doc.setTextColor(...INK);doc.text(a[0],x+lw/2,ya+4.5,{align:'center'});doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...MUT);doc.text(a[1],x+lw/2,ya+8.6,{align:'center'})})}
+      if(fits){ASR.forEach((a,i)=>{const lw=70,tw=ASR.length*lw+(ASR.length-1)*40,x=(W-tw)/2+i*(lw+40);doc.setDrawColor(60,66,80);doc.setLineWidth(.3);doc.line(x,ya,x+lw,ya);doc.setFont('helvetica','bold');doc.setFontSize(8.8);doc.setTextColor(...INK);doc.text(a[0],x+lw/2,ya+4.5,{align:'center'});doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...MUT);doc.text(a[1],x+lw/2,ya+8.6,{align:'center'})})}
       const n=doc.getNumberOfPages();for(let i=1;i<=n;i++){doc.setPage(i);
         doc.setFillColor(...NAVY);doc.rect(0,0,W,4,'F');doc.setFont('helvetica','bold');doc.setFontSize(13.5);doc.setTextColor(...NAVY);doc.text('CRV INDUSTRIAL',L,14);
         doc.setFont('helvetica','normal');doc.setFontSize(7.8);doc.setTextColor(...MUT);doc.text('UNIDADE CAPINÓPOLIS',L,18.5);doc.setDrawColor(...GREEN);doc.setLineWidth(.6);doc.line(L,22,R,22);
@@ -1366,17 +1376,17 @@ function montar(d,logo,K){const J=JS();const doc=new J({unit:'mm',format:'a4'}),
     theme:'grid',styles:{fontSize:8.6*K,cellPadding:1.2*K,halign:'center',lineColor:[150,185,215],lineWidth:.2,textColor:INK},headStyles:{fillColor:[46,134,193],textColor:255,fontStyle:'bold'},footStyles:{fillColor:[255,255,255],textColor:INK,fontStyle:'bold'},
     columnStyles:{0:{cellWidth:22},3:{cellWidth:30,halign:'right'}},margin:{left:L,right:W-R}});y=doc.lastAutoTable.finalY;if(doc.getNumberOfPages()>1)quebrou=true;
   /* assinaturas na mesma folha */
-  let ys=Math.max(y+30*K,y+22);if(ys+48>268)quebrou=true;
+  const AS=(d.ass||[]).filter(a=>a&&a[0]);let ys=Math.max(y+30*K,y+22);if(ys+26*Math.max(1,AS.length)-4>268)quebrou=true;
   const ass=(nome,cargo,yy)=>{doc.setDrawColor(40);doc.setLineWidth(.3);doc.line(W/2-30,yy,W/2+30,yy);doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor(...INK);doc.text(nome,W/2,yy+4.5,{align:'center'});doc.text(cargo,W/2,yy+9,{align:'center'})};
-  ass(d.ass1[0],d.ass1[1],ys);ass(d.ass2[0],d.ass2[1],ys+26);
+  AS.forEach((a,i)=>ass(a[0],a[1]||'',ys+26*i));
   /* rodapé da empresa e do app */
   doc.setDrawColor(150);doc.setLineWidth(.3);doc.line(L,272,R,272);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(110);doc.text('CRV INDUSTRIAL LTDA – UNIDADE CAPINÓPOLIS',W/2,277,{align:'center'});
   doc.setFont('helvetica','normal');doc.setFontSize(8.3);doc.text('CNPJ nº 03.937.452/0004-35',W/2,281,{align:'center'});doc.text('Rodovia MG-226, s/nº, km 63, Zona Rural, Capinópolis, Minas Gerais',W/2,284.6,{align:'center'});doc.text('Telefone: (34) 3263-8100 - CEP. 38.360-000',W/2,288.2,{align:'center'});
   doc.setFontSize(6.8);doc.setTextColor(140);doc.text('Gestão de Pessoas · emitido em '+new Date().toLocaleDateString('pt-BR'),L,293);
   return {doc,quebrou}}
-async function gerarDoc(d){const logo=await logoCRV();let K=1,B=montar(d,logo,K);while(B.quebrou&&K>.6){K=Math.round((K-.05)*100)/100;B=montar(d,logo,K)}return B.doc}
+async function gerarDoc(d){const logo=await logoCRV();if(!d.ass){if(d.ass1)d.ass=[d.ass1,d.ass2].filter(Boolean);else{let A=[];try{A=window.parent&&window.parent.CRV_ASSINANTES?await window.parent.CRV_ASSINANTES('acid-aut'):[]}catch(_){}d.ass=A.length?A.map(a=>[a.nome,a.cargo]):[['Michelle Pereira','Coordenadora de RH'],['Leonardo Dias','Gerente Executivo']]}}let K=1,B=montar(d,logo,K);while(B.quebrou&&K>.6){K=Math.round((K-.05)*100)/100;B=montar(d,logo,K)}return B.doc}
 function dadosDoc(k,itens,data){const dt=data||hojeI(),total=r2(itens.reduce((s,i)=>s+i.v,0));
-  return {k,comp:DATA.M[k]?DATA.M[k].lab.m:k,dataExt:(+dt.slice(8))+' de '+MESL[+dt.slice(5,7)-1]+' de '+dt.slice(0,4),data:dt,itens,total,ass1:['Michelle Pereira','Coordenadora de RH'],ass2:['Leonardo Dias','Gerente Executivo']}}
+  return {k,comp:DATA.M[k]?DATA.M[k].lab.m:k,dataExt:(+dt.slice(8))+' de '+MESL[+dt.slice(5,7)-1]+' de '+dt.slice(0,4),data:dt,itens,total}}
 async function visualizar(d){const doc=await gerarDoc(d),u=URL.createObjectURL(doc.output('blob'));const w=document.createElement('div');w.className='ac-pv';
   w.innerHTML=`<div><div class="h"><b>Autorização · competência ${esc(d.comp)}</b><span style="flex:1"></span><button class="btn2" data-x>Fechar visualização</button></div><iframe src="${u}#view=FitH" title="Visualização"></iframe></div>`;
   document.body.appendChild(w);w.querySelector('[data-x]').onclick=()=>{w.remove();URL.revokeObjectURL(u)}}

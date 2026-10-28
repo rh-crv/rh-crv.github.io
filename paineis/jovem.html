@@ -1275,8 +1275,11 @@ atualizar();
 window.CRV_PENDENCIAS=function(){
   const m=MESES[MESES.length-1]; if(!m) return [];
   const c=calc(m), L=c.js.filter(j=>j.rad===2);
-  if(!L.length) return [];
-  return [{id:'jv-int-jov',sev:'warn',t:'Jovens aprendizes em intervenção (João Bittar)',d:'Radar de '+m.nome+'. Acompanhar primeiro.',itens:L.map(j=>({nome:j.n,mat:j.mat||'',det:(j.setor?j.setor+' · ':'')+j.sinais.join(' · ')}))}];
+  const R=[];const iso=v=>{v=String(v||'');const m=v.match(/^(\d{2})\/(\d{2})\/(\d{4})/);return m?m[3]+'-'+m[2]+'-'+m[1]:v.slice(0,10)};const hj=new Date().toISOString().slice(0,10),a30=new Date(Date.now()+30*864e5).toISOString().slice(0,10);
+  try{const F=(typeof BASE!=='undefined'?BASE:[]).filter(b=>b.st!=='Desligado'&&iso(b.fim)>=hj&&iso(b.fim)<=a30).sort((a,b)=>iso(a.fim).localeCompare(iso(b.fim)));
+    if(F.length)R.push({id:'jv-int-jov-fim',sev:'info',t:'Contratos de aprendiz terminam em até 30 dias (João Bittar)',d:'Decidir efetivação ou desligamento e avisar a instituição.',itens:F.map(b=>({nome:b[JC.nomeK]||b.nome||b.n||'',mat:b.mat||'',det:'termina em '+iso(b.fim).split('-').reverse().join('/')+(b.setor?' · '+b.setor:'')}))})}catch(_){}
+  if(!L.length) return R;
+  return R.concat([{id:'jv-int-jov',sev:'warn',t:'Jovens aprendizes em intervenção (João Bittar)',d:'Radar de '+m.nome+'. Acompanhar primeiro.',itens:L.map(j=>({nome:j.n,mat:j.mat||'',det:(j.setor?j.setor+' · ':'')+j.sinais.join(' · ')}))}]);
 };
 
 </script>

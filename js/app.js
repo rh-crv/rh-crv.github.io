@@ -132,6 +132,7 @@ async function entrarNoApp(){
     window.addEventListener('hashchange', rota);
     try { const kk = 'crv-ent-' + perfil.user_id; if (!sessionStorage.getItem(kk)) { sessionStorage.setItem(kk, '1'); const mob = /Mobi|Android|iPhone/i.test(navigator.userAgent), inst = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches; logAcesso('entrou', null, (mob ? 'celular' : 'computador') + (inst ? ' · app instalado' : ' · navegador')); } } catch(_){}
     rota();
+    if (window.CRV_PADRAO && perfil.papel !== 'gestor') setTimeout(() => window.CRV_PADRAO.carregar().catch(() => {}), 3000);
     if (ehAdmin()) setTimeout(() => GESTOR().gerar(false).catch(() => {}), 8000);
   } catch(e){
     $('#app').innerHTML = `<div class="login-fundo"><div class="login-card"><img class="logo" src="img/logo-crv.png" alt="CRV Industrial">
@@ -349,9 +350,9 @@ function moldura(conteudo){
         ${GESTOR_MENU.map(([f, itens]) => { const cfg = FRENTES[f] || { cor:'#24427c', ic:'pessoas' }; const aqui = itens.some(([k]) => h === '#/eq/' + k); const ab = aqui || abertas['g:' + f];
           return `<div class="lat-grupo ${ab ? 'aberto' : ''}" data-frente="${esc('g:' + f)}"><button class="lat-frente ${aqui ? 'atual' : ''}" aria-expanded="${ab ? 'true' : 'false'}"><span class="lat-ic" style="background:${cfg.cor}">${svg(cfg.ic, '#fff')}</span><span class="lat-nome">${esc(f)}</span><span class="lat-seta">${CHEV}</span></button>
             <div class="lat-sub">${itens.map(([k, n]) => `<button class="lat-painel ${h === '#/eq/' + k ? 'ativo atual' : ''}" data-ir="#/eq/${k}" data-busca="${esc(n.toLowerCase())}" style="--cor:${cfg.cor}"><span class="lat-pn">${esc(n)}</span></button>`).join('')}</div></div>`; }).join('')}` : `
-        <div class="lat-pgrupo lat-cgrupo ${h==='#/central'||h==='#/desligamento'||h==='#/bases'||h==='#/envios'||subAbertos.__central?'aberto':''}" data-pid="__central">
+        <div class="lat-pgrupo lat-cgrupo ${h==='#/central'||h==='#/desligamento'||h==='#/bases'||h==='#/envios'||h==='#/cadastros'||subAbertos.__central?'aberto':''}" data-pid="__central">
           <div class="lat-plinha"><button class="lat-item ${h==='#/central'?'ativo':''}" data-ir="#/central"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg><span>Central de Rotinas do RH</span></button><button class="lat-pseta" aria-label="Mostrar opções da Central de Rotinas do RH" aria-expanded="${h==='#/desligamento'||h==='#/bases'||h==='#/envios'?'true':'false'}">${CHEV}</button></div>
-          <div class="lat-psub"><button class="lat-acao ${h==='#/desligamento'?'ativo':''}" data-ir="#/desligamento" style="--cor:var(--coral)"><i>${IA('<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>')}</i><span>Conferência de Desligamentos</span></button><button class="lat-acao ${h==='#/bases'?'ativo':''}" data-ir="#/bases" style="--cor:var(--cane)"><i>${IA('<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>')}</i><span>Qualidade dos Dados</span></button>${ehRH() ? `<button class="lat-acao ${h==='#/envios'?'ativo':''}" data-ir="#/envios" style="--cor:#24427c"><i>${IA('<path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/>')}</i><span>Envios dos Gestores</span></button>` : ''}</div>
+          <div class="lat-psub"><button class="lat-acao ${h==='#/desligamento'?'ativo':''}" data-ir="#/desligamento" style="--cor:var(--coral)"><i>${IA('<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>')}</i><span>Conferência de Desligamentos</span></button><button class="lat-acao ${h==='#/bases'?'ativo':''}" data-ir="#/bases" style="--cor:var(--cane)"><i>${IA('<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>')}</i><span>Qualidade dos Dados</span></button>${ehRH() ? `<button class="lat-acao ${h==='#/cadastros'?'ativo':''}" data-ir="#/cadastros" style="--cor:#7b3fa0"><i>${IA('<path d="M4 4h16v4H4zM4 10h16v4H4zM4 16h10v4H4z"/>')}</i><span>Cadastros do RH</span></button>` : ''}${ehRH() ? `<button class="lat-acao ${h==='#/envios'?'ativo':''}" data-ir="#/envios" style="--cor:#24427c"><i>${IA('<path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/>')}</i><span>Envios dos Gestores</span></button>` : ''}</div>
         </div>
         ${temQuadro ? `<button class="lat-item ${h.startsWith('#/ficha')?'ativo':''}" data-ir="#/ficha"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2.5"/><path d="M5.5 17c.6-1.8 2-2.7 3.5-2.7s2.9.9 3.5 2.7M14 9h4M14 13h4"/></svg><span>Perfil do Colaborador</span></button>` : ''}
         ${temQuadro ? `<button class="lat-item ${h==='#/consulta'?'ativo':''}" data-ir="#/consulta"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="6"/><path d="M20 20l-5.6-5.6M8 10h4M10 8v4"/></svg><span>Consulta de Candidatos</span></button>` : ''}
@@ -446,6 +447,7 @@ function rota(){
   if (h === '#/consulta') return telaConsulta();
   if (h === '#/relatorio') return REL().tela();
   if (h === '#/bases') return BASES().tela();
+  if (h === '#/cadastros' && ehRH()) return CADS().tela();
   if (h === '#/envios' && ehRH()) return GESTOR().telaEnvios();
   if (h === '#/desligamento') return telaDesligamento();
   if (h === '#/conta') return telaConta();
@@ -492,7 +494,7 @@ function telaInicio(){
    Cada painel calcula as próprias pendências (window.CRV_PENDENCIAS) com as mesmas regras que mostra na tela;
    o app abre os painéis escondidos, recolhe e guarda o resultado por algumas horas.
    ===================================================================== */
-const CENTRAL_FONTES = ['experiencia', 'ferias', 'crachas', 'onibus', 'sancoes', 'rd', 'jovem', 'renapsi', 'treinamentos'];
+const CENTRAL_FONTES = ['experiencia', 'ferias', 'crachas', 'onibus', 'sancoes', 'rd', 'jovem', 'renapsi', 'treinamentos', 'unimed', 'cartao-adm', 'cartao-alimentacao', 'cartao-convenio', 'cartao-premium'];
 const CENTRAL_VALIDADE = 3 * 3600e3;
 const centralChave = () => 'crv-central-' + (E.perfil ? E.perfil.id || E.perfil.nome : '');
 let centralRodando = false;
@@ -600,6 +602,7 @@ const ctxMod = () => ({ sb, E, $, esc, normal, brD, fMat, fDias, podeVer, podeEd
 const NR1 = () => _nr1 || (_nr1 = window.CRV_NR1_INIT ? window.CRV_NR1_INIT(ctxMod()) : null);
 let _risco = null; const RISCO = () => _risco || (_risco = window.CRV_RISCO_INIT(ctxMod()));
 let _rel = null; const REL = () => _rel || (_rel = window.CRV_REL_INIT(Object.assign(ctxMod(), { NR1, RISCO, BASES })));
+let _cad = null; const CADS = () => _cad || (_cad = window.CRV_CAD_INIT(Object.assign(ctxMod(), { FRENTES })));
 let _bases = null; const BASES = () => _bases || (_bases = window.CRV_BASES_INIT(Object.assign(ctxMod(), { ehAdmin, FRENTES })));
 let _gestor = null; const GESTOR = () => _gestor || (_gestor = window.CRV_GESTOR_INIT(ctxMod()));
 let _des = null; const DES = () => _des || (_des = window.CRV_DES_INIT(ctxMod()));
@@ -1061,6 +1064,16 @@ function blocoFrente(f, lista){
    PAINEL
    ===================================================================== */
 // opções que aparecem abaixo do painel no menu (seta)
+/* ajuda curta no topo dos painéis (some depois de "Entendi"; volta quando a dica muda de versão) */
+const DICAS = {
+  unimed: { v:1, t:['As abas do topo trocam a visão: utilização, desconto em folha, dependentes e <b>Acidente de trabalho</b>.', 'Em <b>Acidente de trabalho</b>: importe a lista de acidentes e use <b>Conferir utilizações após o acidente</b> para decidir, mês a mês, o que desconta e o que não desconta.', 'Clique nos números e nas barras para ver quem está por trás deles.'] },
+  'cartao-adm': { v:1, t:['<b>Lançamentos do período</b> e <b>Mapa dos cartões</b> mostram quem está com cada cartão.', 'Na aba <b>Fechamento por centro de custo</b>, importe o fechamento da Sysprocard: o painel junta as abas, faz o resumo por centro de custo e aponta o que conferir.', 'Use <b>Corrigir</b> e <b>Está certo</b> em cada ponto da análise; no PDF e no Excel, escolha as partes que devem sair.'] },
+  clube: { v:1, t:['Lance os sócios pela matrícula: o centro de custo vem do Quadro.', 'Há dois relatórios: <b>desconto</b> (sem centro de custo) e <b>lançamento da nota</b> (com centro de custo e valor cheio).', 'Use a observação de inclusão nova ou exclusão, com a data, para avisar o clube.'] },
+  'cartao-alimentacao': { v:1, t:['Importe a planilha exportada da Sysprocard: o painel compara com o Quadro e mostra quem falta pedir cartão.', 'Marque <b>Pedido</b> ou <b>Demitido</b>: a pessoa sai da lista de pendências na hora.'] },
+  'cartao-convenio': { v:1, t:['Importe a planilha exportada da Sysprocard: o painel compara com o Quadro e mostra quem falta pedir cartão.', 'Marque <b>Pedido</b> ou <b>Demitido</b>: a pessoa sai da lista de pendências na hora.'] },
+  'cartao-premium': { v:1, t:['Importe a planilha exportada da Sysprocard: o painel compara com o Quadro e mostra quem falta pedir cartão.', 'Marque <b>Pedido</b> ou <b>Demitido</b>: a pessoa sai da lista de pendências na hora.'] },
+  ferias: { v:1, t:['<b>Imprimir relação para o Departamento Pessoal</b> gera a lista de quem sai de férias, por mês ou por período, com o lugar da assinatura.', 'Quem assina sai de Central de Rotinas → <b>Cadastros do RH</b> → Assinantes.'] }
+};
 const SUBACOES = {
   quadro:   [{ acao:'grel', nome:'Gerador de relatórios' }, { acao:'hcol', nome:'Histórico do colaborador' }, { acao:'ent', nome:'Entrevista de desligamento' }, { acao:'entr', nome:'Respostas das entrevistas' }, { acao:'estab', nome:'Estabilidade' }, { acao:'aso', nome:'Exames (ASO)' }, { acao:'afast', nome:'Afastamentos' }],
   admissoes: [{ acao:'vq', nome:'Todas as empresas e anos' }, { acao:'vp', nome:'Acompanhamento 2026' }],
@@ -1077,7 +1090,7 @@ const SUBACOES = {
   'cartao-alimentacao': [{ acao:'rel', nome:'Relatório de conferência' }],
   'cartao-convenio':    [{ acao:'desc', nome:'Desconto em folha' }, { acao:'termo', nome:'Termo de opção' }, { acao:'rel', nome:'Relatório de conferência' }],
   'cartao-premium':     [{ acao:'rel', nome:'Relatório de conferência' }],
-  'cartao-adm':         [{ acao:'novo', nome:'Registrar entrega' }, { acao:'sem', nome:'Créditos da semana' }, { acao:'rel', nome:'Relatório do período' }],
+  'cartao-adm':         [{ acao:'fech', nome:'Fechamento por centro de custo' }, { acao:'novo', nome:'Registrar entrega' }, { acao:'sem', nome:'Créditos da semana' }, { acao:'rel', nome:'Relatório do período' }],
   crachas:  [{ acao:'novo', nome:'Cadastrar crachá de treinamento' }],
   clube:    [{ acao:'novo', nome:'Lançar sócio' }],
   unimed:   [{ acao:'acid', nome:'Acidente de trabalho' }],
@@ -1100,6 +1113,7 @@ function executarAcao(acao){
   if (acao === 'jcn' && E.painelAberto === 'justa-causa' && typeof window.CRV_JC_NOVA === 'function') { window.CRV_JC_NOVA(); return true; }
   if (acao === 'acid' && w && typeof w.CRV_ACID === 'function') { w.CRV_ACID(); return true; }
   if (acao === 'fdp' && w && typeof w.CRV_FER_DP === 'function') { w.CRV_FER_DP(); return true; }
+  if (acao === 'fech' && w && typeof w.CRV_FECH === 'function') { w.CRV_FECH(); return true; }
   if (acao === 'grel' && w && typeof w.CRV_GERREL === 'function') { fecharJanelasAut(w); w.CRV_GERREL(); return true; }
   if (acao === 'hcol' && w && typeof w.CRV_HISTCOL === 'function') { fecharJanelasAut(w); w.CRV_HISTCOL(); return true; }
   if (acao === 'estab' && w && typeof w.CRV_ESTAB === 'function') { fecharJanelasAut(w); w.CRV_ESTAB(); return true; }
@@ -1493,7 +1507,7 @@ async function logAcesso(acao, onde, detalhe){
 window.CRV_LOG_ACESSO = logAcesso;
 const ondeDe = h => { if (h.startsWith('#/p/')) { const id = decodeURIComponent(h.slice(4).split('/')[0]); return 'Painel: ' + ((E.paineis || []).find(p => p.id === id)?.nome || id); }
   if (h.startsWith('#/eq/')) { const k = h.slice(5); return 'Minha equipe: ' + ({ eq:'Equipe', mov:'Admissões e saídas', pv:'Quadro x previsto', exp:'Experiência', nov:'Novos colaboradores', perfil:'Perfil profissional', fer:'Férias', freq:'Frequência', disc:'Disciplina e RD', cr:'Em treinamento', alo:'Alojamento', env:'Meus envios' }[k] || k); }
-  return ({ '#/':'Visão Geral', '#/central':'Central de Rotinas do RH', '#/admin':'Administração', '#/conta':'Minha conta', '#/relatorio':'Relatórios Gerenciais', '#/bases':'Qualidade dos Dados', '#/envios':'Envios dos Gestores' })[h] || (h.startsWith('#/ficha') ? 'Perfil do Colaborador' : h.startsWith('#/desligamento') ? 'Conferência de Desligamentos' : h.replace(/^#\//, '') || 'Início'); };
+  return ({ '#/':'Visão Geral', '#/central':'Central de Rotinas do RH', '#/admin':'Administração', '#/conta':'Minha conta', '#/relatorio':'Relatórios Gerenciais', '#/bases':'Qualidade dos Dados', '#/cadastros':'Cadastros do RH', '#/envios':'Envios dos Gestores' })[h] || (h.startsWith('#/ficha') ? 'Perfil do Colaborador' : h.startsWith('#/desligamento') ? 'Conferência de Desligamentos' : h.replace(/^#\//, '') || 'Início'); };
 async function registrar(painel, acao, detalhe){
   try { await sb.from('historico').insert({ painel, acao, detalhe, usuario: E.perfil?.nome }); } catch(_){}
 }
@@ -1534,6 +1548,10 @@ async function telaModelo(p, cfg, acao){
     (podeImportar() && podeEditar(p) && !SEM_PACOTE.includes(p.id) ? `<div class="cartao" id="imp-barra" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:10px 14px;margin-bottom:10px;border-left:4px solid #1d7a88"><div style="flex:1;min-width:220px;font-size:13.5px"><b>Atualizar a planilha deste painel</b><br><small style="color:var(--mut)">${['cartao-convenio','cartao-alimentacao','cartao-premium','cartao-adm','sysprocard','sysprocard-credito'].includes(p.id) ? 'Carregue a planilha exportada da Sysprocard. O painel compara com o Quadro e mostra quem ainda está sem cartão.' : 'Carregue a planilha nova do sistema. Os lançamentos feitos no app são mantidos.'}</small></div><button class="btn prim" id="imp-painel">Importar planilha${['cartao-convenio','cartao-alimentacao','cartao-premium','cartao-adm','sysprocard','sysprocard-credito'].includes(p.id) ? ' da Sysprocard' : ''}</button></div>` : '') +
     `<div id="modelo-area" class="cartao vazio"><div class="spinner" style="margin:0 auto"></div><p>Abrindo o painel…</p></div>`);
   { const bi = document.getElementById('imp-painel'); if (bi) bi.onclick = () => escolherPacotes(PAC_DE[p.id] || p.id); }
+  { const dk = DICAS[p.id], ck = 'crv-dica-' + p.id + '-' + (dk ? dk.v : '');
+    let visto = false; try { visto = !!localStorage.getItem(ck); } catch(_){}
+    if (dk && !visto) { const area0 = $('#modelo-area'); if (area0) { area0.insertAdjacentHTML('beforebegin', `<div class="cartao" id="dica-painel" style="display:flex;gap:12px;align-items:flex-start;padding:10px 14px;margin-bottom:10px;border-left:4px solid #e9a23b;background:#fffaf0"><div style="flex:1;font-size:13.5px;line-height:1.5"><b>Como usar este painel</b><ul style="margin:4px 0 0;padding-left:18px">${dk.t.map(x => '<li>' + x + '</li>').join('')}</ul></div><button class="btn borda peq" id="dica-ok">Entendi</button></div>`);
+      $('#dica-ok').onclick = () => { try { localStorage.setItem(ck, '1'); } catch(_){} const d = $('#dica-painel'); if (d) d.remove(); }; } } }
   if (vq) document.querySelectorAll('.vista-seg [data-vq]').forEach(b => b.onclick = () => { try { localStorage.setItem('crv-vista-' + p.id, b.dataset.vq); } catch(_){} telaModelo(p, cfg); });
   if (vq && sel === 'q') return telaVistaQuadro(p, vq, acao);
   const meta = { set innerHTML(v){}, set textContent(v){} };   // informações do painel ficam só em Administração
@@ -2548,6 +2566,27 @@ async function instalarApp(){
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(()=>{}));
 }
+/* atualização automática: confere a versão publicada e mostra a faixa "Nova versão disponível" */
+(function(){
+  const cmp = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d; } return 0; };
+  let mostrada = '';
+  async function atualizarAgora(){ const b = document.getElementById('nv-bar'); if (b) b.querySelector('button').textContent = 'Atualizando…';
+    try { const r = await navigator.serviceWorker?.getRegistration(); if (r) { await r.update(); if (r.waiting) r.waiting.postMessage('skip'); } } catch(_){}
+    try { const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))); } catch(_){}
+    location.reload(); }
+  window.CRV_ATUALIZAR_APP = atualizarAgora;
+  async function conferir(){ try { if (!navigator.onLine) return;
+      const t = await (await fetch('config.js?t=' + Date.now(), { cache:'no-store' })).text(); const m = t.match(/VERSAO:\s*'([\d.]+)'/); if (!m) return;
+      const nova = m[1]; if (cmp(nova, CFG.VERSAO) <= 0 || mostrada === nova) return; mostrada = nova;
+      let b = document.getElementById('nv-bar'); if (!b) { b = document.createElement('div'); b.id = 'nv-bar'; document.body.appendChild(b); }
+      b.style.cssText = 'position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:9999;background:#14213d;color:#fff;border-radius:12px;padding:10px 12px 10px 16px;display:flex;gap:12px;align-items:center;box-shadow:0 10px 30px rgba(0,0,0,.35);font-size:14px;max-width:calc(100% - 24px);flex-wrap:wrap';
+      b.innerHTML = `<span><b>Nova versão do app disponível</b> (${nova}). Você está na ${CFG.VERSAO}.</span><button style="border:0;background:#e9a23b;color:#16284d;border-radius:8px;padding:7px 14px;font:700 13px inherit;font-family:inherit;cursor:pointer">Atualizar agora</button><button title="Depois" style="border:0;background:transparent;color:#cfd6e4;font-size:18px;cursor:pointer;padding:0 4px">×</button>`;
+      const [ok, x] = b.querySelectorAll('button'); ok.onclick = atualizarAgora; x.onclick = () => b.remove();
+    } catch(_){} }
+  setTimeout(conferir, 20000); setInterval(conferir, 5 * 60000);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') conferir(); });
+  window.addEventListener('focus', () => conferir());
+})();
 
 sb.auth.onAuthStateChange((evento) => { if (evento === 'SIGNED_OUT' && E.perfil) { E.perfil = null; telaLogin(); } });
 prepararLogo();

@@ -1312,7 +1312,7 @@ function buildPdfSaidas(incSaiu,ass){
     drawCells(doc,cols,lay,M,y);
     doc.line(M,y+RH,M+782,y+RH,'#d8dee9',0.4); y+=RH; });
   if(rows.length){ if(y+22+(ass?ASSH:0)>BOT) header(); const ppl=new Set(rows.map(r=>r.x.person.c)).size; doc.rect(M,y+4,782,18,'#eef1f5'); doc.text(`Total: ${ppl} pessoa${ppl!==1?'s':''}  ·  ${rows.length} saída${rows.length!==1?'s':''}  ·  ${rows.reduce((a,r)=>a+r.q.dias,0)} dias de férias  ·  ${rows.reduce((a,r)=>a+(r.q.abono||0),0)} dias de abono`,M+6,y+16.5,{size:8.8,bold:true,color:'#15213a'}); }
-  if(rows.length&&ass){ const yy=y+22+42, x0=M+782-260; doc.line(x0,yy,x0+260,yy,'#15213a',0.8); doc.text(ass.nome,x0+130,yy+12,{size:9,bold:true,color:'#15213a',align:'center'}); doc.text([ass.funcao,'Matrícula '+ass.mat].filter(Boolean).join(' · '),x0+130,yy+23,{size:7.8,color:'#45536c',align:'center'});
+  if(rows.length&&ass){ const yy=y+22+42, x0=M+782-260; doc.line(x0,yy,x0+260,yy,'#15213a',0.8); doc.text(ass.nome,x0+130,yy+12,{size:9,bold:true,color:'#15213a',align:'center'}); doc.text([ass.funcao,ass.mat?'Matrícula '+ass.mat:''].filter(Boolean).join(' · '),x0+130,yy+23,{size:7.8,color:'#45536c',align:'center'});
     doc.text('Data: ____/____/________',M,yy+12,{size:8.5,color:'#45536c'}); }
   const N=doc.pages.length;
   doc.pages.forEach((ops,i)=>{ doc.cur=ops; doc.line(M,566,842-M,566,'#d8dee9',0.5); doc.text(`Gestão de Pessoas · Painel de Férias · CRV Industrial · emitido em ${HOJE.toLocaleDateString('pt-BR')}`,M,578,{size:7.5,color:'#6c788e'}); doc.text(`Página ${i+1} de ${N}`,842-M,578,{size:7.5,color:'#6c788e',align:'right'}); });
@@ -1338,7 +1338,7 @@ function pdfSync(){
 }
 /* assinatura da coordenadora (matrícula 334) na relação para o Departamento Pessoal: nome e função vêm do Quadro */
 const MAT_COORD='334';
-async function assCoord(){ try{ const f=window.parent&&window.parent.CRV_QUADRO; const q=typeof f==='function'?await f():null; const c=q&&q.mapa&&q.mapa[MAT_COORD];
+async function assCoord(){ try{ const fa=window.parent&&window.parent.CRV_ASSINANTES; if(typeof fa==='function'){ const A=await fa('ferias-dp'); if(A&&A.length) return {nome:A[0].nome,funcao:A[0].cargo,mat:''}; } }catch(_){} try{ const f=window.parent&&window.parent.CRV_QUADRO; const q=typeof f==='function'?await f():null; const c=q&&q.mapa&&q.mapa[MAT_COORD];
   if(c&&c.nome) return {nome:String(c.nome).trim(),funcao:String(c.funcao||'').trim(),mat:MAT_COORD}; }catch(_){} return {nome:'',funcao:'',mat:MAT_COORD}; }
 /* botão próprio: relação de quem vai sair de férias, para enviar ao Departamento Pessoal */
 function abrirDP(){ lastFocus=document.activeElement; $('pdfMsg').textContent=''; document.querySelector('input[name=pTipo][value=saidas]').checked=true; $('pdfTipoFs').hidden=true;

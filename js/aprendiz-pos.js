@@ -121,6 +121,7 @@ async function lerArquivo(fl){
 let SMAN = {}, SINST = { 'João Bittar':new Map(), 'RENAPSI':new Map() };
 const setorOk = v => { const t = String(v == null ? '' : v).trim(); return t && !/^(a definir|-|—|n\/?a)$/i.test(t) ? t : ''; };
 async function carregarSetores(){
+  try { if (window.CRV_PADRAO) await window.CRV_PADRAO.carregar(); } catch(_){}
   SMAN = {}; try { (await window.CRV_REGS(PAINEL, 'setor')).forEach(r => { if (!r.excluida && setorOk(r.setor)) SMAN[r._id] = r; }); } catch(_){}
   const um = async (painel, nome) => { const M = new Map(), mc = new Map(); let d = null; try { d = await window.CRV_DADOS(painel); } catch(_){}
     const D = (d && d.dados) || {};
@@ -223,7 +224,7 @@ async function tela(p){
     <tfoot><tr><td colspan="11">Total: ${nf(L.length)} ${L.length === 1 ? 'pessoa' : 'pessoas'}</td></tr></tfoot></table></div>` : '<div class="cartao vazio"><h3>Ninguém nesta lista</h3></div>';
   const barras = (titulo, L, chave, cor) => { const m = new Map(); L.forEach(x => { const k = chave(x) || '—'; m.set(k, (m.get(k) || []).concat([x])); }); const A = [...m.entries()].sort((a, b) => b[1].length - a[1].length).slice(0, 12), mx = Math.max(1, ...A.map(a => a[1].length));
     return `<div class="cartao"><h3 style="margin:0 0 8px;font-size:15px">${titulo}</h3>${A.length ? A.map(([k, v]) => `<div class="ap-bar" data-bk="${esc(titulo)}" data-bv="${esc(k)}"><span>${esc(k)}</span><span class="t"><i style="width:${v.length / mx * 100}%;background:${cor}"></i></span><b>${v.length}</b></div>`).join('') : '<p class="nr-fonte">Sem contratados no recorte.</p>'}${m.size > 12 ? `<p class="nr-fonte">Mostrando os 12 maiores de ${m.size}.</p>` : ''}</div>`; };
-  const porSetor = L => { const m = new Map(); L.forEach(x => { if (!x.setorA) return; const k = x.setorA.trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); if (!m.has(k)) m.set(k, { s:x.setorA.trim(), L:[], nomes:new Map() }); const o = m.get(k); o.L.push(x); o.nomes.set(x.setorA.trim(), (o.nomes.get(x.setorA.trim()) || 0) + 1); });
+  const porSetor = L => { const m = new Map(); const of = v => (window.CRV_PADRAO ? window.CRV_PADRAO.setor(v) : v) || v; L.forEach(x => { if (!x.setorA) return; const sv = String(of(x.setorA.trim())).trim(); const k = sv.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); if (!m.has(k)) m.set(k, { s:sv, L:[], nomes:new Map() }); const o = m.get(k); o.L.push(x); o.nomes.set(sv, (o.nomes.get(sv) || 0) + 1); });
     return [...m.values()].map(o => Object.assign(o, { s:[...o.nomes.entries()].sort((a, b) => b[1] - a[1])[0][0] })).sort((a, b) => b.L.length - a.L.length || a.s.localeCompare(b.s, 'pt-BR')); };
   function listaJov(titulo, L){ L = L.slice().sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
     abrirModal({ titulo, largo:true, corpo:`<div style="overflow:auto"><table class="ap-tb"><thead><tr><th>Nome</th><th>CPF</th><th>Origem</th><th>Período</th><th>Setor</th><th>Resultado</th></tr></thead><tbody>${L.map(x => `<tr><td><b>${esc(x.nome)}</b></td><td>${esc(cpfF(x.cpf) || x.cpfRaw || '')}</td><td>${esc(x.origem || '—')}</td><td>${esc(brD(x.ini))} a ${esc(brD(x.fim))}</td><td>${setCel(x)}</td><td>${esc(resTxt(x))}</td></tr>`).join('')}</tbody><tfoot><tr><td colspan="6">${esc(pessoasTxt(L))}</td></tr></tfoot></table></div>`,
@@ -344,20 +345,18 @@ async function tela(p){
       if (!x.semTotal) a.push([pessoasTxt(x.L)]);
       const ws = XL.utils.aoa_to_sheet(a); ws['!cols'] = x.head.map((h, i) => ({ wch:/Nome/.test(h) ? 36 : /Motivo|Registros/.test(h) ? 60 : 20 })); XL.utils.book_append_sheet(wb, ws, aba(x.tit), { semTotal:true }); });
     if (!wb.SheetNames.length) return; baixar(new Blob([XL.write(wb, { bookType:'xlsx', type:'array' })], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), nomeArq('xlsx')); }
-  async function pdf(S, tituloDoc){ const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit:'mm', format:'a4', orientation:'landscape' }), W = 297;
-    doc.setFillColor(31, 58, 104); doc.rect(0, 0, W, 3, 'F'); doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(31, 58, 104); doc.text(tituloDoc || 'Aproveitamento pós-programa · Jovem Aprendiz', 12, 15);
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(90, 96, 110); doc.text('Contratados depois do programa, em outra função, nas empresas 5, 6 e 16 · cruzamento pelo CPF · ' + filtrosTxt(), 12, 21);
-    let y = 27; const st = { fontSize:7.6, cellPadding:1.5, lineColor:[225, 229, 236], lineWidth:.15 }, hs = { fillColor:[31, 58, 104], textColor:255, fontStyle:'bold' }, fs = { fillColor:[238, 241, 245], textColor:[20, 33, 61], fontStyle:'bold' };
-    const tit = t => { if (y > 180) { doc.addPage(); y = 16; } doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(31, 58, 104); doc.text(t, 12, y); y += 3; };
+  async function pdf(S, tituloDoc){ const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit:'mm', format:'a4', orientation:'landscape' }); const D = window.CRV_DOC, M = D.margem, ES = D.estilo();
+    let y = D.titulo(doc, tituloDoc || 'Aproveitamento pós-programa · Jovem Aprendiz', 'Contratados depois do programa, em outra função, nas empresas 5, 6 e 16 · cruzamento pelo CPF · ' + filtrosTxt());
+    const tit = t => { y = D.secao(doc, y, t); };
     const CORES = [[46, 125, 79], [47, 111, 168], [181, 115, 26], [91, 63, 158]];
     S.forEach(x => {
       if (x.resumo) { tit(x.tit); y += 1;
-        x.resumo.forEach(([t, R, lab], i) => { if (y > 175) { doc.addPage(); y = 16; } doc.autoTable({ startY:y, head:[[t, lab || 'Contratados']], body:R.length ? R : [['—', 0]], foot:[['Total', R.reduce((s, r) => s + r[1], 0)]], showFoot:'lastPage', styles:st, headStyles:{ fillColor:CORES[i % 4], textColor:255, fontStyle:'bold' }, footStyles:fs, columnStyles:{ 1:{ halign:'right', cellWidth:28 } }, tableWidth:150, margin:{ left:12, right:12 }, semTotal:true, semOrdem:true }); y = doc.lastAutoTable.finalY + 5; });
+        x.resumo.forEach(([t, R, lab], i) => { if (y > 160) { doc.addPage(); y = 34; } doc.autoTable(Object.assign({}, ES, { startY:y, head:[[t, lab || 'Contratados']], body:R.length ? R : [['—', 0]], foot:[['Total', R.reduce((s, r) => s + r[1], 0)]], showFoot:'lastPage', headStyles:{ fillColor:CORES[i % 4], textColor:255, fontStyle:'bold' }, columnStyles:{ 1:{ halign:'right', cellWidth:28 } }, tableWidth:150, margin:M, semTotal:true, semOrdem:true })); y = doc.lastAutoTable.finalY + 5; });
         y += 3; return; }
       tit(x.tit);
-      if (x.semTotal) { doc.autoTable({ startY:y, head:[x.head], body:x.rows, styles:st, headStyles:hs, margin:{ left:12, right:12 }, semTotal:true }); y = doc.lastAutoTable.finalY + 8; return; }
-      doc.autoTable({ startY:y, head:[x.head], body:x.rows.length ? x.rows : [[{ content:'Ninguém nesta lista.', colSpan:x.head.length }]], foot:[[{ content:pessoasTxt(x.L), colSpan:x.head.length }]], showFoot:'lastPage', styles:st, headStyles:x.cor ? { fillColor:x.cor, textColor:255, fontStyle:'bold' } : hs, footStyles:fs, columnStyles:x.col || {}, margin:{ left:12, right:12 } }); y = doc.lastAutoTable.finalY + 8; });
-    const n = doc.getNumberOfPages(); for (let i = 1; i <= n; i++) { doc.setPage(i); doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(110); doc.text('Gestão de Pessoas · CRV Industrial · ' + new Date().toLocaleDateString('pt-BR') + ' · por ' + quem(), 12, 203); doc.text(i + '/' + n, W - 12, 203, { align:'right' }); }
+      if (x.semTotal) { doc.autoTable(Object.assign({}, ES, { startY:y, head:[x.head], body:x.rows, margin:M, semTotal:true })); y = doc.lastAutoTable.finalY + 8; return; }
+      doc.autoTable(Object.assign({}, ES, { startY:y, head:[x.head], body:x.rows.length ? x.rows : [[{ content:'Ninguém nesta lista.', colSpan:x.head.length }]], foot:[[{ content:pessoasTxt(x.L), colSpan:x.head.length }]], showFoot:'lastPage', headStyles:x.cor ? { fillColor:x.cor, textColor:255, fontStyle:'bold' } : ES.headStyles, columnStyles:x.col || {}, margin:M })); y = doc.lastAutoTable.finalY + 8; });
+    D.moldura(doc, quem());
     const out = window.CRV_PDF_LOGOS ? await window.CRV_PDF_LOGOS(doc) : doc;
     baixar((out || doc).output('blob'), nomeArq('pdf')); }
   /* PDF/Excel direto da lista aberta ao clicar num número */
