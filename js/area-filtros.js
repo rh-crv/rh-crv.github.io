@@ -424,7 +424,7 @@ CRV_AREA.reg({ id:'crachas', nome:'Crachás de treinamento', frente:'T&D | Desen
 /* FAT 2026/2027 (motoristas e operadores de máquinas: direito ao programa e situação das férias).
    Regra (out/2026): o gestor vê quem o painel do RH mostra ao filtrar pelo mesmo setor/departamento.
    RAW = uma linha por pessoa: r[0] matrícula, r[3] Setor (filtro "Setor" do painel), r[5] Departamento (filtro "Departamento").
-   Sensível: nascimento (r[11]) e cidade (r[13]) saem. Para os números baterem com o RH, vai no lugar só a marcação
+   Nascimento (r[11]) fica (liberado pela RH em out/2026); a cidade (r[13]) sai. Texto antigo: Para os números baterem com o RH, vai no lugar só a marcação
    r[17] = 1 se a pessoa tem idade igual ou acima do corte padrão do painel (homens 60, mulheres 55) na data de referência
    padrão (REF0 = 20/12/2026); o painel, só no modo gestor, usa essa marcação em vez da idade.
    Confirmação de aposentado (coleção 'conf', doc = matrícula): só das matrículas que ficaram no recorte. */
@@ -436,7 +436,8 @@ const idade = (nasc, ref) => { const a = String(nasc || '').split('-').map(Numbe
 CRV_AREA.reg({ id:'fat', nome:'FAT 2026/2027', frente:'Absenteísmo e Férias',
   filtro(c, ctx){
     const R = (CRV_AREA.get(c, 'RAW') || []).filter(r => CRV_AREA.casa(ctx, r[3], r[5]));
-    R.forEach(r => { const i = idade(r[11], REF0); r[17] = i != null && i >= (r[12] === 'F' ? CORTE.F : CORTE.M) ? 1 : 0; r[11] = ''; r[13] = ''; });
+    // a RH liberou a data de nascimento e a marcação de possível aposentado para o gestor (out/2026): o painel calcula a idade como no RH; só a cidade sai
+    R.forEach(r => { r[13] = ''; });
     CRV_AREA.set(c, 'RAW', R);
     if (ctx && typeof ctx === 'object') MEMO.set(ctx, new Set(R.map(r => CRV_AREA.fm(r[0]))));
   },

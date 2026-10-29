@@ -7,7 +7,7 @@
    Contexto do recorte: { mats:Set de matrículas da área (ativos e desligados), setores, areas, gerencias, funcoes, mapa }.
    ===================================================================== */
 /* muda quando a regra de recorte muda: força gerar de novo as cópias dos gestores */
-window.CRV_AREA_V = 'r4-fadiga';
+window.CRV_AREA_V = 'r5-fat-nasc';
 window.CRV_AREA = (function(){
 'use strict';
 const LISTA = [];
