@@ -28,7 +28,7 @@ const areaDe = (a, d, f) => (window.CRV_AREA && window.CRV_AREA.areaDe) ? window
 const SNAP = () => window.CRV_ORG_SNAP && window.CRV_ORG_SNAP.crv;
 const novoId = () => 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
-let CFG = { nos:[], editores:[] }, FOTOS = {}, Q = null, DEPS = null, VIS = { fechados:new Set(), z:0, q:'', modo:'' };
+let RHFAZ = () => '', CFG = { nos:[], editores:[] }, FOTOS = {}, Q = null, DEPS = null, VIS = { fechados:new Set(), z:0, q:'', modo:'' };
 
 /* ---------- dados ---------- */
 async function ler(){
@@ -36,6 +36,7 @@ async function ler(){
   try { const { data } = await sb.from('registros').select('dados').eq('painel', 'quadro').eq('caminho', 'sistema/org_crv').maybeSingle(); CFG = Object.assign({ nos:[], editores:[] }, (data && data.dados) || {}); } catch(_){ CFG = { nos:[], editores:[] }; }
   FOTOS = {}; try { const { data } = await sb.from('registros').select('doc_id,dados').eq('painel', 'quadro').eq('colecao', 'org_foto'); (data || []).forEach(r => { if (r.dados && r.dados.img) FOTOS[r.doc_id] = r.dados.img; }); } catch(_){}
   try { Q = window.CRV_QUADRO ? await window.CRV_QUADRO() : null; } catch(_){ Q = null; }
+  try { RHFAZ = window.CRV_ORG_RH_FAZ ? await window.CRV_ORG_RH_FAZ() : () => ''; } catch(_){ RHFAZ = () => ''; }
   DEPS = null;
 }
 const pode = () => !SNAP() && ehRH();   // toda a equipe do RH monta e altera o organograma
@@ -70,13 +71,13 @@ const comCartao = () => new Set(CFG.nos.filter(n => n.mat).map(n => String(n.mat
 function qtd(n, _vis){ const q = n.qtd || {}; if (q.modo === 'manual') return { n:+q.n || 0, auto:false };
   const S = SNAP(); if ((q.modo === 'auto' || q.modo === 'soma') && S && S.cont && S.cont[n.id]) return { n:S.cont[n.id].n, auto:true, F:S.cont[n.id].F, soma:q.modo === 'soma', cab:S.cont[n.id].cab };
   if (q.modo === 'auto') { const D = deps(), F = {}, X = comCartao(), vis = new Set(); let t = 0;
-    (q.deps || []).forEach(k => { const d = D[k]; if (!d) return; d.P.forEach(([m, f]) => { if (vis.has(m) || X.has(String(m))) return; vis.add(m); t++; F[f] = (F[f] || 0) + 1; }); }); return { n:t, auto:true, F }; }
+    (q.deps || []).forEach(k => { const d = D[k]; if (!d) return; d.P.forEach(([m, f]) => { if (vis.has(m) || X.has(String(m))) return; vis.add(m); t++; F[f] = (F[f] || 0) + 1; }); }); return { n:t, auto:true, F, P:[...vis] }; }
   /* soma: cada cartão de pessoa ativa abaixo (as cabeças) + os colaboradores contados nos cartões abaixo */
-  if (q.modo === 'soma') { const F = {}; let t = 0, cab = 0; _vis = _vis || new Set(); if (_vis.has(n.id)) return { n:0, auto:true, F, soma:true }; _vis.add(n.id);
+  if (q.modo === 'soma') { const F = {}, P = []; let t = 0, cab = 0; _vis = _vis || new Set(); if (_vis.has(n.id)) return { n:0, auto:true, F, soma:true }; _vis.add(n.id);
     desc(n.id).forEach(id => { const c = byId(id); if (!c) return; const I = info(c);
-      if (c.mat && !I.desl) { t++; cab++; const f = (pq(c) || {}).funcao || c.funcao || ''; F[f] = (F[f] || 0) + 1; }
-      const qc = c.qtd && c.qtd.modo !== 'soma' ? qtd(c) : null; if (qc) { t += qc.n; Object.entries(qc.F || {}).forEach(([f, v]) => F[f] = (F[f] || 0) + v); } });
-    return { n:t, auto:true, F, soma:true, cab }; }
+      if (c.mat && !I.desl) { t++; cab++; P.push(String(c.mat)); const f = (pq(c) || {}).funcao || c.funcao || ''; F[f] = (F[f] || 0) + 1; }
+      const qc = c.qtd && c.qtd.modo !== 'soma' ? qtd(c) : null; if (qc) { t += qc.n; (qc.P || []).forEach(m => P.push(m)); Object.entries(qc.F || {}).forEach(([f, v]) => F[f] = (F[f] || 0) + v); } });
+    return { n:t, auto:true, F, soma:true, cab, P }; }
   return null; }
 const byId = id => CFG.nos.find(n => n.id === id);
 const raizes = () => CFG.nos.filter(n => !n.pai || !byId(n.pai)).sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
@@ -123,7 +124,7 @@ function cartao(n, p){ const I = info(n), q = qtd(n), F = filhos(n.id), c = corN
     ${n.dep ? `<div class="oc-dp" title="${esc(n.dep)}">${esc(n.dep)}</div>` : ''}<div class="oc-f ${n.tipo === 'area' ? 'ar' : ''}" style="background:${n.tipo === 'area' ? COR.area : corDe(n.id)}">${fotoHtml(n)}</div>
     <div class="oc-n">${esc(I.nome || '(sem nome)')}</div><div class="oc-fu">${esc(I.funcao || '')}</div>
     ${I.desl ? '<span class="oc-dl">Desligado – revisar</span>' : I.vinc ? `<span class="oc-sl">${esc(I.vinc)}</span>` : I.afast ? '<span class="oc-sl" style="background:#fff1d6;color:#7a5200">Afastado</span>' : ''}
-    ${q ? `<span class="oc-q" ${q.auto ? `data-qf="${n.id}" title="Ver por função"` : ''}>${colab(q.n)}</span>` : ''}
+    ${q ? `<span class="oc-q" ${q.auto ? `data-qf="${n.id}" title="${!SNAP() && ehRH() ? 'Ver quem são' : 'Ver por função'}"` : ''}>${colab(q.n)}</span>` : ''}
     ${F.length ? `<button class="oc-tg" data-tg="${n.id}" title="${VIS.fechados.has(n.id) ? 'Abrir' : 'Recolher'}">${VIS.fechados.has(n.id) ? '+ ' + F.length : '−'}</button>` : ''}</div>`; }
 function arvoreHtml(roots){ const L = layout(roots); if (!roots.length) return '';
   const lin = []; CFG.nos.forEach(n => { const a = L.pos[n.pai], b = L.pos[n.id]; if (!a || !b || VIS.fechados.has(n.pai)) return; const x1 = a.x + CW / 2, y1 = a.y + CH, x2 = b.x + CW / 2, y2 = b.y, ym = y2 - GY / 2; lin.push([[x1, y1], [x1, ym], [x2, ym], [x2, y2]]); });
@@ -182,9 +183,31 @@ function busca(rolar){ const t = N(VIS.q); document.querySelectorAll('.oc-c.hl')
 function janela(tit, corpo, pe, larg){ const w = document.createElement('div'); w.className = 'oc-ov'; w.innerHTML = `<div class="oc-m" ${larg ? `style="width:min(${larg}px,100%)"` : ''}><div class="oc-mh"><h3>${tit}</h3><button class="btn borda peq" data-x>Fechar</button></div><div class="oc-mb">${corpo}</div><div class="oc-mf">${pe || ''}</div></div>`;
   document.body.appendChild(w); w.addEventListener('mousedown', e => { if (e.target === w) w.remove(); }); w.querySelectorAll('[data-x]').forEach(b => b.onclick = () => w.remove()); return w; }
 function porFuncao(n){ if (!n) return; const q = qtd(n); if (!q || !q.auto) return; const F = Object.entries(q.F || {}).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'pt-BR'));
-  janela('Colaboradores ligados · ' + esc(info(n).nome), `<p style="margin-top:0;color:#5d6a85;font-size:13px">Ativos do Quadro Geral nos departamentos escolhidos para este cartão. Contagem por função, sem nomes.</p>
-    <table class="oc-tb"><thead><tr><th>Função</th><th style="text-align:right">Pessoas</th></tr></thead><tbody>${F.map(([f, v]) => `<tr><td>${esc(tc(f))}</td><td class="n">${v}</td></tr>`).join('')}<tr><td><b>Total</b></td><td class="n">${q.n}</td></tr></tbody></table>
-    ${q.soma ? `<p style="font-size:12px;color:#8a94a8;margin-bottom:0">Soma de tudo o que está abaixo no organograma: ${q.cab || 0} pessoa(s) com cartão + os colaboradores dos departamentos delas.</p>` : depsTxt(n)}`); }
+  /* RH: com nomes (clicar na função filtra; clicar no nome abre o Perfil do Colaborador). Gestor (cópia): só a contagem por função */
+  const com = !SNAP() && ehRH() && Q && Q.mapa && Array.isArray(q.P);
+  const L = com ? q.P.map(m => { const p = Q.mapa[m] || {}; const d = Object.values(deps()).find(x => /^d:/.test(x.k) && x.P.some(y => y[0] === m)); return { m, nome:tc(p.nome || ''), fun:p.funcao || '', dep:tc(p.setor || ''), adm:p.admissao || '' }; }).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')) : [];
+  const I0 = info(n); let filtro = '';
+  const w = janela('Colaboradores ligados · ' + esc(I0.nome), `<p style="margin-top:0;color:#5d6a85;font-size:13px">${q.soma ? 'Todos abaixo deste cartão no organograma: as pessoas com cartão e os colaboradores dos departamentos delas.' : 'Ativos do Quadro Geral nos departamentos deste cartão (sem quem já tem cartão próprio no organograma).'}${com ? ' Clique numa função para filtrar e num nome para abrir o Perfil do Colaborador.' : ' Contagem por função.'}</p>
+    <table class="oc-tb"><thead><tr><th>Função</th><th style="text-align:right">Pessoas</th></tr></thead><tbody>${F.map(([f, v]) => `<tr ${com ? `data-ff="${esc(f)}" style="cursor:pointer"` : ''}><td>${esc(tc(f))}</td><td class="n">${v}</td></tr>`).join('')}<tr><td><b>Total</b></td><td class="n">${q.n}</td></tr></tbody></table>
+    ${com ? `<h4 style="margin:16px 0 6px;display:flex;gap:8px;align-items:center">Quem são <small id="oc-pfx" style="font-weight:600;color:#5d6a85"></small></h4><div id="oc-pl"></div>` : ''}
+    ${q.soma ? '' : depsTxt(n)}`, com ? '<button class="btn borda" id="oc-px">Excel</button><button class="btn borda" id="oc-pp">PDF</button><span style="flex:1"></span>' : '', com ? 760 : 0);
+  if (!com) return;
+  const lista = () => L.filter(x => !filtro || x.fun === filtro);
+  const des = () => { const A = lista(); w.querySelector('#oc-pfx').innerHTML = filtro ? `· ${esc(tc(filtro))} <button class="btn borda peq" id="oc-pfl">Ver todos</button>` : '';
+    w.querySelector('#oc-pl').innerHTML = `<table class="oc-tb"><thead><tr><th>Nome</th><th>Matrícula</th><th>Função</th><th>Departamento</th></tr></thead><tbody>${A.map(x => `<tr><td><button class="link" data-pm="${esc(x.m)}" style="border:0;background:none;padding:0;color:#1f3a68;font:inherit;font-weight:700;cursor:pointer;text-align:left">${esc(x.nome)}</button></td><td>${esc(x.m)}</td><td>${esc(tc(x.fun))}</td><td>${esc(x.dep)}</td></tr>`).join('')}<tr><td colspan="3"><b>Total</b></td><td class="n">${A.length} ${A.length === 1 ? 'pessoa' : 'pessoas'}</td></tr></tbody></table>`;
+    w.querySelectorAll('[data-pm]').forEach(b => b.onclick = () => { document.querySelectorAll('.oc-ov').forEach(x => x.remove()); location.hash = '#/ficha/' + b.dataset.pm; });
+    const vt = w.querySelector('#oc-pfl'); if (vt) vt.onclick = () => { filtro = ''; des(); };
+    w.querySelectorAll('[data-ff]').forEach(r => r.style.background = r.dataset.ff === filtro ? '#eef8f1' : ''); };
+  w.querySelectorAll('[data-ff]').forEach(r => r.onclick = () => { filtro = filtro === r.dataset.ff ? '' : r.dataset.ff; des(); });
+  des();
+  const nomeArq = () => 'Colaboradores ligados - ' + I0.nome + (filtro ? ' - ' + tc(filtro) : '');
+  w.querySelector('#oc-px').onclick = () => { if (!window.XLSX) return toast('Excel indisponível agora.', true); const A = lista();
+    const ws = XLSX.utils.aoa_to_sheet([['CRV Industrial · Gestão de Pessoas'], ['Colaboradores ligados · ' + I0.nome + (I0.funcao ? ' (' + I0.funcao + ')' : '') + (filtro ? ' · função ' + tc(filtro) : '')], [], ['Nome', 'Matrícula', 'Função', 'Departamento']].concat(A.map(x => [x.nome, x.m, tc(x.fun), x.dep]), [[], ['Total de pessoas', A.length]]));
+    ws['!cols'] = [{ wch:40 }, { wch:11 }, { wch:38 }, { wch:34 }]; const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Colaboradores'); XLSX.writeFile(wb, nomeArq() + '.xlsx'); };
+  w.querySelector('#oc-pp').onclick = async () => { const A = lista(), { jsPDF } = window.jspdf, D = window.CRV_DOC, doc = new jsPDF({ unit:'mm', format:'a4' });
+    let y = D.titulo(doc, 'Colaboradores ligados · ' + I0.nome, (I0.funcao || '') + (filtro ? ' · função ' + tc(filtro) : '') + ' · ativos do Quadro Geral', 36);
+    doc.autoTable(Object.assign(D.estilo(), { startY:y + 2, margin:{ top:D.margem.top, bottom:D.margem.bottom, left:12, right:12 }, head:[['Nome', 'Matrícula', 'Função', 'Departamento']], body:A.map(x => [x.nome, x.m, tc(x.fun), x.dep]), foot:[['Total de pessoas', String(A.length), '', '']] }));
+    D.moldura(doc); try { if (window.CRV_PDF_LOGOS) await window.CRV_PDF_LOGOS(doc); } catch(_){} baixar(doc.output('blob'), nomeArq() + '.pdf'); }; }
 /* departamentos escolhidos e os nomes da base agrupados em cada um */
 function depsTxt(n){ const L = (n.qtd && n.qtd.deps) || []; if (!L.length || SNAP()) return ''; const D = deps();
   return `<div style="font-size:12px;color:#5d6a85;margin-top:10px"><b>Departamentos contados</b>${L.map(k => { const d = D[k];
@@ -193,19 +216,20 @@ function depsTxt(n){ const L = (n.qtd && n.qtd.deps) || []; if (!L.length || SNA
 
 /* ---------- ficha ---------- */
 function ficha(id){ const n = byId(id); if (!n) return; const I = info(n), q = qtd(n), F = filhos(n.id), pai = byId(n.pai), P = pode();
-  const oq = String(n.oque || '').split(/\n+/).map(x => x.replace(/^[\s•\-*]+/, '').trim()).filter(Boolean);
+  const oqRH = !n.oque && n.mat && !SNAP() ? RHFAZ('q:' + n.mat) : '';
+  const oq = String(n.oque || oqRH || '').split(/\n+/).map(x => x.replace(/^[\s•\-*]+/, '').trim()).filter(Boolean);
   const w = janela(esc(I.nome || 'Cartão'), `<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:12px"><div class="oc-f ${n.tipo === 'area' ? 'ar' : ''}" style="--c:${corN(n)};width:110px;height:110px;font-size:36px;background:${n.tipo === 'area' ? COR.area : corDe(n.id)}">${fotoHtml(n)}</div>
     <div><b style="font-size:16px">${esc(I.nome)}</b><br><span style="color:#5d6a85">${esc(I.funcao || '')}</span>${I.area ? `<br><small>${esc(I.area)}</small>` : ''}${I.desl ? '<br><span class="oc-dl">Desligado no Quadro Geral – revisar</span>' : I.vinc ? `<br><span class="oc-sl">${esc(I.vinc)}</span>` : ''}</div></div>
     <table class="oc-tb"><tbody>${n.mat ? `<tr><td>Matrícula</td><td><b>${esc(n.mat)}</b></td></tr>${I.adm ? `<tr><td>Admissão</td><td>${brD(I.adm)} · ${esc(tempoCasa(I.adm))} de casa</td></tr>` : ''}` : ''}
     ${n.tipo !== 'area' && !n.mat ? `<tr><td>Vínculo</td><td>${esc(n.vinculo || 'Externo')}${n.empresa ? ' · ' + esc(n.empresa) : ''}</td></tr>` : ''}
     <tr><td>Ligado a</td><td>${pai ? esc(info(pai).nome) + ' · ' + esc(info(pai).funcao || '') : '— (topo)'}</td></tr>
     <tr><td>Abaixo dele(a)</td><td>${F.map(f => esc(info(f).nome)).join(', ') || '—'}</td></tr>
-    <tr><td>Colaboradores ligados</td><td>${q ? `<b>${colab(q.n)}</b> ${q.auto ? (q.soma ? '<small>(soma automática de tudo abaixo)</small>' : '<small>(automático pelo Quadro)</small>') + ' <button class="btn borda peq" id="oc-pf">Por função</button>' : '<small>(informado)</small>'}` : '—'}</td></tr></tbody></table>
+    <tr><td>Colaboradores ligados</td><td>${q ? `<b ${q.auto ? 'id="oc-pfn" style="cursor:pointer;text-decoration:underline" title="Ver quem são"' : ''}>${colab(q.n)}</b> ${q.auto ? (q.soma ? '<small>(soma automática de tudo abaixo)</small>' : '<small>(automático pelo Quadro)</small>') + ' <button class="btn borda peq" id="oc-pf">' + (!SNAP() && ehRH() ? 'Ver quem são' : 'Por função') + '</button>' : '<small>(informado)</small>'}` : '—'}</td></tr></tbody></table>
     ${q && q.auto && !q.soma ? depsTxt(n) : q && q.soma ? `<p style="font-size:12px;color:#5d6a85;margin:8px 0 0">Soma automática: ${q.cab || 0} pessoa(s) com cartão abaixo + os colaboradores dos departamentos delas.</p>` : ''}
-    ${oq.length ? `<h4 style="margin:14px 0 4px">O que faz</h4><ul class="oc-li">${oq.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}`,
+    ${oq.length ? `<h4 style="margin:14px 0 4px">O que faz${oqRH ? ' <small style="font-weight:600;color:#8a94a8">· do Organograma do RH</small>' : ''}</h4><ul class="oc-li">${oq.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}`,
     P ? `<button class="btn prim" id="oc-e">Editar</button>${n.tipo !== 'area' ? `<button class="btn borda" id="oc-ft">${FOTOS[fotoK(n)] ? 'Trocar foto' : 'Adicionar foto'}</button>` : ''}<button class="btn borda" id="oc-l" title="Mover para a esquerda">◀ Mover</button><button class="btn borda" id="oc-r" title="Mover para a direita">Mover ▶</button><span style="flex:1"></span><button class="btn borda" id="oc-del" style="color:var(--coral,#c0392b)">Excluir</button>` : '');
   const g = s => w.querySelector(s);
-  if (g('#oc-pf')) g('#oc-pf').onclick = () => porFuncao(n);
+  if (g('#oc-pf')) g('#oc-pf').onclick = () => porFuncao(n); if (g('#oc-pfn')) g('#oc-pfn').onclick = () => porFuncao(n);
   if (!P) return;
   g('#oc-e').onclick = () => { w.remove(); form(n); };
   if (g('#oc-ft')) g('#oc-ft').onclick = () => recortar(fotoK(n), () => { w.remove(); desenhar(); ficha(id); });
@@ -235,7 +259,7 @@ function form(n0){
     <div id="oc-be"><label id="oc-ln">Nome</label><input id="oc-nm" value="${esc(n.mat ? '' : n.nome || '')}"><label id="oc-lf">Cargo / função</label><input id="oc-fn" value="${esc(n.mat ? '' : n.funcao || '')}">
       <label>Área</label><input id="oc-ar" value="${esc(n.mat ? '' : n.area || '')}"><div id="oc-bv"><label>Vínculo (aparece no selo do cartão)</label><input id="oc-vi" value="${esc(n.vinculo || '')}" placeholder="Externo, Diretoria, Consultor, Prestador…"><label>Empresa</label><input id="oc-em" value="${esc(n.empresa || '')}" placeholder="Se for de outra empresa"></div></div>
     <label>Departamento no cartão <small style="text-transform:none;font-weight:600">· aparece no alto do cartão (opcional)</small></label><input id="oc-dpl" value="${esc(n.dep || '')}" placeholder="Ex.: Segurança do Trabalho">
-    <label>O que faz <small style="text-transform:none;font-weight:600">· um tópico por linha</small></label><textarea id="oc-oq" placeholder="Ex.: Aprova as admissões&#10;Acompanha os indicadores da área">${esc(n.oque || '')}</textarea>
+    <label>O que faz <small style="text-transform:none;font-weight:600">· um tópico por linha</small></label>${n.mat && RHFAZ('q:' + n.mat) ? '<div class="oc-st" style="margin:-2px 0 4px">Em branco = usa o que está no Organograma do RH para esta pessoa (atualiza junto).</div>' : ''}<textarea id="oc-oq" placeholder="${n.mat && RHFAZ('q:' + n.mat) ? esc(RHFAZ('q:' + n.mat)) : 'Ex.: Aprova as admissões&#10;Acompanha os indicadores da área'}">${esc(n.oque || '')}</textarea>
     <label>Ligado a (a quem responde)</label><select id="oc-pai">${opPai()}</select>
     <label>Colaboradores ligados</label><div class="oc-ops"><label><input type="radio" name="oc-q" value="" ${!n.qtd || !n.qtd.modo ? 'checked' : ''}> Não mostrar</label><label><input type="radio" name="oc-q" value="manual" ${n.qtd && n.qtd.modo === 'manual' ? 'checked' : ''}> Manual</label><label><input type="radio" name="oc-q" value="auto" ${n.qtd && n.qtd.modo === 'auto' ? 'checked' : ''}> Automático pelos departamentos</label><label><input type="radio" name="oc-q" value="soma" ${n.qtd && n.qtd.modo === 'soma' ? 'checked' : ''}> Soma de tudo abaixo</label></div>
     <div class="oc-st" id="oc-qs" style="display:none">Soma automática: cada pessoa com cartão abaixo deste + os colaboradores dos departamentos delas. Atualiza a cada importação do Quadro.</div>
@@ -335,7 +359,8 @@ async function pdf(rootId){
 async function snapshot(){ window.CRV_ORG_SNAP = null; await ler(); if (!CFG.nos.length) return null;
   const fotos = {}, cont = {}, inf = {}; CFG.nos.forEach(n => { const k = fotoK(n); if (FOTOS[k]) fotos[k] = FOTOS[k]; const q = qtd(n); if (q && q.auto) cont[n.id] = { n:q.n, F:q.F, cab:q.cab };
     if (n.mat) { const p = pq(n); inf[n.id] = p ? { nome:p.nome, funcao:p.funcao, setor:p.setor, area:p.area, admissao:p.admissao, situacao:p.situacao, desl:p.situacao === 'Desligado' } : { desl:true }; } });
-  return { nos:CFG.nos, fotos, cont, info:inf, em:new Date().toISOString() }; }
+  const nos = CFG.nos.map(n => !n.oque && n.mat && RHFAZ('q:' + n.mat) ? Object.assign({}, n, { oque:RHFAZ('q:' + n.mat) }) : n);
+  return { nos, fotos, cont, info:inf, em:new Date().toISOString() }; }
 
 return { tela, snapshot };
 };

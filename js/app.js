@@ -779,6 +779,7 @@ async function telaOrgGestor(k){
 }
 let _ocrv = null; const OCRV = () => _ocrv || (_ocrv = window.CRV_OCRV_INIT(ctxMod()));
 let _org = null; const ORG = () => _org || (_org = window.CRV_ORG_INIT(ctxMod()));
+window.CRV_ORG_RH_FAZ = async () => { try { return await ORG().fazDe(); } catch(_){ return () => ''; } };
 let _oe = null; const OE = () => _oe || (_oe = window.CRV_OE_INIT(ctxMod()));
 let _cad = null; const CADS = () => _cad || (_cad = window.CRV_CAD_INIT(Object.assign(ctxMod(), { FRENTES })));
 let _bases = null; const BASES = () => _bases || (_bases = window.CRV_BASES_INIT(Object.assign(ctxMod(), { ehAdmin, FRENTES })));

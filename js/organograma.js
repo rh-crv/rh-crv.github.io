@@ -517,5 +517,7 @@ async function snapshot(){
   const fotos = {}; ks.forEach(k => { if (FOTOS[k]) fotos[k] = FOTOS[k]; });
   return { cfg:CFG, fotos, F:{ quadro:so(FONTES.quadro), jov:so(FONTES.jov) }, em:new Date().toISOString() };
 }
-return { tela, snapshot };
+/* "O que faz" de cada pessoa (Organograma do RH: o que o RH escreveu ou o texto padrão), para o Organograma da Empresa puxar */
+async function fazDe(){ if (!SNAP()) { try { await lerCfg(); } catch(_){} } return k => (infoDe(k).faz || ''); }
+return { tela, snapshot, fazDe };
 };
