@@ -504,7 +504,8 @@ async function telaPainelGestor(id){
   if (r.error) { area.innerHTML = `<div class="erro">${esc(traduzErro(r.error))}</div>`; return; }
   if (tpl.erro) { area.innerHTML = `<div class="erro">${esc(tpl.erro.message)}</div>`; return; }
   const pega = (row, k) => { row = row || {}; return row.pk !== undefined && row.pk !== null ? row.pk : (row.dados && row.dados.paineis && row.dados.paineis[k]); };
-  const pk = pega(r.data, chaveP) || (usaQ && r2 && pega(r2.data, 'quadro'));
+  let pk = pega(r.data, chaveP) || (usaQ && r2 && pega(r2.data, 'quadro'));
+  if (pk && pk.gz) { try { pk = await window.CRV_DESCOMPACTAR(pk.gz); } catch(e) { area.innerHTML = `<div class="erro">Não consegui abrir os dados do painel: ${esc(e.message)}</div>`; return; } }
   if (!pk || !pk.conteudo) { area.innerHTML = `${svg('planilha')}<h3>${esc(p.nome)}: ainda sem dados da sua área</h3><p>A Gestão de Pessoas ainda não atualizou este painel para a sua área. Tente mais tarde.</p>`; return; }
   try {
     window.CRV_QUEM = E.perfil.nome; window.CRV_RECARREGAR = null;
@@ -742,6 +743,8 @@ let _risco = null; const RISCO = () => _risco || (_risco = window.CRV_RISCO_INIT
 let _rel = null; const REL = () => _rel || (_rel = window.CRV_REL_INIT(Object.assign(ctxMod(), { NR1, RISCO, BASES })));
 let _rsp = null; const RESP = () => _rsp || (_rsp = window.CRV_RESP_INIT(ctxMod()));
 let _dav = null; const DAV = () => _dav || (_dav = window.CRV_DAV_INIT(ctxMod()));
+window.CRV_DESCOMPACTAR = async b64 => { const t = atob(b64), u = new Uint8Array(t.length); for (let i = 0; i < t.length; i++) u[i] = t.charCodeAt(i);
+  return JSON.parse(await new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream('gzip'))).text()); };
 let _org = null; const ORG = () => _org || (_org = window.CRV_ORG_INIT(ctxMod()));
 let _oe = null; const OE = () => _oe || (_oe = window.CRV_OE_INIT(ctxMod()));
 let _cad = null; const CADS = () => _cad || (_cad = window.CRV_CAD_INIT(Object.assign(ctxMod(), { FRENTES })));

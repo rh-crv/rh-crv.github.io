@@ -21,7 +21,7 @@ const R$ = n => 'R$ ' + Number(n).toLocaleString('pt-BR', { minimumFractionDigit
 const OPC = () => (window.CRV_GOPC ? window.CRV_GOPC() : new Set(['central', 'ficha', 'sal', 'eq', 'mov', 'pv', 'exp', 'nov', 'fer', 'freq', 'disc', 'mdisc', 'perfil', 'cr', 'alo', 'resp', 'env']));
 const SIM = () => !!(E.perfil && E.perfil.__sim);
 /* dados da área do usuário (no "Ver como gestor" o administrador vê só as áreas do gestor escolhido) */
-async function lerArea(){ let q = sb.from('area_dados').select('chave,dados,atualizado_em').neq('chave', '__meta'); const ar = (E.perfil && E.perfil.areas) || []; if (ar.length) q = q.in('chave', ar);
+async function lerArea(){ let q = sb.from('area_dados').select('chave,dados,atualizado_em').neq('chave', '__meta'); const ar = ((E.perfil && E.perfil.areas) || []).filter(chaveOk); if (ar.length) q = q.in('chave', ar);
   const { data, error } = await q; if (error) throw error; const A = (data || []).filter(x => chaveOk(x.chave)).map(x => x.dados).filter(x => x && Array.isArray(x.P));
   const P = []; const vis = new Set(); A.forEach(a => a.P.forEach(p => { if (!vis.has(p.m)) { vis.add(p.m); P.push(Object.assign({ chave:a.nome }, p)); } })); P.sort((a, b) => a.n.localeCompare(b.n, 'pt-BR'));
   let ENV = []; try { const r = await sb.from('gestor_envios').select('*').order('criado_em', { ascending:false }); ENV = (r.data || []).filter(e => vis.has(e.mat)); } catch(_){}
@@ -183,8 +183,9 @@ async function gerar(forcar){
   if (!chaves.length) return { ok:true, n:0 };
   const R = await recortes(chaves);
   for (const r of R) { const { error: e } = await sb.from('area_dados').upsert({ chave:r.chave, dados:r.dados, atualizado_em:new Date().toISOString(), atualizado_por:E.perfil.nome }, { onConflict:'chave' }); if (e) return { ok:false, erro:e }; }
-  try { await gerarPaineis(G || []); } catch(e) { console.warn('painéis dos gestores', e); }
-  await sb.from('area_dados').upsert({ chave:'__meta', dados:{ sig, chaves:chaves.slice().sort(), em:new Date().toISOString(), por:E.perfil.nome }, atualizado_em:new Date().toISOString(), atualizado_por:E.perfil.nome }, { onConflict:'chave' });
+  let falhou = false; try { await gerarPaineis(G || []); falhou = !!(gerarPaineis.falhas || []).length; } catch(e) { falhou = true; console.warn('painéis dos gestores', e); }
+  // se algum gestor ficou sem os painéis, não guarda a assinatura: tenta de novo na próxima vez que o app abrir
+  await sb.from('area_dados').upsert({ chave:'__meta', dados:{ sig:falhou ? 'incompleto:' + Date.now() : sig, chaves:chaves.slice().sort(), em:new Date().toISOString(), por:E.perfil.nome }, atualizado_em:new Date().toISOString(), atualizado_por:E.perfil.nome }, { onConflict:'chave' });
   return { ok:true, n:R.length };
 }
 /* ---------- painéis do RH recortados por gestor (js/area-paineis.js) ----------
@@ -213,7 +214,7 @@ async function gerarPaineis(G){
   const FONTES_RH = { CRV_OC:() => window.CRV_OC_RH && window.CRV_OC_RH(), CRV_QSIT:() => window.CRV_QSIT_RH && window.CRV_QSIT_RH() };
   const pac = async id => { if (!(id in PAC)) { try { PAC[id] = await window.CRV_PACOTE_BRUTO(id); } catch(_) { PAC[id] = null; } } return PAC[id]; };
   const regs = async (id, col) => { const k = id + '|' + col; if (!REG[k]) { const r = await window.todasLinhas((a, z) => sb.from('registros').select('doc_id,dados').eq('painel', id).eq('colecao', col).order('doc_id').range(a, z)); REG[k] = r.data || []; } return REG[k]; };
-  let n = 0;
+  let n = 0; const falhas = [];
   for (const g of donos) {
     const ks = (g.areas || []).filter(chaveOk); if (!ks.length) continue;
     const ctx = AR.contexto(ks, M);
@@ -224,16 +225,23 @@ async function gerarPaineis(G){
       try { const conteudo = AR.filtrar(id, d.conteudo, ctx), rg = {}; if (D.vazio && D.vazio(conteudo)) continue;   // nada da área neste painel
         for (const col of Object.keys(D.regs || {})) rg[col] = (await regs(id, col)).filter(x => AR.regOk(id, col, x.doc_id, x.dados, ctx)).map(x => ({ doc_id:x.doc_id, dados:AR.limparReg ? AR.limparReg(id, col, x.dados) : x.dados }));
         const inj = {}; for (const k of Object.keys(D.injetar || {})) { if (!(k in FONTE)) { FONTE[k] = null; try { FONTE[k] = await (FONTES_RH[k] ? FONTES_RH[k]() : null); } catch(_){} } if (FONTE[k]) { try { const v = D.injetar[k](AR.clonar(FONTE[k]), ctx); if (v) inj[k] = v; } catch(e) { console.warn('injeção ' + k, e); } } }
-        paineis[id0] = { referencia:d.referencia || '', conteudo, regs:rg, inj }; } catch(e) { console.warn('painel ' + id + ' do gestor', e); } }
-    const chave = 'u:' + g.user_id;
-    const { error:e } = await sb.from('area_dados').upsert({ chave, dados:{ tipo:'paineis', paineis, gerado:new Date().toISOString(), por:E.perfil.nome }, atualizado_em:new Date().toISOString(), atualizado_por:E.perfil.nome }, { onConflict:'chave' });
-    if (e) { console.warn('painéis do gestor', e); continue; } n++;
+        // compactado (gzip): setores grandes (ex.: Operacional CTT) passavam do tempo limite do banco ao gravar
+        paineis[id0] = await compactar({ referencia:d.referencia || '', conteudo, regs:rg, inj }); } catch(e) { console.warn('painel ' + id + ' do gestor', e); } }
+    const chave = 'u:' + g.user_id; let e = null;
+    for (let t = 0; t < 2; t++) { ({ error:e } = await sb.from('area_dados').upsert({ chave, dados:{ tipo:'paineis', paineis, gerado:new Date().toISOString(), por:E.perfil.nome }, atualizado_em:new Date().toISOString(), atualizado_por:E.perfil.nome }, { onConflict:'chave' })); if (!e) break; }
+    if (e) { console.warn('painéis do gestor', e); falhas.push(g.user_id); continue; } n++;
     // a chave entra no acesso do gestor e das assistentes dele
     for (const u of G.filter(x => x.user_id === g.user_id || (x.frentes || []).includes('assist:' + g.user_id))) if (!(u.areas || []).includes(chave)) {
       const ar = (u.areas || []).filter(k => !/^u:/.test(k)).concat(chave); const r = await sb.from('perfis').update({ areas:ar }).eq('user_id', u.user_id); if (!r.error) u.areas = ar; }
   }
+  gerarPaineis.falhas = falhas;
   return n;
 }
+/* gzip + base64 (o leitor está em app.js: CRV_DESCOMPACTAR) */
+async function compactar(o){ if (!window.CompressionStream) return o;
+  const b = await new Response(new Blob([JSON.stringify(o)]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer();
+  const u = new Uint8Array(b); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
+  return { referencia:o.referencia, gz:btoa(s) }; }
 /* ---------- gestor lança dentro do painel do RH (férias, experiência, sanção, parecer) ----------
    O painel grava como sempre; a ponte chama esta função. Cada painel diz em area-filtros.js (D.envios[coleção]) como
    transformar o lançamento num envio do mesmo formato dos envios antigos: { tipo, mat, dados, resumo:[[rótulo, valor]] }.
