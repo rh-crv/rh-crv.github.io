@@ -81,9 +81,10 @@ function converterQuadro(R, antigo, REF){
   const recs = [], semArea = {};
   for (const r of R.slice(1)) {
     if (r[C['Matricula do Funcionário']] == null || s(r[C['Matricula do Funcionário']]) === '') continue;
-    const em = /(\d+)\s*-\s*(\w+)/.exec(s(col(r, 'EMPRESA'))); if (!em) continue;
+    // EMPRESA em branco: a exportação da CRV às vezes não preenche essa coluna (as outras empresas vêm preenchidas)
+    const em = /(\d+)\s*-\s*(\w+)/.exec(s(col(r, 'EMPRESA')) || '5 - CRV'); if (!em) continue;
     const ec = em[1], en = em[2];
-    const setor = s(col(r, 'Setor')).toUpperCase();
+    const setor = s(col(r, 'Setor')).toUpperCase().replace(/\s+/g, ' ').replace(/\s*-\s*/g, ' - ').replace(/^OPERCIONAL\b/, 'OPERACIONAL');   // corrige erros de digitação da planilha (ex.: 'OPERCIONAL CTT', 'ADM- AGRICOLA', 'AFASTADOS ')
     let area = AREA[setor]; if (area == null) { semArea[setor] = (semArea[setor] || 0) + 1; area = tc(setor); }
     const sexo = s(col(r, 'Descr. do Sexo')).toUpperCase();
     const o = { ec, emp: en + ' (' + ec + ')', mat: parseInt(num(col(r, 'Matricula do')), 10), nome: sp(col(r, 'Nome do Func')).toUpperCase(),
