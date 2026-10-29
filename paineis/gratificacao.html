@@ -738,13 +738,15 @@ function pdfFichas(mats0){if(!libOk())return;
   const mats=mats0.filter(m=>ms0.some(x=>getR(x,m)));
   if(!mats.length){toast('Nenhum lançamento deste colaborador no período escolhido.');return}
   const doc=newDoc('landscape');const W=doc.internal.pageSize.getWidth();const done=new Set();
-  mats.forEach((mat,ix)=>{
+  /* desenha uma ficha; sc = escala da letra, bot = margem de baixo. Devolve onde terminou o conteúdo. */
+  const one=(doc,done,mat,ix,sc,bot)=>{
     if(ix>0)doc.addPage();
+    const TSs=Object.assign({},TS,{fontSize:TS.fontSize*sc,cellPadding:{top:1.8*sc,bottom:1.8*sc,left:2,right:2}}),HSs=Object.assign({},HS,{fontSize:HS.fontSize*sc}),M={left:10,right:10,top:28,bottom:bot};
     const ms=ms0.filter(m=>getR(m,mat));const per=ms.length===1?ymLabel(ms[0]):ymLabel(ms[0])+' a '+ymLabel(ms[ms.length-1]);
     const p=P[mat],s=personSum(mat,ms);const title='FICHA DE GRATIFICAÇÃO BPP E PRODUÇÃO';const ar=areaOf(mat,ms[ms.length-1]);const sub='CRV Industrial – Unidade Capinópolis · '+(p.dep||'')+' · '+p.nome+' · Mat. '+MT(mat)+' · '+per;
     const deco=()=>{const n=doc.internal.getCurrentPageInfo().pageNumber;if(done.has(n))return;done.add(n);pageDeco(doc,title,sub,fonteTxt(ar,ms))};deco();
     let y=29;
-    AT(doc,{startY:y,theme:'grid',styles:Object.assign({},TS,{fontSize:8.8}),margin:{left:10,right:10,top:28,bottom:14},
+    AT(doc,{startY:y,theme:'grid',styles:Object.assign({},TSs,{fontSize:8.8*sc}),margin:M,
       body:[[{content:'Colaborador',styles:{fontStyle:'bold',fillColor:C.soft}},p.nome,{content:'Matrícula',styles:{fontStyle:'bold',fillColor:C.soft}},MT(mat),{content:'Função',styles:{fontStyle:'bold',fillColor:C.soft}},p.fun],
             [{content:'Setor',styles:{fontStyle:'bold',fillColor:C.soft}},p.setor||p.dep,{content:'Admissão',styles:{fontStyle:'bold',fillColor:C.soft}},(p.adm?dbr(p.adm):'não informada'),{content:'Contrato / situação',styles:{fontStyle:'bold',fillColor:C.soft}},(p.con||'contrato não informado')+' · '+p.sit+(p.desl?' em '+dbr(p.desl)+(p.deslMot?' ('+p.deslMot+')':''):'')],
             [{content:'Período da ficha',styles:{fontStyle:'bold',fillColor:C.soft}},per,{content:'Total previsto',styles:{fontStyle:'bold',fillColor:C.soft}},brl(s.prev),{content:'Total pago / descontado',styles:{fontStyle:'bold',fillColor:C.soft}},brl(s.pago)+' pagos · '+brl(s.rs.reduce((a,r)=>a+Math.max(0,r.desc),0))+' descontados ('+s.nd+' de '+s.rs.length+' meses com desconto no BPP)'+(s.rs.some(r=>r.desc<-0.004)?' · '+brl(s.rs.reduce((a,r)=>a+Math.max(0,-r.desc),0))+' pagos acima do previsto':'')],
@@ -757,23 +759,31 @@ function pdfFichas(mats0){if(!libOk())return;
       if(!r)return[ymLabel(m),c.per,'—','—','—','—','Não consta na planilha deste mês.',obs];
       return[ymLabel(m),c.per,num(r.prev),pct(r.pct),r.desc>0?num(r.desc):r.desc<-0.004?'+'+num(-r.desc)+' acima':'0,00',num(r.pago),r.mot||motOf(r),[obs,!r.cp&&r.dias<30?`Cálculo da planilha: ${r.dias}/30 dias.`:'',r.kind==='prod'?compTxt(r):r.kind==='dem'?demTxt(r):r.kind==='op'?opTxt(r):'',P[mat].mats.length>1?'Matrícula no mês: '+r.matr:''].filter(Boolean).join(' ')]});
     body.push([{content:'TOTAL',styles:{fontStyle:'bold'}},'',{content:num(s.prev),styles:{fontStyle:'bold'}},'',{content:num(s.prev-s.pago),styles:{fontStyle:'bold'}},{content:num(s.pago),styles:{fontStyle:'bold'}},'','']);
-    AT(doc,{startY:y,head:[['Competência','Período apurado','Previsto (R$)','% do previsto','Diferença (R$)','Valor pago (R$)','Motivo / composição registrada','Observação / cálculo']],body,theme:'grid',styles:TS,headStyles:HS,rowPageBreak:'avoid',showHead:'everyPage',
-      margin:{left:10,right:10,top:28,bottom:14},columnStyles:{0:{cellWidth:27,fontStyle:'bold'},1:{cellWidth:31},2:{cellWidth:21,halign:'right'},3:{cellWidth:19,halign:'right'},4:{cellWidth:21,halign:'right'},5:{cellWidth:22,halign:'right'},6:{cellWidth:'auto'},7:{cellWidth:72}},
+    AT(doc,{startY:y,head:[['Competência','Período apurado','Previsto (R$)','% do previsto','Diferença (R$)','Valor pago (R$)','Motivo / composição registrada','Observação / cálculo']],body,theme:'grid',styles:TSs,headStyles:HSs,rowPageBreak:'avoid',showHead:'everyPage',
+      margin:M,columnStyles:{0:{cellWidth:27,fontStyle:'bold'},1:{cellWidth:31},2:{cellWidth:21,halign:'right'},3:{cellWidth:19,halign:'right'},4:{cellWidth:21,halign:'right'},5:{cellWidth:22,halign:'right'},6:{cellWidth:'auto'},7:{cellWidth:72}},
       didParseCell:d=>{if(d.section==='body'&&d.column.index===4&&d.cell.raw&&d.cell.raw!=='0,00'&&d.cell.raw!=='—'&&typeof d.cell.raw==='string')d.cell.styles.textColor=C.disc},
       didDrawPage:()=>deco()});
     y=doc.lastAutoTable.finalY+5;
     if(S.opt.regs){const rb=[];ms.forEach(m=>regsIn(mat,m).forEach(g=>rb.push([ymLabel(m),dbr(g.d),g.t,g.src,g.txt||''])));
-      AT(doc,{startY:y,head:[[{content:'Registros do RH no período apurado (painéis de Absenteísmo e Sanções) – informação de apoio, não faz parte da planilha de gratificação',colSpan:5}],['Competência','Data','Tipo','Painel','Descrição']],body:rb.length?rb:[[{content:'Nenhum registro encontrado no período.',colSpan:5}]],theme:'grid',styles:TS,headStyles:Object.assign({},HS,{fillColor:[122,75,140]}),rowPageBreak:'avoid',margin:{left:10,right:10,top:28,bottom:14},columnStyles:{0:{cellWidth:26},1:{cellWidth:22},2:{cellWidth:24},3:{cellWidth:24}},didDrawPage:()=>deco()});
+      AT(doc,{startY:y,head:[[{content:'Registros do RH no período apurado (painéis de Absenteísmo e Sanções) – informação de apoio, não faz parte da planilha de gratificação',colSpan:5}],['Competência','Data','Tipo','Painel','Descrição']],body:rb.length?rb:[[{content:'Nenhum registro encontrado no período.',colSpan:5}]],theme:'grid',styles:TSs,headStyles:Object.assign({},HSs,{fillColor:[122,75,140]}),rowPageBreak:'avoid',margin:M,columnStyles:{0:{cellWidth:26},1:{cellWidth:22},2:{cellWidth:24},3:{cellWidth:24}},didDrawPage:()=>deco()});
       y=doc.lastAutoTable.finalY+5}
-    if(S.opt.conf){const f=FL.filter(x=>x.set?ms.some(m=>x.set.has(m+'|'+mat)):(x.mat===mat&&ms.includes(x.ym)));if(f.length){AT(doc,{startY:y,head:[['Pontos a conferir','Competência','Detalhe','O que fazer']],body:f.map(x=>[x.t,ymLabel(x.ym),x.d,x.a]),theme:'grid',styles:TS,headStyles:Object.assign({},HS,{fillColor:C.gold,textColor:[28,21,3]}),rowPageBreak:'avoid',margin:{left:10,right:10,top:28,bottom:14},columnStyles:{0:{cellWidth:50},1:{cellWidth:26},3:{cellWidth:70}},didDrawPage:()=>deco()});y=doc.lastAutoTable.finalY+5}}
+    if(S.opt.conf){const f=FL.filter(x=>x.set?ms.some(m=>x.set.has(m+'|'+mat)):(x.mat===mat&&ms.includes(x.ym)));if(f.length){AT(doc,{startY:y,head:[['Pontos a conferir','Competência','Detalhe','O que fazer']],body:f.map(x=>[x.t,ymLabel(x.ym),x.d,x.a]),theme:'grid',styles:TSs,headStyles:Object.assign({},HSs,{fillColor:C.gold,textColor:[28,21,3]}),rowPageBreak:'avoid',margin:M,columnStyles:{0:{cellWidth:50},1:{cellWidth:26},3:{cellWidth:70}},didDrawPage:()=>deco()});y=doc.lastAutoTable.finalY+5}}
     if(S.opt.crit){const cms=DATA.comps.filter(x=>x.area===ar&&ms.includes(x.ym));const CL=[...new Map((cms.length?cms:(DATA.comps.filter(x=>x.area===ar).slice(-1).length?DATA.comps.filter(x=>x.area===ar).slice(-1):[DATA.comps[DATA.comps.length-1]])).map(x=>[x.kind,x])).values()];CL.forEach(c=>{
-      AT(doc,{startY:y,head:[['Critérios de avaliação – BPP e Produção ('+(c.kind==='op'?'composição conforme a planilha':c.kind==='dem'?'conforme as planilhas da Oficina':c.kind==='prod'?'regras informadas pela gestão da área':'conforme planilha')+')']],body:[[c.kind==='op'?'Composição conforme as abas de gratificação: Total pago = BPP pago + Produção paga + Eficiência/Zelo pago + Complemento. As regras de avaliação e o motivo de cada perda no BPP não constam nas abas de gratificação.':c.kind==='dem'?DEMCRIT:c.kind==='prod'?'BPP (60% do previsto) – fatores redutores: '+c.crit.join('   |   ')+'\nProdução (40% do previsto): '+c.critP.join('\n')+'\nTotal pago = BPP pago + Produção paga.':c.crit.map(x=>x.replace(/\s*-\s*/,' – ').replace('25 %','25%')).join('   |   ')+'\nCálculo: Total gratificação = (Total previsto × % atingido) ÷ 30 × dias. Desconto = Total previsto - Total gratificação.']],theme:'grid',styles:TS,headStyles:Object.assign({},HS,{fillColor:[93,100,110]}),rowPageBreak:'avoid',margin:{left:10,right:10,top:28,bottom:14},didDrawPage:()=>deco()});
+      AT(doc,{startY:y,head:[['Critérios de avaliação – BPP e Produção ('+(c.kind==='op'?'composição conforme a planilha':c.kind==='dem'?'conforme as planilhas da Oficina':c.kind==='prod'?'regras informadas pela gestão da área':'conforme planilha')+')']],body:[[c.kind==='op'?'Composição conforme as abas de gratificação: Total pago = BPP pago + Produção paga + Eficiência/Zelo pago + Complemento. As regras de avaliação e o motivo de cada perda no BPP não constam nas abas de gratificação.':c.kind==='dem'?DEMCRIT:c.kind==='prod'?'BPP (60% do previsto) – fatores redutores: '+c.crit.join('   |   ')+'\nProdução (40% do previsto): '+c.critP.join('\n')+'\nTotal pago = BPP pago + Produção paga.':c.crit.map(x=>x.replace(/\s*-\s*/,' – ').replace('25 %','25%')).join('   |   ')+'\nCálculo: Total gratificação = (Total previsto × % atingido) ÷ 30 × dias. Desconto = Total previsto - Total gratificação.']],theme:'grid',styles:TSs,headStyles:Object.assign({},HSs,{fillColor:[93,100,110]}),rowPageBreak:'avoid',margin:M,didDrawPage:()=>deco()});
       y=doc.lastAutoTable.finalY+5})}
-    if(S.opt.assin){const H=doc.internal.pageSize.getHeight();if(y>H-48){doc.addPage();deco();y=32}
+    if(S.opt.assin&&doc!==TRIAL){const H=doc.internal.pageSize.getHeight();if(y>H-48){doc.addPage();deco();y=32}
       const cx=W/2;doc.setDrawColor(...C.mut);doc.setTextColor(...C.ink);doc.setFontSize(9);
       doc.line(cx-55,y+16,cx+55,y+16);doc.setFont('helvetica','bold');doc.text('Gestão da empresa',cx,y+21,{align:'center'});doc.setFont('helvetica','normal');doc.setFontSize(8.2);doc.text('CRV Industrial – Unidade Capinópolis',cx,y+25.5,{align:'center'});
       doc.setTextColor(...C.mut);doc.setFontSize(7.6);doc.text('Capinópolis/MG, ____ de ______________ de ______.',cx,y+33,{align:'center'})}
-  });
+      return y;
+  };
+  /* assinatura sempre na mesma folha do conteúdo: testa a ficha antes e, se a assinatura não couber na última folha,
+     diminui um pouco a letra; em último caso deixa espaço no fim de cada folha para a assinatura ir junto com o conteúdo */
+  let TRIAL=null;
+  mats.forEach((mat,ix)=>{let sc=1,bot=14;
+    if(S.opt.assin){const H=doc.internal.pageSize.getHeight();const OP=[[1,14],[.93,14],[.86,14],[.8,14],[.74,14],[1,56]];[sc,bot]=OP[OP.length-1];
+      for(const [a1,b1] of OP){TRIAL=newDoc('landscape');const yy=one(TRIAL,new Set(),mat,0,a1,b1);if(yy<=H-48){sc=a1;bot=b1;break}}TRIAL=null}
+    one(doc,done,mat,ix,sc,bot)});
   fin(doc,(mats.length===1?'Ficha_Gratificacao_BPP_Producao_'+MT1(mats[0])+'_'+slug(P[mats[0]].nome):'Fichas_Gratificacao_BPP_Producao_'+slug(depTxt()))+'_'+fstamp()+'.pdf');
 }
 function pdfLanc(rows,title){if(!libOk())return;if(!rows.length){toast('Nenhum lançamento para exportar.');return}
