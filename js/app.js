@@ -249,8 +249,11 @@ async function carregarCatalogo(){
 }
 
 const porPainel = (k, p) => (E.perfil && Array.isArray(E.perfil[k]) ? E.perfil[k] : []).includes(p.id);
-function podeVer(p){ if (!E.perfil) return false; if (ehRH()) return true; if (E.perfil.papel !== 'gestor' && (porPainel('paineis_ver', p) || porPainel('paineis_editar', p))) return true; return p.nivel !== 'restrito' && (E.perfil.frentes||[]).includes(p.frente); }
-function podeEditar(p){ if (!E.perfil) return false; if (ehRH()) return true; if (E.perfil.papel !== 'gestor' && porPainel('paineis_editar', p)) return true; return E.perfil.papel === 'editor' && p.nivel !== 'restrito' && (E.perfil.frentes||[]).includes(p.frente); }
+/* painéis exclusivos: no RH, só quem tem o painel marcado no próprio acesso (a administradora vê tudo). A mesma regra está no banco (pode_ver/pode_editar). */
+const EXCLUSIVOS = ['ouvidorias'];
+const exclusivoBarra = p => EXCLUSIVOS.includes(p && p.id) && E.perfil && E.perfil.papel !== 'admin' && !porPainel('paineis_ver', p) && !porPainel('paineis_editar', p);
+function podeVer(p){ if (!E.perfil) return false; if (exclusivoBarra(p)) return false; if (ehRH()) return true; if (E.perfil.papel !== 'gestor' && (porPainel('paineis_ver', p) || porPainel('paineis_editar', p))) return true; return p.nivel !== 'restrito' && (E.perfil.frentes||[]).includes(p.frente); }
+function podeEditar(p){ if (!E.perfil) return false; if (EXCLUSIVOS.includes(p && p.id) && E.perfil.papel !== 'admin') return porPainel('paineis_editar', p); if (ehRH()) return true; if (E.perfil.papel !== 'gestor' && porPainel('paineis_editar', p)) return true; return E.perfil.papel === 'editor' && p.nivel !== 'restrito' && (E.perfil.frentes||[]).includes(p.frente); }
 
 function telaLogin(modo='entrar', msg=''){
   const primeiro = modo === 'primeiro';
@@ -2528,7 +2531,7 @@ function formUsuario(u, todos){
       ${!novo ? `<div class="campo"><label><input type="checkbox" id="u-ativo" ${u.ativo?'checked':''}> Usuário ativo (desmarque para bloquear o acesso)</label></div>` : ''}`,
     pe: `<button class="btn borda" id="u-c">Cancelar</button><button class="btn prim" id="u-ok">${novo?'Criar usuário':'Salvar'}</button>`,
     aoAbrir: m => {
-      const atualizaFrentes = () => { const pp = $('#u-papel').value; $('#u-frentes-box').classList.toggle('oculto', pp === 'admin' || pp === 'gestor' || pp === 'rh'); $('#u-pain-box').classList.toggle('oculto', pp === 'admin' || pp === 'gestor' || pp === 'rh'); $('#u-tipo-box').classList.toggle('oculto', pp !== 'gestor'); const ehA = pp === 'gestor' && (m.querySelector('[name=u-tipo]:checked') || {}).value === 'a'; $('#u-gresp-box').hidden = !ehA; $('#u-areas-box').classList.toggle('oculto', pp !== 'gestor' || ehA); $('#u-gopc-box').classList.toggle('oculto', pp !== 'gestor' || ehA); $('#u-imp-box').classList.toggle('oculto', !['rh', 'editor'].includes(pp)); };
+      const atualizaFrentes = () => { const pp = $('#u-papel').value; $('#u-frentes-box').classList.toggle('oculto', pp === 'admin' || pp === 'gestor' || pp === 'rh'); $('#u-pain-box').classList.toggle('oculto', pp === 'admin' || pp === 'gestor'); $('#u-pain-box').querySelectorAll('.u-pl').forEach(r => { const id = (r.querySelector('[data-pv]') || {}).dataset; r.style.display = pp === 'rh' && !(id && EXCLUSIVOS.includes(id.pv)) ? 'none' : ''; }); { const lb = $('#u-pain-box > label'); if (lb) lb.textContent = pp === 'rh' ? 'Painéis exclusivos (no RH, só quem estiver marcado vê)' : 'Painéis liberados um a um'; } $('#u-tipo-box').classList.toggle('oculto', pp !== 'gestor'); const ehA = pp === 'gestor' && (m.querySelector('[name=u-tipo]:checked') || {}).value === 'a'; $('#u-gresp-box').hidden = !ehA; $('#u-areas-box').classList.toggle('oculto', pp !== 'gestor' || ehA); $('#u-gopc-box').classList.toggle('oculto', pp !== 'gestor' || ehA); $('#u-imp-box').classList.toggle('oculto', !['rh', 'editor'].includes(pp)); };
       $('#u-papel').onchange = atualizaFrentes; m.querySelectorAll('[name=u-tipo]').forEach(r => r.onchange = atualizaFrentes); atualizaFrentes();
       m.querySelectorAll('[data-pe]').forEach(i => i.onchange = () => { if (i.checked) m.querySelector(`[data-pv="${i.dataset.pe}"]`).checked = true; });
       m.querySelectorAll('[data-pv]').forEach(i => i.onchange = () => { if (!i.checked) m.querySelector(`[data-pe="${i.dataset.pv}"]`).checked = false; });
