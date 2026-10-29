@@ -26,7 +26,9 @@ async function lerArea(){ let q = sb.from('area_dados').select('chave,dados,atua
   const P = []; const vis = new Set(); A.forEach(a => a.P.forEach(p => { if (!vis.has(p.m)) { vis.add(p.m); P.push(Object.assign({ chave:a.nome }, p)); } })); P.sort((a, b) => a.n.localeCompare(b.n, 'pt-BR'));
   let ENV = []; try { const r = await sb.from('gestor_envios').select('*').order('criado_em', { ascending:false }); ENV = (r.data || []).filter(e => vis.has(e.mat)); } catch(_){}
   return { A, P, vis, ENV }; }
-const daChave = (k, p) => k[0] === 'a' ? p.area === k.slice(2) : k[0] === 'd' ? (p.area + '|' + p.setor) === k.slice(2) : false;
+/* setor de cada pessoa: o do Quadro, com a regra da RH para departamento com o mesmo nome em dois setores (Recepção, Operador de Máquinas Herbicida) */
+const areaP = p => (window.CRV_AREA && window.CRV_AREA.areaDe) ? window.CRV_AREA.areaDe(p.area, p.setor, p.funcao) : p.area;
+const daChave = (k, p) => k[0] === 'a' ? areaP(p) === k.slice(2) : k[0] === 'd' ? (areaP(p) + '|' + p.setor) === k.slice(2) : false;
 const tipoChave = k => k[0] === 'd' ? 'Departamento' : 'Setor';
 const DEC = { efetivar:'Efetivar', encerrar:'Encerrar contrato', prorrogar:'Prorrogar' };
 const OCN = { f:'Falta', j:'Falta justificada', s:'Suspensão', a:'Atestado' };
@@ -64,7 +66,7 @@ const blocoAssinatura = (pref, nome) => `<div class="gs-ass">${ASSIST() ? `<p st
 async function opcoes(){
   const Q = await window.CRV_QUADRO(); if (!Q) return [];
   // só o Setor da planilha (área do Quadro); gerência não é usada porque o cadastro dela não é confiável
-  const S = {}; Object.values(Q.mapa).forEach(p => { if (p.situacao === 'Desligado' || !p.area || /^(afastados|desistentes)$/i.test(p.area)) return;
+  const S = {}; Object.values(Q.mapa).forEach(p0 => { if (p0.situacao === 'Desligado' || !p0.area || /^(afastados|desistentes)$/i.test(p0.area)) return; const p = Object.assign({}, p0, { area:areaP(p0) });
     const o = S[p.area] || (S[p.area] = { k:'a:' + p.area, nome:p.area, n:0, deps:{} }); o.n++; const d = p.setor || '(sem departamento)'; o.deps[d] = (o.deps[d] || 0) + 1; });
   return Object.values(S).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')).map(o => ({ k:o.k, nome:o.nome, n:o.n, deps:Object.entries(o.deps).sort((a, b) => a[0].localeCompare(b[0], 'pt-BR')).map(([d, n]) => ({ k:'d:' + o.nome + '|' + d, nome:d, n })) }));
 }

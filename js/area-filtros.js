@@ -274,7 +274,7 @@ CRV_AREA.reg({ id:'sancoes', nome:'Sanções Disciplinares', frente:'Ocorrência
       if (d < a.ini) a.ini = d; if (d > a.fim) a.fim = d; a.ym[d.slice(0, 7)] = 1; if (d > REF.max) REF.max = d; });
     Object.keys(REF.anos).forEach(y => { REF.anos[y].ym = Object.keys(REF.anos[y].ym).sort(); });
     // pessoas: departamento atual da base do painel (o mesmo campo do filtro "Departamento")
-    const P = {}; Object.keys(P0).forEach(m => { if (A.casa(X, null, P0[m][2])) P[m] = P0[m]; });
+    const P = {}; Object.keys(P0).forEach(m => { if (A.casa(X, null, P0[m][2], P0[m][1])) P[m] = P0[m]; });
     const naArea = m => Object.prototype.hasOwnProperty.call(P, String(m));
     // linhas: todas as da pessoa (todos os anos); motivos reindexados (M/MC) e índice antigo → novo (CONF)
     const novoR = {}, novoM = {}, R = [], M = [], MC = [];
