@@ -1826,7 +1826,38 @@ async function lerArquivoPacote(painel, arquivo){
   const texto = arquivo.endsWith('.gz')
     ? await new Response(arq.stream().pipeThrough(new DecompressionStream('gzip'))).text()
     : await arq.text();
-  return JSON.parse(texto);
+  const obj = JSON.parse(texto);
+  if (painel === 'quadro' && ehRH()) { try { await refazABSD(obj && obj.dados); } catch(e) { console.warn('absenteísmo do Quadro', e); } }
+  return obj;
+}
+/* Absenteísmo dentro do Quadro (ABSD), usado na aba Absenteísmo do Quadro, no Risco de saída e nas ocorrências por período.
+   Era a planilha "Acompanhamento Atestados e Ocorrências 2026" (até 30/09). Agora (out/2026) se monta com os atestados e as
+   ocorrências do ponto carregados no app, sempre que os carregados vão além da data da planilha.
+   ABSD: PR = pessoa (índice em D, ou -i-1 em DM), O = [pessoa, dia do ano, 0 atestado | 1 falta | 2 suspensão],
+   A = [pessoa, dia de início, dias, grupo do CID, emissor], grps, docs, last. */
+async function refazABSD(q){
+  if (!q || !q.ABSD || !Array.isArray(q.D)) return;
+  const HO = await window.CRV_HIST('ocor'), HA = await window.CRV_HIST('atest');
+  const Y = '2026', b0 = Date.UTC(2026, 0, 1), dia = s => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ''); return m ? Math.round((Date.UTC(+m[1], +m[2] - 1, +m[3]) - b0) / 864e5) : null; };
+  const hoje = new Date().toISOString().slice(0, 10);
+  let last = ''; const ve = d => { if (d && d.slice(0, 4) === Y && d <= hoje && d > last) last = d; };
+  Object.keys(HO).forEach(m => { if (m !== '__ref') (HO[m] || []).forEach(o => { if (o[1] === 'f' || o[1] === 's') ve(o[0]); }); });
+  Object.keys(HA).forEach(m => { if (m !== '__ref') (HA[m] || []).forEach(a => ve(a[0])); });
+  if (!last || last <= (q.ABSD.last || '')) return;   // nada mais novo que a base que já está no Quadro
+  const iD = new Map(); q.D.forEach((r, i) => iD.set(String(r[0]), i));
+  const iDM = new Map(); (q.DM || []).forEach((r, i) => { if (!/\(5\)$/.test(String(r[21] || ''))) return; const k = String(r[0]), j = iDM.get(k); if (j == null || String(r[20] || '') > String(q.DM[j][20] || '')) iDM.set(k, i); });
+  const PR = [], pix = new Map(); const pessoa = m => { m = String(m); if (pix.has(m)) return pix.get(m); let ref = iD.has(m) ? iD.get(m) : iDM.has(m) ? -iDM.get(m) - 1 : null; if (ref == null) { pix.set(m, null); return null; } pix.set(m, PR.length); PR.push(ref); return PR.length - 1; };
+  const GR = ['Causas externas','Circulatório','Consultas, exames e acompanhamento','Digestivo e odontológico','Endócrino e metabólico','Geniturinário','Gravidez e parto','Infecciosas (gastroenterites e viroses)','Lesões e traumas','Neoplasias e sangue','Neurológico','Olhos e ouvidos','Osteomuscular (coluna, dores, articulações)','Outros','Pele','Respiratório','Saúde mental','Sem CID informado','Sintomas sem diagnóstico (dor, febre)'];
+  const U = s => String(s || '').toUpperCase().trim();
+  const grp = c => { c = U(c); if (!c) return 17; const l = c[0]; return l === 'A' || l === 'B' ? 7 : l === 'C' || l === 'D' ? 9 : l === 'E' ? 4 : l === 'F' ? 16 : l === 'G' ? 10 : l === 'H' ? 11 : l === 'I' ? 1 : l === 'J' ? 15 : l === 'K' ? 3 : l === 'L' ? 14 : l === 'M' ? 12 : l === 'N' ? 5 : l === 'O' ? 6 : l === 'R' ? 18 : l === 'S' || l === 'T' ? 8 : 'VWXY'.includes(l) ? 0 : l === 'Z' ? 2 : 13; };
+  const O = [], A = [], docs = [['', '']], dix = new Map([['|', 0]]), fim = dia(Y + '-12-31');
+  Object.keys(HA).forEach(m => { if (m === '__ref') return; (HA[m] || []).forEach(a => { const d = dia(a[0]); if (d == null || d < 0 || d > fim) return; const pi = pessoa(m); if (pi == null) return; const n = Math.max(0, +a[1] || 0);
+    const k = U(a[5]) + '|' + U(a[4]); let di = dix.get(k); if (di == null) { di = docs.length; dix.set(k, di); docs.push([U(a[5]), U(a[4])]); }
+    A.push([pi, d, n, grp(a[2]), di]); for (let j = 0; j < n; j++) if (d + j <= fim) O.push([pi, d + j, 0]); }); });
+  Object.keys(HO).forEach(m => { if (m === '__ref') return; (HO[m] || []).forEach(o => { const t = o[1] === 'f' ? 1 : o[1] === 's' ? 2 : -1; if (t < 0) return; const d = dia(o[0]); if (d == null || d < 0 || d > fim) return; const pi = pessoa(m); if (pi == null) return;
+    const n = Math.max(1, Math.round(+o[2] || 1)); for (let j = 0; j < n; j++) O.push([pi, d, t]); }); });
+  O.sort((x, y) => x[0] - y[0] || x[1] - y[1]);
+  q.ABSD = { PR, O, A, grps:GR, docs, last, fonte:'app' };
 }
 
 /* Base de colaboradores tirada do Quadro Geral (usada pelas autorizações de desconto).

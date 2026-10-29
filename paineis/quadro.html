@@ -1912,6 +1912,7 @@ function rPool(){const ms=new Set(aMonths(RS));return EXO.filter(r=>ms.has(aKey(
 /* ---- aba Absenteísmo: planilha Acompanhamento Atestados e Ocorrências 2026, cruzada com a base ---- */
 const CRVC=ALLC.filter(r=>r.em=='CRV (5)');
 const AB={v:'g',m:'',g:'dg',sk:'rate',sd:-1,ge:'',excl:false,minq:true,all:false,sit:'Ativo',q:'',n:40,open:null,tsit:'',tq:'',tn:40,topen:null,nk:'tot',nd:-1};
+const ABSRC=ABSD.fonte==='app'?'atestados e ocorrências do ponto carregados no app':'planilha Acompanhamento Atestados e Ocorrências 2026';   /* out/2026: o app remonta com as cargas novas */
 const AB0=new Date('2026-01-01T00:00:00'),ABLD=Math.round((new Date(ABSD.last+'T00:00:00')-AB0)/864e5);
 const dOf=s=>s?Math.round((new Date(s+'T00:00:00')-AB0)/864e5):null;
 const dIso=k=>addD('2026-01-01',k),dBr=k=>dbr(dIso(k)),dBr5=k=>dIso(k).slice(8)+'/'+dIso(k).slice(5,7);
@@ -1957,7 +1958,7 @@ function absTab(){
   $('bBrief').innerHTML=T.pd?'Em <b>'+abPer()+'</b>'+(abScope()?' ('+esc(abScope())+')':'')+', atestados e faltas tiraram <b>'+pcA(T.rate)+'</b> dos dias previstos: <b>'+pcA(T.rAt)+'</b> de atestado ('+nf(T.d[0])+' dias) e <b>'+pcA(T.rFa)+'</b> de falta ('+nf(T.d[1])+' dias). '+nf(T.pp.size)+' pessoas tiveram ao menos um registro, de um quadro médio de '+nf(Math.round(T.avg))+'. Suspensões: '+nf(T.d[2])+' dias ('+nf(T.P[2].size)+' pessoas).':'Ninguém nesta seleção.';
   const V=AB.v;$('bVg').hidden=V!='g';$('bVt').hidden=!['0','1','2'].includes(V);$('bVn').hidden=V!='n';
   if(V=='g')abGeral(a,b,T);else if(V=='n')abNom(a,b);else abTipo(+V,a,b,T);
-  $('bFoot').innerHTML='Fonte: planilha Acompanhamento Atestados e Ocorrências 2026 (registros de 01/01 a '+dbr(ABSD.last)+'), cruzada pela matrícula com a base de '+REF.toLocaleDateString('pt-BR')+' para setor, seção, função, gerência, contrato e situação; os filtros de setor, seção, função, contrato e empresa do alto valem aqui. Cada registro é um dia. Percentual = dias de atestado ou falta ÷ dias previstos; dias previstos = dias em que cada pessoa estava na empresa no período × 26/30 (dias de trabalho). Quadro médio = dias previstos ÷ dias do período. Suspensão aparece à parte e não entra no absenteísmo. A planilha não traz faltas justificadas separadas.';
+  $('bFoot').innerHTML='Fonte: '+ABSRC+' (registros de 01/01 a '+dbr(ABSD.last)+'), cruzada pela matrícula com a base de '+REF.toLocaleDateString('pt-BR')+' para setor, seção, função, gerência, contrato e situação; os filtros de setor, seção, função, contrato e empresa do alto valem aqui. Cada registro é um dia. Percentual = dias de atestado ou falta ÷ dias previstos; dias previstos = dias em que cada pessoa estava na empresa no período × 26/30 (dias de trabalho). Quadro médio = dias previstos ÷ dias do período. Suspensão aparece à parte e não entra no absenteísmo. A planilha não traz faltas justificadas separadas.';
 }
 function abBarsMonth(types,a,b,pctMode){
   const M=abMonths().filter(u=>!AB.m||u.m==AB.m),G=M.map(u=>({u,x:abAgg(u.s,u.e).get('')}));
@@ -2050,7 +2051,7 @@ function abExport(kind){const [a,b]=abRange(),R=abNomRows(a,b),nm=fname('Absente
 function capaAbs(){const [a,b]=abRange(),T=abAgg(a,b).get('')||{pd:0,d:[0,0,0],P:[new Set,new Set,new Set],avg:0,rAt:0,rFa:0,rate:0,pp:new Set},doc=new MiniPdf();
   const k=capaKit('ABSENTEÍSMO · '+abPer().toUpperCase(),(abScope()||'Todos os setores')+'  |  base de '+REF.toLocaleDateString('pt-BR')),CW=k.CW,M_=k.M;
   k.boxes([['Absenteísmo',pcA(T.rate)],['Atestado',pcA(T.rAt),nf(T.d[0])+' dias'],['Falta',pcA(T.rFa),nf(T.d[1])+' dias'],['Suspensões',nf(T.d[2]),'dias'],['Pessoas',nf(T.pp.size)],['Quadro médio',Math.round(T.avg)]]);
-  k.note('Percentual = dias de atestado ou falta ÷ dias previstos (dias na empresa × 26/30). Fonte: Acompanhamento Atestados e Ocorrências 2026, até '+dbr(ABSD.last)+'.');k.y+=2;
+  k.note('Percentual = dias de atestado ou falta ÷ dias previstos (dias na empresa × 26/30). Fonte: '+ABSRC+', até '+dbr(ABSD.last)+'.');k.y+=2;
   const M=abMonths().filter(u=>!AB.m||u.m==AB.m);
   k.sec('Por mês');k.table([['Mês',CW-110],['Dias atestado',22,1],['% atestado',22,1],['Dias falta',22,1],['% falta',22,1],['Absenteísmo',22,1]].map((c,i)=>i==0?[c[0],CW-110]:c),M.map(u=>{const x=abAgg(u.s,u.e).get('');return x?[u.lab,x.d[0],pcA(x.rAt),x.d[1],pcA(x.rFa),pcA(x.rate)]:[u.lab,0,'-',0,'-','-']}),['Período',T.d[0],pcA(T.rAt),T.d[1],pcA(T.rFa),pcA(T.rate)]);
   const sv=AB.g;AB.g='dg';const tb=abTable(a,b,[0,1]);AB.g=sv;
@@ -2176,7 +2177,7 @@ function previsao(){
 }
 function dPool(){const ms=new Set(dMonths());return DS.v=='d'?DM.filter(r=>ms.has(r[20].slice(0,7))):ALLC.filter(r=>(r[ADM]&&ms.has(r[ADM].slice(0,7)))||(r.dm&&ms.has(r[20].slice(0,7))))}
 function aeSel(){
-  if(st.tab=='b'){$('fAnoL').textContent='Ano das ocorrências';$('fAno').innerHTML='<option value="2026">2026 (planilha até '+dbr(ABSD.last)+')</option>';
+  if(st.tab=='b'){$('fAnoL').textContent='Ano das ocorrências';$('fAno').innerHTML='<option value="2026">2026 (até '+dbr(ABSD.last)+')</option>';
     $('fMes').innerHTML='<option value="">Todos os meses</option>'+abMonths().map(u=>'<option value="'+u.m+'"'+(AB.m==u.m?' selected':'')+'>'+MESN[+u.m-1]+'/2026</option>').join('');$('fMesW').hidden=false;$('fNote').hidden=true;return}
   if(st.tab=='r'){$('fAnoL').textContent='Ano da rescisão';const c=new Map();EXO.filter(dFilt).forEach(r=>{const y=r[20].slice(0,4);c.set(y,(c.get(y)||0)+1)});const yrs=[...new Set(EXO.map(r=>r[20].slice(0,4)))].sort().reverse();
     $('fAno').innerHTML='<option value="all"'+(RS.y=='all'?' selected':'')+'>Todos os anos ('+nf(EXO.filter(dFilt).length)+' rescisões)</option><option value="12m"'+(RS.y=='12m'?' selected':'')+'>Últimos 12 meses</option>'+yrs.map(y=>'<option value="'+y+'"'+(RS.y==y?' selected':'')+'>'+y+' ('+nf(c.get(y)||0)+' rescisões)</option>').join('');
@@ -3485,7 +3486,7 @@ function desenhar(H){const el=document.getElementById('fhist');if(!el||!ATUAL||n
    +'<div class="hc-k">'+K.map(k=>'<button data-hf="'+k[0]+'" class="'+(FILTRO===k[0]?'on':'')+((k[0]==='sus'||k[0]==='adv')&&k[2]?' al':'')+'"><span>'+k[1]+'</span><b>'+k[2]+'</b><small>'+(k[3]||'&nbsp;')+'</small></button>').join('')+'</div>'
    +'<div class="hc-bt"><button class="btn2 pdfb" data-hx="x">Baixar Excel do histórico</button><button class="btn2 pdfb" data-hx="p">Baixar PDF do histórico</button></div>'
    +'<div class="hc-l">'+(L.length?L.map(e=>'<div><span class="d">'+br(e.data)+'</span><span class="hc-t '+e.k+'">'+esc(e.tit)+'</span><span>'+esc(e.txt)+(e.tag?'<span class="hc-tag'+(e.app?' app':'')+'">'+esc(e.tag)+'</span>':'')+'</span></div>').join(''):'<div class="hc-vazio" style="display:block">Nenhum registro'+(FILTRO?' deste tipo':'')+' encontrado.</div>')+'</div>'
-   +'<p class="hc-nota">Fontes: planilha de Atestados e Ocorrências 2026 (até '+br(ABSD.last)+');'+(H.refO?' ocorrências do ponto (faltas, faltas justificadas e suspensões, sem atestados) de '+br(H.refO)+';':'')+(H.refA?' atestados do sistema (com CID) de '+br(H.refA)+';':'')+(H.apfo?' ocorrências da época em outra empresa do grupo ('+H.apfo+'), marcadas com o nome dela;':'')+' Sanções Disciplinares'+(H.refS?' ('+br(H.refS)+')':'')+' + documentos emitidos no app; RD'+(H.refR?' ('+br(H.refR)+')':'')+' + RDs cadastradas no app; Estabilidade e Entrevistas de desligamento do Quadro. A planilha de ocorrências não separa falta justificada de falta: todas aparecem como "Falta".</p>';
+   +'<p class="hc-nota">Fontes: '+(typeof ABSRC!=='undefined'?ABSRC:'planilha de Atestados e Ocorrências 2026')+' (até '+br(ABSD.last)+');'+(H.refO?' ocorrências do ponto (faltas, faltas justificadas e suspensões, sem atestados) de '+br(H.refO)+';':'')+(H.refA?' atestados do sistema (com CID) de '+br(H.refA)+';':'')+(H.apfo?' ocorrências da época em outra empresa do grupo ('+H.apfo+'), marcadas com o nome dela;':'')+' Sanções Disciplinares'+(H.refS?' ('+br(H.refS)+')':'')+' + documentos emitidos no app; RD'+(H.refR?' ('+br(H.refR)+')':'')+' + RDs cadastradas no app; Estabilidade e Entrevistas de desligamento do Quadro. A planilha de ocorrências não separa falta justificada de falta: todas aparecem como "Falta".</p>';
   el.querySelectorAll('[data-hf]').forEach(b=>b.onclick=()=>{FILTRO=b.dataset.hf;desenhar(H)});
   el.querySelectorAll('[data-hx]').forEach(b=>b.onclick=()=>exportar(H,b.dataset.hx).catch(er=>alert('Não consegui gerar: '+er.message)));
 }
