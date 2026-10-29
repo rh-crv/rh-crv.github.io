@@ -1690,6 +1690,14 @@ window.CRV_PENDENCIAS=function(forcar){
     else if(t.id==="fmGna"){ FM.naLid=t.checked; if(t.checked){ const i=FAT.length-1; FM.notas[i]=null; document.querySelectorAll('input[name="fmn'+i+'"]').forEach(r=>r.checked=false); fmTot(); } }
     else if(t.name==="fmn"+(FAT.length-1)){ FM.naLid=false; const c=document.getElementById("fmGna"); if(c) c.checked=false; } });
 
+  /* antes de enviar: clicar de novo numa nota ou na decisão já marcada desmarca (para corrigir e marcar outra) */
+  { let era=null; const vf=document.getElementById("vF");
+    vf.addEventListener("pointerdown",e=>{const r=e.target.closest("label")?.querySelector('input[type="radio"]')||(e.target.type==="radio"?e.target:null); era=r&&!r.disabled&&r.checked?r:null;},true);
+    vf.addEventListener("click",e=>{const r=e.target.type==="radio"?e.target:null; if(!r||r!==era) return; era=null;
+      if(!/^fmn\d+$/.test(r.name)&&r.name!=="fmGdec") return;
+      setTimeout(()=>{ r.checked=false;
+        if(r.name==="fmGdec") FM.gdec=null; else { FM.notas[+r.name.slice(3)]=null; fmTot(); } },0); }); }
+
   let ocup=false;
   async function enviar(){
     const p=FMP; if(!p||ocup) return; if(estado(p)) return toast(estado(p)[1]);
