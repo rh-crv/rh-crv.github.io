@@ -361,9 +361,12 @@ function prep(ctx, setoresFad){
   const fad = new Set([...setoresFad].map(A.N).filter(s => conhecidas.has(s)));      // setores da fadiga que são setores do Quadro
   return { fad, conhecidas, ks:ks.map(k => ({ c:A.contexto([k], M), proprio:fad.has(A.N(area(k))) })) };
 }
+/* setor da planilha de fadiga → setor do Quadro (regra da RH, out/2026; vale só neste painel).
+   Irrigação não tem setor definido: entra pela seção da pessoa na base do painel. */
+const SETOR_FAD = { 'CTT':'Operacional CTT', 'COMPRAS':'ADM - CRV', 'COMBOIO':'Oficina', 'INDUSTRIA':'Indústria', 'OFICINA':'Oficina' };
 function entra(P, setor, secao){
-  const s = A.N(setor);
-  return P.ks.some(k => (k.proprio && !P.fad.has(s)) ? false : A.casa(k.c, setor, secao));
+  const m = SETOR_FAD[A.N(setor)];
+  return P.ks.some(k => A.casa(k.c, m || setor, secao));
 }
 A.reg({ id:'fadiga', nome:'Gestão de Fadiga', frente:'Ocorrências e Relações Trabalhistas',
   filtro(c, ctx){
