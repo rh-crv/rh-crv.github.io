@@ -109,6 +109,10 @@ function converterQuadro(R, antigo, REF){
   const chave = o => o.cpf || ('m' + o.mat + '-' + o.nome);
   const porCPF = new Map(); recs.forEach(o => { const k = chave(o); if (!porCPF.has(k)) porCPF.set(k, []); porCPF.get(k).push(o); });
   const ativos = recs.filter(o => o.ec === '5' && o.sit === 'ATIVO').sort((a, b) => a.mat - b.mat);
+  // trava de segurança (out/2026): uma planilha incompleta (ex.: filtrada ou de outra empresa) zerava o Quadro e todos os painéis que dependem dele
+  { const antes = ((antigo || {}).D || []).length;
+    if (!ativos.length) throw new Error('a planilha não tem nenhum colaborador ativo da CRV (empresa 5). Confira se não está filtrada ou se é o arquivo certo. Nada foi alterado.');
+    if (antes >= 200 && ativos.length < antes * 0.7) throw new Error(`a planilha tem só ${ativos.length} ativos da CRV, e o Quadro atual tem ${antes}. Parece incompleta (filtrada ou de outra empresa). Nada foi alterado.`); }
   const dem = recs.filter(o => o.sit === 'DEMITIDO').sort((a, b) => (a.resc || '0000').localeCompare(b.resc || '0000') || (+a.ec - +b.ec) || (a.mat - b.mat));
   // ativos das outras empresas do grupo (APFO 6, CAPFO 16): só o essencial, para cruzamentos por CPF (ex.: aproveitamento de jovens aprendizes)
   const outrosAt = recs.filter(o => o.ec !== '5' && o.sit !== 'DEMITIDO').sort((a, b) => (+a.ec - +b.ec) || (a.mat - b.mat));
