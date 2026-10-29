@@ -48,6 +48,8 @@ function detectar(wb, nomeArq){
   if (R.slice(0, 4).some(r => (r || []).map(s).some(x => /^Relatório das Ocorrências dos Funcionários/i.test(x)))) return { tipo:'hist', h:'ocor', R };
   // ocorrências do ponto, outro formato (RPE0026R: "Relatório de Ocorrências", uma linha por dia: matrícula, nome, data, ocorrência)
   if (R.slice(0, 3).some(r => (r || []).map(s).some(x => /^Relatório de Ocorrências$/i.test(x))) && R.slice(0, 10).some(r => { const v = (r || []).map(s).filter(Boolean); return v[0] === 'Matrícula' && v[2] === 'Data' && /^Ocorr/i.test(v[3] || ''); })) return { tipo:'hist', h:'ocor', R };
+  // planilha mensal de ocorrências do RH (Matrícula, Funcionário, Data, Ocorrência): mesmo formato do RPE0026R, sem o título; troca só os meses e os tipos que vieram
+  if (/^Matr[ií]cula$/i.test(h[0] || '') && /^(Funcion|Nome)/i.test(h[1] || '') && /^Data$/i.test(h[2] || '') && /^Ocorr/i.test(h[3] || '')) return { tipo:'hist', h:'ocor', R, mensal:true };
   if (h.includes('Data de Afastamento') && h.includes('Data Efetiva de Retorno')) return { tipo:'hist', h:'afast', R };
   if (h.includes('Data da Aposentadoria') && h.includes('Nome do Benefício')) return { tipo:'hist', h:'apos', R };
   if (h.includes('Causa da Estabilidade') && h.includes('Fim da Estabilidade')) return { tipo:'hist', h:'estab', R };
@@ -275,7 +277,7 @@ function converterHist(h, R, mapa, REF){
     const TP = d => /ATEST/.test(d) ? '' : /FALTA JUST/.test(d) ? 'j' : /FALTA/.test(d) ? 'f' : /SUSPENS/.test(d) ? 's' : /MATERN/.test(d) ? 'm' : /PATERN/.test(d) ? 'p' : 'o';
     const cp = r => (r || []).filter(x => x != null && s(x) !== '');
     if (R.slice(0, 10).some(r => { const v = cp(r).map(s); return v[0] === 'Matrícula' && v[2] === 'Data'; })) { // RPE0026R: uma linha por dia, sem quantidade
-      let ini = '', fim = '', at = 0, emp = s((R[0] || [])[0]); const vist = {};
+      let ini = '', fim = '', at = 0, emp = R.mensal ? '5' : s((R[0] || [])[0]); const vist = {};
       for (const r of R) { const v = cp(r);
         if (/^Per[ií]odo/i.test(s(v[0])) && v[1] instanceof Date) { ini = iso(v[1]); const f = v.find((x, i) => i > 1 && x instanceof Date); if (f) fim = iso(f); continue; }
         if (/^Empresa/i.test(s(v[0])) && /^\d+$/.test(s(v[1]))) { emp = s(v[1]); continue; }
@@ -285,6 +287,7 @@ function converterHist(h, R, mapa, REF){
         if (!(m in vist)) { let q = mapa[String(m)]; if (!q && mapa.__aberto) { q = mapa[String(m)] = { nome:sp(v[1]), funcao:'', setor:'', area:'', gerencia:'', admissao:'', deslig:'', nasc:'', soArq:1 }; fora++; } vist[m] = !!q && mesmoNome(v[1], q.nome); if (!q) fora++; else if (!vist[m]) ign++; }
         if (!vist[m]) continue; const it = [d, t, 1]; if (t === 'o') it.push(sp(v[3])); (itens[m] = itens[m] || []).push(it); lin++; }
       Object.keys(itens).forEach(k => itens[k].sort((a, b) => a[0].localeCompare(b[0])));
+      if (!ini) { const ds = [].concat(...Object.values(itens)).map(x => x[0]).sort(); if (ds.length) { const z = ds[ds.length - 1], [yy, mm] = z.split('-').map(Number); ini = ds[0].slice(0, 8) + '01'; fim = z.slice(0, 8) + String(new Date(yy, mm, 0).getDate()).padStart(2, '0'); } }
       return { tipo:'crv-hist', painel:'quadro', hist:h, referencia:REF, itens, faixa: ini ? [ini, fim || ini] : null, tipos:[...new Set([].concat(...Object.values(itens)).map(x => x[1]))], empresa:emp, n:{ linhas:lin, pessoas:Object.keys(itens).length, nomeDiferente:ign, foraDoQuadro:fora, anuladas:0, atestados:at, ini, fim } };
     }
     const TP_ = d => /ATEST/.test(d) ? '' : /FALTA JUST/.test(d) ? 'j' : /FALTA/.test(d) ? 'f' : /SUSPENS/.test(d) ? 's' : /MATERN/.test(d) ? 'm' : /PATERN/.test(d) ? 'p' : 'o';
@@ -333,7 +336,7 @@ async function ler(f){
   if (det.tipo === 'hist') {
     const Q = await window.CRV_QUADRO(); if (!Q || !Q.mapa) throw new Error('carregue o Quadro Geral antes dos históricos');
     let mapaH = Q.mapa, ligaCRV = null;
-    const EMP = det.h === 'atest' ? det.emp : s((det.R[0] || [])[0]); let EMPN = '';
+    const EMP = det.h === 'atest' ? det.emp : det.mensal ? '5' : s((det.R[0] || [])[0]); let EMPN = '';
     if (['ocor', 'atest'].includes(det.h) && EMP && EMP !== '5') { // outra empresa do grupo (APFO 6, CAPFO 16…): confere com os desligados dela no Quadro e liga a quem hoje está na CRV
       const QD = await window.CRV_DADOS('quadro'), DM = (QD && QD.dados && QD.dados.DM) || []; mapaH = {};
       const reE = new RegExp('\\(' + EMP + '\\)\\s*$'); DM.forEach(r => { if (!reE.test(s(r[21]))) return; if (!EMPN) EMPN = s(r[21]).replace(/\s*\(\d+\)\s*$/, ''); const m = s(r[0]); if (!mapaH[m] || s(r[20]) > (mapaH[m].deslig || '')) mapaH[m] = { nome:s(r[1]), funcao:s(r[2]), setor:s(r[3]), area:s(r[5]), gerencia:s(r[6]), admissao:s(r[9]), deslig:s(r[20]), nasc:s(r[27]) }; });
