@@ -55,13 +55,28 @@ function info(n){ const S = SNAP(), x = S && S.info ? S.info[n.id] : null, p = p
   if (n.mat) { const d = p || x || {}; const desl = x ? !!x.desl : (!p || p.situacao === 'Desligado');
     return { nome:tc(d.nome || n.nome), funcao:tc(d.funcao || n.funcao), area:tc(d.setor || n.area) + (d.area ? ' · ' + d.area : ''), adm:d.admissao || n.adm || '', vinc:'', desl, afast:d.situacao === 'Afastado' }; }
   return { nome:n.nome, funcao:n.funcao, area:n.area, vinc:n.vinculo || 'Externo', desl:false }; }
-/* departamentos do Quadro (setor|departamento) e quantos ativos em cada */
-function deps(){ if (DEPS) return DEPS; const M = {}; if (Q && Q.mapa) Object.values(Q.mapa).forEach(p => { if (p.situacao === 'Desligado' || !p.setor) return; const a = areaDe(p.area, p.setor, p.funcao) || ''; if (/^(Afastados|Desistentes)$/i.test(a)) return;
-  const k = a + '|' + p.setor; const o = M[k] || (M[k] = { k, area:a, dep:p.setor, n:0, F:{} }); if (p.situacao === 'Ativo') { o.n++; o.F[p.funcao] = (o.F[p.funcao] || 0) + 1; } });
-  return (DEPS = M); }
-function qtd(n){ const q = n.qtd || {}; if (q.modo === 'manual') return { n:+q.n || 0, auto:false };
-  if (q.modo === 'auto') { const S = SNAP(); if (S && S.cont && S.cont[n.id]) return { n:S.cont[n.id].n, auto:true, F:S.cont[n.id].F };
-    const D = deps(), F = {}; let t = 0; (q.deps || []).forEach(k => { const d = D[k]; if (!d) return; t += d.n; Object.entries(d.F).forEach(([f, v]) => F[f] = (F[f] || 0) + v); }); return { n:t, auto:true, F }; }
+/* nome do departamento padronizado: grafias diferentes na base contam como o mesmo (ex.: "SEG. TRABALHO" = "SEGURANÇA DO TRABALHO") */
+const ABREV = [[/\bSEG\b\.?/g, 'SEGURANCA'], [/\bMED\b\.?/g, 'MEDICINA'], [/\bADM\b\.?/g, 'ADMINISTRACAO'], [/\bADMINIST\b\.?/g, 'ADMINISTRACAO'], [/\bDEPTO?\b\.?/g, 'DEPARTAMENTO'], [/\bDP\b/g, 'DEPARTAMENTO PESSOAL'],
+  [/\bGER\b\.?/g, 'GERENCIA'], [/\bMANUT\b\.?/g, 'MANUTENCAO'], [/\bALMOX\b\.?/g, 'ALMOXARIFADO'], [/\bPATRIM\b\.?/g, 'PATRIMONIAL'], [/\bTRAB\b\.?/g, 'TRABALHO'], [/\bQUALID\b\.?/g, 'QUALIDADE']];
+const canon = s => { let t = N(s).replace(/[.\/\-_,;:()]+/g, ' '); ABREV.forEach(([r, v]) => t = t.replace(r, v)); return t.replace(/\b(DO|DA|DE|DOS|DAS|E)\b/g, ' ').replace(/\s+/g, ' ').trim(); };
+/* departamentos do Quadro: por setor|departamento (k) e agrupados pelo nome padronizado (d:<nome>); guarda quem está ativo em cada um */
+function deps(){ if (DEPS) return DEPS; const M = {}, G = {}; if (Q && Q.mapa) Object.entries(Q.mapa).forEach(([m, p]) => { if (!p || typeof p !== 'object' || p.situacao === 'Desligado' || !p.setor) return; const a = areaDe(p.area, p.setor, p.funcao) || ''; if (/^(Afastados|Desistentes)$/i.test(a)) return;
+  const k = a + '|' + p.setor; const o = M[k] || (M[k] = { k, area:a, dep:p.setor, n:0, F:{}, P:[] }); const c = canon(p.setor), gk = 'd:' + c; const g = G[gk] || (G[gk] = { k:gk, dep:p.setor, var:{}, areas:{}, n:0, F:{}, P:[] });
+  if (p.situacao === 'Ativo') { [o, g].forEach(x => { x.n++; x.F[p.funcao] = (x.F[p.funcao] || 0) + 1; x.P.push([m, p.funcao]); }); g.var[p.setor] = (g.var[p.setor] || 0) + 1; g.areas[a] = 1; } });
+  Object.values(G).forEach(g => { g.dep = Object.entries(g.var).sort((x, y) => y[1] - x[1])[0]?.[0] || g.dep; });
+  DEPS = Object.assign(M, G); return DEPS; }
+/* quem tem cartão próprio no organograma não entra na contagem do departamento (não conta duas vezes; ex.: a própria cabeça) */
+const comCartao = () => new Set(CFG.nos.filter(n => n.mat).map(n => String(n.mat)));
+function qtd(n, _vis){ const q = n.qtd || {}; if (q.modo === 'manual') return { n:+q.n || 0, auto:false };
+  const S = SNAP(); if ((q.modo === 'auto' || q.modo === 'soma') && S && S.cont && S.cont[n.id]) return { n:S.cont[n.id].n, auto:true, F:S.cont[n.id].F, soma:q.modo === 'soma', cab:S.cont[n.id].cab };
+  if (q.modo === 'auto') { const D = deps(), F = {}, X = comCartao(), vis = new Set(); let t = 0;
+    (q.deps || []).forEach(k => { const d = D[k]; if (!d) return; d.P.forEach(([m, f]) => { if (vis.has(m) || X.has(String(m))) return; vis.add(m); t++; F[f] = (F[f] || 0) + 1; }); }); return { n:t, auto:true, F }; }
+  /* soma: cada cartão de pessoa ativa abaixo (as cabeças) + os colaboradores contados nos cartões abaixo */
+  if (q.modo === 'soma') { const F = {}; let t = 0, cab = 0; _vis = _vis || new Set(); if (_vis.has(n.id)) return { n:0, auto:true, F, soma:true }; _vis.add(n.id);
+    desc(n.id).forEach(id => { const c = byId(id); if (!c) return; const I = info(c);
+      if (c.mat && !I.desl) { t++; cab++; const f = (pq(c) || {}).funcao || c.funcao || ''; F[f] = (F[f] || 0) + 1; }
+      const qc = c.qtd && c.qtd.modo !== 'soma' ? qtd(c) : null; if (qc) { t += qc.n; Object.entries(qc.F || {}).forEach(([f, v]) => F[f] = (F[f] || 0) + v); } });
+    return { n:t, auto:true, F, soma:true, cab }; }
   return null; }
 const byId = id => CFG.nos.find(n => n.id === id);
 const raizes = () => CFG.nos.filter(n => !n.pai || !byId(n.pai)).sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
@@ -86,7 +101,7 @@ const CSS = `.oc-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;marg
 .oc-c:hover{box-shadow:0 6px 16px rgba(20,33,61,.14)}.oc-c.hl{outline:3px solid #e9a23b;outline-offset:2px}.oc-c.dz{outline:3px dashed #2e7d4f;outline-offset:2px}.oc-c.ar{background:#f7faf8}
 .oc-f{width:62px;height:62px;border-radius:50%;flex:0 0 auto;margin:0 auto 6px;overflow:hidden;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:21px;border:3px solid #fff;box-shadow:0 0 0 2px var(--c)}
 .oc-f img{width:100%;height:100%;object-fit:cover;display:block}.oc-f.ar{border-radius:14px;font-size:24px}
-.oc-n{font-weight:800;font-size:12.5px;line-height:1.2;color:#14213d;max-height:30px;overflow:hidden}.oc-fu{font-size:11px;color:#5d6a85;margin-top:2px;line-height:1.2;max-height:27px;overflow:hidden}
+.oc-dp{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:var(--c);margin:-5px 0 4px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.oc-n{font-weight:800;font-size:12.5px;line-height:1.2;color:#14213d;max-height:30px;overflow:hidden}.oc-fu{font-size:11px;color:#5d6a85;margin-top:2px;line-height:1.2;max-height:27px;overflow:hidden}
 .oc-sl{display:inline-block;margin-top:3px;background:#f1e8f8;color:#5a2d82;border-radius:99px;padding:1px 8px;font-size:10px;font-weight:800}.oc-dl{display:inline-block;margin-top:3px;background:#fde8e6;color:#a3301c;border-radius:99px;padding:1px 8px;font-size:10px;font-weight:800}
 .oc-q{margin-top:auto;font-size:12px;font-weight:800;color:var(--c);background:color-mix(in srgb,var(--c) 10%,#fff);border-radius:99px;padding:2px 9px}
 .oc-tg{position:absolute;bottom:-11px;left:50%;transform:translateX(-50%);border:1px solid #d0d5dd;background:#fff;border-radius:99px;font-size:10.5px;font-weight:800;color:#5d6a85;padding:1px 7px;cursor:pointer;z-index:2}
@@ -105,7 +120,7 @@ const fotoHtml = n => { const I = info(n), k = fotoK(n); if (n.tipo === 'area') 
 const corN = n => n.tipo === 'area' ? COR.area : n.mat ? COR.pessoa : COR.externo;
 function cartao(n, p){ const I = info(n), q = qtd(n), F = filhos(n.id), c = corN(n);
   return `<div class="oc-c ${n.tipo === 'area' ? 'ar' : ''}" data-id="${n.id}" ${pode() ? 'draggable="true"' : ''} style="--c:${c};left:${p.x}px;top:${p.y}px">
-    <div class="oc-f ${n.tipo === 'area' ? 'ar' : ''}" style="background:${n.tipo === 'area' ? COR.area : corDe(n.id)}">${fotoHtml(n)}</div>
+    ${n.dep ? `<div class="oc-dp" title="${esc(n.dep)}">${esc(n.dep)}</div>` : ''}<div class="oc-f ${n.tipo === 'area' ? 'ar' : ''}" style="background:${n.tipo === 'area' ? COR.area : corDe(n.id)}">${fotoHtml(n)}</div>
     <div class="oc-n">${esc(I.nome || '(sem nome)')}</div><div class="oc-fu">${esc(I.funcao || '')}</div>
     ${I.desl ? '<span class="oc-dl">Desligado – revisar</span>' : I.vinc ? `<span class="oc-sl">${esc(I.vinc)}</span>` : I.afast ? '<span class="oc-sl" style="background:#fff1d6;color:#7a5200">Afastado</span>' : ''}
     ${q ? `<span class="oc-q" ${q.auto ? `data-qf="${n.id}" title="Ver por função"` : ''}>${colab(q.n)}</span>` : ''}
@@ -159,7 +174,7 @@ function ligar(c){
   c._arr = true;
 }
 function busca(rolar){ const t = N(VIS.q); document.querySelectorAll('.oc-c.hl').forEach(x => x.classList.remove('hl')); if (t.length < 2) return;
-  const ach = CFG.nos.filter(n => { const I = info(n); return N(I.nome + ' ' + I.funcao + ' ' + I.area).includes(t); });
+  const ach = CFG.nos.filter(n => { const I = info(n); return N(I.nome + ' ' + I.funcao + ' ' + I.area + ' ' + (n.dep || '')).includes(t); });
   let abriu = false; ach.forEach(n => ancest(n.id).forEach(a => { if (VIS.fechados.has(a)) { VIS.fechados.delete(a); abriu = true; } }));
   if (abriu) { desenhar(); return; }
   ach.forEach(n => { const el = document.querySelector(`.oc-c[data-id="${n.id}"]`); if (el) el.classList.add('hl'); });
@@ -169,7 +184,12 @@ function janela(tit, corpo, pe, larg){ const w = document.createElement('div'); 
 function porFuncao(n){ if (!n) return; const q = qtd(n); if (!q || !q.auto) return; const F = Object.entries(q.F || {}).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'pt-BR'));
   janela('Colaboradores ligados · ' + esc(info(n).nome), `<p style="margin-top:0;color:#5d6a85;font-size:13px">Ativos do Quadro Geral nos departamentos escolhidos para este cartão. Contagem por função, sem nomes.</p>
     <table class="oc-tb"><thead><tr><th>Função</th><th style="text-align:right">Pessoas</th></tr></thead><tbody>${F.map(([f, v]) => `<tr><td>${esc(tc(f))}</td><td class="n">${v}</td></tr>`).join('')}<tr><td><b>Total</b></td><td class="n">${q.n}</td></tr></tbody></table>
-    ${(n.qtd.deps || []).length ? `<p style="font-size:12px;color:#8a94a8;margin-bottom:0">Departamentos: ${(n.qtd.deps || []).map(k => esc(tc(k.split('|')[1]) + ' (' + k.split('|')[0] + ')')).join(', ')}</p>` : ''}`); }
+    ${q.soma ? `<p style="font-size:12px;color:#8a94a8;margin-bottom:0">Soma de tudo o que está abaixo no organograma: ${q.cab || 0} pessoa(s) com cartão + os colaboradores dos departamentos delas.</p>` : depsTxt(n)}`); }
+/* departamentos escolhidos e os nomes da base agrupados em cada um */
+function depsTxt(n){ const L = (n.qtd && n.qtd.deps) || []; if (!L.length || SNAP()) return ''; const D = deps();
+  return `<div style="font-size:12px;color:#5d6a85;margin-top:10px"><b>Departamentos contados</b>${L.map(k => { const d = D[k];
+    if (/^d:/.test(k)) { const V = d ? Object.keys(d.var) : []; return `<div style="margin-top:4px">• ${esc(tc(d ? d.dep : k.slice(2)))}${V.length > 1 ? ` <span style="color:#8a5a00">· nomes agrupados: ${V.map(v => esc(v)).join(' · ')}</span>` : ''}${d ? '' : ' <span style="color:#a3301c">(sem ativos hoje)</span>'}</div>`; }
+    return `<div style="margin-top:4px">• ${esc(tc(k.split('|')[1]))} (${esc(k.split('|')[0])})</div>`; }).join('')}<div style="margin-top:4px;color:#8a94a8">Não entram na conta: afastados, desistentes e quem já tem cartão próprio no organograma (a própria cabeça, por exemplo).</div></div>`; }
 
 /* ---------- ficha ---------- */
 function ficha(id){ const n = byId(id); if (!n) return; const I = info(n), q = qtd(n), F = filhos(n.id), pai = byId(n.pai), P = pode();
@@ -180,7 +200,8 @@ function ficha(id){ const n = byId(id); if (!n) return; const I = info(n), q = q
     ${n.tipo !== 'area' && !n.mat ? `<tr><td>Vínculo</td><td>${esc(n.vinculo || 'Externo')}${n.empresa ? ' · ' + esc(n.empresa) : ''}</td></tr>` : ''}
     <tr><td>Ligado a</td><td>${pai ? esc(info(pai).nome) + ' · ' + esc(info(pai).funcao || '') : '— (topo)'}</td></tr>
     <tr><td>Abaixo dele(a)</td><td>${F.map(f => esc(info(f).nome)).join(', ') || '—'}</td></tr>
-    <tr><td>Colaboradores ligados</td><td>${q ? `<b>${colab(q.n)}</b> ${q.auto ? '<small>(automático pelo Quadro)</small> <button class="btn borda peq" id="oc-pf">Por função</button>' : '<small>(informado)</small>'}` : '—'}</td></tr></tbody></table>
+    <tr><td>Colaboradores ligados</td><td>${q ? `<b>${colab(q.n)}</b> ${q.auto ? (q.soma ? '<small>(soma automática de tudo abaixo)</small>' : '<small>(automático pelo Quadro)</small>') + ' <button class="btn borda peq" id="oc-pf">Por função</button>' : '<small>(informado)</small>'}` : '—'}</td></tr></tbody></table>
+    ${q && q.auto && !q.soma ? depsTxt(n) : q && q.soma ? `<p style="font-size:12px;color:#5d6a85;margin:8px 0 0">Soma automática: ${q.cab || 0} pessoa(s) com cartão abaixo + os colaboradores dos departamentos delas.</p>` : ''}
     ${oq.length ? `<h4 style="margin:14px 0 4px">O que faz</h4><ul class="oc-li">${oq.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}`,
     P ? `<button class="btn prim" id="oc-e">Editar</button>${n.tipo !== 'area' ? `<button class="btn borda" id="oc-ft">${FOTOS[fotoK(n)] ? 'Trocar foto' : 'Adicionar foto'}</button>` : ''}<button class="btn borda" id="oc-l" title="Mover para a esquerda">◀ Mover</button><button class="btn borda" id="oc-r" title="Mover para a direita">Mover ▶</button><span style="flex:1"></span><button class="btn borda" id="oc-del" style="color:var(--coral,#c0392b)">Excluir</button>` : '');
   const g = s => w.querySelector(s);
@@ -206,23 +227,26 @@ function form(n0){
   let modo = n.tipo === 'area' ? 'area' : (n.mat || !n0) ? 'mat' : 'ext'; if (!n0) modo = 'mat';
   const proib = new Set(n0 ? [n.id].concat(desc(n.id)) : []);
   const opPai = () => `<option value="">Sem ligação (fica no topo)</option>` + CFG.nos.filter(x => !proib.has(x.id)).map(x => { const I = info(x); return `<option value="${x.id}" ${n.pai === x.id ? 'selected' : ''}>${esc(I.nome)}${I.funcao ? ' · ' + esc(I.funcao) : ''}</option>`; }).join('');
-  const D = Object.values(deps()).sort((a, b) => a.area.localeCompare(b.area, 'pt-BR') || a.dep.localeCompare(b.dep, 'pt-BR'));
+  const D0 = deps(), D = Object.values(D0).filter(d => /^d:/.test(d.k)).sort((a, b) => a.dep.localeCompare(b.dep, 'pt-BR'));
+  const selD = new Set(((n.qtd && n.qtd.deps) || []).map(k => /^d:/.test(k) ? k : 'd:' + canon(String(k).split('|')[1] || '')));
   const w = janela(n0 ? 'Editar cartão' : 'Adicionar ao organograma', `<div class="oc-fm">
     <label>Tipo de cartão</label><div class="oc-ops"><label><input type="radio" name="oc-t" value="mat" ${modo === 'mat' ? 'checked' : ''}> Pessoa com matrícula</label><label><input type="radio" name="oc-t" value="ext" ${modo === 'ext' ? 'checked' : ''}> Pessoa sem matrícula</label><label><input type="radio" name="oc-t" value="area" ${modo === 'area' ? 'checked' : ''}> Área / Departamento</label></div>
     <div id="oc-bm"><label>Matrícula</label><input id="oc-mat" inputmode="numeric" value="${esc(n.mat || '')}" placeholder="Digite a matrícula"><div class="oc-st" id="oc-ms"></div></div>
     <div id="oc-be"><label id="oc-ln">Nome</label><input id="oc-nm" value="${esc(n.mat ? '' : n.nome || '')}"><label id="oc-lf">Cargo / função</label><input id="oc-fn" value="${esc(n.mat ? '' : n.funcao || '')}">
       <label>Área</label><input id="oc-ar" value="${esc(n.mat ? '' : n.area || '')}"><div id="oc-bv"><label>Vínculo (aparece no selo do cartão)</label><input id="oc-vi" value="${esc(n.vinculo || '')}" placeholder="Externo, Diretoria, Consultor, Prestador…"><label>Empresa</label><input id="oc-em" value="${esc(n.empresa || '')}" placeholder="Se for de outra empresa"></div></div>
+    <label>Departamento no cartão <small style="text-transform:none;font-weight:600">· aparece no alto do cartão (opcional)</small></label><input id="oc-dpl" value="${esc(n.dep || '')}" placeholder="Ex.: Segurança do Trabalho">
     <label>O que faz <small style="text-transform:none;font-weight:600">· um tópico por linha</small></label><textarea id="oc-oq" placeholder="Ex.: Aprova as admissões&#10;Acompanha os indicadores da área">${esc(n.oque || '')}</textarea>
     <label>Ligado a (a quem responde)</label><select id="oc-pai">${opPai()}</select>
-    <label>Colaboradores ligados</label><div class="oc-ops"><label><input type="radio" name="oc-q" value="" ${!n.qtd || !n.qtd.modo ? 'checked' : ''}> Não mostrar</label><label><input type="radio" name="oc-q" value="manual" ${n.qtd && n.qtd.modo === 'manual' ? 'checked' : ''}> Manual</label><label><input type="radio" name="oc-q" value="auto" ${n.qtd && n.qtd.modo === 'auto' ? 'checked' : ''}> Automático pelo Quadro</label></div>
+    <label>Colaboradores ligados</label><div class="oc-ops"><label><input type="radio" name="oc-q" value="" ${!n.qtd || !n.qtd.modo ? 'checked' : ''}> Não mostrar</label><label><input type="radio" name="oc-q" value="manual" ${n.qtd && n.qtd.modo === 'manual' ? 'checked' : ''}> Manual</label><label><input type="radio" name="oc-q" value="auto" ${n.qtd && n.qtd.modo === 'auto' ? 'checked' : ''}> Automático pelos departamentos</label><label><input type="radio" name="oc-q" value="soma" ${n.qtd && n.qtd.modo === 'soma' ? 'checked' : ''}> Soma de tudo abaixo</label></div>
+    <div class="oc-st" id="oc-qs" style="display:none">Soma automática: cada pessoa com cartão abaixo deste + os colaboradores dos departamentos delas. Atualiza a cada importação do Quadro.</div>
     <div id="oc-qm"><input id="oc-qn" type="number" min="0" value="${esc(n.qtd && n.qtd.n != null ? n.qtd.n : '')}" placeholder="Número de colaboradores" style="margin-top:6px"></div>
-    <div id="oc-qa"><input id="oc-dq" type="search" placeholder="Filtrar departamentos" style="margin-top:6px"><div class="oc-dps" id="oc-dl">${D.map(d => `<label data-q="${esc(N(d.area + ' ' + d.dep))}"><input type="checkbox" value="${esc(d.k)}" ${(n.qtd && n.qtd.deps || []).includes(d.k) ? 'checked' : ''}> ${esc(tc(d.dep))} <small style="color:#8a94a8">· ${esc(d.area)} · ${d.n}</small></label>`).join('') || '<small>Carregue o Quadro Geral para escolher os departamentos.</small>'}</div><div class="oc-st" id="oc-qt"></div></div>
+    <div id="oc-qa"><input id="oc-dq" type="search" placeholder="Filtrar departamentos" style="margin-top:6px"><div class="oc-dps" id="oc-dl">${D.map(d => { const V = Object.keys(d.var); return `<label data-q="${esc(N(V.join(' ') + ' ' + Object.keys(d.areas).join(' ')))}"><input type="checkbox" value="${esc(d.k)}" ${selD.has(d.k) ? 'checked' : ''}> ${esc(tc(d.dep))} <small style="color:#8a94a8">· ${esc(Object.keys(d.areas).join(', '))} · ${d.n}${V.length > 1 ? ' · agrupa: ' + esc(V.join(' / ')) : ''}</small></label>`; }).join('') || '<small>Carregue o Quadro Geral para escolher os departamentos.</small>'}</div><div class="oc-st" id="oc-qt"></div></div>
     </div>`, '<span style="flex:1"></span><button class="btn borda" data-x>Cancelar</button><button class="btn prim" id="oc-ok">Salvar</button>', 680);
   const g = s => w.querySelector(s);
   const vis = () => { modo = (w.querySelector('[name=oc-t]:checked') || {}).value || 'mat'; g('#oc-bm').style.display = modo === 'mat' ? '' : 'none'; g('#oc-be').style.display = modo === 'mat' ? 'none' : ''; g('#oc-bv').style.display = modo === 'ext' ? '' : 'none';
     g('#oc-ln').textContent = modo === 'area' ? 'Nome da área / departamento' : 'Nome'; g('#oc-lf').textContent = modo === 'area' ? 'Descrição curta (opcional)' : 'Cargo / função';
-    const qm = (w.querySelector('[name=oc-q]:checked') || {}).value || ''; g('#oc-qm').style.display = qm === 'manual' ? '' : 'none'; g('#oc-qa').style.display = qm === 'auto' ? '' : 'none'; somaQ(); };
-  const somaQ = () => { const ks = [...w.querySelectorAll('#oc-dl input:checked')].map(i => i.value), Dm = deps(); const t = ks.reduce((s, k) => s + ((Dm[k] || {}).n || 0), 0); g('#oc-qt').textContent = ks.length ? ks.length + ' departamento(s) · ' + colab(t) + ' ativos hoje' : 'Escolha um ou mais departamentos.'; };
+    const qm = (w.querySelector('[name=oc-q]:checked') || {}).value || ''; g('#oc-qm').style.display = qm === 'manual' ? '' : 'none'; g('#oc-qa').style.display = qm === 'auto' ? '' : 'none'; g('#oc-qs').style.display = qm === 'soma' ? '' : 'none'; somaQ(); };
+  const somaQ = () => { const ks = [...w.querySelectorAll('#oc-dl input:checked')].map(i => i.value), Dm = deps(); const t = ks.reduce((s, k) => s + ((Dm[k] || {}).n || 0), 0); g('#oc-qt').textContent = ks.length ? ks.length + ' departamento(s) · ' + colab(t) + ' ativos hoje (quem tem cartão próprio no organograma, como a própria cabeça, não entra na conta)' : 'Escolha um ou mais departamentos.'; };
   const mostraMat = () => { const m = g('#oc-mat').value.replace(/\D/g, '').replace(/^0+(?=\d)/, ''); const p = m && Q && Q.mapa ? Q.mapa[m] : null;
     g('#oc-ms').innerHTML = !m ? 'Ao digitar, os dados vêm do Quadro Geral.' : p ? `<b>${esc(tc(p.nome))}</b> · ${esc(tc(p.funcao))} · ${esc(tc(p.setor))} · ${esc(p.area || '')} · admissão ${brD(p.admissao)}${p.situacao === 'Desligado' ? ' · <b style="color:#a3301c">desligado</b>' : ''}` : '<span style="color:#a3301c">Matrícula não encontrada no Quadro Geral.</span>';
     if (p && CFG.nos.some(x => x.mat === m && x.id !== n.id)) g('#oc-ms').innerHTML += '<br><span style="color:#8a5a00">Essa pessoa já está no organograma.</span>'; };
@@ -234,9 +258,9 @@ function form(n0){
       Object.assign(n, { tipo:'pessoa', mat:m, nome:p.nome, funcao:p.funcao, area:p.setor, adm:p.admissao, vinculo:'', empresa:'' }); }
     else { const nm = g('#oc-nm').value.trim(); if (!nm) return toast('Preencha o nome.', true);
       Object.assign(n, { tipo:modo === 'area' ? 'area' : 'pessoa', mat:'', adm:'', nome:nm, funcao:g('#oc-fn').value.trim(), area:g('#oc-ar').value.trim(), vinculo:modo === 'ext' ? (g('#oc-vi').value.trim() || 'Externo') : '', empresa:modo === 'ext' ? g('#oc-em').value.trim() : '' }); }
-    n.oque = g('#oc-oq').value.trim();
+    n.oque = g('#oc-oq').value.trim(); n.dep = g('#oc-dpl').value.trim();
     const novoPai = g('#oc-pai').value; if (novoPai !== (n.pai || '')) { n.pai = novoPai; n.ordem = filhos(novoPai).length; } else if (!n0) n.ordem = filhos(novoPai).length;
-    n.qtd = qm === 'manual' ? { modo:'manual', n:Math.max(0, parseInt(g('#oc-qn').value, 10) || 0) } : qm === 'auto' ? { modo:'auto', deps:[...w.querySelectorAll('#oc-dl input:checked')].map(i => i.value) } : { modo:'' };
+    n.qtd = qm === 'manual' ? { modo:'manual', n:Math.max(0, parseInt(g('#oc-qn').value, 10) || 0) } : qm === 'auto' ? { modo:'auto', deps:[...w.querySelectorAll('#oc-dl input:checked')].map(i => i.value) } : qm === 'soma' ? { modo:'soma' } : { modo:'' };
     if (qm === 'auto' && !n.qtd.deps.length) return toast('Escolha ao menos um departamento para a contagem automática.', true);
     const i = CFG.nos.findIndex(x => x.id === n.id); if (i >= 0) CFG.nos[i] = n; else CFG.nos.push(n);   // os ligados abaixo vão junto (continuam ligados a este cartão)
     const bt = g('#oc-ok'); bt.disabled = true; bt.textContent = 'Salvando…';
@@ -295,6 +319,7 @@ async function pdf(rootId){
     const img = n.tipo !== 'area' && FOTOS[fotoK(n)];
     if (img) { try { doc.addImage(img, 'JPEG', cx - r, cy - r, 2 * r, 2 * r); } catch(_){} } else { doc.setFillColor(...(n.tipo === 'area' ? hex(COR.area) : hex(corDe(n.id)))); doc.circle(cx, cy, r, 'F'); doc.setTextColor(255); doc.setFont('helvetica', 'bold'); doc.setFontSize(r * 2.3); doc.text(n.tipo === 'area' ? '' : iniciais(I.nome), cx, cy + r * .38, { align:'center' }); }
     doc.setDrawColor(...c); doc.setLineWidth(.4); doc.circle(cx, cy, r, 'S');
+    if (n.dep) { doc.setFont('helvetica', 'bold'); doc.setFontSize(fs * .72); doc.setTextColor(...c); doc.text(doc.splitTextToSize(String(n.dep).toUpperCase(), w - 2)[0], cx, y + 8.5 * s, { align:'center' }); }
     let ty = cy + r + fs * .55; doc.setTextColor(...C.INK); doc.setFont('helvetica', 'bold'); doc.setFontSize(fs); doc.splitTextToSize(I.nome || '', w - 2).slice(0, 2).forEach(l => { doc.text(l, cx, ty, { align:'center' }); ty += fs * .42; });
     doc.setFont('helvetica', 'normal'); doc.setFontSize(fs * .85); doc.setTextColor(...C.MUT); doc.splitTextToSize(I.funcao || '', w - 2).slice(0, 2).forEach(l => { doc.text(l, cx, ty, { align:'center' }); ty += fs * .36; });
     const selo = I.desl ? 'Desligado – revisar' : I.vinc; if (selo) { doc.setFontSize(fs * .78); doc.setTextColor(...(I.desl ? [163, 48, 28] : [90, 45, 130])); doc.text(selo, cx, ty + fs * .1, { align:'center' }); }
@@ -308,7 +333,7 @@ async function pdf(rootId){
 
 /* cópia para gestor/assistente (gerada pelo administrador): cartões, fotos, contagens e dados do Quadro de quem tem matrícula */
 async function snapshot(){ window.CRV_ORG_SNAP = null; await ler(); if (!CFG.nos.length) return null;
-  const fotos = {}, cont = {}, inf = {}; CFG.nos.forEach(n => { const k = fotoK(n); if (FOTOS[k]) fotos[k] = FOTOS[k]; const q = qtd(n); if (q && q.auto) cont[n.id] = { n:q.n, F:q.F };
+  const fotos = {}, cont = {}, inf = {}; CFG.nos.forEach(n => { const k = fotoK(n); if (FOTOS[k]) fotos[k] = FOTOS[k]; const q = qtd(n); if (q && q.auto) cont[n.id] = { n:q.n, F:q.F, cab:q.cab };
     if (n.mat) { const p = pq(n); inf[n.id] = p ? { nome:p.nome, funcao:p.funcao, setor:p.setor, area:p.area, admissao:p.admissao, situacao:p.situacao, desl:p.situacao === 'Desligado' } : { desl:true }; } });
   return { nos:CFG.nos, fotos, cont, info:inf, em:new Date().toISOString() }; }
 
