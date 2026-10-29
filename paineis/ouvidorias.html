@@ -469,10 +469,11 @@ function abrirForm(a,encerrar){
  const g=id=>w.querySelector("#"+id),fechar=()=>w.remove();
  w.querySelector(".of-x").onclick=fechar;g("oCancel").onclick=fechar;w.addEventListener("mousedown",e=>{if(e.target===w)fechar()});
  const sit=()=>(w.querySelector("input[name=oS]:checked")||{}).value||"Em andamento";
- const upd=()=>{const fin=sit()==="Finalizado";g("oEncW").style.opacity=fin?1:.45;g("oEnc").disabled=!fin;
+ const upd=()=>{const fin=sit()==="Finalizado";g("oEncW").style.opacity=1;g("oEnc").disabled=false;   /* data de encerramento sempre liberada para preencher */
   if(fin&&!g("oEnc").value)g("oEnc").value=hojeISO();
   const ab=g("oAb").value,en=g("oEnc").value;g("oPz").textContent=fin&&ab&&en?(en<ab?"A data de encerramento está antes da abertura.":"Prazo: "+prazoDe(ab,en).txt):"";};
- w.querySelectorAll("input[name=oS]").forEach(r=>r.onchange=upd);g("oEnc").oninput=upd;g("oAb").oninput=upd;upd();
+ w.querySelectorAll("input[name=oS]").forEach(r=>r.onchange=()=>{if(sit()!=="Finalizado")g("oEnc").value="";upd()});
+ g("oEnc").oninput=()=>{if(g("oEnc").value){const f=w.querySelector("input[name=oS][value=Finalizado]");if(f)f.checked=true;}upd()};g("oAb").oninput=upd;upd();
  g("oAcao").onchange=()=>{g("oAcaoO").style.display=g("oAcao").value==="__outra"?"":"none"};
  g("oSalvar").onclick=async()=>{
   const msg=g("oMsg");const tipos=[...w.querySelectorAll("#oTipo input:checked")].map(i=>i.value);
