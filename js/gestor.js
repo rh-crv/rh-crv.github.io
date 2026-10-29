@@ -186,7 +186,7 @@ async function gerar(forcar){
   let falhou = false; try { await gerarPaineis(G || []); falhou = !!(gerarPaineis.falhas || []).length; } catch(e) { falhou = true; console.warn('painéis dos gestores', e); }
   // se algum gestor ficou sem os painéis, não guarda a assinatura: tenta de novo na próxima vez que o app abrir
   await sb.from('area_dados').upsert({ chave:'__meta', dados:{ sig:falhou ? 'incompleto:' + Date.now() : sig, chaves:chaves.slice().sort(), em:new Date().toISOString(), por:E.perfil.nome }, atualizado_em:new Date().toISOString(), atualizado_por:E.perfil.nome }, { onConflict:'chave' });
-  return { ok:true, n:R.length };
+  return { ok:true, n:R.length, falhas:falhou ? (gerarPaineis.falhas || []).length || 1 : 0 };
 }
 /* ---------- painéis do RH recortados por gestor (js/area-paineis.js) ----------
    Cada gestor com painéis liberados ('g:p:<painel>' em perfis.paineis_ver) ganha uma linha 'u:<id do gestor>' em area_dados

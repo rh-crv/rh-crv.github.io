@@ -2473,7 +2473,7 @@ async function adminUsuarios(){
   c.querySelectorAll('[data-exc]').forEach(b => b.onclick = () => excluirUsuario(data.find(u => u.user_id === b.dataset.exc)));
   c.querySelectorAll('[data-vercomo]').forEach(b => b.onclick = () => verComo(data.find(u => u.user_id === b.dataset.vercomo)));
   const bg = $('#u-gerar'); if (bg) bg.onclick = async () => { bg.disabled = true; bg.textContent = 'Atualizando…'; const r = await GESTOR().gerar(true).catch(e => ({ ok:false, erro:e }));
-    if (r.ok) { toast(`Visão dos gestores atualizada (${r.n || 0} área(s)).`); adminUsuarios(); } else { toast(traduzErro(r.erro), true); bg.disabled = false; bg.textContent = 'Atualizar agora'; } };
+    if (r.ok && r.falhas) { toast(`Não consegui gravar os painéis de ${r.falhas} gestor(es). Clique em Atualizar agora de novo.`, true); bg.disabled = false; bg.textContent = 'Atualizar agora'; } else if (r.ok) { toast(`Visão dos gestores atualizada (${r.n || 0} área(s)).`); adminUsuarios(); } else { toast(traduzErro(r.erro), true); bg.disabled = false; bg.textContent = 'Atualizar agora'; } };
   c.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => formUsuario(data.find(u=>u.user_id===b.dataset.edit), data));
   c.querySelectorAll('[data-senha]').forEach(b => b.onclick = () => formSenha(data.find(u=>u.user_id===b.dataset.senha)));
 }
