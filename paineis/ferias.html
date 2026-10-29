@@ -630,6 +630,7 @@ function effStatus(x){
     if (s.k==='now') return 'ferias';
     if (s.k==='ret') return 'ret';
     if (s.k==='ok'){ if(!s.allDone) return 'prog'; return s.falta>0 ? x.urg : 'gozado'; }
+    if (s.k==='late' && s.allDone && s.falta<=0) return 'gozado'; /* já gozadas, ainda que depois do prazo: saem de vencidos (a lista de gozadas fora do prazo continua no Histórico) */
   }
   return x.urg; // sem data, data fora do prazo ou saldo restante sem data: continua no alerta
 }
