@@ -130,7 +130,7 @@ async function tela(setor){
 function desenhar(){
   const c = $('#oe-corpo'); if (!c || !B) return; const sb0 = $('#oe-sub'); if (sb0 && B.ref) sb0.textContent = 'Toda a CRV por setor e departamento · Quadro Geral de ' + B.ref.split('-').reverse().join('/');
   const s = VIS.setor && B.SET.find(x => x.nome === VIS.setor);
-  const barra = `<div class="oe-top">${s ? '<button class="btn borda" id="oe-volta">‹ Todos os setores</button>' : ''}<input id="oe-q" type="search" placeholder="Buscar função ou departamento" value="${esc(VIS.q)}"><span class="sp"></span>${ehAdmin() ? '<button class="btn borda" id="oe-cfg">Definir lideranças</button>' : ''}<button class="btn borda" id="oe-xls">Excel</button><button class="btn prim" id="oe-pdf">Imprimir / Gerar PDF</button></div>`;
+  const barra = `<div class="oe-top">${s ? '<button class="btn borda" id="oe-volta">‹ Todos os setores</button>' : ''}<input id="oe-q" type="search" placeholder="Buscar função ou departamento" value="${esc(VIS.q)}"><span class="sp"></span>${ehRH() ? '<button class="btn borda" id="oe-cfg">Definir lideranças</button>' : ''}<button class="btn borda" id="oe-xls">Excel</button><button class="btn prim" id="oe-pdf">Imprimir / Gerar PDF</button></div>`;
   c.innerHTML = barra + `<div id="oe-res"></div>` + (s ? setorHtml(s) : geral());
   ligar(c);
 }
@@ -143,7 +143,7 @@ function geral(){ const tot = B.ATV.length, pend = B.SET.reduce((t, s) => t + s.
 function setorHtml(s){ const A = arvore(s);
   const no = l => { const F = A.filhos(l.m), D = A.depsDe(l.m); return `<details class="oe-no" open><summary>${cardLid(l, s.nome)}</summary><div class="oe-fi">${F.map(no).join('')}${D.map(d => depHtml(d, s)).join('')}</div></details>`; };
   return `<section style="--sc:${s.cor}"><div class="oe-sh"><h2>${esc(s.nome)}</h2><span class="q">${pessoas(s.n)}</span>${s.af ? `<span class="q" style="--sc:#b5731a">${s.af} afastado${s.af > 1 ? 's' : ''}</span>` : ''}<span class="sp"></span><button class="btn borda peq" id="oe-ab">Abrir tudo</button><button class="btn borda peq" id="oe-fe">Recolher</button></div>
-    <div class="oe-wrap">${A.raizes.map(no).join('')}${A.semResp.length ? `<div style="margin-top:14px"><div class="oe-pd" style="font-size:12.5px;margin-bottom:4px">Liderança a definir · ${A.semResp.length} departamento${A.semResp.length > 1 ? 's' : ''}</div>${A.semResp.map(d => depHtml(d, s)).join('')}${ehAdmin() ? '<button class="btn prim peq" id="oe-cfg2" style="margin-top:6px">Definir as lideranças deste setor</button>' : ''}</div>` : ''}</div>
+    <div class="oe-wrap">${A.raizes.map(no).join('')}${A.semResp.length ? `<div style="margin-top:14px"><div class="oe-pd" style="font-size:12.5px;margin-bottom:4px">Liderança a definir · ${A.semResp.length} departamento${A.semResp.length > 1 ? 's' : ''}</div>${A.semResp.map(d => depHtml(d, s)).join('')}${ehRH() ? '<button class="btn prim peq" id="oe-cfg2" style="margin-top:6px">Definir as lideranças deste setor</button>' : ''}</div>` : ''}</div>
     <p class="nr-fonte">Total do setor: ${pessoas(s.n)} em ${s.D.length} departamentos. Clique numa função para ver a quantidade por departamento e por turno.</p></section>`; }
 function ligar(c){
   c.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { VIS.setor = b.dataset.s; desenhar(); window.scrollTo(0, 0); });
@@ -201,7 +201,7 @@ function recortar(k, depois){ const inp = document.createElement('input'); inp.t
 
 /* ---------- Definir lideranças (Administração): responsável por departamento e a quem cada liderança responde ---------- */
 async function config(setorIni){
-  if (!ehAdmin()) { toast('Só a administração define as lideranças.', true); return; }
+  if (!ehRH()) { toast('Só a equipe do RH define as lideranças.', true); return; }
   if (!B) { await Promise.all([lerCfg(), lerFotos()]); await montar(); }
   let sel = setorIni || (B.SET.find(s => s.pend) || B.SET[0] || {}).nome || '';
   const D2 = JSON.parse(JSON.stringify({ dep:CFG.dep || {}, chefe:CFG.chefe || {} }));

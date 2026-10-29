@@ -5,7 +5,7 @@
    · Cada cartão: foto (só recortada no círculo; sem foto = iniciais), "O que faz", "Ligado a" (a quem responde;
      sem ligação = topo), ordem entre os do mesmo nível e "Colaboradores ligados" (manual ou automático pelos
      departamentos do Quadro, atualizado a cada importação).
-   · Salva sozinho a cada mudança e guarda versões com data (dá para voltar). Só a administradora e quem ela liberar editam.
+   · Salva sozinho a cada mudança e guarda versões com data (dá para voltar). Toda a equipe do RH edita.
    · Guardado em registros do Quadro: 'sistema/org_crv' (cartões e editores) e coleção 'org_crv_hist' (versões).
      Fotos na coleção 'org_foto' (com matrícula usa a mesma do Organograma do RH: 'q:<matrícula>'; sem matrícula: 'c:<id>').
    · Gestor/assistente: cópia só de leitura gerada pelo administrador (window.CRV_ORG_SNAP.crv).
@@ -38,7 +38,7 @@ async function ler(){
   try { Q = window.CRV_QUADRO ? await window.CRV_QUADRO() : null; } catch(_){ Q = null; }
   DEPS = null;
 }
-const pode = () => !SNAP() && (ehAdmin() || (ehRH() && (CFG.editores || []).includes(E.perfil && E.perfil.user_id)));
+const pode = () => !SNAP() && ehRH();   // toda a equipe do RH monta e altera o organograma
 async function salvar(acao){
   const dados = { nos:CFG.nos, editores:CFG.editores || [], em:new Date().toISOString(), por:quem() };
   const { error } = await sb.from('registros').upsert({ painel:'quadro', caminho:'sistema/org_crv', colecao:'sistema', doc_id:'org_crv', dados, atualizado_por:quem() }, { onConflict:'painel,caminho' });
@@ -125,7 +125,7 @@ async function tela(){
 function desenhar(){
   const c = $('#oc-corpo'); if (!c) return; const P = pode(), R = raizes(), ndesl = CFG.nos.filter(n => n.mat && info(n).desl).length;
   c.innerHTML = `<div class="oc-bar">${P ? '<button class="btn prim" id="oc-add">+ Adicionar ao organograma</button>' : ''}<input id="oc-q" type="search" placeholder="Buscar nome ou função" value="${esc(VIS.q)}"><span class="oc-z"><button id="oc-zm" title="Diminuir">−</button><span>${Math.round(VIS.z * 100)}%</span><button id="oc-zp" title="Aumentar">+</button></span>
-    <button class="btn borda" id="oc-ab">Abrir tudo</button><button class="btn borda" id="oc-fe">Recolher</button><span class="sp"></span>${P ? '<button class="btn borda" id="oc-hist">Versões</button>' : ''}${ehAdmin() && !SNAP() ? '<button class="btn borda" id="oc-ed">Quem pode editar</button>' : ''}${!SNAP() && ehRH() ? '<button class="btn borda" id="oc-auto" title="Organograma montado sozinho pelo Quadro Geral">Visão pelo Quadro</button>' : ''}<button class="btn prim" id="oc-pdf">Imprimir / PDF</button></div>
+    <button class="btn borda" id="oc-ab">Abrir tudo</button><button class="btn borda" id="oc-fe">Recolher</button><span class="sp"></span>${P ? '<button class="btn borda" id="oc-hist">Versões</button>' : ''}${false ? '<button class="btn borda" id="oc-ed">Quem pode editar</button>' : ''}${!SNAP() && ehRH() ? '<button class="btn borda" id="oc-auto" title="Organograma montado sozinho pelo Quadro Geral">Visão pelo Quadro</button>' : ''}<button class="btn prim" id="oc-pdf">Imprimir / PDF</button></div>
     ${ndesl ? `<div style="background:#fde8e6;color:#8f1d12;border-radius:10px;padding:9px 12px;font-size:13px;margin:0 0 10px"><b>${ndesl} cartão(ões) com pessoa desligada no Quadro Geral.</b> Estão marcados "Desligado – revisar": troque a pessoa ou exclua o cartão.</div>` : ''}
     <div class="oc-wrap" id="oc-wrap">${R.length ? `<div id="oc-esc" style="width:0;height:0">${arvoreHtml(R)}</div>` : `<div class="oc-vz">${P ? 'Organograma vazio. Clique em <b>Adicionar ao organograma</b> para começar pelo topo (ex.: diretoria).' : 'O organograma ainda não foi montado.'}</div>`}</div>
     <p class="nr-fonte">${CFG.nos.length} cartões${totalTxt(R)}. ${P ? 'Arraste um cartão sobre outro do mesmo nível para mudar a ordem. ' : ''}Clique no cartão para ver a ficha${P ? ' e editar' : ''}.${CFG.em ? ' Última alteração em ' + new Date(CFG.em).toLocaleString('pt-BR') + (CFG.por ? ' por ' + esc(tc(CFG.por)) : '') + '.' : ''}</p>`;
