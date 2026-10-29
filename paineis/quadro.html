@@ -3333,6 +3333,9 @@ fb.addEventListener('change',()=>setTimeout(resumo,30));resumo();
  const e=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])),b=s=>s?s.slice(8,10)+'/'+s.slice(5,7)+'/'+s.slice(0,4):'—';
  const hoje=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')},dd=a=>Math.round((new Date(a+'T12:00:00')-new Date(hoje()+'T12:00:00'))/864e5);
  const N=s=>String(s||'').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+ /* telefones do cadastro da folha (Celular 1 e 2; às vezes vêm dois números no mesmo campo) */
+ const fone=d=>d.length===11?'('+d.slice(0,2)+') '+d.slice(2,7)+'-'+d.slice(7):d.length===10?'('+d.slice(0,2)+') '+d.slice(2,6)+'-'+d.slice(6):d;
+ const tels=r=>{const x=r.x||[],v=[];[x[25],x[26]].forEach(c=>String(c||'').split(/\s{2,}|[\/;,|]/).forEach(t=>{const d=t.replace(/\D/g,'').replace(/^0+/,'');if(d.length>=10&&!v.includes(fone(d)))v.push(fone(d))}));return v.join(' · ')};
  const DIRIGE=/MOTORISTA|OP\.? *DE *MAQ|OPERADOR.*(MAQ|TRATOR|COLHED|GUINDAST|EMPILHAD|CARREGAD|CAMINH|RETRO|MOTONIV|ESCAVAD|TRANSBORDO)|TRATORISTA|MANOBRISTA|COMBOIO|BOMBEIRO CIVIL/i;
  const salvar=async(nome,bytes,tipo)=>{try{const DL=window.claude&&window.claude.use?await window.claude.use('downloads'):null;if(DL)return DL.save({filename:nome,data:bytes})}catch(_){}
    const u=URL.createObjectURL(new Blob([bytes],{type:tipo})),a=document.createElement('a');a.href=u;a.download=nome;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},3000)};
@@ -3342,7 +3345,7 @@ fb.addEventListener('change',()=>setTimeout(resumo,30));resumo();
   w.innerHTML=`<div class="es-modal" role="dialog" aria-modal="true" style="max-width:1180px"><div class="es-cab"><h3>CNH dos colaboradores<small>Colaboradores ativos (afastados não entram). Vencimento e categoria da CNH cadastrados na folha (Quadro Geral). Pode ser cadastro desatualizado: confira a CNH atual com o colaborador antes de cobrar.</small></h3><button class="es-b" id="cnXls">Excel</button><button class="es-b" id="cnPdf">Imprimir / PDF</button><button class="es-b" id="cnX">Fechar</button></div>
    <div class="ax-k" id="cnK"></div>
    <div class="es-tools"><input type="search" id="cnQ" placeholder="Buscar nome ou matrícula"><select id="cnA"><option value="">Todos os setores</option></select><select id="cnF" style="max-width:300px"><option value="">Todas as funções</option></select><span id="cnC" style="margin-left:auto;color:#5d6a85;font-size:12px"></span></div>
-   <div class="es-tab"><table><thead><tr><th><input type="checkbox" id="cnAll" aria-label="Selecionar todos"></th><th>Matrícula</th><th>Colaborador</th><th>Setor / seção</th><th>Situação</th><th>Categoria</th><th>Validade da CNH</th><th>Prazo</th></tr></thead><tbody id="cnB"></tbody></table></div></div>`;
+   <div class="es-tab"><table><thead><tr><th><input type="checkbox" id="cnAll" aria-label="Selecionar todos"></th><th>Matrícula</th><th>Colaborador</th><th>Setor / seção</th><th>Telefone</th><th>Categoria</th><th>Validade da CNH</th><th>Prazo</th></tr></thead><tbody id="cnB"></tbody></table></div></div>`;
   document.body.appendChild(w);const g=id=>w.querySelector('#'+id),fe=()=>w.remove();g('cnX').onclick=fe;w.addEventListener('mousedown',ev=>{if(ev.target===w)fe()});
   const P=D.filter(r=>r[SIT]==='Ativo'&&!/^(Afastados|Desistentes)$/.test(r[AREA]||'')).map(r=>{const v=/^\d{4}-\d{2}-\d{2}$/.test(r[CNHV]||'')?r[CNHV]:'',dr=!!r[MOT]||DIRIGE.test(r[FUN]||'');let k='o';
     if(!v)k='s';else if(v<hoje())k=dr?'vd':'vo';else if(dd(v)<=30)k='p30';else if(dd(v)<=60)k='p60';
@@ -3357,7 +3360,7 @@ fb.addEventListener('change',()=>setTimeout(resumo,30));resumo();
   const draw=()=>{fOpts();const L=lista(),n=k=>P.filter(x=>k==='t'?!!x.v:x.k===k).length;
    g('cnK').innerHTML=K.map(([k,t,c,s])=>`<button class="${S.k===k?'on':''}" data-k="${k}" style="--c:${c}"><span>${t}</span><b>${n(k)}</b><small>${s}</small></button>`).join('');
    g('cnC').textContent=cont(L);
-   g('cnB').innerHTML=L.map(x=>`<tr><td><input type="checkbox" data-s="${x.m}"${S.sel.has(x.m)?' checked':''}></td><td>${x.m}</td><td><button class="ax-nm" data-f="${x.m}">${e(x.r[NOME])}</button><div style="font-size:11.5px;color:#5d6a85">${e(x.r[FUN])}</div></td><td>${e(x.r[AREA])}<div style="font-size:11.5px;color:#5d6a85">${e(x.r[DEP]||'')}</div></td><td>${e(x.r[SIT])}</td><td>${e(x.r[CNHC]||'—')}</td><td>${b(x.v)}</td><td>${prazo(x)}</td></tr>`).join('')||'<tr><td colspan="8" style="padding:10px;color:#5d6a85">Ninguém aqui.</td></tr>';
+   g('cnB').innerHTML=L.map(x=>`<tr><td><input type="checkbox" data-s="${x.m}"${S.sel.has(x.m)?' checked':''}></td><td>${x.m}</td><td><button class="ax-nm" data-f="${x.m}">${e(x.r[NOME])}</button><div style="font-size:11.5px;color:#5d6a85">${e(x.r[FUN])}</div></td><td>${e(x.r[AREA])}<div style="font-size:11.5px;color:#5d6a85">${e(x.r[DEP]||'')}</div></td><td style="white-space:nowrap">${e(tels(x.r))||'—'}</td><td>${e(x.r[CNHC]||'—')}</td><td>${b(x.v)}</td><td>${prazo(x)}</td></tr>`).join('')||'<tr><td colspan="8" style="padding:10px;color:#5d6a85">Ninguém aqui.</td></tr>';
    g('cnK').querySelectorAll('[data-k]').forEach(x=>x.onclick=()=>{S.k=x.dataset.k;S.sel.clear();draw()});
    g('cnB').querySelectorAll('[data-s]').forEach(x=>x.onchange=()=>{x.checked?S.sel.add(x.dataset.s):S.sel.delete(x.dataset.s);g('cnC').textContent=cont(L)});
    g('cnB').querySelectorAll('[data-f]').forEach(x=>x.onclick=()=>{fe();st.fi=+x.dataset.f;st.tab='f';render();window.scrollTo(0,0)});
@@ -3369,16 +3372,16 @@ fb.addEventListener('change',()=>setTimeout(resumo,30));resumo();
   const tit=()=>'CNH · '+K.find(k=>k[0]===S.k)[1]+(S.ar?' · '+S.ar:'')+(S.fn?' · '+S.fn:'');
   const arq=ext=>(tit().replace(/[\\/:*?"<>|]/g,' ')+' '+b(hoje()).split('/').join('-')+'.'+ext);
   g('cnXls').onclick=async()=>{const X=window.XLSX||(window.parent&&window.parent.XLSX),L=sel();if(!X||!L.length)return;
-    const rows=L.map(x=>({'Matrícula':x.m,'Nome':x.r[NOME],'Função':x.r[FUN],'Setor':x.r[AREA],'Seção':x.r[DEP]||'','Situação':x.r[SIT],'Categoria':x.r[CNHC]||'','Validade da CNH':b(x.v),'Prazo':txtPrazo(x)}));
+    const rows=L.map(x=>({'Matrícula':x.m,'Nome':x.r[NOME],'Função':x.r[FUN],'Setor':x.r[AREA],'Seção':x.r[DEP]||'','Telefone':tels(x.r),'Categoria':x.r[CNHC]||'','Validade da CNH':b(x.v),'Prazo':txtPrazo(x)}));
     const ws=X.utils.json_to_sheet(rows);X.utils.sheet_add_aoa(ws,[[],['Total: '+L.length+' colaborador(es)']],{origin:-1});ws['!cols']=Object.keys(rows[0]).map(k=>({wch:k==='Nome'||k==='Função'||k==='Seção'?34:16}));
     const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,'CNH');await salvar(arq('xlsx'),new Uint8Array(X.write(wb,{bookType:'xlsx',type:'array'})),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')};
   g('cnPdf').onclick=async()=>{const PW=window.parent||window,J=(window.jspdf&&window.jspdf.jsPDF)||(PW.jspdf&&PW.jspdf.jsPDF),L=sel();if(!J||!L.length)return;
     const doc=new J({orientation:'landscape',unit:'mm',format:'a4'}),Dc=PW.CRV_DOC,C=Dc?Dc.cores:{NAVY:[31,58,104],INK:[30,36,48]};
     doc.setFont('helvetica','bold');doc.setFontSize(15);doc.setTextColor(...C.NAVY);doc.text(tit(),12,36);
     doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(...C.INK);doc.text('Vencimento da CNH cadastrado na folha (Quadro Geral)'+(typeof REF!=='undefined'&&REF?' de '+REF.toLocaleDateString('pt-BR'):'')+' · em ordem alfabética',12,41.5);
-    const cols=[['Matrícula',x=>x.m],['Nome',x=>x.r[NOME]],['Função',x=>x.r[FUN]],['Setor',x=>x.r[AREA]],['Seção',x=>x.r[DEP]||''],['Cat.',x=>x.r[CNHC]||''],['Validade',x=>b(x.v)],['Prazo',x=>txtPrazo(x)]];
+    const cols=[['Matrícula',x=>x.m],['Nome',x=>x.r[NOME]],['Função',x=>x.r[FUN]],['Setor',x=>x.r[AREA]],['Seção',x=>x.r[DEP]||''],['Telefone',x=>tels(x.r).split(' · ').join('\n')],['Cat.',x=>x.r[CNHC]||''],['Validade',x=>b(x.v)],['Prazo',x=>txtPrazo(x)]];
     doc.autoTable({startY:46,head:[cols.map(c=>c[0])],body:L.map(x=>cols.map(c=>String(c[1](x)??''))),foot:[[{content:'Total: '+L.length+' colaborador(es)',colSpan:cols.length}]],showFoot:'lastPage',
-      styles:{fontSize:7.6,cellPadding:1.4},headStyles:{fillColor:[11,58,71]},footStyles:{fillColor:[238,241,246],textColor:[20,33,61],fontStyle:'bold'},margin:{left:10,right:10,top:30,bottom:24},columnStyles:{0:{cellWidth:16},5:{cellWidth:11},6:{cellWidth:20}}});
+      styles:{fontSize:7.6,cellPadding:1.4},headStyles:{fillColor:[11,58,71]},footStyles:{fillColor:[238,241,246],textColor:[20,33,61],fontStyle:'bold'},margin:{left:10,right:10,top:30,bottom:24},columnStyles:{0:{cellWidth:16},5:{cellWidth:30},6:{cellWidth:11},7:{cellWidth:20}}});
     if(Dc&&Dc.moldura)Dc.moldura(doc,'');const f=PW.CRV_PDF_LOGOS;await salvar(arq('pdf'),new Uint8Array((f?await f(doc)||doc:doc).output('arraybuffer')),'application/pdf')};
   draw()};
 })();
