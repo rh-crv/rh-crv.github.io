@@ -373,7 +373,7 @@ function moldura(conteudo){
         <div class="lat-tit"><b>Gestão de Pessoas</b><span>Unidade Capinópolis</span></div>
       </div>
       <nav class="lat-nav">
-        ${p.papel === 'gestor' ? '' : `<button class="lat-item ${h==='#/'||h===''?'ativo':''}" data-ir="#/">${svg('casa')}<span>Visão Geral</span></button><button class="lat-item ${h==='#/organograma'?'ativo':''}" data-ir="#/organograma"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="5" rx="1"/><rect x="2" y="16" width="6" height="5" rx="1"/><rect x="16" y="16" width="6" height="5" rx="1"/><path d="M12 8v4M5 16v-2h14v2"/></svg><span>Organograma do RH</span></button>`}
+        ${p.papel === 'gestor' ? '' : `<button class="lat-item ${h==='#/'||h===''?'ativo':''}" data-ir="#/">${svg('casa')}<span>Visão Geral</span></button><button class="lat-item ${h==='#/organograma'?'ativo':''}" data-ir="#/organograma"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="5" rx="1"/><rect x="2" y="16" width="6" height="5" rx="1"/><rect x="16" y="16" width="6" height="5" rx="1"/><path d="M12 8v4M5 16v-2h14v2"/></svg><span>Organograma do RH</span></button><button class="lat-item ${h==='#/org-empresa'?'ativo':''}" data-ir="#/org-empresa"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="5" rx="1"/><rect x="1" y="17" width="6" height="5" rx="1"/><rect x="9" y="17" width="6" height="5" rx="1"/><rect x="17" y="17" width="6" height="5" rx="1"/><path d="M12 7v5M4 17v-3h16v3M12 12v5"/></svg><span>Organograma da Empresa</span></button>`}
         ${p.papel === 'gestor' ? `<button class="lat-item ${h==='#/'||h===''?'ativo':''}" data-ir="#/">${svg('casa')}<span>Visão Geral</span></button>
         ${gOpc(p).has('central') ? `<button class="lat-item ${h==='#/central'?'ativo':''}" data-ir="#/central"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg><span>Central de Rotinas</span></button>` : ''}
         ${gOpc(p).has('ficha') ? `<button class="lat-item ${h.startsWith('#/ficha')?'ativo':''}" data-ir="#/ficha"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2.5"/><path d="M5.5 16c.6-1.8 2-2.7 3.5-2.7s2.9.9 3.5 2.7M14 9h4M14 13h4"/></svg><span>Perfil do Colaborador</span></button>` : ''}
@@ -560,6 +560,7 @@ function rota(){
   if (h === '#/bases') return BASES().tela();
   if (h === '#/cadastros' && ehRH()) return CADS().tela();
   if (h === '#/organograma' && E.perfil && E.perfil.papel !== 'gestor') return ORG().tela();
+  if (h === '#/org-empresa' && E.perfil && E.perfil.papel !== 'gestor') return OE().tela();
   if (h === '#/envios' && ehRH()) return GESTOR().telaEnvios();
   if (h.startsWith('#/respostas') && ehRH() && window.CRV_RESP_INIT) return RESP().telaRH(h.split('/')[2] || 'pend');
   if (h === '#/desligamento') return telaDesligamento();
@@ -742,6 +743,7 @@ let _rel = null; const REL = () => _rel || (_rel = window.CRV_REL_INIT(Object.as
 let _rsp = null; const RESP = () => _rsp || (_rsp = window.CRV_RESP_INIT(ctxMod()));
 let _dav = null; const DAV = () => _dav || (_dav = window.CRV_DAV_INIT(ctxMod()));
 let _org = null; const ORG = () => _org || (_org = window.CRV_ORG_INIT(ctxMod()));
+let _oe = null; const OE = () => _oe || (_oe = window.CRV_OE_INIT(ctxMod()));
 let _cad = null; const CADS = () => _cad || (_cad = window.CRV_CAD_INIT(Object.assign(ctxMod(), { FRENTES })));
 let _bases = null; const BASES = () => _bases || (_bases = window.CRV_BASES_INIT(Object.assign(ctxMod(), { ehAdmin, FRENTES })));
 let _gestor = null; const GESTOR = () => _gestor || (_gestor = window.CRV_GESTOR_INIT(ctxMod()));
@@ -1669,7 +1671,7 @@ async function logAcesso(acao, onde, detalhe){
 window.CRV_LOG_ACESSO = logAcesso;
 const ondeDe = h => { if (h.startsWith('#/p/')) { const id = decodeURIComponent(h.slice(4).split('/')[0]); return 'Painel: ' + ((E.paineis || []).find(p => p.id === id)?.nome || id); }
   if (h.startsWith('#/eq/')) { const k = h.slice(5); return 'Minha equipe: ' + ({ eq:'Equipe', mov:'Admissões e saídas', pv:'Quadro x previsto', exp:'Experiência', nov:'Novos colaboradores', perfil:'Perfil profissional', fer:'Férias', freq:'Frequência', disc:'Disciplina e RD', cr:'Em treinamento', alo:'Alojamento', env:'Meus envios' }[k] || k); }
-  return ({ '#/':'Visão Geral', '#/central':'Central de Rotinas do RH', '#/admin':'Administração', '#/conta':'Minha conta', '#/relatorio':'Relatórios Gerenciais', '#/bases':'Qualidade dos Dados', '#/cadastros':'Cadastros do RH', '#/organograma':'Organograma do RH', '#/envios':'Envios dos Gestores', '#/respostas':'Documentos com os gestores', '#/respostas/pend':'Documentos com os gestores', '#/respostas/docs':'Documentos com os gestores', '#/respostas/resp':'Respostas aos gestores' })[h] || (h.startsWith('#/ficha') ? 'Perfil do Colaborador' : h.startsWith('#/desligamento') ? 'Conferência de Desligamentos' : h.replace(/^#\//, '') || 'Início'); };
+  return ({ '#/':'Visão Geral', '#/central':'Central de Rotinas do RH', '#/admin':'Administração', '#/conta':'Minha conta', '#/relatorio':'Relatórios Gerenciais', '#/bases':'Qualidade dos Dados', '#/cadastros':'Cadastros do RH', '#/organograma':'Organograma do RH', '#/org-empresa':'Organograma da Empresa', '#/envios':'Envios dos Gestores', '#/respostas':'Documentos com os gestores', '#/respostas/pend':'Documentos com os gestores', '#/respostas/docs':'Documentos com os gestores', '#/respostas/resp':'Respostas aos gestores' })[h] || (h.startsWith('#/ficha') ? 'Perfil do Colaborador' : h.startsWith('#/desligamento') ? 'Conferência de Desligamentos' : h.replace(/^#\//, '') || 'Início'); };
 async function registrar(painel, acao, detalhe){
   try { await sb.from('historico').insert({ painel, acao, detalhe, usuario: E.perfil?.nome }); } catch(_){}
 }
@@ -2346,6 +2348,7 @@ async function telaAdmin(){
       <button class="aba ${abaAdmin==='paineis'?'ativa':''}" data-aba="paineis">Painéis e frentes</button>
       <button class="aba ${abaAdmin==='acessos'?'ativa':''}" data-aba="acessos">Acessos</button>
       <button class="aba ${abaAdmin==='historico'?'ativa':''}" data-aba="historico">Histórico</button>
+      <button class="aba ${abaAdmin==='org'?'ativa':''}" data-aba="org">Organograma da empresa</button>
       <button class="aba ${abaAdmin==='backup'?'ativa':''}" data-aba="backup">Cópia de segurança</button>
     </div><div id="admin-corpo" class="cartao"><div class="spinner" style="margin:20px auto"></div></div>`);
   document.querySelector('.trilha [data-ir]').onclick = () => location.hash = '#/';
@@ -2354,8 +2357,15 @@ async function telaAdmin(){
   if (abaAdmin === 'paineis') return adminPaineis();
   if (abaAdmin === 'backup') return adminBackup();
   if (abaAdmin === 'acessos') return adminAcessos();
+  if (abaAdmin === 'org') return adminOrg();
   return adminHistorico();
 }
+
+/* ---------- Organograma da empresa: quem é a liderança de cada departamento e a quem ela responde ---------- */
+function adminOrg(){ const c = $('#admin-corpo'); if (!c) return;
+  c.innerHTML = `<h3 style="margin-top:0">Organograma da empresa</h3><p style="color:#5d6a85;font-size:13.5px;max-width:760px">O organograma da empresa se monta sozinho pelo Quadro Geral (setor, departamento e função). A ligação de hierarquia da base não é confiável, então é aqui que se define, por departamento, qual liderança é a responsável e a quem cada liderança responde. Departamento sem definição aparece no organograma como <b>Liderança a definir</b>.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn prim" id="ao-def">Definir lideranças</button><button class="btn borda" id="ao-ver">Abrir o organograma</button></div>`;
+  $('#ao-def').onclick = () => OE().config(); $('#ao-ver').onclick = () => location.hash = '#/org-empresa'; }
 
 /* ---------- Cópia de segurança: tudo o que foi lançado no app (registros), bases carregadas e usuários ---------- */
 async function lerTudo(tabela, campos, ordem){
