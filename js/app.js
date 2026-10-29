@@ -1152,6 +1152,22 @@ async function pendenciasASO(){
   if (P30.length) out.push({ id:'aso-30', sev:'info', t:'ASO vence nos próximos 30 dias', d:'Agendar o periódico com o SESMT.', painel:'quadro', acao:'aso', pnome:'Exames (ASO)', itens:P30.sort((a, b) => a.ord.localeCompare(b.ord)) });
   return out;
 }
+/* CNH vencida pelo Quadro Geral (vencimento da CNH cadastrado na folha). Quem dirige ou opera máquina em destaque. */
+async function pendenciasCNH(){
+  if (!ehRH()) return []; const Q = await window.CRV_QUADRO(); if (!Q || !Q.mapa) return [];
+  const hj = new Date().toISOString().slice(0, 10), ate = new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10);
+  const DIRIGE = /MOTORISTA|OP\.? *DE *MAQ|OPERADOR.*(MAQ|TRATOR|COLHED|GUINDAST|EMPILHAD|CARREGAD|CAMINH|RETRO|MOTONIV|ESCAVAD|TRANSBORDO)|TRATORISTA|MANOBRISTA|COMBOIO|BOMBEIRO CIVIL/i;
+  const VD = [], VO = [], P30 = [];
+  Object.entries(Q.mapa).forEach(([m, c]) => { if (c.situacao !== 'Ativo' || !/^\d{4}-\d{2}-\d{2}$/.test(c.cnh || '')) return;
+    const dr = DIRIGE.test(c.funcao || ''), dd = Math.round((new Date(hj + 'T12:00:00') - new Date(c.cnh + 'T12:00:00')) / 864e5);
+    const it = { nome:c.nome, mat:m, det:`${c.funcao || ''} · ${c.setor || ''} · CNH${c.cnhc ? ' ' + c.cnhc : ''} ${c.cnh < hj ? 'venceu em ' + brD(c.cnh) + ' (há ' + dd + (dd === 1 ? ' dia' : ' dias') + ')' : 'vence em ' + brD(c.cnh)}`, ord:c.cnh };
+    if (c.cnh < hj) (dr ? VD : VO).push(it); else if (c.cnh <= ate && dr) P30.push(it); });
+  const ord = L => L.sort((a, b) => b.ord.localeCompare(a.ord) || a.nome.localeCompare(b.nome, 'pt-BR')), out = [];
+  if (VD.length) out.push({ id:'cnh-dir', sev:'warn', t:'CNH vencida · motoristas e operadores', d:'Pelo vencimento da CNH cadastrado na folha (Quadro Geral). Confira a CNH atual com o colaborador e atualize o cadastro; quem está com a CNH vencida não pode dirigir.', painel:'quadro', pnome:'Quadro de Colaboradores', itens:ord(VD) });
+  if (P30.length) out.push({ id:'cnh-30', sev:'info', t:'CNH vence nos próximos 30 dias · motoristas e operadores', d:'Avisar o colaborador e a liderança para renovar a tempo.', painel:'quadro', pnome:'Quadro de Colaboradores', itens:P30.sort((a, b) => a.ord.localeCompare(b.ord)) });
+  if (VO.length) out.push({ id:'cnh-out', sev:'info', t:'CNH vencida no cadastro · demais funções', d:'Funções que não dirigem pela empresa. Pode ser só cadastro desatualizado na folha.', painel:'quadro', pnome:'Quadro de Colaboradores', itens:ord(VO) });
+  return out;
+}
 async function coletarCentral(){
   if (centralRodando) return; centralRodando = true;
   desenharCentral(centralCache(), true);
@@ -1160,6 +1176,7 @@ async function coletarCentral(){
     try { out.push(...await pendenciasQuadro()); } catch(e){ console.warn('central quadro', e); }
     try { out.push(...await pendenciasDesligamento()); } catch(e){ console.warn('central desligamento', e); }
     try { out.push(...await pendenciasASO()); } catch(e){ console.warn('central aso', e); }
+    try { out.push(...await pendenciasCNH()); } catch(e){ console.warn('central cnh', e); }
     try { out.push(...await RISCO().pendencias()); } catch(e){ console.warn('central risco', e); }
     try { out.push(...await ONB().pendencias()); } catch(e){ console.warn('central onboarding', e); }
     // plano de ação da inspeção semanal de Serviços Gerais: ações com prazo vencido
@@ -1934,7 +1951,7 @@ window.CRV_QUADRO = async function(){
     DM.forEach(r => { M[txt(r[0])] = { nasc: txt(r[27] || ''), cpf: txt(CPFM[txt(r[0])] || ''), cc: (txt(r[23]) && txt(r[23]) !== '0') ? txt(r[23]) : '', ccd: txt(r[13]), nome:txt(r[1]), funcao:txt(r[2]), setor:txt(r[3]), situacao:'Desligado', vinculo:txt(r[7]), gerencia:txt(r[6]), area:txt(r[5]), cnh:txt(r[17]), admissao:txt(r[9]), deslig:txt(r[20]), empresa:txt(r[21]).replace(/\s*\(\d+\)$/, '') }; });
     const XX = Array.isArray(dados.X) && dados.X.length === dados.D.length ? dados.X : null;
     const FXQ = dados.FX || {};
-    dados.D.forEach((r, i) => { M[txt(r[0])] = { idade: r[10], sexo: txt(r[11]), cid: txt(r[12]), cel: XX ? txt(XX[i][25]) : '', fx: FXQ[txt(r[0])] != null ? FXQ[txt(r[0])] : '', nasc: XX ? txt(XX[i][0]) : '', cpf: XX ? txt(XX[i][11]) : '', rg: XX ? txt(XX[i][7]) : '', rgUf: XX ? txt(XX[i][10]) : '', cc: XX ? txt(XX[i][33]) : '', ctps: XX ? txt(XX[i][12]) : '', serie: XX ? txt(XX[i][13]) : '', ccd: txt(r[13]), nome:txt(r[1]), funcao:txt(r[2]), setor:txt(r[3]), situacao:txt(r[8]) || 'Ativo', vinculo:txt(r[7]), gerencia:txt(r[6]), area:txt(r[5]), cnh:txt(r[17]), admissao:txt(r[9]), deslig:'', empresa:'CRV' }; });
+    dados.D.forEach((r, i) => { M[txt(r[0])] = { idade: r[10], sexo: txt(r[11]), cid: txt(r[12]), cel: XX ? txt(XX[i][25]) : '', fx: FXQ[txt(r[0])] != null ? FXQ[txt(r[0])] : '', nasc: XX ? txt(XX[i][0]) : '', cpf: XX ? txt(XX[i][11]) : '', cnhc: XX ? txt(XX[i][4]) : '', rg: XX ? txt(XX[i][7]) : '', rgUf: XX ? txt(XX[i][10]) : '', cc: XX ? txt(XX[i][33]) : '', ctps: XX ? txt(XX[i][12]) : '', serie: XX ? txt(XX[i][13]) : '', ccd: txt(r[13]), nome:txt(r[1]), funcao:txt(r[2]), setor:txt(r[3]), situacao:txt(r[8]) || 'Ativo', vinculo:txt(r[7]), gerencia:txt(r[6]), area:txt(r[5]), cnh:txt(r[17]), admissao:txt(r[9]), deslig:'', empresa:'CRV' }; });
     // departamentos (código Depto/Seção → nome), a partir dos ativos e afastados
     const DP = {};
     if (XX) dados.D.forEach((r, i) => { const cod = txt(XX[i][23]), nome = txt(r[3]); if (!cod || !nome) return;
