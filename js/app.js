@@ -1927,14 +1927,17 @@ window.CRV_QSIT_RH = async function(){ const Q = await window.CRV_QUADRO(); if (
 /* Absenteísmo: histórico do sistema (todas as ocorrências e atestados, CRV e outras empresas do grupo), aba "Histórico (sistema)" */
 window.CRV_OC_RH = async function(){ if (!ehRH()) return null;
   const HO = await window.CRV_HIST('ocor'), HA = await window.CRV_HIST('atest'), Q = await window.CRV_QUADRO(); if (Q && Q.mapa && (Object.keys(HO).length > 1 || Object.keys(HA).length > 1)) {
-        const CIDD = {}, enx = L => (L || []).map(x => { if (x[2] && x[3] && !CIDD[x[2]]) CIDD[x[2]] = x[3]; return [x[0], x[1], x[2]]; }); // atestados: [início, dias, CID] (o médico fica só na ficha)
+        const CIDD = {}, enx = L => (L || []).map(x => { if (x[2] && x[3] && !CIDD[x[2]]) CIDD[x[2]] = x[3]; return [x[0], x[1], x[2], x[4] || '', x[5] || '']; }); // atestados: [início, dias, CID, CRM/UF, médico] (painel de Absenteísmo, só RH)
         const P = {}, LA = {}; Object.keys(HA).forEach(m => { if (m !== '__ref' && HA[m].length) LA[m] = enx(HA[m]); });
         new Set(Object.keys(HO).concat(Object.keys(LA))).forEach(m => { if (m === '__ref') return; const o = Q.mapa[m] || {}; P[m] = [o.nome || '', o.funcao || '', o.area || '', o.setor || '', o.gerencia || '', o.situacao || '', o.admissao || '', o.deslig || '']; });
         const EMP = {}; for (const e of EMPRESAS_GRUPO) { const A = { n:e[1], P:{}, L:{}, AT:{}, C:{} };
           for (const [col, k] of [['hist_ocor', 'L'], ['hist_atest', 'AT']]) { try { (await window.CRV_REGS('quadro', col + e[0])).forEach(x => { if (!String(x._id || '').startsWith('a') || !x.mat || !(x.l || []).length) return; A[k][x.mat] = k === 'AT' ? enx(x.l) : x.l; if (x.p && (!A.P[x.mat] || !A.P[x.mat][2])) A.P[x.mat] = x.p; if (x.crv) A.C[x.mat] = x.crv; if (x.emp) A.n = x.emp; }); } catch(_) {} }
           if (Object.keys(A.L).length || Object.keys(A.AT).length) EMP[e[0]] = A; }
         
-  return { ref:HO.__ref || HA.__ref, P, L:HO, AT:LA, EMP, CIDD }; } return null; };
+        // pessoas do ano (ativas, afastadas e desligadas no ano) para o painel principal calcular as taxas com a base atual
+        const Y0 = new Date().getFullYear() + '-01-01', QP = [];
+        Object.entries(Q.mapa).forEach(([m, o]) => { if (o.situacao === 'Desligado' && !(o.deslig && o.deslig >= Y0)) return; QP.push([m, o.nome || '', o.funcao || '', o.area || '', o.setor || '', o.gerencia || '', o.situacao || '', o.admissao || '', o.deslig || '', o.vinculo || '']); });
+  return { ref:HO.__ref || HA.__ref, P, L:HO, AT:LA, EMP, CIDD, QP }; } return null; };
 window.CRV_DADOS = async function(painel){
   try {
     const { data: d, error } = await sb.from('pacotes').select('referencia,conteudo,atualizado_em').eq('painel', painel).maybeSingle();

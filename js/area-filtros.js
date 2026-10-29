@@ -235,7 +235,10 @@ CRV_AREA.reg({ id:'absenteismo', nome:'Absenteísmo', frente:'Absenteísmo e Fé
         if (Object.keys(r.L).some(m => m !== '__ref') || Object.keys(r.AT).length) EMP[k] = Object.assign({ n:e.n }, r); });
       // anos e última data da empresa inteira (mesma conta da aba), para o período do histórico não mudar com o recorte
       const FX = { '5':fx(oc.L, oc.AT) }; Object.keys(EMP).forEach(k => FX[k] = fx(oc.EMP[k].L, oc.EMP[k].AT));
-      const out = { ref:oc.ref, P:base.P, L:base.L, AT:base.AT, EMP, CIDD:{}, FX };
+      // atestados para o gestor: só [início, dias, CID] (CRM e médico ficam só com o RH)
+      const tres = A => { const o = {}; Object.keys(A || {}).forEach(m => { o[m] = Array.isArray(A[m]) ? A[m].map(x => Array.isArray(x) ? x.slice(0, 3) : x) : A[m]; }); return o; };
+      Object.values(EMP).forEach(e => { e.AT = tres(e.AT); });
+      const out = { ref:oc.ref, P:base.P, L:base.L, AT:tres(base.AT), EMP, CIDD:{}, FX };
       guarda(ctx, Object.keys(out.P).concat(...Object.values(EMP).map(e => Object.values(e.C || {}))));
       return out;
     },
