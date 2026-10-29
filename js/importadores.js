@@ -42,6 +42,8 @@ function detectar(wb, nomeArq){
   if (h.includes('Nome do Exame') && h.includes('Data do Próximo Exame')) return { tipo:'hist', h:'exame', R };
   // atestados do sistema (RFP2186R: "Relatório de Afastamento", com CID e médico), um arquivo por empresa
   if (/^Relatório de Afastamento/i.test(s((R[0] || [])[0]))) return { tipo:'hist', h:'atest', R, emp:s((R[1] || [])[0]) };
+  // planilha mensal de atestados do RH (MAT, NOME, FUNÇÃO, DATA, QUANT, CID, DESCRIÇÃO, CRM/UF, MEDICO): mesmas colunas do relatório do sistema, só da CRV
+  if (/^MAT/i.test(h[0] || '') && /^NOME/i.test(h[1] || '') && /^DATA/i.test(h[3] || '') && /^QUANT/i.test(h[4] || '') && /^CID/i.test(h[5] || '')) return { tipo:'hist', h:'atest', R, emp:'5', mensal:true };
   // ocorrências do ponto (RPE0663R: "Relatório das Ocorrências dos Funcionários"), um arquivo por período
   if (R.slice(0, 4).some(r => (r || []).map(s).some(x => /^Relatório das Ocorrências dos Funcionários/i.test(x)))) return { tipo:'hist', h:'ocor', R };
   // ocorrências do ponto, outro formato (RPE0026R: "Relatório de Ocorrências", uma linha por dia: matrícula, nome, data, ocorrência)
@@ -264,7 +266,10 @@ function converterHist(h, R, mapa, REF){
       const d = iso(r[3]); if (!d) continue; if (!ini || d < ini) ini = d; if (!fim || d > fim) fim = d;
       (itens[m] = itens[m] || []).push([d, Math.max(0, parseInt(num(r[4]), 10) || 0), s(r[5]).toUpperCase(), sp(r[6]), s(r[7]), sp(r[8])]); lin++; }
     Object.values(itens).forEach(L => L.sort((a, b) => a[0].localeCompare(b[0])));
-    return { tipo:'crv-hist', painel:'quadro', hist:h, referencia:REF, itens, faixa: ini ? ['0000-01-01', '9999-12-31'] : null, periodo:[ini, fim], empresa:'', n:{ linhas:lin, pessoas:Object.keys(itens).length, nomeDiferente:ign, foraDoQuadro:fora, anuladas:0, ini, fim } };
+    // planilha mensal: troca só os atestados dos meses que vieram no arquivo (os outros meses ficam como estão)
+    const ultDia = d => { const [y, m] = d.split('-').map(Number); return d.slice(0, 8) + String(new Date(y, m, 0).getDate()).padStart(2, '0'); };
+    const fx = !ini ? null : R.mensal ? [ini.slice(0, 8) + '01', ultDia(fim)] : ['0000-01-01', '9999-12-31'];
+    return { tipo:'crv-hist', painel:'quadro', hist:h, referencia:REF, itens, faixa:fx, mensal:!!R.mensal, periodo:[ini, fim], empresa:'', n:{ linhas:lin, pessoas:Object.keys(itens).length, nomeDiferente:ign, foraDoQuadro:fora, anuladas:0, ini, fim } };
   }
   if (h === 'ocor') { // [data, tipo, quantidade]; atestados ficam de fora (vêm da planilha de atestados do RH)
     const TP = d => /ATEST/.test(d) ? '' : /FALTA JUST/.test(d) ? 'j' : /FALTA/.test(d) ? 'f' : /SUSPENS/.test(d) ? 's' : /MATERN/.test(d) ? 'm' : /PATERN/.test(d) ? 'p' : 'o';
@@ -337,6 +342,7 @@ async function ler(f){
       const porNome = {}; Object.entries(Q.mapa).forEach(([m, o]) => { const k = nomeN(o.nome); (porNome[k] = porNome[k] || []).push([m, o]); });
       ligaCRV = m => { const a = mapaH[m]; if (!a) return ''; let L = (porNome[nomeN(a.nome)] || []).filter(([, o]) => !a.nasc || !o.nasc || o.nasc === a.nasc); if (L.length > 1) L = L.filter(([, o]) => o.situacao !== 'Desligado'); return L.length === 1 ? L[0][0] : ''; };
     }
+    if (det.mensal) det.R.mensal = true;
     let pac = converterHist(det.h, det.R, mapaH, REF);
     if (det.h === 'atest') pac.empresa = EMP;
     if (ligaCRV) { pac.hist = det.h + EMP; pac.docPre = 'a'; pac.empNome = EMPN || 'Empresa ' + EMP; pac.extra = {}; let lig = 0;
@@ -347,9 +353,9 @@ async function ler(f){
       const hoje = new Date().toISOString().slice(0, 10);
       out.push({ pac:{ estab:true, painel:'quadro', referencia:REF, itens }, rotulo:`${T}: ${itens.length} registros, ${itens.filter(x => x.fim >= hoje).length} vigentes` + (pac.n.nomeDiferente ? ` · ${pac.n.nomeDiferente} com nome diferente do Quadro (fora)` : '') });
       return out; }
-    if (det.h === 'atest') { const br = d => d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : '', T = 'Atestados do sistema' + (pac.empNome ? ' da ' + pac.empNome : ' da CRV') + ' (empresa ' + EMP + ')';
+    if (det.h === 'atest') { const br = d => d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : '', T = (pac.mensal ? 'Planilha de atestados' : 'Atestados do sistema') + (pac.empNome ? ' da ' + pac.empNome : ' da CRV') + ' (empresa ' + EMP + ')';
       if (!pac.faixa) { out.push({ pac, rotulo:`${T}: arquivo sem lançamentos (nada a salvar)` }); return out; }
-      out.push({ pac, rotulo:`${T} de ${br(pac.periodo[0])} a ${br(pac.periodo[1])}: ${pac.n.linhas} atestados de ${pac.n.pessoas} pessoas (substitui os atestados desta empresa já carregados)` + (pac.n.nomeDiferente ? ` · ${pac.n.nomeDiferente} com nome diferente do Quadro (fora)` : '') + (pac.n.foraDoQuadro ? ` · ${pac.n.foraDoQuadro} ${pac.hist === 'atest' ? 'fora do Quadro' : 'sem cadastro no Quadro nem nome igual na CRV'}` : '') + (pac.n.ligados != null ? ` · ${pac.n.ligados} estão hoje na CRV (aparecem na ficha deles)` : '') }); return out; }
+      out.push({ pac, rotulo:`${T} de ${br(pac.periodo[0])} a ${br(pac.periodo[1])}: ${pac.n.linhas} atestados de ${pac.n.pessoas} pessoas (${pac.mensal ? 'troca só os atestados de ' + br(pac.faixa[0]) + ' a ' + br(pac.faixa[1]) + '; os outros meses ficam como estão' : 'substitui os atestados desta empresa já carregados'})` + (pac.n.nomeDiferente ? ` · ${pac.n.nomeDiferente} com nome diferente do Quadro (fora)` : '') + (pac.n.foraDoQuadro ? ` · ${pac.n.foraDoQuadro} ${pac.hist === 'atest' ? 'fora do Quadro' : 'sem cadastro no Quadro nem nome igual na CRV'}` : '') + (pac.n.ligados != null ? ` · ${pac.n.ligados} estão hoje na CRV (aparecem na ficha deles)` : '') }); return out; }
     if (det.h === 'ocor') { const T = pac.hist !== 'ocor' ? 'Ocorrências do ponto da ' + pac.empNome + ' (empresa ' + pac.empresa + ')' : 'Ocorrências do ponto', br = d => d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : '';
       if (!pac.faixa) { out.push({ pac, rotulo:`${T}: arquivo sem lançamentos (nada a salvar)` }); return out; }
       

@@ -7,5 +7,5 @@ window.CRV_CONFIG = {
   DOMINIO_LOGIN: 'crv-gp.app',
   // chave pública das notificações push (Web Push/VAPID). É pública por natureza; a privada fica só no Supabase.
   VAPID_PUBLICA: 'BNSqbXya2tXAIM6Zz8Da1zC6BkGQebTleB7gzUPYnYCOza53nkHd2tVQ2NC_T6fdUBZOeBVsqx37wNziw8M6c4Y',
-  VERSAO: '1.100.25'
+  VERSAO: '1.100.26'
 };
