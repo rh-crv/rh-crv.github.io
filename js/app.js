@@ -1163,9 +1163,9 @@ async function pendenciasCNH(){
     const it = { nome:c.nome, mat:m, det:`${c.funcao || ''} · ${c.setor || ''} · CNH${c.cnhc ? ' ' + c.cnhc : ''} ${c.cnh < hj ? 'venceu em ' + brD(c.cnh) + ' (há ' + dd + (dd === 1 ? ' dia' : ' dias') + ')' : 'vence em ' + brD(c.cnh)}`, ord:c.cnh };
     if (c.cnh < hj) (dr ? VD : VO).push(it); else if (c.cnh <= ate && dr) P30.push(it); });
   const ord = L => L.sort((a, b) => b.ord.localeCompare(a.ord) || a.nome.localeCompare(b.nome, 'pt-BR')), out = [];
-  if (VD.length) out.push({ id:'cnh-dir', sev:'warn', t:'CNH vencida · motoristas e operadores', d:'Pelo vencimento da CNH cadastrado na folha (Quadro Geral). Confira a CNH atual com o colaborador e atualize o cadastro; quem está com a CNH vencida não pode dirigir.', painel:'quadro', pnome:'Quadro de Colaboradores', itens:ord(VD) });
-  if (P30.length) out.push({ id:'cnh-30', sev:'info', t:'CNH vence nos próximos 30 dias · motoristas e operadores', d:'Avisar o colaborador e a liderança para renovar a tempo.', painel:'quadro', pnome:'Quadro de Colaboradores', itens:P30.sort((a, b) => a.ord.localeCompare(b.ord)) });
-  if (VO.length) out.push({ id:'cnh-out', sev:'info', t:'CNH vencida no cadastro · demais funções', d:'Funções que não dirigem pela empresa. Pode ser só cadastro desatualizado na folha.', painel:'quadro', pnome:'Quadro de Colaboradores', itens:ord(VO) });
+  if (VD.length) out.push({ id:'cnh-dir', sev:'warn', t:'CNH vencida · motoristas e operadores', d:'Pelo vencimento da CNH cadastrado na folha (Quadro Geral). Confira a CNH atual com o colaborador e atualize o cadastro; quem está com a CNH vencida não pode dirigir.', painel:'quadro', acao:'cnh', pnome:'CNH', itens:ord(VD) });
+  if (P30.length) out.push({ id:'cnh-30', sev:'info', t:'CNH vence nos próximos 30 dias · motoristas e operadores', d:'Avisar o colaborador e a liderança para renovar a tempo.', painel:'quadro', acao:'cnh', pnome:'CNH', itens:P30.sort((a, b) => a.ord.localeCompare(b.ord)) });
+  if (VO.length) out.push({ id:'cnh-out', sev:'info', t:'CNH vencida no cadastro · demais funções', d:'Funções que não dirigem pela empresa. Pode ser só cadastro desatualizado na folha.', painel:'quadro', acao:'cnh', pnome:'CNH', itens:ord(VO) });
   return out;
 }
 async function coletarCentral(){
@@ -1256,7 +1256,7 @@ const DICAS = {
   ferias: { v:1, t:['<b>Imprimir relação de saídas de férias</b> gera a lista de quem sai de férias, por mês ou por período, com o lugar da assinatura.', 'Quem assina sai de Central de Rotinas → <b>Cadastros do RH</b> → Assinantes.'] }
 };
 const SUBACOES = {
-  quadro:   [{ acao:'grel', nome:'Gerador de relatórios' }, { acao:'hcol', nome:'Histórico do colaborador' }, { acao:'decl', nome:'Declaração de trabalho' }, { acao:'ent', nome:'Entrevista de desligamento' }, { acao:'dav', nome:'Documento de dispensa' }, { acao:'entr', nome:'Respostas das entrevistas' }, { acao:'estab', nome:'Estabilidade' }, { acao:'aso', nome:'Exames (ASO)' }, { acao:'afast', nome:'Afastamentos' }],
+  quadro:   [{ acao:'grel', nome:'Gerador de relatórios' }, { acao:'hcol', nome:'Histórico do colaborador' }, { acao:'decl', nome:'Declaração de trabalho' }, { acao:'ent', nome:'Entrevista de desligamento' }, { acao:'dav', nome:'Documento de dispensa' }, { acao:'entr', nome:'Respostas das entrevistas' }, { acao:'estab', nome:'Estabilidade' }, { acao:'aso', nome:'Exames (ASO)' }, { acao:'cnh', nome:'CNH' }, { acao:'afast', nome:'Afastamentos' }],
   admissoes: [{ acao:'vq', nome:'Todas as empresas e anos' }, { acao:'vp', nome:'Acompanhamento 2026' }],
   rescisoes: [{ acao:'dav', nome:'Documento de dispensa' }, { acao:'vq', nome:'Todas as empresas e anos' }, { acao:'vp', nome:'Acompanhamento 2026' }],
   rs: [{ acao:'ctr', nome:'Contratações em Andamento' }],
@@ -1307,6 +1307,7 @@ function executarAcao(acao){
   if (acao === 'hcol' && w && typeof w.CRV_HISTCOL === 'function') { fecharJanelasAut(w); w.CRV_HISTCOL(); return true; }
   if (acao === 'estab' && w && typeof w.CRV_ESTAB === 'function') { fecharJanelasAut(w); w.CRV_ESTAB(); return true; }
   if (acao === 'aso' && w && typeof w.CRV_EXAMES === 'function') { fecharJanelasAut(w); w.CRV_EXAMES(); return true; }
+  if (acao === 'cnh' && w && typeof w.CRV_CNH === 'function') { fecharJanelasAut(w); w.CRV_CNH(); return true; }
   if (acao === 'afast' && w && typeof w.CRV_AFAST === 'function') { fecharJanelasAut(w); w.CRV_AFAST(); return true; }
   if (acao === 'entr' && w && typeof w.CRV_ENT_RESP === 'function') { fecharJanelasAut(w); w.CRV_ENT_RESP(); return true; }
   if (acao === 'ent' && w && typeof w.CRV_ENTREVISTA === 'function') { fecharJanelasAut(w); w.CRV_ENTREVISTA(); return true; }
