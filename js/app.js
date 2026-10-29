@@ -576,7 +576,8 @@ function rota(){
   if (h === '#/relatorio') return REL().tela();
   if (h === '#/bases') return BASES().tela();
   if (h === '#/cadastros' && ehRH()) return CADS().tela();
-  if ((h === '#/organograma' || h === '#/org-empresa') && E.perfil && E.perfil.papel !== 'gestor') { if (window.CRV_ORG_SNAP) { window.CRV_ORG_SNAP = null; _org = null; _oe = null; } return h === '#/organograma' ? ORG().tela() : OE().tela(); }
+  if ((h === '#/organograma' || h === '#/org-empresa' || h === '#/org-empresa-auto') && E.perfil && E.perfil.papel !== 'gestor') { if (window.CRV_ORG_SNAP) { window.CRV_ORG_SNAP = null; _org = null; _oe = null; _ocrv = null; }
+    return h === '#/organograma' ? ORG().tela() : h === '#/org-empresa' ? OCRV().tela() : OE().tela(); }   // Organograma da Empresa = Organograma CRV montado à mão; a visão automática pelo Quadro fica em #/org-empresa-auto
   if (h === '#/envios' && ehRH()) return GESTOR().telaEnvios();
   if (h.startsWith('#/respostas') && ehRH() && window.CRV_RESP_INIT) return RESP().telaRH(h.split('/')[2] || 'pend');
   if (h === '#/desligamento') return telaDesligamento();
@@ -761,15 +762,16 @@ let _dav = null; const DAV = () => _dav || (_dav = window.CRV_DAV_INIT(ctxMod())
 window.CRV_DESCOMPACTAR = async b64 => { const t = atob(b64), u = new Uint8Array(t.length); for (let i = 0; i < t.length; i++) u[i] = t.charCodeAt(i);
   return JSON.parse(await new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream('gzip'))).text()); };
 /* organogramas para gestor/assistente: cópia gerada pelo administrador (na linha do gestor, 'u:<id>', em paineis.__org) */
-window.CRV_ORG_SNAPSHOT = async k => k === 'rh' ? ORG().snapshot() : OE().snapshot();
+window.CRV_ORG_SNAPSHOT = async k => k === 'rh' ? ORG().snapshot() : OCRV().snapshot();
 async function telaOrgGestor(k){
   moldura('<div class="cartao vazio"><div class="spinner" style="margin:0 auto"></div><p>Abrindo o organograma…</p></div>');
   const a = assistDe(E.perfil), dono = a ? a.id : E.perfil.user_id;
   let o = null; try { const { data } = await sb.from('area_dados').select('pk:dados->paineis->__org').eq('chave', 'u:' + dono).maybeSingle(); o = data ? (data.pk !== undefined && data.pk !== null ? data.pk : (data.dados && data.dados.paineis && data.dados.paineis.__org)) : null; if (o && o.gz) o = await window.CRV_DESCOMPACTAR(o.gz); } catch(_){ o = null; }
   if (!o || !o[k]) { moldura(`<div class="cartao vazio">${svg('pessoas')}<h3>Organograma ainda não disponível</h3><p>A Gestão de Pessoas ainda não atualizou o organograma para você. Tente mais tarde.</p></div>`); return; }
-  window.CRV_ORG_SNAP = { [k]:o[k] };
-  if (k === 'rh') { _org = null; await ORG().tela(); } else { _oe = null; await OE().tela(); }
+  window.CRV_ORG_SNAP = k === 'rh' ? { rh:o.rh } : { crv:o.emp };
+  if (k === 'rh') { _org = null; await ORG().tela(); } else { _ocrv = null; await OCRV().tela(); }
 }
+let _ocrv = null; const OCRV = () => _ocrv || (_ocrv = window.CRV_OCRV_INIT(ctxMod()));
 let _org = null; const ORG = () => _org || (_org = window.CRV_ORG_INIT(ctxMod()));
 let _oe = null; const OE = () => _oe || (_oe = window.CRV_OE_INIT(ctxMod()));
 let _cad = null; const CADS = () => _cad || (_cad = window.CRV_CAD_INIT(Object.assign(ctxMod(), { FRENTES })));
@@ -1717,7 +1719,7 @@ async function logAcesso(acao, onde, detalhe){
 window.CRV_LOG_ACESSO = logAcesso;
 const ondeDe = h => { if (h.startsWith('#/p/')) { const id = decodeURIComponent(h.slice(4).split('/')[0]); return 'Painel: ' + ((E.paineis || []).find(p => p.id === id)?.nome || id); }
   if (h.startsWith('#/eq/')) { const k = h.slice(5); return 'Minha equipe: ' + ({ eq:'Equipe', mov:'Admissões e saídas', pv:'Quadro x previsto', exp:'Experiência', nov:'Novos colaboradores', perfil:'Perfil profissional', fer:'Férias', freq:'Frequência', disc:'Disciplina e RD', cr:'Em treinamento', alo:'Alojamento', env:'Meus envios' }[k] || k); }
-  return ({ '#/':'Visão Geral', '#/central':'Central de Rotinas do RH', '#/admin':'Administração', '#/conta':'Minha conta', '#/relatorio':'Relatórios Gerenciais', '#/bases':'Qualidade dos Dados', '#/cadastros':'Cadastros do RH', '#/organograma':'Organograma do RH', '#/org-empresa':'Organograma da Empresa', '#/envios':'Envios dos Gestores', '#/respostas':'Documentos com os gestores', '#/respostas/pend':'Documentos com os gestores', '#/respostas/docs':'Documentos com os gestores', '#/respostas/resp':'Respostas aos gestores' })[h] || (h.startsWith('#/ficha') ? 'Perfil do Colaborador' : h.startsWith('#/desligamento') ? 'Conferência de Desligamentos' : h.replace(/^#\//, '') || 'Início'); };
+  return ({ '#/':'Visão Geral', '#/central':'Central de Rotinas do RH', '#/admin':'Administração', '#/conta':'Minha conta', '#/relatorio':'Relatórios Gerenciais', '#/bases':'Qualidade dos Dados', '#/cadastros':'Cadastros do RH', '#/organograma':'Organograma do RH', '#/org-empresa-auto':'Organograma pelo Quadro', '#/org-empresa':'Organograma da Empresa', '#/envios':'Envios dos Gestores', '#/respostas':'Documentos com os gestores', '#/respostas/pend':'Documentos com os gestores', '#/respostas/docs':'Documentos com os gestores', '#/respostas/resp':'Respostas aos gestores' })[h] || (h.startsWith('#/ficha') ? 'Perfil do Colaborador' : h.startsWith('#/desligamento') ? 'Conferência de Desligamentos' : h.replace(/^#\//, '') || 'Início'); };
 async function registrar(painel, acao, detalhe){
   try { await sb.from('historico').insert({ painel, acao, detalhe, usuario: E.perfil?.nome }); } catch(_){}
 }

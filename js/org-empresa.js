@@ -123,7 +123,7 @@ const depHtml = (d, s) => `<div class="oe-d ${d.resp ? '' : 'pend'}" id="oe-d-${
 
 async function tela(setor){
   estilo(); if (setor !== undefined) VIS.setor = setor;
-  moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Gestão de Pessoas · CRV Industrial</div><h1>Organograma da Empresa</h1><div class="ini-data" id="oe-sub">Toda a CRV por setor e departamento: lideranças com nome e as equipes por função</div></div></section><div id="oe-corpo"><div class="cartao vazio"><div class="spinner" style="margin:0 auto"></div></div></div>`);
+  moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Gestão de Pessoas · CRV Industrial</div><h1>Organograma da Empresa · pelo Quadro</h1><div class="ini-data" id="oe-sub">Toda a CRV por setor e departamento: lideranças com nome e as equipes por função</div></div></section><div id="oe-corpo"><div class="cartao vazio"><div class="spinner" style="margin:0 auto"></div></div></div>`);
   try { await Promise.all([lerCfg(), lerFotos()]); await montar(); } catch(e) { const c = $('#oe-corpo'); if (c) c.innerHTML = `<div class="cartao vazio"><h3>Não consegui montar o organograma</h3><p>${esc(e.message || traduzErro(e))}</p></div>`; return; }
   desenhar();
 }
@@ -224,7 +224,7 @@ async function config(setorIni){
     box.querySelectorAll('[data-ch]').forEach(x => x.onchange = () => { if (x.value) D2.chefe[x.dataset.ch] = x.value; else delete D2.chefe[x.dataset.ch]; }); };
   des();
   w.querySelector('#oe-sv').onclick = async () => { const bt = w.querySelector('#oe-sv'); bt.disabled = true; bt.textContent = 'Salvando…';
-    try { CFG.dep = D2.dep; CFG.chefe = D2.chefe; await salvarCfg(); toast('Lideranças salvas.'); w.remove(); await montar(); if (location.hash === '#/org-empresa') { VIS.setor = sel; desenhar(); } }
+    try { CFG.dep = D2.dep; CFG.chefe = D2.chefe; await salvarCfg(); toast('Lideranças salvas.'); w.remove(); await montar(); if (/^#\/org-empresa/.test(location.hash)) { VIS.setor = sel; desenhar(); } }
     catch(e) { bt.disabled = false; bt.textContent = 'Salvar'; toast(traduzErro(e), true); } };
 }
 
