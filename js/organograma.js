@@ -199,15 +199,17 @@ const cs = s => s.id === 'gp' ? CFG : (CFG.sec[s.id] || (CFG.sec[s.id] = { conf:
 const muitos = (s, n) => s.agrupar ? n > 10 : n > 14;   // agrupa os cartões por função quando a seção é grande
 
 let CFG = null, FOTOS = {}, G = [], VIEW = '', FONTES = null;
-async function lerCfg(){ const { data } = await sb.from('registros').select('dados').eq('painel', 'quadro').eq('caminho', 'sistema/organograma').maybeSingle();
+const SNAP = () => window.CRV_ORG_SNAP && window.CRV_ORG_SNAP.rh;   /* gestor/assistente: cópia gerada pelo administrador (só leitura) */
+async function lerCfg(){ if (SNAP()) { CFG = Object.assign({ conf:false, inc:[], exc:[], chefe:{}, nivel:{}, info:{}, sec:{}, extras:[] }, SNAP().cfg || {}); return; } const { data } = await sb.from('registros').select('dados').eq('painel', 'quadro').eq('caminho', 'sistema/organograma').maybeSingle();
   CFG = Object.assign({ conf:false, inc:[], exc:[], chefe:{}, nivel:{}, info:{}, sec:{}, extras:[] }, (data && data.dados) || {}); CFG.sec = CFG.sec || {}; CFG.extras = CFG.extras || []; }
 async function salvarCfg(){ const dados = Object.assign({}, CFG, { em:new Date().toISOString(), por:quem() });
   const { error } = await sb.from('registros').upsert({ painel:'quadro', caminho:'sistema/organograma', colecao:'sistema', doc_id:'organograma', dados, atualizado_por:quem() }, { onConflict:'painel,caminho' }); if (error) throw error; }
-async function lerFotos(){ FOTOS = {}; try { const { data } = await sb.from('registros').select('doc_id,dados').eq('painel', 'quadro').eq('colecao', 'org_foto'); (data || []).forEach(r => { if (r.dados && r.dados.img) FOTOS[r.doc_id] = r.dados.img; }); } catch(_){} }
+async function lerFotos(){ FOTOS = {}; if (SNAP()) { FOTOS = Object.assign({}, SNAP().fotos || {}); return; } try { const { data } = await sb.from('registros').select('doc_id,dados').eq('painel', 'quadro').eq('colecao', 'org_foto'); (data || []).forEach(r => { if (r.dados && r.dados.img) FOTOS[r.doc_id] = r.dados.img; }); } catch(_){} }
 async function salvarFoto(k, img){ const { error } = await sb.from('registros').upsert({ painel:'quadro', caminho:'org_foto/' + k, colecao:'org_foto', doc_id:k, dados:{ img, em:new Date().toISOString(), por:quem() }, atualizado_por:quem() }, { onConflict:'painel,caminho' }); if (error) throw error; if (img) FOTOS[k] = img; else delete FOTOS[k]; }
 
 /* ---------- quem pode entrar: Quadro + jovens das duas instituições ---------- */
 async function fontes(){
+  if (SNAP()) { const S0 = SNAP().F || { quadro:[], jov:[] }; FONTES = { quadro:S0.quadro || [], jov:S0.jov || [], porK:new Map((S0.quadro || []).concat(S0.jov || []).map(p => [p.key, p])) }; return FONTES; }
   const Q = window.CRV_QUADRO ? await window.CRV_QUADRO() : null; const M = (Q && Q.mapa) || {};
   const quadro = Object.entries(M).filter(([, c]) => c.situacao !== 'Desligado').map(([m, c]) => ({ key:'q:' + m, mat:m, nome:c.nome, funcao:c.funcao, setor:c.setor, area:c.area, adm:c.admissao, sit:c.situacao, origem:'Quadro Geral' }));
   const jov = [];
@@ -507,5 +509,13 @@ async function pdf(LG){
   const blob = doc.output('blob'); const u = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = u; a.download = nome + ' - ' + new Date().toLocaleDateString('pt-BR').replace(/\//g, '-') + '.pdf'; document.body.appendChild(a); a.click(); setTimeout(() => { a.remove(); URL.revokeObjectURL(u); }, 3000);
 }
 window.addEventListener('resize', () => { if (location.hash === '#/organograma' && G.length && window.innerWidth < 760 && VIEW === 'org') { VIEW = 'lv'; desenhar(); } });
-return { tela };
+/* cópia para gestor/assistente (gerada pelo administrador): só as seções conferidas, só quem aparece nelas, fotos dessas pessoas */
+async function snapshot(){
+  await Promise.all([lerCfg(), lerFotos()]); await montar();
+  const V = G.filter(g => g.conf), ks = new Set(V.flatMap(g => g.pess.map(p => p.key)));
+  const so = L => (L || []).filter(p => ks.has(p.key)).map(p => ({ key:p.key, mat:p.mat, nome:p.nome, funcao:p.funcao, setor:p.setor, area:p.area, adm:p.adm, sit:p.sit, origem:p.origem, jovem:p.jovem, entidade:p.entidade, ini:p.ini, fim:p.fim }));
+  const fotos = {}; ks.forEach(k => { if (FOTOS[k]) fotos[k] = FOTOS[k]; });
+  return { cfg:CFG, fotos, F:{ quadro:so(FONTES.quadro), jov:so(FONTES.jov) }, em:new Date().toISOString() };
+}
+return { tela, snapshot };
 };

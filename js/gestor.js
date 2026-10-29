@@ -196,18 +196,21 @@ const ehAssistG = g => (g.frentes || []).some(x => /^assist:/.test(x));
 /* painéis liberados para o gestor: a mesma regra do menu (sem configuração = todos; telas antigas marcadas = painel correspondente) */
 const paineisDe = g => { const op = window.CRV_GOPC_DE ? window.CRV_GOPC_DE(g) : new Set((g.paineis_ver || []).filter(x => /^g:p:/.test(x)).map(x => x.slice(2)));
   return [...op].filter(k => /^p:/.test(k)).map(k => k.slice(2)).filter(id => window.CRV_AREA && window.CRV_AREA.def(id)); };
+/* organogramas liberados para o gestor ('org:rh', 'org:emp'): vão como cópia pronta na linha dele */
+const orgDe = g => { const op = window.CRV_GOPC_DE ? window.CRV_GOPC_DE(g) : new Set(); return ['rh', 'emp'].filter(k => op.has('org:' + k)); };
 async function assinaturaPaineis(G){
   const AR = window.CRV_AREA; if (!AR) return '';
-  const donos = G.filter(g => g.ativo && !ehAssistG(g) && paineisDe(g).length); if (!donos.length) return 'sem';
-  const ids = [...new Set(donos.flatMap(paineisDe))].sort();
+  const donos = G.filter(g => g.ativo && !ehAssistG(g) && (paineisDe(g).length || orgDe(g).length)); if (!donos.length) return 'sem';
+  const ids = [...new Set(donos.flatMap(paineisDe).concat(donos.some(g => orgDe(g).length) ? ['quadro'] : []))].sort();
   const falta = G.filter(u => u.ativo && donos.some(g => (u.user_id === g.user_id || (u.frentes || []).includes('assist:' + g.user_id)) && !(u.areas || []).includes('u:' + g.user_id))).length;
   let ult = ''; try { const { data } = await sb.from('registros').select('atualizado_em').in('painel', ids).order('atualizado_em', { ascending:false }).limit(1); ult = data && data[0] && data[0].atualizado_em || ''; } catch(_){}
   return 'pn:' + (falta ? 'falta' + Date.now() : '') + (window.CRV_AREA_V || '') + ':' + ult + ':' + ids.map(id => id + '=' + ((E.metas[id] && (E.metas[id].atualizado_em || E.metas[id].referencia)) || '')).join(',') + ':' +
-    donos.map(g => g.user_id + '>' + (g.areas || []).filter(chaveOk).sort().join(';') + '>' + paineisDe(g).sort().join(';')).sort().join('/');
+    donos.map(g => g.user_id + '>' + (g.areas || []).filter(chaveOk).sort().join(';') + '>' + paineisDe(g).sort().join(';') + (orgDe(g).length ? '>org:' + orgDe(g).join(';') : '')).sort().join('/');
 }
 async function gerarPaineis(G){
   const AR = window.CRV_AREA; if (!AR || !window.CRV_PACOTE_BRUTO) return 0;
-  const donos = G.filter(g => g.ativo && !ehAssistG(g) && paineisDe(g).length); if (!donos.length) return 0;
+  const donos = G.filter(g => g.ativo && !ehAssistG(g) && (paineisDe(g).length || orgDe(g).length)); if (!donos.length) return 0;
+  const ORGS = {}; window.CRV_ORG_SNAP = null;   // organogramas: uma cópia de cada, a mesma para todos os gestores liberados
   const Q = await window.CRV_QUADRO(); if (!Q) return 0; const M = Q.mapa;
   const PAC = {}, REG = {}, FONTE = {};
   // dados que o app injeta no painel do RH (montados uma vez, recortados por gestor pelo próprio painel em area-filtros.js)
@@ -227,6 +230,9 @@ async function gerarPaineis(G){
         const inj = {}; for (const k of Object.keys(D.injetar || {})) { if (!(k in FONTE)) { FONTE[k] = null; try { FONTE[k] = await (FONTES_RH[k] ? FONTES_RH[k]() : null); } catch(_){} } if (FONTE[k]) { try { const v = D.injetar[k](AR.clonar(FONTE[k]), ctx); if (v) inj[k] = v; } catch(e) { console.warn('injeção ' + k, e); } } }
         // compactado (gzip): setores grandes (ex.: Operacional CTT) passavam do tempo limite do banco ao gravar
         paineis[id0] = await compactar({ referencia:d.referencia || '', conteudo, regs:rg, inj }); } catch(e) { console.warn('painel ' + id + ' do gestor', e); } }
+    { const og = orgDe(g); if (og.length && window.CRV_ORG_SNAPSHOT) { const o = {};
+        for (const k of og) { if (!(k in ORGS)) { ORGS[k] = null; try { ORGS[k] = await window.CRV_ORG_SNAPSHOT(k); } catch(e) { console.warn('organograma ' + k + ' do gestor', e); } } if (ORGS[k]) o[k] = ORGS[k]; }
+        if (Object.keys(o).length) paineis.__org = await compactar(o); } }
     const chave = 'u:' + g.user_id; let e = null;
     for (let t = 0; t < 2; t++) { ({ error:e } = await sb.from('area_dados').upsert({ chave, dados:{ tipo:'paineis', paineis, gerado:new Date().toISOString(), por:E.perfil.nome }, atualizado_em:new Date().toISOString(), atualizado_por:E.perfil.nome }, { onConflict:'chave' })); if (!e) break; }
     if (e) { console.warn('painéis do gestor', e); falhas.push(g.user_id); continue; } n++;

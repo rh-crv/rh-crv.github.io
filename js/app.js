@@ -12,6 +12,7 @@ const sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_KEY, {
 
 /* ---------- identidade visual das frentes ---------- */
 const FRENTES = {
+  'Organograma':                     { cor:'#8e3b6a', ic:'organo',    desc:'Organograma do RH e da empresa' },
   'Gestão de Colaboradores':         { cor:'#24427c', ic:'pessoas',   desc:'Quadro, admissões, rescisões e experiência' },
   'Seleção e Perfil Profissional':              { cor:'#1f8a8a', ic:'lupa',      desc:'Recrutamento, seleção e perfil' },
   'Absenteísmo e Férias':           { cor:'#e9a23b', ic:'calendario',desc:'Absenteísmo, férias e sanções' },
@@ -26,6 +27,7 @@ const FRENTES = {
 const ORDEM_FRENTES = Object.keys(FRENTES);
 const PALETA = ['#24427c','#2e8a57','#e9a23b','#d4573f','#1f8a8a','#7a4fb5','#8a7a2e','#4a6a8a','#c46a9a','#3f7fbf'];
 const ICONES = {
+  organo:'<path d="M9 2h6v5h-2v3h7v4h1.5v6h-5v-6H18v-2h-5v2h1.5v6h-5v-6H11v-2H6v2h1.5v6h-5v-6H4v-4h7V7H9z"/>',
   pessoas:'<path d="M16 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4zM8 12a3 3 0 1 0-3-3 3 3 0 0 0 3 3zm8 1c-2.7 0-8 1.3-8 4v3h16v-3c0-2.7-5.3-4-8-4zM8 14c-.3 0-.7 0-1.1.1A4.9 4.9 0 0 1 9 17v3H0v-2.5C0 15.6 4.3 14 8 14z"/>',
   lupa:'<path d="M10 2a8 8 0 0 1 6.3 12.9l5.4 5.4-1.4 1.4-5.4-5.4A8 8 0 1 1 10 2zm0 2a6 6 0 1 0 0 12 6 6 0 0 0 0-12z"/>',
   calendario:'<path d="M7 2h2v2h6V2h2v2h3a1 1 0 0 1 1 1v15a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3zm12 7H5v10h14zM7 11h4v4H7z"/>',
@@ -76,12 +78,12 @@ const GESTOR_PN = () => (window.CRV_AREA ? window.CRV_AREA.LISTA : []);
    dentro do painel (programar férias, avaliar experiência, solicitar sanção, parecer). Ficam também a Central, o Perfil do
    Colaborador, as Medidas disciplinares, as Respostas do RH e os envios dele. */
 const GESTOR_EXTRA = [['mdisc', 'Ocorrências e Relações Trabalhistas', 'Medidas disciplinares'], ['resp', 'Atendimento e Ouvidoria', 'Respostas do RH'], ['env', 'Atendimento e Ouvidoria', 'Meus envios ao RH']];
-const GESTOR_OPC = [['central', 'Central de Rotinas do departamento'], ['ficha', 'Perfil do Colaborador'], ['sal', 'Salário na ficha (nunca de encarregado, supervisor, coordenador ou gerente)']]
+const GESTOR_OPC = [['org:rh', 'Organograma · Organograma do RH'], ['org:emp', 'Organograma · Organograma da Empresa'], ['central', 'Central de Rotinas do departamento'], ['ficha', 'Perfil do Colaborador'], ['sal', 'Salário na ficha (nunca de encarregado, supervisor, coordenador ou gerente)']]
   .concat(GESTOR_PN().map(d => ['p:' + d.id, d.frente + ' · ' + d.nome])).concat(GESTOR_EXTRA.map(([k, f, n]) => [k, f + ' · ' + n]));
 /* telas antigas da equipe → painel do RH que faz o mesmo papel (quem já tinha a tela marcada ganha o painel) */
 const GESTOR_ANTIGO = { eq:['quadro'], pv:['quadro'], mov:['admissoes', 'rescisoes'], exp:['experiencia'], fer:['ferias'], freq:['absenteismo'], disc:['sancoes', 'rd'], perfil:['perfil'], cr:['crachas'] };
 const gOpc = u => { const L = (u && Array.isArray(u.paineis_ver)) ? u.paineis_ver : [];
-  if (!L.includes('g:_')) return new Set(GESTOR_OPC.map(o => o[0]));   // sem configuração: tudo
+  if (!L.includes('g:_')) return new Set(GESTOR_OPC.map(o => o[0]).filter(k => !/^org:/.test(k)));   // sem configuração: tudo (menos os organogramas, que só aparecem se o administrador liberar)
   const o = new Set(L.filter(x => /^g:/.test(x) && x !== 'g:_').map(x => x.slice(2)));
   if (![...o].some(k => /^p:/.test(k))) [...o].forEach(k => (GESTOR_ANTIGO[k] || []).forEach(id => o.add('p:' + id)));
   return o; };
@@ -376,11 +378,12 @@ function moldura(conteudo){
         <div class="lat-tit"><b>Gestão de Pessoas</b><span>Unidade Capinópolis</span></div>
       </div>
       <nav class="lat-nav">
-        ${p.papel === 'gestor' ? '' : `<button class="lat-item ${h==='#/'||h===''?'ativo':''}" data-ir="#/">${svg('casa')}<span>Visão Geral</span></button>${ehRH() ? `<button class="lat-item ${h==='#/organograma'?'ativo':''}" data-ir="#/organograma"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="5" rx="1"/><rect x="2" y="16" width="6" height="5" rx="1"/><rect x="16" y="16" width="6" height="5" rx="1"/><path d="M12 8v4M5 16v-2h14v2"/></svg><span>Organograma do RH</span></button><button class="lat-item ${h==='#/org-empresa'?'ativo':''}" data-ir="#/org-empresa"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="5" rx="1"/><rect x="1" y="17" width="6" height="5" rx="1"/><rect x="9" y="17" width="6" height="5" rx="1"/><rect x="17" y="17" width="6" height="5" rx="1"/><path d="M12 7v5M4 17v-3h16v3M12 12v5"/></svg><span>Organograma da Empresa</span></button>` : ''}`}
+        ${p.papel === 'gestor' ? '' : `<button class="lat-item ${h==='#/'||h===''?'ativo':''}" data-ir="#/">${svg('casa')}<span>Visão Geral</span></button>`}
         ${p.papel === 'gestor' ? `<button class="lat-item ${h==='#/'||h===''?'ativo':''}" data-ir="#/">${svg('casa')}<span>Visão Geral</span></button>
         ${gOpc(p).has('central') ? `<button class="lat-item ${h==='#/central'?'ativo':''}" data-ir="#/central"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg><span>Central de Rotinas</span></button>` : ''}
         ${gOpc(p).has('ficha') ? `<button class="lat-item ${h.startsWith('#/ficha')?'ativo':''}" data-ir="#/ficha"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2.5"/><path d="M5.5 16c.6-1.8 2-2.7 3.5-2.7s2.9.9 3.5 2.7M14 9h4M14 13h4"/></svg><span>Perfil do Colaborador</span></button>` : ''}
         <div class="lat-sec">Frentes</div>
+        ${grupoOrg(h, abertas, gOpc(p))}
         ${menuGestor(p).map(([f, itens]) => { const cfg = FRENTES[f] || { cor:'#24427c', ic:'pessoas' }; const aqui = itens.some(([ir, , ac]) => h === ir || ac.some(x => x[0] === h)); const ab = aqui || abertas['g:' + f];
           return `<div class="lat-grupo ${ab ? 'aberto' : ''}" data-frente="${esc('g:' + f)}"><button class="lat-frente ${aqui ? 'atual' : ''}" aria-expanded="${ab ? 'true' : 'false'}"><span class="lat-ic" style="background:${cfg.cor}">${svg(cfg.ic, '#fff')}</span><span class="lat-nome">${esc(f)}</span><span class="lat-seta">${CHEV}</span></button>
             <div class="lat-sub">${itens.map(([ir, n, ac]) => { const bt = `<button class="lat-painel ${h === ir ? 'ativo atual' : ''}" data-ir="${esc(ir)}" data-busca="${esc((n + ' ' + ac.map(x => x[1]).join(' ')).toLowerCase())}" style="--cor:${cfg.cor}"><span class="lat-pn">${esc(n)}</span></button>`;
@@ -398,6 +401,7 @@ function moldura(conteudo){
         <div class="lat-busca"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="lat-q" type="search" placeholder="Buscar painel ou ação" autocomplete="off" aria-label="Buscar painel"></div>
         <div class="lat-sec">Frentes</div>
         <div class="lat-vazio" id="lat-vazio" hidden>Nenhum painel com esse nome.</div>
+        ${ehRH() ? grupoOrg(h, abertas) : ''}
         ${frentes.map(f => { const cfg = FRENTES[f] || FRENTES['Horas Extras e Gratificações']; return `
           <div class="lat-grupo ${abertas[f]?'aberto':''}" data-frente="${esc(f)}">
             <button class="lat-frente ${f===frenteAtual?'atual':''}" aria-expanded="${abertas[f]?'true':'false'}"><span class="lat-ic" style="background:${cfg.cor}">${svg(cfg.ic,'#fff')}</span><span class="lat-nome">${esc(f)}</span><span class="lat-seta">${CHEV}</span></button>
@@ -473,6 +477,12 @@ function moldura(conteudo){
 }
 
 /* menu do gestor igual ao do RH: os painéis liberados, com os mesmos nomes, frentes e ordem; mais as telas que só o gestor tem */
+/* frente Organograma (antes de Gestão de Colaboradores): Organograma do RH e Organograma da Empresa */
+const ORG_ITENS = [['rh', '#/organograma', 'Organograma do RH'], ['emp', '#/org-empresa', 'Organograma da Empresa']];
+function grupoOrg(h, abertas, so){ const CHEV = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>'; const cfg = FRENTES['Organograma'], L = ORG_ITENS.filter(x => !so || so.has('org:' + x[0])); if (!L.length) return '';
+  const aqui = L.some(x => h === x[1]), ab = aqui || abertas['Organograma'];
+  return `<div class="lat-grupo ${ab ? 'aberto' : ''}" data-frente="Organograma"><button class="lat-frente ${aqui ? 'atual' : ''}" aria-expanded="${ab ? 'true' : 'false'}"><span class="lat-ic" style="background:${cfg.cor}">${svg(cfg.ic, '#fff')}</span><span class="lat-nome">Organograma</span><span class="lat-seta">${CHEV}</span></button>
+    <div class="lat-sub">${L.map(x => `<button class="lat-painel ${h === x[1] ? 'ativo atual' : ''}" data-ir="${x[1]}" data-busca="${esc((x[2] + ' organograma').toLowerCase())}" style="--cor:${cfg.cor}"><span class="lat-pn">${esc(x[2])}</span></button>`).join('')}</div></div>`; }
 function menuGestor(u){ const op = gOpc(u), G = {};
   GESTOR_PN().forEach(d => { if (!op.has('p:' + d.id)) return; const pr = (E.paineis || []).find(x => x.id === d.id); const f = (pr && pr.frente) || d.frente;
     (G[f] = G[f] || []).push(['#/gp/' + d.id, (pr && pr.nome) || d.nome, [], (pr && +pr.ordem) || 999]); });
@@ -549,6 +559,7 @@ function rota(){
   if (E.perfil.papel !== 'gestor' && !ehRH() && /^#\/(central|organograma|org-empresa|ficha|consulta|relatorio|bases|desligamento|envios|cadastros|respostas)/.test(h)) { location.hash = '#/'; return; }
   if (E.perfil.papel === 'gestor') { if (h === '#/conta') return telaConta();
     if (h === '#/central') return gOpc(E.perfil).has('central') ? telaCentralGestor() : (location.hash = '#/');
+    if (h === '#/organograma' || h === '#/org-empresa') { const k = h === '#/organograma' ? 'rh' : 'emp'; return gOpc(E.perfil).has('org:' + k) ? telaOrgGestor(k) : (location.hash = '#/'); }
     { const k = h.startsWith('#/eq/') ? h.slice(5) : ''; if (k && GESTOR_ANTIGO[k]) { const id = GESTOR_ANTIGO[k].find(x => gOpc(E.perfil).has('p:' + x)); location.hash = id ? '#/gp/' + id : '#/'; return; } }
     if (h.startsWith('#/gp/')) { const id = decodeURIComponent(h.slice(5).split('/')[0]); return gOpc(E.perfil).has('p:' + id) ? telaPainelGestor(id) : (location.hash = '#/'); }
     if (h === '#/ficha' || h.startsWith('#/ficha/')) return gOpc(E.perfil).has('ficha') ? telaFicha(h.split('/')[2] || '') : (location.hash = '#/');
@@ -565,8 +576,7 @@ function rota(){
   if (h === '#/relatorio') return REL().tela();
   if (h === '#/bases') return BASES().tela();
   if (h === '#/cadastros' && ehRH()) return CADS().tela();
-  if (h === '#/organograma' && E.perfil && E.perfil.papel !== 'gestor') return ORG().tela();
-  if (h === '#/org-empresa' && E.perfil && E.perfil.papel !== 'gestor') return OE().tela();
+  if ((h === '#/organograma' || h === '#/org-empresa') && E.perfil && E.perfil.papel !== 'gestor') { if (window.CRV_ORG_SNAP) { window.CRV_ORG_SNAP = null; _org = null; _oe = null; } return h === '#/organograma' ? ORG().tela() : OE().tela(); }
   if (h === '#/envios' && ehRH()) return GESTOR().telaEnvios();
   if (h.startsWith('#/respostas') && ehRH() && window.CRV_RESP_INIT) return RESP().telaRH(h.split('/')[2] || 'pend');
   if (h === '#/desligamento') return telaDesligamento();
@@ -750,6 +760,16 @@ let _rsp = null; const RESP = () => _rsp || (_rsp = window.CRV_RESP_INIT(ctxMod(
 let _dav = null; const DAV = () => _dav || (_dav = window.CRV_DAV_INIT(ctxMod()));
 window.CRV_DESCOMPACTAR = async b64 => { const t = atob(b64), u = new Uint8Array(t.length); for (let i = 0; i < t.length; i++) u[i] = t.charCodeAt(i);
   return JSON.parse(await new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream('gzip'))).text()); };
+/* organogramas para gestor/assistente: cópia gerada pelo administrador (na linha do gestor, 'u:<id>', em paineis.__org) */
+window.CRV_ORG_SNAPSHOT = async k => k === 'rh' ? ORG().snapshot() : OE().snapshot();
+async function telaOrgGestor(k){
+  moldura('<div class="cartao vazio"><div class="spinner" style="margin:0 auto"></div><p>Abrindo o organograma…</p></div>');
+  const a = assistDe(E.perfil), dono = a ? a.id : E.perfil.user_id;
+  let o = null; try { const { data } = await sb.from('area_dados').select('pk:dados->paineis->__org').eq('chave', 'u:' + dono).maybeSingle(); o = data ? (data.pk !== undefined && data.pk !== null ? data.pk : (data.dados && data.dados.paineis && data.dados.paineis.__org)) : null; if (o && o.gz) o = await window.CRV_DESCOMPACTAR(o.gz); } catch(_){ o = null; }
+  if (!o || !o[k]) { moldura(`<div class="cartao vazio">${svg('pessoas')}<h3>Organograma ainda não disponível</h3><p>A Gestão de Pessoas ainda não atualizou o organograma para você. Tente mais tarde.</p></div>`); return; }
+  window.CRV_ORG_SNAP = { [k]:o[k] };
+  if (k === 'rh') { _org = null; await ORG().tela(); } else { _oe = null; await OE().tela(); }
+}
 let _org = null; const ORG = () => _org || (_org = window.CRV_ORG_INIT(ctxMod()));
 let _oe = null; const OE = () => _oe || (_oe = window.CRV_OE_INIT(ctxMod()));
 let _cad = null; const CADS = () => _cad || (_cad = window.CRV_CAD_INIT(Object.assign(ctxMod(), { FRENTES })));

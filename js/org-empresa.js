@@ -28,17 +28,18 @@ const areaDe = (a, d, f) => (window.CRV_AREA && window.CRV_AREA.areaDe) ? window
 
 let CFG = { dep:{}, chefe:{} }, FOTOS = {}, B = null, VIS = { setor:'', q:'' };
 
-async function lerCfg(){ try { const { data } = await sb.from('registros').select('dados').eq('painel', 'quadro').eq('caminho', 'sistema/org_empresa').maybeSingle();
+const SNAP = () => window.CRV_ORG_SNAP && window.CRV_ORG_SNAP.emp;   /* gestor/assistente: cópia gerada pelo administrador (só leitura) */
+async function lerCfg(){ if (SNAP()) { CFG = Object.assign({ dep:{}, chefe:{} }, SNAP().cfg || {}); return; } try { const { data } = await sb.from('registros').select('dados').eq('painel', 'quadro').eq('caminho', 'sistema/org_empresa').maybeSingle();
   CFG = Object.assign({ dep:{}, chefe:{} }, (data && data.dados) || {}); } catch(_){ CFG = { dep:{}, chefe:{} }; } }
 async function salvarCfg(){ const dados = Object.assign({}, CFG, { em:new Date().toISOString(), por:quem() });
   const { error } = await sb.from('registros').upsert({ painel:'quadro', caminho:'sistema/org_empresa', colecao:'sistema', doc_id:'org_empresa', dados, atualizado_por:quem() }, { onConflict:'painel,caminho' }); if (error) throw error; }
-async function lerFotos(){ FOTOS = {}; try { const { data } = await sb.from('registros').select('doc_id,dados').eq('painel', 'quadro').eq('colecao', 'org_foto'); (data || []).forEach(r => { if (r.dados && r.dados.img) FOTOS[r.doc_id] = r.dados.img; }); } catch(_){} }
+async function lerFotos(){ FOTOS = {}; if (SNAP()) { FOTOS = Object.assign({}, SNAP().fotos || {}); return; } try { const { data } = await sb.from('registros').select('doc_id,dados').eq('painel', 'quadro').eq('colecao', 'org_foto'); (data || []).forEach(r => { if (r.dados && r.dados.img) FOTOS[r.doc_id] = r.dados.img; }); } catch(_){} }
 async function salvarFoto(k, img){ const { error } = await sb.from('registros').upsert({ painel:'quadro', caminho:'org_foto/' + k, colecao:'org_foto', doc_id:k, dados:{ img, em:new Date().toISOString(), por:quem() }, atualizado_por:quem() }, { onConflict:'painel,caminho' }); if (error) throw error; if (img) FOTOS[k] = img; else delete FOTOS[k]; }
 
 /* ---------- base: Quadro Geral atual (atualiza sozinha a cada importação) ---------- */
 async function montar(){
-  const Q = window.CRV_QUADRO ? await window.CRV_QUADRO() : null; if (!Q || !Q.mapa) throw new Error('Carregue o Quadro Geral para montar o organograma.');
-  let HOR = {}; try { const d = await window.CRV_DADOS('quadro'); HOR = (d && d.dados && d.dados.HOR) || {}; } catch(_){}
+  const Q = SNAP() ? { mapa:SNAP().mapa || {}, referencia:SNAP().ref || '' } : window.CRV_QUADRO ? await window.CRV_QUADRO() : null; if (!Q || !Q.mapa) throw new Error('Carregue o Quadro Geral para montar o organograma.');
+  let HOR = {}; if (SNAP()) HOR = SNAP().hor || {}; else { try { const d = await window.CRV_DADOS('quadro'); HOR = (d && d.dados && d.dados.HOR) || {}; } catch(_){} }
   const turno = m => { const h = HOR[m]; return h && h[0] && h[1] ? h[0] + ' às ' + h[1] : ''; };
   const ATV = [], AFD = [];
   Object.entries(Q.mapa).forEach(([m, p]) => { if (p.situacao === 'Desligado') return;
@@ -284,5 +285,15 @@ async function pdf(so){
   baixar(doc.output('blob'), 'Organograma da empresa' + (so ? ' - ' + so : '') + '.pdf');
 }
 
-return { tela, config };
+/* cópia para gestor/assistente (gerada pelo administrador): nome só das lideranças; as demais pessoas vão sem nome (o organograma só mostra a quantidade) */
+async function snapshot(){
+  await Promise.all([lerCfg(), lerFotos()]); const Q = window.CRV_QUADRO ? await window.CRV_QUADRO() : null; if (!Q || !Q.mapa) return null;
+  let H0 = {}; try { const d = await window.CRV_DADOS('quadro'); H0 = (d && d.dados && d.dados.HOR) || {}; } catch(_){}
+  const mapa = {}, hor = {}, fotos = {};
+  Object.entries(Q.mapa).forEach(([m, p]) => { if (p.situacao === 'Desligado') return; const lid = nivelDe(p.funcao) >= 0;
+    mapa[m] = { nome:lid ? p.nome : '', funcao:p.funcao, area:p.area, setor:p.setor, situacao:p.situacao };
+    if (H0[m]) hor[m] = [H0[m][0], H0[m][1]]; if (lid && FOTOS['q:' + m]) fotos['q:' + m] = FOTOS['q:' + m]; });
+  return { cfg:CFG, fotos, mapa, hor, ref:Q.referencia || '', em:new Date().toISOString() };
+}
+return { tela, config, snapshot };
 };
