@@ -238,8 +238,10 @@ CRV_AREA.reg({ id:'absenteismo', nome:'Absenteísmo', frente:'Absenteísmo e Fé
       // atestados para o gestor: só [início, dias, CID] (CRM e médico ficam só com o RH)
       const tres = A => { const o = {}; Object.keys(A || {}).forEach(m => { o[m] = Array.isArray(A[m]) ? A[m].map(x => Array.isArray(x) ? x.slice(0, 3) : x) : A[m]; }); return o; };
       Object.values(EMP).forEach(e => { e.AT = tres(e.AT); });
-      const out = { ref:oc.ref, P:base.P, L:base.L, AT:tres(base.AT), EMP, CIDD:{}, FX };
-      guarda(ctx, Object.keys(out.P).concat(...Object.values(EMP).map(e => Object.values(e.C || {}))));
+      // pessoas do ano para o painel principal (base atual): só as do setor/departamento do gestor
+      const QP = (oc.QP || []).filter(q => CRV_AREA.casa(ctx, q[3], q[4], q[2]));
+      const out = { ref:oc.ref, P:base.P, L:base.L, AT:tres(base.AT), EMP, CIDD:{}, FX, QP };
+      guarda(ctx, QP.map(q => q[0]).concat(Object.keys(out.P)).concat(...Object.values(EMP).map(e => Object.values(e.C || {}))));
       return out;
     },
     /* situação atual pelo Quadro: só as matrículas que ficaram na base recortada ou no histórico recortado.

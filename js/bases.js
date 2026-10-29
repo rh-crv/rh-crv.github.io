@@ -34,9 +34,11 @@ async function salvarPrazos(p){
   if (error) throw error; _prazos = Object.assign({}, PADRAO, p);
 }
 async function internas(){
-  const k = ['quadro', 'treinamentos'].map(id => (E.metas[id] && (E.metas[id].atualizado_em || E.metas[id].referencia)) || '').join('|');
+  const k = String(Math.floor(Date.now() / 300000)) + '|' + ['quadro', 'treinamentos'].map(id => (E.metas[id] && (E.metas[id].atualizado_em || E.metas[id].referencia)) || '').join('|');
   if (_internas && _internasK === k) return _internas;
   const o = {}; for (const b of INTERNAS) { try { o[b.id] = isoDe(await b.ate()); } catch(_){ o[b.id] = ''; } }
+  // Absenteísmo: o painel se monta com os atestados e as ocorrências do ponto carregados no app (out/2026); vale a última carga deles
+  try { const { data } = await sb.from('registros').select('atualizado_em').eq('painel', 'quadro').in('colecao', ['hist_ocor', 'hist_atest']).order('atualizado_em', { ascending:false }).limit(1); o['abs:hist'] = isoDe(data && data[0] && data[0].atualizado_em); } catch(_){ o['abs:hist'] = ''; }
   _internas = o; _internasK = k; return o;
 }
 function sit(ate, prazo){
@@ -53,7 +55,8 @@ async function linhas(){
   const P = await prazos(), I = await internas(), L = [];
   (E.paineis || []).filter(p => podeVer(p) && p.id !== 'sysprocard-credito').forEach(p => {
     const m = E.metas[p.id]; if (!m && !PADRAO[p.id]) return;
-    const ate = m ? (isoDe(m.referencia) || isoDe(m.atualizado_em)) : '';
+    let ate = m ? (isoDe(m.referencia) || isoDe(m.atualizado_em)) : '';
+    if (p.id === 'absenteismo' && I['abs:hist'] && I['abs:hist'] > ate) ate = I['abs:hist'];
     L.push({ id:p.id, painel:p, nome:p.nome, frente:p.frente, ate, carregada:m && m.atualizado_em, por:m && m.atualizado_por, prazo:P[p.id] || 0, s:sit(ate, P[p.id] || 0), pode:podeEditar(p) });
     INTERNAS.filter(b => b.painel === p.id && m).forEach(b => L.push({ id:b.id, painel:p, nome:b.nome, frente:p.frente, interna:1, ate:I[b.id] || '', prazo:P[b.id] || 0, s:sit(I[b.id] || '', P[b.id] || 0), pode:podeEditar(p) }));
   });
