@@ -94,6 +94,12 @@ const nomePapel = p => ({admin:'Administrador principal', rh:'Equipe RH', editor
    O vínculo fica em perfis.frentes (que o gestor não usa): 'assist:<user_id do gestor>' e 'assistnome:<nome do gestor>'. */
 const assistDe = u => { const f = (u && u.papel === 'gestor' && Array.isArray(u.frentes)) ? u.frentes : []; const id = (f.find(x => /^assist:/.test(x)) || '').slice(7); return id ? { id, nome:(f.find(x => /^assistnome:/.test(x)) || '').slice(11) } : null; };
 window.CRV_ASSIST = () => assistDe(E.perfil);
+/* gestores responsáveis pela área do gestor (ou do gestor da assistente): [{nome, funcao, eu}] gravados pelo RH na linha 'u:<gestor>' */
+window.CRV_GESTORES_AREA = async () => { const a = assistDe(E.perfil), dono = a ? a.id : E.perfil && E.perfil.user_id; let L = [];
+  try { const { data } = await sb.from('area_dados').select('g:dados->gestores').eq('chave', 'u:' + dono).maybeSingle(); L = (data && Array.isArray(data.g)) ? data.g : []; } catch(_){}
+  const nomeDono = a ? a.nome : (E.perfil && E.perfil.nome) || '';
+  if (nomeDono && !L.some(x => String(x.nome).toUpperCase() === String(nomeDono).toUpperCase())) L = [{ nome:nomeDono, funcao:'', eu:true }].concat(L);
+  return { padrao:nomeBonito(nomeDono), lista:L.map(x => ({ nome:nomeBonito(x.nome), funcao:x.funcao ? nomeBonito(x.funcao) : '', eu:!!x.eu })), assistente:!!a, quem:(E.perfil && E.perfil.nome) || '' }; };
 const papelDe = u => { const a = assistDe(u); return a ? 'Assistente do gestor' + (a.nome ? ' ' + nomeBonito(a.nome) : '') : nomePapel(u && u.papel); };
 
 function toast(msg, erro=false){
@@ -1103,7 +1109,7 @@ async function telaCentralGestor(){
   const col = async () => { desenharCentral(null, true, { titulo:'Central de Rotinas do departamento' });
     let out = []; try { out = out.concat(await GESTOR().pendenciasArea()); } catch(e){ console.warn(e); } try { if (window.CRV_RESP_INIT) out = out.concat(await RESP().pendenciasArea()); } catch(e){ console.warn(e); }
     if (location.hash === '#/central') desenharCentral({ em:new Date().toISOString(), itens:out }, false, { titulo:'Central de Rotinas do departamento', atualizar:col, vazio:'Tudo em dia na sua área.' }); };
-  col();
+  window.__colCentralG = col; vigiarEnvios(); col();
 }
 function telaCentral(){
   moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Gestão de Pessoas · CRV Industrial</div><h1>Central de Rotinas do RH</h1><div class="ini-data">Pendências de todos os painéis, das mais urgentes para as menos urgentes</div></div></section><section class="central" id="central"></section>`);
@@ -1226,9 +1232,20 @@ async function coletarCentral(){
   } finally { centralRodando = false; }
 }
 function iniciarCentral(){
-  const c = centralCache();
-  if (c && c.ass === centralAss() && Date.now() - new Date(c.em) < CENTRAL_VALIDADE) desenharCentral(c, false); else coletarCentral();
+  const c = centralCache(); vigiarEnvios();
+  if (c && c.ass === centralAss() && Date.now() - new Date(c.em) < CENTRAL_VALIDADE) { desenharCentral(c, false); atualizarEnviosCentral(); } else coletarCentral();
 }
+/* envios dos gestores: sempre ao vivo na Central (mesmo com o resto em cache), e atualiza na hora quando chega um envio novo */
+const ID_ENVIOS = /^(envios|envios-urg|sem-gestor|san-pedidos)$/;
+async function atualizarEnviosCentral(){ if (centralRodando) return; let nv; try { nv = await GESTOR().pendenciasEnvios(); } catch(_) { return; }
+  const c = centralCache(); if (!c) return; c.itens = (c.itens || []).filter(x => !ID_ENVIOS.test(x.id)).concat(nv);
+  try { localStorage.setItem(centralChave(), JSON.stringify(c)); } catch(_){} if (location.hash === '#/central' && !centralRodando) desenharCentral(c, false); }
+let _canalEnv = null, _tEnv = null;
+function vigiarEnvios(){ if (_canalEnv || !sb.channel) return;
+  try { _canalEnv = sb.channel('crv-envios-central').on('postgres_changes', { event:'*', schema:'public', table:'gestor_envios' }, () => { clearTimeout(_tEnv); _tEnv = setTimeout(() => { try { window.CRV_ENVIO_FEITO(); } catch(_){} }, 500); }).subscribe(); } catch(_){ _canalEnv = null; } }
+window.CRV_ENVIO_FEITO = () => { if (!E.perfil) return;
+  if (['admin', 'rh'].includes(E.perfil.papel)) { atualizarEnviosCentral(); }
+  else if (E.perfil.papel === 'gestor' && location.hash === '#/central' && typeof window.__colCentralG === 'function') window.__colCentralG(); };
 const centralAbertos = new Set();
 function desenharCentral(c, carregando, op){ op = op || {};
   const el = $('#central'); if (!el) return;

@@ -1635,7 +1635,7 @@ window.CRV_PENDENCIAS=function(forcar){
   const h2=document.querySelector(".fmtop h2"); if(h2) h2.textContent="Avaliação de experiência";
   const sub=document.querySelector(".fmtop .sub"); if(sub) sub.textContent="Avaliação de Período de Experiência e Desempenho · RE.0150.07 · Versão 05. Escolha o colaborador, dê as notas, marque a decisão e envie ao RH. A Gestão de Pessoas confere e registra no painel.";
   const vz=document.getElementById("fmEmpty"); if(vz) vz.textContent="Escolha um colaborador da sua área para avaliar. Na aba Nominal, o botão “Preencher avaliação” abre direto o formulário dele.";
-  const ft=document.getElementById("foot"); if(ft) ft.textContent="Somente a sua área. A avaliação que você envia aparece como “Aguardando o RH” e só entra no painel depois que a Gestão de Pessoas aceita. Encerramento de contrato: enviar até 5 dias antes do vencimento. Prorrogação: o 1º período do contrato ainda está em aberto. Efetivação: fim do contrato de experiência.";
+  const ft=document.getElementById("foot"); if(ft) ft.textContent="Somente a sua área. A avaliação que você envia aparece como “Aguardando o RH” e só entra no painel depois que a Gestão de Pessoas aceita. Efetivar: até o vencimento. Prorrogar: só no 1º período (com 90 dias já não dá). Encerrar: combinado até 5 dias antes do vencimento; depois disso, até o vencimento, com aviso de urgência ao RH. Depois do vencimento o contrato passa a ser por prazo indeterminado.";
 
   /* avaliação enviada nesta sessão e ainda não aceita pelo RH: fica marcada e não conta como lançada */
   const _ap=apply;
@@ -1652,7 +1652,7 @@ window.CRV_PENDENCIAS=function(forcar){
   /* formulário: carrega o que o gestor já enviou (aguardando o RH) */
   const _ld=fmLoad;
   fmLoad=function(mat){ _ld(mat); const p=FMP; if(!p||p.mat!==mat) return;
-    if(p.agRH&&!fmSaved(p)){ const g=p.agRH; FM={...fmBlank(),notas:(g.notas||[]).slice(),coment:g.obs||"",gestor:g.gestor||"",cargoG:g.cargoG||"",gdec:g.decisao,naLid:g.notas&&g.notas[FAT.length-1]===null}; fmRender(); } };
+    if(p.agRH&&!fmSaved(p)){ const g=p.agRH; FM={...fmBlank(),notas:(g.notas||[]).slice(),coment:g.obs||"",gestor:g.gestor||"",cargoG:g.cargoG||"",gdec:g.decisao,assModo:(g.assin&&g.assin.modo)||"",naLid:g.notas&&g.notas[FAT.length-1]===null}; fmRender(); } };
 
   function estado(p){ const s=fmSaved(p);
     if(p.encOk||p.encAnd) return ["crit","O RH já está tratando o encerramento deste contrato. Para qualquer mudança, fale com a Gestão de Pessoas."];
@@ -1662,33 +1662,101 @@ window.CRV_PENDENCIAS=function(forcar){
     if(p.agRH) return ["ag","Avaliação enviada ao RH"+(p.agRH.em?" em "+fdy(pd(p.agRH.em.slice(0,10))):"")+": aguardando a conferência da Gestão de Pessoas."];
     return null; }
 
+  /* gestores responsáveis pela área (lista gravada pelo RH); o padrão é o gestor do departamento (para a assistente, o gestor dela) */
+  let GL=null;
+  (async()=>{ try{ GL=await (window.parent&&window.parent.CRV_GESTORES_AREA?window.parent.CRV_GESTORES_AREA():null); }catch(_){}
+    if(!GL) GL={padrao:quem(),lista:[{nome:quem(),funcao:"",eu:true}],assistente:false,quem:quem()};
+    if(FMP&&!estado(FMP)&&!FM.gestor){ FM.gestor=GL.padrao; FM.cargoG=(GL.lista.find(x=>x.nome===GL.padrao)||{}).funcao||""; }
+    if(FMP) gsRender(); })();
+  const st2=document.createElement("style");
+  st2.textContent="#fmBox .fmin:has(#fmG),#fmBox .fmcom{display:none!important}"+
+    ".gs-dec label.off small.blq{color:var(--crit,#b42318);opacity:1}.gs-av.am{background:#fff4d6;color:#7a5200;border:1px solid #f0c75e;font-weight:600}"+
+    ".gs-sec{margin:14px 0 0;padding:12px 0 0;border-top:1px dashed #cfd6e4}.gs-sec>b{display:block;font-size:13px;margin:0 0 6px;color:var(--ink,#14213d)}"+
+    ".gs-jus textarea{width:100%;min-height:74px;box-sizing:border-box;padding:8px 10px;border:1px solid #cfd6e4;border-radius:9px;font:inherit;font-size:13px;background:#fff}.gs-jus.obr textarea{border-color:#e9a23b}"+
+    ".gs-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px}.gs-g label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:var(--mut,#5d6a85)}"+
+    ".gs-g select,.gs-g input{padding:8px 10px;border:1px solid #cfd6e4;border-radius:9px;font:inherit;font-size:13px;font-weight:400;color:var(--ink,#14213d);background:#fff}"+
+    ".gs-am{display:flex;gap:8px;flex-wrap:wrap}.gs-am label{display:flex;gap:7px;align-items:center;padding:8px 12px;border:1px solid #cfd6e4;border-radius:10px;background:#fff;cursor:pointer;font-size:13px}.gs-am label:has(input:checked){border-color:#2e8a57;background:#eef8f1}"+
+    ".gs-cv{margin:8px 0 0;max-width:520px}.gs-cv canvas{display:block;width:100%;height:150px;border:1px dashed #8a96ad;border-radius:10px;background:#fff;touch-action:none;cursor:crosshair}"+
+    ".gs-cv div{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--mut,#5d6a85);margin:4px 0 0}.gs-cv button{border:0;background:none;color:#a3301c;font:inherit;font-size:12px;cursor:pointer;text-decoration:underline}"+
+    ".gs-falta{font-size:12.5px;color:var(--mut,#5d6a85);margin:10px 0 0}.gs-falta b{color:#8a5a00}#fmEnv:disabled{opacity:.5;cursor:not-allowed}";
+  document.head.appendChild(st2);
+  const PR90="Contrato já está no prazo máximo de 90 dias – não é possível prorrogar.";
+  const regra=p=>{ const venc=p.data, lim=addDia(venc,-5); return {venc,lim,tarde:TODAY>lim,venceu:TODAY>venc,prOk:p.key==="pr"||!!p.p90}; };
+  /* o que ainda falta para enviar (vazio = pode enviar) */
+  function falta(p){ const r=regra(p), F=[], n=FAT.length;
+    if(r.venceu) return ["o contrato passou do vencimento: fale com a Gestão de Pessoas"];
+    if(FM.notas.slice(0,n).some((v,i)=>(v===null||v===undefined)&&!(i===n-1&&FM.naLid))) F.push("nota nos 9 fatores");
+    const d=FM.gdec; if(!d) F.push("a decisão");
+    else if(d==="prorrogar"&&!r.prOk) F.push("outra decisão (não dá para prorrogar)");
+    if((d==="prorrogar"||d==="encerrar")&&String(FM.coment||"").trim().length<10) F.push("a justificativa da decisão");
+    if(!String(FM.gestor||"").trim()) F.push("o gestor responsável");
+    if(FM.assModo!=="papel"&&!(FM.assModo==="tela"&&FM.assImg)) F.push(FM.assModo==="tela"?"a assinatura na tela":"a assinatura (na tela ou no papel)");
+    return F; }
+  function botao(){ const p=FMP, b=document.getElementById("fmEnv"), f=document.getElementById("gsFalta"); if(!p||!b) return; const e=estado(p);
+    if(e){ b.hidden=true; if(f) f.innerHTML=""; return; } b.hidden=false; const F=falta(p); b.disabled=!!F.length||ocup;
+    if(f) f.innerHTML=F.length?"Para enviar, falta: <b>"+esc(F.join(" · "))+"</b>":"Tudo pronto: clique em “Enviar avaliação ao RH”."; }
+  function gsRender(){
+    const p=FMP, box=document.getElementById("fmBox"); let x=document.getElementById("fmGs"); if(!p||!box){ if(x) x.remove(); return; }
+    const e=estado(p), livre=!e, r=regra(p), g0=e&&p.agRH?p.agRH:null, dec=g0?g0.decisao:FM.gdec;
+    if(!x){ x=document.createElement("div"); x.id="fmGs"; x.className="gs-box"; box.querySelector(".fmbtns").before(x); }
+    const lista=(GL&&GL.lista)||[], gNome=g0?(g0.gestor||""):(FM.gestor||""), gFun=g0?(g0.cargoG||""):(FM.cargoG||"");
+    const opG=lista.some(o=>o.nome===gNome)||!gNome?lista:[{nome:gNome,funcao:gFun}].concat(lista);
+    const am=g0?((g0.assin&&g0.assin.modo)||""):(FM.assModo||"");
+    const jusObr=dec==="prorrogar"||dec==="encerrar";
+    x.innerHTML='<p class="fmh3">Decisão do gestor · '+esc(MK[p.key]||"")+' em '+fdy(r.venc)+'</p>'+
+      (livre&&r.venceu?'<p class="gs-av crit">O contrato venceu em '+fdy(r.venc)+' e passou a ser por prazo indeterminado. Não dá mais para efetivar, prorrogar ou encerrar por aqui: fale com a Gestão de Pessoas.</p>':"")+
+      '<div class="gs-dec">'+DECG.map(([k,t,d])=>{ const blq=k==="prorrogar"&&!r.prOk, off=!livre||r.venceu||blq;
+        const sub=blq?'<small class="blq">'+PR90+'</small>':'<small>'+(k==="prorrogar"&&p.key!=="pr"?"Contrato de 60 dias: avaliar até "+fdy(p.d90):k==="encerrar"?"Até o vencimento ("+fdy(r.venc)+"). Combinado: até "+fdy(r.lim):d)+'</small>';
+        return '<label class="'+(off&&livre?"off":"")+'"><input type="radio" name="fmGdec" value="'+k+'"'+(dec===k?" checked":"")+(off?" disabled":"")+'><span><b>'+t+(k==="prorrogar"&&p.key!=="pr"&&!blq?" até 90 dias":"")+'</b>'+sub+'</span></label>'; }).join("")+'</div>'+
+      (dec==="encerrar"&&(livre?r.tarde&&!r.venceu:g0&&g0.urgente)?'<p class="gs-av am" style="margin:10px 0 0">⚠ Fora do prazo combinado – o RH será avisado com urgência.</p>':"")+
+      '<label class="gs-na"><input type="checkbox" id="fmGna"'+(FM.naLid?" checked":"")+(livre?"":" disabled")+'> Liderança: não se aplica (a função não tem equipe)</label>'+
+      '<div class="gs-sec gs-jus'+(jusObr&&livre?" obr":"")+'"><b>Comentários do avaliador'+(jusObr?' · justificativa obrigatória para '+(dec==="prorrogar"?"prorrogar":"encerrar"):"")+'</b><textarea id="fmJus" maxlength="1200"'+(livre?"":" readonly")+' placeholder="'+(jusObr?"Explique o que justifica a decisão":"Opcional para efetivar")+'">'+esc(g0?(g0.obs||""):(FM.coment||""))+'</textarea></div>'+
+      '<div class="gs-sec"><b>Assinatura</b><div class="gs-g"><label>Gestor responsável<select id="fmGr"'+(livre?"":" disabled")+'>'+(opG.length?"":'<option value="">Carregando…</option>')+opG.map(o=>'<option value="'+esc(o.nome)+'"'+(o.nome===gNome?" selected":"")+'>'+esc(o.nome)+'</option>').join("")+'</select></label>'+
+        '<label>Função do gestor<input id="fmGrF" value="'+esc(gFun)+'" placeholder="Ex.: Gerente Industrial"'+(livre?"":" readonly")+'></label></div>'+
+        '<p style="margin:10px 0 6px;font-size:12px;font-weight:700;color:var(--mut,#5d6a85)">Assinatura do gestor</p>'+
+        '<div class="gs-am"><label><input type="radio" name="fmAm" value="tela"'+(am==="tela"?" checked":"")+(livre?"":" disabled")+'> Assinar na tela (dedo ou mouse)</label><label><input type="radio" name="fmAm" value="papel"'+(am==="papel"?" checked":"")+(livre?"":" disabled")+'> Assinatura será colhida no papel</label></div>'+
+        (am==="tela"&&livre?'<div class="gs-cv"><canvas id="fmCv" width="1040" height="300"></canvas><div><span>Assinatura de '+esc(gNome||"gestor")+'</span><button type="button" id="fmCvL">Limpar</button></div></div>':
+         am==="tela"&&g0?'<p class="gs-pz">Assinada na tela pelo gestor.</p>':
+         am==="papel"?'<p class="gs-pz">O documento sai com a linha de assinatura, o nome e a função do gestor, na mesma folha, para assinar à mão.</p>':"")+'</div>'+
+      '<p class="gs-pz">Encerramento combinado: até <b>'+fdy(r.lim)+'</b> (5 dias antes do vencimento). Depois disso ainda dá para enviar até '+fdy(r.venc)+', e o RH é avisado com urgência.</p>'+
+      '<p class="gs-falta" id="gsFalta"></p>';
+    if(am==="tela"&&livre) cvLigar();
+    let b=document.getElementById("fmEnv");
+    if(!b){ b=document.createElement("button"); b.id="fmEnv"; b.className="btn2 pri"; b.textContent="Enviar avaliação ao RH"; b.onclick=enviar; box.querySelector(".fmbtns").prepend(b); }
+    botao(); }
+  /* assinatura na tela: desenha com dedo/mouse; guarda como imagem a cada traço */
+  function cvLigar(){ const c=document.getElementById("fmCv"); if(!c) return; const k=c.getContext("2d"); k.lineCap="round"; k.lineJoin="round"; k.lineWidth=4.2; k.strokeStyle="#14213d";
+    if(FM.assImg){ const im=new Image(); im.onload=()=>k.drawImage(im,0,0,c.width,c.height); im.src=FM.assImg; }
+    let des=false, tem=!!FM.assImg; const pt=ev=>{ const b=c.getBoundingClientRect(); return [(ev.clientX-b.left)*c.width/b.width,(ev.clientY-b.top)*c.height/b.height]; };
+    c.onpointerdown=ev=>{ ev.preventDefault(); des=true; try{c.setPointerCapture(ev.pointerId)}catch(_){} const [x,y]=pt(ev); k.beginPath(); k.moveTo(x,y); k.lineTo(x+.1,y+.1); k.stroke(); tem=true; };
+    c.onpointermove=ev=>{ if(!des) return; const [x,y]=pt(ev); k.lineTo(x,y); k.stroke(); };
+    const fim=()=>{ if(!des) return; des=false; if(tem){ FM.assImg=c.toDataURL("image/png"); botao(); } };
+    c.onpointerup=fim; c.onpointerleave=fim; c.onpointercancel=fim;
+    const l=document.getElementById("fmCvL"); if(l) l.onclick=()=>{ k.clearRect(0,0,c.width,c.height); FM.assImg=null; tem=false; botao(); }; }
+
   const _fr=fmRender;
   fmRender=function(){ _fr();
     const p=FMP, box=document.getElementById("fmBox"); document.body.classList.remove("fm-rh"); box.classList.remove("rh");
     const rh=document.getElementById("fmRh"); if(rh) rh.remove();
-    let x=document.getElementById("fmGs"); if(!p){ if(x) x.remove(); return; }
+    if(!p){ const x=document.getElementById("fmGs"); if(x) x.remove(); return; }
     const e=estado(p), livre=!e;
     box.classList.toggle("gst",livre);
-    box.querySelectorAll("input,textarea").forEach(i=>{ const ok=livre; i.readOnly=!ok; if(i.type==="radio"||i.type==="checkbox") i.disabled=!ok; });
-    if(livre&&!FM.gestor){ FM.gestor=quem(); const g=document.getElementById("fmG"); if(g) g.value=FM.gestor; }
-    const ro=document.getElementById("fmRo"); if(ro) ro.textContent=e?e[1]:"Preencha as notas, marque a decisão e clique em “Enviar avaliação ao RH”. Você assina no passo seguinte.";
-    const venc=p.data, lim=addDia(venc,-5), tarde=TODAY>lim, venceu=TODAY>venc;
-    const decs=DECG.filter(([k])=>!(k==="prorrogar"&&p.key!=="pr"&&!p.p90));
-    if(!x){ x=document.createElement("div"); x.id="fmGs"; x.className="gs-box"; box.querySelector(".fmbtns").before(x); }
-    const g0=e&&p.agRH?p.agRH.decisao:FM.gdec;
-    x.innerHTML='<p class="fmh3">Decisão do gestor · '+esc(MK[p.key]||"")+' em '+fdy(venc)+'</p>'+
-      (livre&&venceu?'<p class="gs-av crit">O contrato já venceu. Fale com a Gestão de Pessoas antes de enviar.</p>':livre&&tarde?'<p class="gs-av">Passou do prazo para encerrar (5 dias antes do vencimento). Ainda dá para enviar Efetivar ou Prorrogar; para encerrar, fale com a Gestão de Pessoas.</p>':"")+
-      '<div class="gs-dec">'+decs.map(([k,t,d])=>{const off=!livre||(k==="encerrar"&&(tarde||venceu));return '<label class="'+(off&&livre?"off":"")+'"><input type="radio" name="fmGdec" value="'+k+'"'+(g0===k?" checked":"")+(off?" disabled":"")+'><span><b>'+t+(k==="prorrogar"&&p.key!=="pr"?" até 90 dias":"")+'</b><small>'+(k==="prorrogar"&&p.key!=="pr"?"Contrato de 60 dias: avaliar até "+fdy(p.d90):d)+'</small></span></label>'}).join("")+'</div>'+
-      '<label class="gs-na"><input type="checkbox" id="fmGna"'+(FM.naLid?" checked":"")+(livre?"":" disabled")+'> Liderança: não se aplica (a função não tem equipe)</label>'+
-      '<p class="gs-pz">Encerramento: enviar até <b>'+fdy(lim)+'</b>. Para prorrogar ou encerrar, escreva nos comentários o que justifica a decisão.</p>';
-    let b=document.getElementById("fmEnv");
-    if(!b){ b=document.createElement("button"); b.id="fmEnv"; b.className="btn2 pri"; b.textContent="Enviar avaliação ao RH"; b.onclick=enviar; box.querySelector(".fmbtns").prepend(b); }
-    b.hidden=!livre;
+    box.querySelectorAll("input,textarea").forEach(i=>{ if(i.closest("#fmGs")) return; const ok=livre; i.readOnly=!ok; if(i.type==="radio"||i.type==="checkbox") i.disabled=!ok; });
+    if(livre&&!FM.gestor&&GL){ FM.gestor=GL.padrao; FM.cargoG=(GL.lista.find(x=>x.nome===GL.padrao)||{}).funcao||""; }
+    if(livre&&FM.gdec==="prorrogar"&&!regra(p).prOk) FM.gdec=null;
+    const ro=document.getElementById("fmRo"); if(ro) ro.textContent=e?e[1]:"Dê as notas, marque a decisão, escolha o gestor responsável e a forma de assinatura. Depois clique em “Enviar avaliação ao RH”.";
+    gsRender();
   };
   document.getElementById("vF").addEventListener("change",e=>{const t=e.target;
-    if(t.name==="fmGdec") FM.gdec=t.value;
-    else if(t.id==="fmGna"){ FM.naLid=t.checked; if(t.checked){ const i=FAT.length-1; FM.notas[i]=null; document.querySelectorAll('input[name="fmn'+i+'"]').forEach(r=>r.checked=false); fmTot(); } }
-    else if(t.name==="fmn"+(FAT.length-1)){ FM.naLid=false; const c=document.getElementById("fmGna"); if(c) c.checked=false; } });
+    if(t.name==="fmGdec"){ FM.gdec=t.value; gsRender(); }
+    else if(t.name==="fmAm"){ FM.assModo=t.value; gsRender(); }
+    else if(t.id==="fmGr"){ FM.gestor=t.value; const o=((GL&&GL.lista)||[]).find(x=>x.nome===t.value); FM.cargoG=o&&o.funcao?o.funcao:""; FM.assImg=null; gsRender(); }
+    else if(t.id==="fmGna"){ FM.naLid=t.checked; if(t.checked){ const i=FAT.length-1; FM.notas[i]=null; document.querySelectorAll('input[name="fmn'+i+'"]').forEach(r=>r.checked=false); fmTot(); } botao(); }
+    else if(t.name==="fmn"+(FAT.length-1)){ FM.naLid=false; const c=document.getElementById("fmGna"); if(c) c.checked=false; setTimeout(botao,0); }
+    else if(/^fmn\d+$/.test(t.name)) setTimeout(botao,0); });
+  document.getElementById("vF").addEventListener("input",e=>{const t=e.target;
+    if(t.id==="fmJus"){ FM.coment=t.value; const c=document.getElementById("fmCom"); if(c) c.value=t.value; botao(); }
+    else if(t.id==="fmGrF"){ FM.cargoG=t.value; } });
 
   /* antes de enviar: clicar de novo numa nota ou na decisão já marcada desmarca (para corrigir e marcar outra) */
   { let era=null; const vf=document.getElementById("vF");
@@ -1696,25 +1764,23 @@ window.CRV_PENDENCIAS=function(forcar){
     vf.addEventListener("click",e=>{const r=e.target.type==="radio"?e.target:null; if(!r||r!==era) return; era=null;
       if(!/^fmn\d+$/.test(r.name)&&r.name!=="fmGdec") return;
       setTimeout(()=>{ r.checked=false;
-        if(r.name==="fmGdec") FM.gdec=null; else { FM.notas[+r.name.slice(3)]=null; fmTot(); } },0); }); }
+        if(r.name==="fmGdec"){ FM.gdec=null; gsRender(); } else { FM.notas[+r.name.slice(3)]=null; fmTot(); botao(); } },0); }); }
 
   let ocup=false;
   async function enviar(){
     const p=FMP; if(!p||ocup) return; if(estado(p)) return toast(estado(p)[1]);
     if(!DBH||!CANW) return toast("Não foi possível enviar agora. Abra o painel de novo pelo app.");
+    const F=falta(p); if(F.length) return toast("Para enviar, falta: "+F.join(", ")+".");
     const n=FAT.length, notas=FM.notas.slice(0,n); if(FM.naLid) notas[n-1]=null;
-    if(notas.some((v,i)=>v===null&&!(i===n-1&&FM.naLid))) return toast("Dê uma nota de 0 a 5 em todos os fatores.");
-    const dec=FM.gdec; if(!dec) return toast("Escolha a decisão: efetivar, prorrogar ou encerrar.");
-    const venc=p.data, lim=addDia(venc,-5);
-    if(dec==="encerrar"&&TODAY>lim) return toast("Fora do prazo para encerramento. Fale com a Gestão de Pessoas.");
-    const obs=String(FM.coment||"").trim(); if((dec==="encerrar"||dec==="prorrogar")&&obs.length<10) return toast("Escreva nos comentários o que justifica a decisão.");
+    const dec=FM.gdec, r=regra(p), obs=String(FM.coment||"").trim();
     const cur=JSON.parse(JSON.stringify(REG[p.mat]||{})); delete cur._aguardaRH;
     const em=new Date().toISOString();
-    cur._g={etapa:p.key,venc:iso(venc),adm:iso(p.adm),decisao:dec,notas,obs:obs.slice(0,1200),gestor:String(FM.gestor||"").trim(),cargoG:String(FM.cargoG||"").trim(),em};
+    cur._g={etapa:p.key,venc:iso(r.venc),adm:iso(p.adm),decisao:dec,notas,obs:obs.slice(0,1200),gestor:String(FM.gestor||"").trim(),cargoG:String(FM.cargoG||"").trim(),em,
+      assin:{modo:FM.assModo,img:FM.assModo==="tela"?FM.assImg:null},urgente:dec==="encerrar"&&r.tarde,lancadoPor:quem(),prOk:r.prOk};
     const b=document.getElementById("fmEnv"); ocup=true; if(b) b.disabled=true;
-    try{ await DBH.doc("registros/m"+p.mat).set(cur); REG[p.mat]={...cur,_aguardaRH:true}; refresh(); toast("Avaliação enviada ao RH. Aguardando a conferência da Gestão de Pessoas."); }
+    try{ await DBH.doc("registros/m"+p.mat).set(cur); const g={...cur._g}; delete g.assin; g.assin={modo:FM.assModo}; cur._g=g; REG[p.mat]={...cur,_aguardaRH:true}; refresh(); toast("Avaliação enviada ao RH. Aguardando a conferência da Gestão de Pessoas."); }
     catch(err){ if(!(err&&err.code==="cancelado")) toast((err&&err.message)||"Não foi possível enviar agora. Tente de novo em instantes."); }
-    finally{ ocup=false; if(b) b.disabled=false; }
+    finally{ ocup=false; botao(); }
   }
   try{ refresh(); if(FMP) fmRender(); }catch(_){}
 })();

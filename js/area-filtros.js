@@ -31,20 +31,27 @@ function envioExp(docId, d){
     throw new Error('Dê uma nota de 0 a 5 em todos os fatores (só Liderança pode ficar como "não se aplica").');
   if (!DECT[dec]) throw new Error('Escolha a decisão: efetivar, prorrogar ou encerrar.');
   const h = hoje(), lim = addD(venc, -5);                          // encerramento vai ao RH até 5 dias antes do vencimento
-  if (dec === 'encerrar' && h > lim) throw new Error('Fora do prazo para encerramento (até ' + br(lim) + '). Fale com a Gestão de Pessoas.');
+  // depois do vencimento o contrato passou a ser por prazo indeterminado: nada mais pelo app
+  if (h > venc) throw new Error('O contrato venceu em ' + br(venc) + ' e passou a ser por prazo indeterminado. Fale com a Gestão de Pessoas.');
+  if (dec === 'prorrogar' && (etapa === 'ef90' || g.prOk === false)) throw new Error('Contrato já está no prazo máximo de 90 dias – não é possível prorrogar.');
+  const urgente = dec === 'encerrar' && h > lim;                  // fora do prazo combinado: vai, mas o RH é avisado com urgência
+  const gestorResp = String(g.gestor || '').trim().slice(0, 120), gestorFuncao = String(g.cargoG || '').trim().slice(0, 120);
+  if (!gestorResp) throw new Error('Escolha o gestor responsável.');
+  const as = g.assin || {}, modo = as.modo === 'papel' ? 'papel' : as.modo === 'tela' && /^data:image\/png;base64,/.test(String(as.img || '')) ? 'tela' : '';
+  if (!modo) throw new Error('Falta a assinatura do gestor: assine na tela ou marque que a assinatura será colhida no papel.');
   if ((dec === 'encerrar' || dec === 'prorrogar') && obs.length < 10) throw new Error('Escreva o comentário que justifica a decisão.');
   const v = notas.filter(n => n !== null).map(n => n * 2), tot = v.reduce((a, b) => a + b, 0) / v.length, p = tot / 10;
   const crit = FAT.map((a, i) => [a, notas[i] == null ? 'não se aplica' : notas[i] + ' (' + notas[i] * 2 + ' pts)']);
   const dados = { ref:etapa + '|' + venc, etapa, etapaT:ETAPA[etapa], venc, decisao:dec, crit, notas, tot, pct:p, form:FORM_COD, obs };
   if (ISO.test(String(g.adm || ''))) dados.adm = g.adm;
-  dados.prazoEnc = lim;                                            // funcao e secao: o app completa pelo Quadro (como no formulário antigo)
+  dados.prazoEnc = lim; dados.gestorResp = gestorResp; dados.gestorFuncao = gestorFuncao; dados.assinModo = modo; if (urgente) dados.urgente = true;                                            // funcao e secao: o app completa pelo Quadro (como no formulário antigo)
   const resumo = [['Etapa', ETAPA[etapa]], ['Vencimento', br(venc)], ['Encerramento: enviar até', br(lim)],
     ['Fatores avaliados', notas.filter(n => n !== null).length + ' de ' + FAT.length + ' (formulário ' + FORM_COD + ')'],
     ['% atingido (meta 70%)', pct(p) + ' · ' + faixa(p)], ['Total de pontos', tot.toFixed(1).replace('.', ',')],
-    ['Decisão', DECT[dec]], ['Comentário', obs || '—']];
-  if (h > venc) resumo.push(['Atenção', 'O contrato já venceu em ' + br(venc) + '. Fale com a Gestão de Pessoas.']);
-  else if (h > lim) resumo.push(['Atenção', 'Passou do prazo para encerrar (5 dias antes do vencimento).']);
-  return { tipo:'experiencia', mat, dados, resumo };
+    ['Decisão', DECT[dec]], [dec === 'efetivar' ? 'Comentário' : 'Justificativa', obs || '—'],
+    ['Gestor responsável', gestorResp + (gestorFuncao ? ' · ' + gestorFuncao : '')], ['Assinatura do gestor', modo === 'tela' ? 'Assinada na tela' : 'Será colhida no papel']];
+  if (urgente) resumo.push(['Atenção', 'Fora do prazo combinado – o RH será avisado com urgência.']);
+  return { tipo:'experiencia', mat, dados, resumo, assin:{ modo, img:modo === 'tela' ? as.img : null, gestor:gestorResp, funcao:gestorFuncao } };
 }
 
 /* envio ainda aguardando o RH → documento como o painel lê ('registros/m<mat>' com _g e _aguardaRH), para continuar
@@ -53,7 +60,8 @@ function pendenteExp(e){
   if (!e || e.tipo !== 'experiencia' || (e.status && e.status !== 'enviado')) return null;
   const d = e.dados || {}, mat = CRV_AREA.fm(e.mat); if (!mat || !ETAPA[d.etapa] || !ISO.test(String(d.venc || ''))) return null;
   const _g = { etapa:d.etapa, venc:d.venc, adm:d.adm || '', decisao:d.decisao, notas:Array.isArray(d.notas) ? d.notas.slice() : [], obs:d.obs || '',
-    gestor:(e.assinatura && e.assinatura.nome) || e.autor_nome || '', cargoG:'', em:e.criado_em || '', envio:e.id || '' };
+    gestor:d.gestorResp || (e.assinatura && (e.assinatura.gestorResp || e.assinatura.nome)) || e.autor_nome || '', cargoG:d.gestorFuncao || '', em:e.criado_em || '', envio:e.id || '',
+    assin:{ modo:d.assinModo || '' }, urgente:!!d.urgente };
   return { colecao:'registros', doc_id:'m' + mat, dados:{ _g, _aguardaRH:true } };
 }
 
