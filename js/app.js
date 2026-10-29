@@ -6,9 +6,11 @@
 'use strict';
 
 const CFG = window.CRV_CONFIG;
-const sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_KEY, {
+const sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_KEY, Object.assign({
   auth: { persistSession: true, autoRefreshToken: true, storageKey: 'crv-gp-sessao' }
-});
+}, window.CRV_OFF ? { global: { fetch: window.CRV_OFF.fetch } } : {}));   // modo offline: leituras guardadas (limpas e cifradas) no aparelho
+const OFF = window.CRV_OFF || null;
+const semRede = () => !!(OFF && OFF.offline());
 
 /* ---------- identidade visual das frentes ---------- */
 const FRENTES = {
@@ -148,28 +150,135 @@ document.addEventListener('keydown', ev => { if (ev.key === 'Escape') fecharModa
 /* =====================================================================
    INÍCIO / AUTENTICAÇÃO
    ===================================================================== */
+/* sessão guardada pelo Supabase (sem internet ele não consegue renovar o acesso; para consultar a cópia do aparelho basta ela) */
+const sessaoLocal = () => { try { const s = JSON.parse(localStorage.getItem('crv-gp-sessao') || 'null'); return s && s.user ? s : (s && s.currentSession) || null; } catch(_){ return null; } };
 async function iniciar(){
-  const { data } = await sb.auth.getSession();
-  E.sessao = data.session;
-  if (!E.sessao) return telaLogin();
+  const loc = sessaoLocal();
+  const st = OFF ? await OFF.iniciar(loc && loc.user ? loc.user.id : '') : 'ok';
+  if (st === 'expirado') { await sairLocal(); return telaLogin('entrar', 'Faz mais de ' + (OFF.meta().dias || 7) + ' dias sem conexão: por segurança, os dados guardados no aparelho foram apagados. Conecte-se à internet e entre de novo.'); }
+  let ses = null;
+  if (semRede()) ses = loc;
+  else { try { const r = await Promise.race([sb.auth.getSession(), new Promise(ok => setTimeout(() => ok(null), 6000))]); ses = r && r.data ? r.data.session : null; if (!r && OFF) { ses = loc; } } catch(_){ ses = null; }
+    if (!ses && loc && semRede()) ses = loc; }
+  E.sessao = ses;
+  if (!E.sessao) return telaLogin('entrar', semRede() ? 'Sem conexão. Para entrar é preciso internet (no primeiro acesso e depois de sair do app).' : '');
+  if (semRede() && st === 'sem-copia') return telaSemCopia();
   await entrarNoApp();
+}
+/* painel com dados sensíveis (saúde, salário, ouvidoria): não fica no aparelho */
+function telaSoConexao(p){
+  moldura(`<div class="trilha"><button data-ir="#/">Visão Geral</button> › <span>${esc(p.frente || '')}</span> › <b>${esc(p.nome || '')}</b></div>
+    <div class="cartao vazio">${svg('planilha')}<h3>Disponível apenas com conexão</h3><p>Este painel tem dados sensíveis (saúde, salário ou ouvidoria) e, por segurança, não fica guardado no aparelho. Conecte-se à internet para abrir.</p></div>`);
+  const t = document.querySelector('.trilha [data-ir]'); if (t) t.onclick = () => location.hash = '#/'; }
+/* fila: envio do gestor preenchido sem internet. Antes de enviar confere se alguém mexeu no mesmo registro nesse meio-tempo */
+if (OFF) OFF.fila.tratar('gestor_envio', {
+  async conferir(it){ const r = it.row || {}, c = it.conf || {};
+    const { data, error } = await sb.from('gestor_envios').select('id,status,criado_em,autor_nome,dados').eq('tipo', r.tipo).eq('mat', r.mat); if (error) throw error;
+    const o = (data || []).find(e => e.id !== r.id && e.status !== 'cancelado' && String(e.criado_em) > String(it.criado) && (!c.ref || (e.dados || {}).ref === c.ref));
+    if (o) return 'Enquanto você estava sem internet, ' + (o.autor_nome || 'outra pessoa') + ' enviou ' + (o.status === 'aceito' ? '(e o RH já aceitou) ' : '') + 'outra avaliação para este colaborador em ' + new Date(o.criado_em).toLocaleString('pt-BR') + '. Confira antes de enviar.';
+    if (r.tipo === 'experiencia' && c.etapa) { try { const { data:rg } = await sb.from('registros').select('dados').eq('painel', 'experiencia').eq('caminho', 'registros/m' + r.mat).maybeSingle();
+        const et = rg && rg.dados && rg.dados[c.etapa]; if (et && et.decisao && String(et.data || '') >= String(it.criado).slice(0, 10)) return 'A Gestão de Pessoas registrou a decisão desta etapa enquanto você estava sem internet. Confira antes de enviar.'; } catch(_){} }
+    return null; },
+  async enviar(it){ const row = Object.assign({}, it.row, { criado_em:new Date().toISOString(), dados:Object.assign({}, it.row.dados, { preenchidoSemInternet:it.criado }) });
+    const { error } = await sb.from('gestor_envios').insert(row); if (error && !/23505|duplicate/i.test(String(error.code) + ' ' + error.message)) throw error;
+    try { window.CRV_ENVIO_FEITO && window.CRV_ENVIO_FEITO(); } catch(_){} }
+});
+/* conexão voltou: confere o acesso (bloqueado/excluído apaga tudo), atualiza os dados e a tela */
+if (OFF) OFF.aoReconectar(async () => {
+  if (!E.perfil || E.simOrig) return;
+  try { await sb.auth.getSession(); } catch(_){}
+  let perfil; try { const r = await sb.from('perfis').select('*').eq('user_id', E.perfil.user_id).maybeSingle(); if (r.error) return; perfil = r.data; } catch(_){ return; }
+  if (!perfil || !perfil.ativo) { await OFF.limpar(); return telaSemAcesso(!perfil ? 'semperfil' : 'inativo'); }
+  E.perfil = perfil;
+  _quadroBase = null; _quadroBaseRef = null; Object.keys(_pacCache).forEach(k => delete _pacCache[k]); _histCache = {};
+  try { await carregarCatalogo(); } catch(_){}
+  try { await OFF.configurar(perfil, E.cfgOffline); } catch(_){}
+  const h = location.hash || '#/', painel = /^#\/(p|gp)\//.test(h);
+  if (painel && Date.now() - OFF.ultimoInput() < 120000) toast('Conexão de volta. Os dados deste painel se atualizam quando você sair dele.');
+  else { rota(); toast('Conexão de volta: dados atualizados.'); }
+  setTimeout(() => sincronizarOffline().catch(() => {}), 20000);
+});
+/* ---------- sincronização para consulta sem internet (em segundo plano, um painel por vez) ----------
+   Abre cada painel liberado escondido (como a Central faz) para guardar o que ele lê; guarda o Quadro, as fichas
+   (históricos sem saúde), os organogramas e, para o gestor, os painéis da área. Refaz a cada 6 horas ou quando a base muda. */
+let _sincRodando = false;
+async function sincronizarOffline(){
+  if (!OFF || !OFF.ativo() || semRede() || _sincRodando || !E.perfil || E.simOrig) return; _sincRodando = true;
+  const turno = Math.floor(Date.now() / (6 * 3600e3)), feito = (k, ref) => OFF.sincronizado(k) === ref + '|' + turno, marca = (k, ref) => OFF.marcarSinc(k, ref + '|' + turno);
+  try {
+    if (E.perfil.papel === 'gestor') {
+      const a = assistDe(E.perfil), dono = a ? a.id : E.perfil.user_id, op = gOpc(E.perfil);
+      try { await GESTOR().pendenciasArea(); } catch(_){} try { if (window.CRV_RESP_INIT) await RESP().pendenciasArea(); } catch(_){}
+      try { await sb.from('gestor_envios').select('id,tipo,mat,colaborador,dados,status,criado_em').eq('status', 'enviado'); } catch(_){}
+      const ks = [...op].filter(k => /^p:/.test(k)).map(k => k.slice(2)).filter(k => !OFF.bloqueado(k)).concat(['quadro', '__quadro', '__org']);
+      for (const k of ks) { if (semRede()) break; try { await sb.from('area_dados').select('pk:dados->paineis->' + k).eq('chave', 'u:' + dono).maybeSingle(); } catch(_){}
+        if (MODELOS[k]) { try { await fetch(MODELOS[k] + '?v=' + CFG.VERSAO, { cache:'no-cache' }); } catch(_){} } }   // tela do painel (fica no service worker)
+      try { await window.CRV_GESTORES_AREA(); } catch(_){}
+    } else {
+      try { await window.CRV_QUADRO(); } catch(_){}
+      if (ehRH()) { for (const col of ['hist_depto', 'hist_cargo', 'hist_ferias', 'hist_dep', 'hist_curso', 'hist_apos', 'hist_ocor'].concat(EMPRESAS_GRUPO.map(e => 'hist_ocor' + e[0]), ['estabilidade', 'entrevistas_resp', 'deslig_check', 'entrevistas', 'org_foto', 'sistema'])) {
+          if (semRede()) break; try { await window.CRV_REGS('quadro', col); } catch(_){} } }
+      for (const p of E.paineis) { if (semRede()) break;
+        if (!podeVer(p) || !MODELOS[p.id] || OFF.bloqueado(p.id) || !E.metas[p.id]) continue;
+        const ref = String((E.metas[p.id] || {}).atualizado_em || (E.metas[p.id] || {}).referencia || ''); if (feito(p.id, ref)) continue;
+        try { await sincronizarPainel(p); marca(p.id, ref); } catch(e){ console.warn('offline: painel', p.id, e); }
+        await espera(1200); }
+    }
+    if (!semRede()) OFF.fimSync();
+  } finally { _sincRodando = false; } }
+window.CRV_SINC = () => sincronizarOffline();   // "sincronizar agora" (também usado nos testes)
+async function sincronizarPainel(p){
+  const r = await htmlDoPainel(p); if (!r) return;
+  const nm = 'crvs-' + p.id + '-' + Date.now(); window.__CRV_PONTES = window.__CRV_PONTES || {}; window.__CRV_PONTES[nm] = r.ponte;
+  const fr = document.createElement('iframe'); fr.name = nm; fr.setAttribute('aria-hidden', 'true'); fr.tabIndex = -1;
+  fr.style.cssText = 'position:fixed;left:-20000px;top:0;width:1280px;height:900px;visibility:hidden;border:0;pointer-events:none';
+  const url = URL.createObjectURL(new Blob([r.html], { type:'text/html' }));
+  try { await new Promise(ok => { fr.onload = ok; setTimeout(ok, 25000); fr.src = url; document.body.appendChild(fr); }); await espera(3500); }
+  finally { fr.remove(); URL.revokeObjectURL(url); delete window.__CRV_PONTES[nm]; } }
+/* ---------- "Aguardando envio": o que foi preenchido sem internet ---------- */
+const ST_FILA = { aguardando:['Aguardando envio', '#8a5a00', '#fff4e0'], conferir:['Conferir antes de enviar', '#a3301c', '#fde8e6'], erro:['Não enviado', '#a3301c', '#fde8e6'] };
+async function telaFila(){
+  moldura(`<section class="ini-topo"><div><div class="ini-eyebrow">Gestão de Pessoas</div><h1>Aguardando envio</h1><div class="ini-data">O que foi preenchido sem internet. O app envia sozinho quando a conexão volta.</div></div></section><div id="fl-corpo"><div class="cartao vazio"><div class="spinner" style="margin:0 auto"></div></div></div>`);
+  const des = async () => { const c = $('#fl-corpo'); if (!c || location.hash !== '#/aguardando') return; const L = OFF ? await OFF.fila.listar() : [];
+    if (!L.length) { c.innerHTML = '<div class="cartao vazio"><h3>Nada aguardando envio</h3><p>Tudo o que foi preenchido já foi enviado.</p></div>'; return; }
+    c.innerHTML = L.map(it => { const st = ST_FILA[it.status] || ST_FILA.aguardando; return `<div class="cartao" style="padding:14px 16px;margin-bottom:10px;border-left:4px solid ${st[1]}">
+      <div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap"><div style="flex:1;min-width:220px"><b>${esc(it.titulo || '')}</b><div style="font-size:13px;color:var(--mut,#5d6a85);margin-top:2px">${esc(it.det || '')}</div>
+        <div style="font-size:12px;color:var(--mut,#5d6a85);margin-top:4px">Preenchido em ${esc(new Date(it.criado).toLocaleString('pt-BR'))}${it.quem ? ' · ' + esc(it.quem) : ''}</div>
+        ${it.msg ? `<div style="font-size:13px;margin-top:6px;padding:7px 10px;border-radius:8px;background:${st[2]};color:${st[1]}">${esc(it.msg)}</div>` : ''}</div>
+        <span style="font-size:12px;font-weight:800;padding:3px 10px;border-radius:99px;background:${st[2]};color:${st[1]}">${st[0]}</span></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">${it.rota ? `<button class="btn borda" data-fe="${esc(it.id)}" data-offline-ok>Editar</button>` : ''}<button class="btn borda" data-fc="${esc(it.id)}" data-offline-ok style="color:var(--coral,#c0392b)">Cancelar</button>
+        ${!semRede() ? `<button class="btn prim" data-fs="${esc(it.id)}">${it.status === 'conferir' ? 'Conferi, enviar mesmo assim' : 'Enviar agora'}</button>` : ''}</div></div>`; }).join('') +
+      `<p class="nr-fonte">${semRede() ? 'Sem conexão: assim que a internet voltar, o app envia sozinho e avisa "Enviado".' : 'Com conexão.'} Se alguém tiver alterado o mesmo registro enquanto você estava sem internet, o envio fica parado em "Conferir antes de enviar".</p>`;
+    c.querySelectorAll('[data-fc]').forEach(b => b.onclick = async () => { if (!confirm('Cancelar este envio? O que foi preenchido será descartado.')) return; await OFF.fila.remover(b.dataset.fc); toast('Envio cancelado.'); des(); });
+    c.querySelectorAll('[data-fe]').forEach(b => b.onclick = () => { const it = L.find(x => x.id === b.dataset.fe); if (!it) return; window.CRV_ABRIR_FILA = it; location.hash = it.rota; });
+    c.querySelectorAll('[data-fs]').forEach(b => b.onclick = async () => { b.disabled = true; b.textContent = 'Enviando…'; await OFF.fila.processar(b.dataset.fs); des(); }); };
+  des(); const ev = () => des(); window.addEventListener('crv-fila', ev); const lim = () => { if (location.hash !== '#/aguardando') { window.removeEventListener('crv-fila', ev); window.removeEventListener('hashchange', lim); } }; window.addEventListener('hashchange', lim);
+}
+function telaSemCopia(){
+  $('#app').innerHTML = `<div class="login-fundo"><div class="login-card"><img class="logo" src="img/logo-crv.png" alt="CRV Industrial"><div class="faixa-cana" style="margin-top:16px"></div>
+    <h1>Sem conexão</h1><p class="sub">Ainda não há dados guardados neste aparelho para consultar sem internet (ou o modo offline está desligado para o seu perfil). Conecte-se à internet para abrir o app.</p>
+    <button class="btn cheio" id="b-tenta">Tentar de novo</button></div></div>`;
+  $('#b-tenta').onclick = () => location.reload();
 }
 
 async function entrarNoApp(){
   try {
     const uid = E.sessao.user.id;
     const { data: perfil, error } = await sb.from('perfis').select('*').eq('user_id', uid).maybeSingle();
-    if (error) throw error;
-    if (!perfil || !perfil.ativo) return telaSemAcesso(!perfil ? 'semperfil' : 'inativo');
+    if (error) { if (semRede()) return telaSemCopia(); throw error; }
+    if (!perfil || !perfil.ativo) { if (!semRede() && OFF) await OFF.limpar(); return telaSemAcesso(!perfil ? 'semperfil' : 'inativo'); }   // bloqueado ou excluído: apaga o que estava no aparelho
     E.perfil = perfil;
     await carregarCatalogo();
+    if (OFF && !semRede()) { try { if (await OFF.configurar(perfil, E.cfgOffline)) {   // guarda já o perfil e o catálogo (lidos antes de saber se o modo offline estava ligado)
+        Promise.all([sb.from('perfis').select('*').eq('user_id', uid).maybeSingle(), sb.from('paineis').select('*').order('ordem'), sb.from('bases').select('painel,arquivo,linhas,atualizado_em,atualizado_por'), sb.from('pacotes').select('painel,referencia,atualizado_em,atualizado_por')]).catch(() => {}); } } catch(e){ console.warn('offline', e); } }
     window.addEventListener('hashchange', rota);
     try { const kk = 'crv-ent-' + perfil.user_id; if (!sessionStorage.getItem(kk)) { sessionStorage.setItem(kk, '1'); const mob = /Mobi|Android|iPhone/i.test(navigator.userAgent), inst = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches; logAcesso('entrou', null, (mob ? 'celular' : 'computador') + (inst ? ' · app instalado' : ' · navegador')); } } catch(_){}
     rota();
     if (window.CRV_PADRAO && perfil.papel !== 'gestor') setTimeout(() => window.CRV_PADRAO.carregar().catch(() => {}), 3000);
     /* respostas do RH e documentos dos gestores: publica os documentos do painel Sanções e mantém os contadores do gestor */
     try { if (window.CRV_RESP_INIT && (ehRH() || perfil.papel === 'gestor')) { RESP();  } } catch(_){}
-    if (ehAdmin()) setTimeout(() => GESTOR().gerar(false).catch(() => {}), 8000);
+    if (ehAdmin() && !semRede()) setTimeout(() => GESTOR().gerar(false).catch(() => {}), 8000);
+    if (OFF && !semRede() && OFF.ativo()) setTimeout(() => sincronizarOffline().catch(e => console.warn('offline: sincronização', e)), 15000);
     try { window.CRV_TOAST = toast; window.CRV_NOTIF && window.CRV_NOTIF.iniciar(sb, E); } catch(_){}   // sininho e push
   } catch(e){
     $('#app').innerHTML = `<div class="login-fundo"><div class="login-card"><img class="logo" src="img/logo-crv.png" alt="CRV Industrial">
@@ -186,6 +295,8 @@ async function carregarCatalogo(){
     sb.from('pacotes').select('painel,referencia,atualizado_em,atualizado_por')
   ]);
   if (p.error) throw p.error;
+  /* configuração do modo offline (Administração): guardada como linha de sistema na tabela de painéis, que todos leem */
+  { const cf = (p.data || []).find(x => x.id === '__offline'); E.cfgOffline = null; if (cf) { try { E.cfgOffline = JSON.parse(cf.nome || '{}'); } catch(_){} } p.data = (p.data || []).filter(x => !String(x.id).startsWith('__')); }
   window._temSal = (p.data || []).some(x => x.id === 'salarios'); E.paineis = (p.data || []).filter(x => x.id !== 'absenteismo-gestao' && x.id !== 'nr1' && x.id !== 'salarios'); E.paineis.forEach(x => { if (x.id === 'absenteismo') x.nome = String(x.nome || '').replace(/\s*·\s*Controle RH\s*$/i, ''); }); // NR-1 retirado por enquanto (out/2026); os registros continuam guardados // R&S fica dentro do Banco de Currículos; Absenteísmo Gestão foi retirado (fica só o do RH)
   // nomes dos painéis (out/2026, tabela da Scarlatt): o administrador grava no banco
   { const NOMES = { quadro:'Quadro de Colaboradores', onboarding:'Integração de Colaboradores', rescisoes:'Desligamentos', risco:'Risco de Desligamento', pesquisas:'Pesquisas com Colaboradores', sysprocard:'Sysprocard', ouvidorias:'Ouvidoria', recepcao:'Atendimento do RH', onibus:'Transporte de Colaboradores', 'servicos-gerais':'Serviços Gerais — Extras e Gratificações' };
@@ -245,7 +356,7 @@ async function carregarCatalogo(){
   if (NOVOS.length && E.perfil && E.perfil.papel === 'admin') {
     const { error:eN } = await sb.from('paineis').insert(NOVOS.map((n, i) => ({ ...n, ordem: Math.round((n.id.startsWith('cartao-') || n.id === 'sysprocard-credito') ? (sp ? +sp.ordem : 40) + 1 + i : +n.ordem) }))); if (eN) console.warn('painéis novos', eN);
     const r2 = await sb.from('paineis').select('*').order('ordem');
-    if (!r2.error) E.paineis = (r2.data || []).filter(x => x.id !== 'absenteismo-gestao' && x.id !== 'salarios'); E.paineis.forEach(x => { if (window.CRV_NOMES && window.CRV_NOMES[x.id]) x.nome = window.CRV_NOMES[x.id]; if (x.id === 'absenteismo') x.nome = String(x.nome || '').replace(/\s*·\s*Controle RH\s*$/i, ''); });
+    if (!r2.error) E.paineis = (r2.data || []).filter(x => x.id !== 'absenteismo-gestao' && x.id !== 'salarios' && !String(x.id).startsWith('__')); E.paineis.forEach(x => { if (window.CRV_NOMES && window.CRV_NOMES[x.id]) x.nome = window.CRV_NOMES[x.id]; if (x.id === 'absenteismo') x.nome = String(x.nome || '').replace(/\s*·\s*Controle RH\s*$/i, ''); });
   }
   // os cartões ficam logo abaixo do Sysprocard
   if (sp) { const ix = E.paineis.indexOf(sp); const OC = ['sysprocard-credito','cartao-alimentacao','cartao-convenio','cartao-adm','cartao-premium']; const cs = E.paineis.filter(x => OC.includes(x.id)).sort((a,b) => OC.indexOf(a.id) - OC.indexOf(b.id));
@@ -319,7 +430,12 @@ function telaSemAcesso(tipo){
   $('#b-sair').onclick = sair;
 }
 
-async function sair(){ try { await logAcesso('saiu'); } catch(_){} try { window.CRV_NOTIF && await window.CRV_NOTIF.sair(); } catch(_){} await sb.auth.signOut(); E.sessao=null; E.perfil=null; location.hash=''; telaLogin(); }
+async function sair(){
+  if (OFF) { const n = await OFF.fila.contar().catch(() => 0); if (n && !confirm(n + (n === 1 ? ' envio está' : ' envios estão') + ' em "Aguardando envio" (sem internet). Ao sair, ' + (n === 1 ? 'ele é apagado' : 'eles são apagados') + ' do aparelho. Sair mesmo assim?')) return; }
+  try { if (!semRede()) await logAcesso('saiu'); } catch(_){} try { if (!semRede()) window.CRV_NOTIF && await window.CRV_NOTIF.sair(); } catch(_){}
+  await sairLocal(); E.sessao=null; E.perfil=null; location.hash=''; telaLogin(); }
+/* sair apaga todos os dados offline do aparelho; sem internet, encerra só a sessão local */
+async function sairLocal(){ try { if (OFF) await OFF.limpar(); } catch(_){} try { await sb.auth.signOut(semRede() ? { scope:'local' } : undefined); } catch(_){} try { localStorage.removeItem('crv-gp-sessao'); } catch(_){} }
 
 /* =====================================================================
    ESTRUTURA (topo + rotas)
@@ -505,6 +621,7 @@ async function telaPainelGestor(id){
   E.painelAberto = null;
   const D = window.CRV_AREA && window.CRV_AREA.def(id);
   if (!D || !MODELOS[id]) { location.hash = '#/'; return; }
+  if (semRede() && OFF.bloqueado(id)) return telaSoConexao({ id, nome:D.nome, frente:D.frente });
   const p = Object.assign({ id, nome:D.nome, frente:D.frente }, (E.paineis || []).find(x => x.id === id) || {});
   /* Admissões e Desligamentos: as mesmas duas visões do RH (todas as empresas e anos, pela base do Quadro; e o acompanhamento 2026) */
   const vq = VISTA_QUADRO[id], sel = vq ? vistaDe(id) : '', nomeV = id === 'admissoes' ? 'Admissões' : 'Desligamentos';
@@ -533,6 +650,11 @@ async function telaPainelGestor(id){
     if (!usaQ && D.pendente) { try { const { data:EV } = await sb.from('gestor_envios').select('id,tipo,mat,colaborador,dados,status,criado_em').eq('status', 'enviado');
       (EV || []).forEach(e => { let r = null; try { r = D.pendente(e); } catch(_){} if (!r || !r.colecao || !r.doc_id) return; const L = regs[r.colecao] || (regs[r.colecao] = []);
         const i = L.findIndex(x => x.doc_id === r.doc_id), v = { doc_id:r.doc_id, dados:Object.assign({}, i >= 0 ? L[i].dados : {}, r.dados, { _aguardaRH:true }) }; if (i >= 0) L[i] = v; else L.push(v); }); } catch(_){} }   // mescla: não perde o que o RH já registrou
+    // preenchido sem internet ("Aguardando envio"): aparece no painel e pode ser editado até ser enviado
+    if (!usaQ && D.pendente && OFF) { try { (await OFF.fila.listar()).filter(it => it.tipo === 'gestor_envio' && it.abrir && it.abrir.painel === id).forEach(it => {
+        let r = null; try { r = D.pendente(Object.assign({}, it.row, { status:'enviado' })); } catch(_){} if (!r || !r.colecao || !r.doc_id) return; if (r.dados && r.dados._g) r.dados._g = Object.assign({}, it.g || {}, r.dados._g, { fila:it.id, em:it.criado });
+        const L = regs[r.colecao] || (regs[r.colecao] = []); const i = L.findIndex(x => x.doc_id === r.doc_id), v = { doc_id:r.doc_id, dados:Object.assign({}, i >= 0 ? L[i].dados : {}, r.dados, { _aguardaRH:true }) }; if (i >= 0) L[i] = v; else L.push(v); }); } catch(_){} }
+    window.CRV_ABRIR_MAT = window.CRV_ABRIR_FILA && window.CRV_ABRIR_FILA.abrir && window.CRV_ABRIR_FILA.abrir.painel === id ? window.CRV_ABRIR_FILA.abrir.mat : null; window.CRV_ABRIR_FILA = null;
     const lanca = !usaQ && !!(D.envios && Object.keys(D.envios).length);
     window.__CRV_PAINEL = window.CRV_PONTE.criar({ sb, painel:pid, perfil:() => E.perfil, quem:() => E.perfil.nome, podeEditar:() => lanca, ehAdmin:() => false, memoria:regs,
       enviar: lanca ? (caminho, dados) => GESTOR().enviarPainel(id, caminho, dados) : null });
@@ -560,7 +682,8 @@ function rota(){
   { const h0 = location.hash || ''; const qi = h0.indexOf('?'); if (qi >= 0) { const ps = new URLSearchParams(h0.slice(qi + 1)); window.CRV_ABRIR_ITEM = ps.get('item') || null;
       const n = ps.get('n'); if (n && window.CRV_NOTIF) window.CRV_NOTIF.lida(n); try { history.replaceState(null, '', h0.slice(0, qi)); } catch(_){ location.hash = h0.slice(0, qi); return; } } }
   const h = location.hash || '#/';
-  logAcesso('abriu', ondeDe(h));
+  if (!semRede()) logAcesso('abriu', ondeDe(h));
+  if (h === '#/aguardando') return telaFila();
   // leitor/editor (fora do RH): só a Visão Geral e os painéis liberados; as telas da equipe RH ficam fechadas
   if (E.perfil.papel !== 'gestor' && !ehRH() && /^#\/(central|organograma|org-empresa|ficha|consulta|relatorio|bases|desligamento|envios|cadastros|respostas)/.test(h)) { location.hash = '#/'; return; }
   if (E.perfil.papel === 'gestor') { if (h === '#/conta') return telaConta();
@@ -889,6 +1012,7 @@ async function fichaDados(mat){
   if (ehRH()) tarefas.push((async () => {
     const { data } = await sb.from('registros').select('colecao,dados').eq('painel', 'quadro').in('caminho', ['hist_depto/m' + mat, 'hist_cargo/m' + mat, 'hist_ferias/m' + mat, 'hist_dep/m' + mat, 'hist_curso/m' + mat, 'hist_exame/m' + mat, 'hist_afast/m' + mat, 'hist_apos/m' + mat, 'hist_ocor/m' + mat, 'hist_atest/m' + mat].concat(...EMPRESAS_GRUPO.map(e => ['hist_ocor' + e[0] + '/c' + mat, 'hist_atest' + e[0] + '/c' + mat])));
     const H = {}; (data || []).forEach(x => { H[x.colecao] = x.dados || {}; });
+    if (semRede()) F.sec.push({ k:'offs', t:'Atestados, exames ocupacionais (ASO) e afastamentos', ref:'', cab:['Informação'], linhas:[[OFF.TXT]] });   // saúde: não fica no aparelho
     const T = ((H.hist_depto || {}).l || []).map(x => [x[0], 'Departamento', x[1], x[2]]).concat(((H.hist_cargo || {}).l || []).map(x => [x[0], 'Função', x[1], x[2]])).sort((a, b) => b[0].localeCompare(a[0]));
     const DP = (H.hist_dep || {}).l || [], idd = n => { if (!n) return ''; const a = Math.floor((Date.now() - new Date(n + 'T12:00:00')) / 31557600000); return ' (' + a + ' anos)'; };
     const EX = ((H.hist_exame || {}).l || []).slice().sort((a, b) => b[0].localeCompare(a[0])), ul = EX.find(x => !x[3]);
@@ -1234,11 +1358,12 @@ async function coletarCentral(){
 }
 function iniciarCentral(){
   const c = centralCache(); vigiarEnvios();
+  if (semRede()) { if (c) desenharCentral(c, false); else { const el = $('#central'); if (el) el.innerHTML = '<div class="cartao vazio"><h3>Sem conexão</h3><p>A Central de Rotinas ainda não foi montada neste aparelho. Ela aparece aqui depois de abrir com internet.</p></div>'; } return; }
   if (c && c.ass === centralAss() && Date.now() - new Date(c.em) < CENTRAL_VALIDADE) { desenharCentral(c, false); atualizarEnviosCentral(); } else coletarCentral();
 }
 /* envios dos gestores: sempre ao vivo na Central (mesmo com o resto em cache), e atualiza na hora quando chega um envio novo */
 const ID_ENVIOS = /^(envios|envios-urg|sem-gestor|san-pedidos)$/;
-async function atualizarEnviosCentral(){ if (centralRodando) return; let nv; try { nv = await GESTOR().pendenciasEnvios(); } catch(_) { return; }
+async function atualizarEnviosCentral(){ if (centralRodando || semRede()) return; let nv; try { nv = await GESTOR().pendenciasEnvios(); } catch(_) { return; }
   const c = centralCache(); if (!c) return; c.itens = (c.itens || []).filter(x => !ID_ENVIOS.test(x.id)).concat(nv);
   try { localStorage.setItem(centralChave(), JSON.stringify(c)); } catch(_){} if (location.hash === '#/central' && !centralRodando) desenharCentral(c, false); }
 let _canalEnv = null, _tEnv = null;
@@ -1363,6 +1488,7 @@ async function telaPainel(id, acao){
   E.painelAberto = null;
   const p = E.paineis.find(x => x.id === id);
   if (!p || !podeVer(p)) { toast('Painel não encontrado ou sem acesso.', true); location.hash = '#/'; return; }
+  if (semRede() && OFF.bloqueado(id)) return telaSoConexao(p);
   const cfg = FRENTES[p.frente] || FRENTES['Horas Extras e Gratificações'];
   if (VISTA_QUADRO[id] && (acao === 'vq' || acao === 'vp')) { try { localStorage.setItem('crv-vista-' + id, acao.slice(1)); } catch(_){} try { history.replaceState(null, '', '#/p/' + encodeURIComponent(id)); } catch(_){} acao = ''; }
   if (id === 'risco') return RISCO().tela(p, cfg);
@@ -1731,7 +1857,7 @@ function prepararEnvio(nomeArquivo, ws, aba){
 /* acessos de cada pessoa (Administração → Acessos). Se a tabela ainda não existe (07_acessos.sql), fica quieto. */
 let _acOff = false; const _acUlt = {};
 async function logAcesso(acao, onde, detalhe){
-  if (_acOff || !E.perfil) return; const k = acao + '|' + (onde || ''); if (acao === 'abriu' && _acUlt[k] && Date.now() - _acUlt[k] < 5 * 60e3) return; _acUlt[k] = Date.now();
+  if (_acOff || !E.perfil || semRede()) return; const k = acao + '|' + (onde || ''); if (acao === 'abriu' && _acUlt[k] && Date.now() - _acUlt[k] < 5 * 60e3) return; _acUlt[k] = Date.now();
   try { const { error } = await sb.from('acessos').insert({ usuario:E.perfil.nome, papel:E.perfil.papel, acao, onde:onde || null, detalhe:detalhe ? String(detalhe).slice(0, 300) : null }); if (error && /acessos|relation|42P01/i.test(error.message + error.code)) _acOff = true; } catch(_){}
 }
 window.CRV_LOG_ACESSO = logAcesso;
@@ -1896,7 +2022,7 @@ async function lerArquivoPacote(painel, arquivo){
    ABSD: PR = pessoa (índice em D, ou -i-1 em DM), O = [pessoa, dia do ano, 0 atestado | 1 falta | 2 suspensão],
    A = [pessoa, dia de início, dias, grupo do CID, emissor], grps, docs, last. */
 async function refazABSD(q){
-  if (!q || !q.ABSD || !Array.isArray(q.D)) return;
+  if (!q || !q.ABSD || !Array.isArray(q.D) || semRede()) return;   // sem internet: usa o absenteísmo guardado (os atestados não ficam no aparelho)
   const HO = await window.CRV_HIST('ocor'), HA = await window.CRV_HIST('atest');
   const Y = '2026', b0 = Date.UTC(2026, 0, 1), dia = s => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ''); return m ? Math.round((Date.UTC(+m[1], +m[2] - 1, +m[3]) - b0) / 864e5) : null; };
   const hoje = new Date().toISOString().slice(0, 10);
@@ -2185,7 +2311,8 @@ const COLECAO_NOVOS = { sancoes:'documentos', fadiga:['novos','tratativas'] };
 const mascaraCPF = c => { if (!c || !E.perfil || E.perfil.papel !== 'leitor') return c;
   return JSON.parse(JSON.stringify(c).replace(/(\d{3})\.(\d{3})\.(\d{3})-(\d{2})/g, '***.$2.$3-**')); };
 // todo painel recebe o código que põe a linha de total (pessoas e valores) no fim das tabelas dos PDFs
-function montarModelo(){ const h = montarModelo0.apply(null, arguments); try { if (!window.CRV_TOTAIS_PDF) return h;
+const SC_OFF = '<script>try{parent.CRV_OFF&&parent.CRV_OFF.guardar(document)}catch(e){}<\/script>';   // modo offline: botões de lançamento do painel
+function montarModelo(){ const h0 = montarModelo0.apply(null, arguments); const h = /<\/body>/i.test(h0) ? h0.replace(/<\/body>(?![\s\S]*<\/body>)/i, SC_OFF + '</body>') : h0 + SC_OFF; try { if (!window.CRV_TOTAIS_PDF) return h;
   const sc = '<script>(function(){var f=' + window.CRV_TOTAIS_PDF.toString().replace(/<\/script/gi, '<\\/script') + ';var k=0,t=function(){f(window);if(++k<20)setTimeout(t,1500)};t();window.addEventListener("load",function(){f(window)})})();<\/script>';
   return /<\/body>/i.test(h) ? h.replace(/<\/body>(?![\s\S]*<\/body>)/i, sc + '</body>') : h + sc; } catch(_) { return h; } }
 function montarModelo0(tpl, conteudo, referencia, p, novos){
@@ -2450,6 +2577,7 @@ async function telaAdmin(){
       <button class="aba ${abaAdmin==='historico'?'ativa':''}" data-aba="historico">Histórico</button>
       <button class="aba ${abaAdmin==='org'?'ativa':''}" data-aba="org">Organograma da empresa</button>
       <button class="aba ${abaAdmin==='backup'?'ativa':''}" data-aba="backup">Cópia de segurança</button>
+      <button class="aba ${abaAdmin==='offline'?'ativa':''}" data-aba="offline">Modo offline</button>
     </div><div id="admin-corpo" class="cartao"><div class="spinner" style="margin:20px auto"></div></div>`);
   document.querySelector('.trilha [data-ir]').onclick = () => location.hash = '#/';
   document.querySelectorAll('[data-aba]').forEach(b => b.onclick = () => { abaAdmin = b.dataset.aba; telaAdmin(); });
@@ -2458,8 +2586,26 @@ async function telaAdmin(){
   if (abaAdmin === 'backup') return adminBackup();
   if (abaAdmin === 'acessos') return adminAcessos();
   if (abaAdmin === 'org') return adminOrg();
+  if (abaAdmin === 'offline') return adminOffline();
   return adminHistorico();
 }
+
+/* ---------- Modo offline: liga/desliga por perfil e prazo sem conectar ---------- */
+function adminOffline(){ const c = $('#admin-corpo'); if (!c) return;
+  const cf = Object.assign({ ativo:true, dias:7, perfis:{} }, E.cfgOffline || {}), P = Object.assign({ rh:true, gestor:true, assistente:true, leitor:true }, cf.perfis || {});
+  const PF = [['rh', 'RH (equipe da Gestão de Pessoas)'], ['gestor', 'Gestores de área'], ['assistente', 'Assistentes dos gestores'], ['leitor', 'T&D (Treinamento e Desenvolvimento)']];
+  c.innerHTML = `<h3 style="margin-top:0">Modo offline</h3>
+    <p style="color:#5d6a85;font-size:13.5px;max-width:780px;margin-top:0">Com o modo offline ligado, o app abre sem internet para <b>consulta</b>, com os dados da última sincronização. Cada pessoa só guarda o que já pode ver. Nunca ficam no aparelho: salário, CPF, RG, endereço, telefone, dados bancários, ouvidorias/escutas e saúde (atestados com CID, exames, afastamentos, plano de saúde, odontológico, farmácia, acidente de trabalho). Os dados ficam cifrados no aparelho e são apagados ao clicar em Sair.</p>
+    <div style="display:grid;gap:8px;max-width:520px;margin:14px 0">${PF.map(([k, n]) => `<label style="display:flex;gap:10px;align-items:center;padding:10px 12px;border:1px solid #e4e7ec;border-radius:10px;cursor:pointer"><input type="checkbox" data-op="${k}" ${P[k] !== false ? 'checked' : ''}> <span><b>${esc(n)}</b></span></label>`).join('')}</div>
+    <label style="display:block;font-size:12px;font-weight:800;color:#5d6a85;text-transform:uppercase;margin:6px 0 4px">Apagar os dados do aparelho depois de quantos dias sem conectar</label>
+    <input id="of-dias" type="number" min="1" max="60" value="${esc(cf.dias || 7)}" style="width:110px;padding:8px 10px;border:1px solid #d0d5dd;border-radius:9px;font:inherit"> <span style="color:#5d6a85;font-size:13px">dias (padrão: 7). Depois disso o app exige entrar de novo com internet.</span>
+    <p style="color:#5d6a85;font-size:13px">Perfil desligado: na próxima vez que a pessoa abrir o app com internet, o que estava guardado no aparelho dela é apagado e o app passa a funcionar só com conexão. Usuário bloqueado ou excluído também tem os dados apagados na próxima conexão.</p>
+    <div style="display:flex;gap:8px;align-items:center"><button class="btn prim" id="of-ok">Salvar</button><span id="of-msg" style="font-size:13px;color:#5d6a85"></span></div>`;
+  $('#of-ok').onclick = async () => { const v = { ativo:true, dias:Math.max(1, Math.min(60, parseInt($('#of-dias').value, 10) || 7)), perfis:{} };
+    c.querySelectorAll('[data-op]').forEach(i => v.perfis[i.dataset.op] = i.checked);
+    const { error } = await sb.from('paineis').upsert({ id:'__offline', frente:'__sistema', nome:JSON.stringify(v), nivel:'restrito', ordem:99999 }, { onConflict:'id' });
+    if (error) { $('#of-msg').textContent = traduzErro(error); return; }
+    E.cfgOffline = v; try { await OFF.configurar(E.perfil, v); } catch(_){} toast('Modo offline salvo.'); $('#of-msg').textContent = 'Salvo. Vale para cada pessoa na próxima vez que ela abrir o app com internet.'; }; }
 
 /* ---------- Organograma da empresa: quem é a liderança de cada departamento e a quem ela responde ---------- */
 function adminOrg(){ const c = $('#admin-corpo'); if (!c) return;
@@ -2918,7 +3064,7 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('focus', () => conferir());
 })();
 
-sb.auth.onAuthStateChange((evento) => { if (evento === 'SIGNED_OUT' && E.perfil) { E.perfil = null; telaLogin(); } });
+sb.auth.onAuthStateChange((evento) => { if (evento === 'SIGNED_OUT') { try { OFF && OFF.limpar(); } catch(_){} if (E.perfil) { E.perfil = null; telaLogin(); } } });
 prepararLogo();
 iniciar();
 })();

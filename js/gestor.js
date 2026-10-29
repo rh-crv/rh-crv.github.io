@@ -56,6 +56,9 @@ const etapaExp = (e, h) => e && e.v1 && !e.dec1 && e.v1 >= addD(h, -10) ? { k:'p
 const assinaturaOk = (dig, nome) => { const a = normal(dig).replace(/\s+/g, ' ').trim(), b = normal(nome).replace(/\s+/g, ' ').trim(); return a.length >= 5 && a.split(' ').length >= 2 && (a === b || b.startsWith(a) || a.startsWith(b)); };
 /* assistente (secretária) do gestor: assina com o próprio nome e o envio sai também com o gestor responsável, que autorizou */
 const ASSIST = () => (window.CRV_ASSIST && window.CRV_ASSIST()) || null;
+/* modo offline: estes envios podem ser preenchidos sem internet e ficam em "Aguardando envio" (RD entra aqui quando existir) */
+const FILA_TIPOS = new Set(['experiencia']);
+const OFFL = () => !!(window.CRV_OFF && window.CRV_OFF.offline());
 const tcG = n => String(n || '').toLowerCase().replace(/(^|\s)(\S)/g, (m, e, l) => e + l.toUpperCase()).replace(/\b(Da|De|Do|Das|Dos|E)\b/g, x => x.toLowerCase());
 const quemG = (a, e) => a && a.gestorResp ? a.gestorResp + ' (preenchido por ' + (a.nome || e.autor_nome || '') + ', assistente)' : (a && a.nome) || e.autor_nome || '';
 const linhaResp = a => a && a.gestorResp ? 'Gestor responsável que autorizou o preenchimento: ' + a.gestorResp : '';
@@ -270,10 +273,11 @@ async function enviarPainel(id, caminho, dados){
     abrirModal({ titulo:(TIPO_ENV[c.tipo] || 'Envio ao RH') + ' · ' + tcG(p.n), largo:true,
       corpo:`<div class="gs-fid" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div><small>Matrícula</small><b>${esc(p.m)}</b></div><div><small>Função</small><b>${esc(p.f || '')}</b></div><div><small>Seção</small><b>${esc(p.s || '')}</b></div></div>
         <div class="fc-tw"><table class="fc-t"><tbody>${(c.resumo || []).map(([k, v]) => `<tr><td>${esc(k)}</td><td><b>${esc(v == null ? '' : v)}</b></td></tr>`).join('')}</tbody></table></div>
+        ${OFFL() && FILA_TIPOS.has(c.tipo) ? '<div class="cartao" style="padding:9px 12px;margin:6px 0;background:#fff4e0;border-color:#e9a23b;color:#7a5200;font-size:13px"><b>Sem internet.</b> Fica em "Aguardando envio" e o app envia sozinho quando a conexão voltar. Até lá você pode editar ou cancelar.</div>' : ''}
         <p class="nr-nota" style="padding:6px 0">Vai para a Gestão de Pessoas conferir. Só entra no painel depois que o RH aceitar; a resposta aparece em Respostas do RH.</p>
         ${c.assin ? `<div class="cartao" style="padding:10px 14px;margin:6px 0 0"><b>Gestor responsável:</b> ${esc(c.assin.gestor)}${c.assin.funcao ? ' · ' + esc(c.assin.funcao) : ''}<br>${c.assin.modo === 'tela' ? `<span style="font-size:12.5px;color:var(--mut,#5d6a85)">Assinatura feita na tela:</span><br><img src="${c.assin.img}" alt="Assinatura" style="max-width:260px;max-height:80px;background:#fff;border:1px solid #e4e7ec;border-radius:8px;margin-top:4px">` : '<span style="font-size:12.5px;color:var(--mut,#5d6a85)">Assinatura será colhida no papel: o documento sai com a linha de assinatura do gestor.</span>'}</div>
         <label style="display:flex;gap:8px;align-items:flex-start;margin:10px 0 0;font-size:13px"><input type="checkbox" id="gpv-dec"> <span>Declaro que as informações estão corretas e autorizo a Gestão de Pessoas a dar continuidade.</span></label>` : blocoAssinatura('gpv', E.perfil.nome)}<div id="gpv-msg"></div>`,
-      pe:`<button class="btn borda" id="gpv-c">Cancelar</button><button class="btn prim" id="gpv-ok">${c.assin ? 'Enviar ao RH' : 'Assinar e enviar ao RH'}</button>`,
+      pe:`<button class="btn borda" id="gpv-c" data-offline-ok>Cancelar</button><button class="btn prim" id="gpv-ok" ${FILA_TIPOS.has(c.tipo) ? 'data-offline-ok' : ''}>${OFFL() && FILA_TIPOS.has(c.tipo) ? 'Guardar para enviar' : c.assin ? 'Enviar ao RH' : 'Assinar e enviar ao RH'}</button>`,
       aoAbrir: m => { const fim = () => { if (!feito) { feito = true; falha(Object.assign(new Error('Envio cancelado.'), { code:'cancelado' })); } };
         m.querySelector('#gpv-c').onclick = () => { fecharModal(); fim(); };
         const obs = new MutationObserver(() => { if (!document.body.contains(m)) { obs.disconnect(); fim(); } }); obs.observe(document.body, { childList:true, subtree:true });
@@ -286,7 +290,14 @@ async function enviarPainel(id, caminho, dados){
             : { nome:nm, em:new Date().toISOString(), usuario:E.perfil.usuario || '', declaracao:'Declaro que as informações estão corretas e autorizo a Gestão de Pessoas a dar continuidade.' };
           bt.disabled = true; bt.textContent = 'Enviando…';
           const row = { id:(crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2)), chave, tipo:c.tipo, mat:p.m, colaborador:p.n, dados:dd, assinatura:assin, status:'enviado', autor:E.perfil.user_id, autor_nome:E.perfil.nome, criado_em:new Date().toISOString() };
+          // sem internet: vai para a fila "Aguardando envio" (só os tipos liberados para isso)
+          const paraFila = async () => { await window.CRV_OFF.fila.adicionar({ chave:'gestor_envio|' + c.tipo + '|' + p.m + '|' + ((dd || {}).ref || ''), tipo:'gestor_envio', titulo:(TIPO_ENV[c.tipo] || 'Envio ao RH') + ' · ' + tcG(p.n),
+              det:(c.resumo || []).filter(x => /^(Etapa|Vencimento|Decisão|Gestor responsável)$/.test(x[0])).map(x => x[0] + ': ' + x[1]).join(' · '), quem:E.perfil.nome, row, g:(dados || {})._g || null,
+              conf:{ tipo:c.tipo, mat:p.m, ref:(dd || {}).ref || '', etapa:(dd || {}).etapa || '' }, rota:'#/gp/' + id, abrir:{ painel:id, mat:p.m } });
+            feito = true; obs.disconnect(); fecharModal(); toast('Sem internet: guardado em "Aguardando envio". O app envia sozinho quando a conexão voltar.'); ok({ fila:true }); };
+          if (OFFL() && FILA_TIPOS.has(c.tipo)) return paraFila();
           const { error } = await sb.from('gestor_envios').insert(row);
+          if (error && error.code === 'OFFLINE' && FILA_TIPOS.has(c.tipo) && window.CRV_OFF) return paraFila();
           if (error) { bt.disabled = false; bt.textContent = 'Assinar e enviar ao RH'; return msg(traduzErro(error)); }
           try { window.CRV_LOG_ACESSO && window.CRV_LOG_ACESSO('enviou', TIPO_ENV[c.tipo] || c.tipo, p.n + ' (' + p.m + ')'); } catch(_){}
           feito = true; obs.disconnect(); fecharModal(); toast('Enviado ao RH. Aguardando a conferência da Gestão de Pessoas.'); try { window.CRV_ENVIO_FEITO && window.CRV_ENVIO_FEITO(); } catch(_){} ok(true); }; } }); });
@@ -627,6 +638,7 @@ async function tela(abaIni){
       y += 80; doc.line(30, y, 280, y); doc.line(330, y, 565, y); doc.setFontSize(8.5); doc.text('Assinatura do gestor', 30, y + 12); doc.text('Data', 330, y + 12); });
     if (first) { toast('Ninguém em experiência com avaliação a fazer.'); return; }
     rodapePDF(doc); baixar(doc.output('blob'), 'Avaliações de experiência em branco.pdf'); }
+  if (!$('#gs-xls')) return;   // a pessoa já foi para outra tela enquanto carregava
   const nome = 'Minha equipe ' + new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
   $('#gs-xls').onclick = () => { const wb = XLSX.utils.book_new(); (aba === 'resumo' ? Object.keys(tabelas) : [aba]).forEach(k => { const T = comMat(tabelas[k]()); const ws = XLSX.utils.aoa_to_sheet([T.cab, ...T.lin]); ws['!cols'] = T.cab.map((x, i) => ({ wch: i === 0 ? 34 : 18 })); XLSX.utils.book_append_sheet(wb, ws, T.t.replace(/[\\/?*[\]:]/g, '-').slice(0, 31)); });
     baixar(new Blob([XLSX.write(wb, { bookType:'xlsx', type:'array' })], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), nome + '.xlsx'); };

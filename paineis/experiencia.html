@@ -1641,7 +1641,7 @@ window.CRV_PENDENCIAS=function(forcar){
   const _ap=apply;
   apply=function(p){ _ap(p); const rg=REG[p.mat], g=rg&&rg._aguardaRH&&rg._g;
     p.agRH=g&&g.etapa===p.key&&g.venc===iso(p.data)?g:null; return p; };
-  const tagAg=p=>p.agRH?` <span class="tag agrh" title="Avaliação enviada ao RH${p.agRH.em?" em "+fdy(pd(p.agRH.em.slice(0,10))):""}">Aguardando o RH: ${esc((DECG.find(x=>x[0]===p.agRH.decisao)||[])[1]||"").toLowerCase()}</span>`:"";
+  const tagAg=p=>p.agRH?` <span class="tag agrh" title="${p.agRH.fila?"Preenchida sem internet: o app envia quando a conexão voltar":"Avaliação enviada ao RH"+(p.agRH.em?" em "+fdy(pd(p.agRH.em.slice(0,10))):"")}">${p.agRH.fila?"Aguardando envio":"Aguardando o RH"}: ${esc((DECG.find(x=>x[0]===p.agRH.decisao)||[])[1]||"").toLowerCase()}</span>`:"";
   /* marca "Aguardando o RH" ao lado do botão do formulário em todas as listas (Nominal, Avaliações, janelas de nomes) */
   const marcaAg=()=>document.querySelectorAll(".fmb[data-m]").forEach(b=>{const p=P.find(x=>x.mat===+b.dataset.m)||ENC.find(x=>x.mat===+b.dataset.m),t=b.previousElementSibling,tem=t&&t.classList.contains("agrh");
     if(p&&p.agRH){ if(!tem) b.insertAdjacentHTML("beforebegin",tagAg(p).trim()+" "); } else if(tem) t.remove(); });
@@ -1652,13 +1652,14 @@ window.CRV_PENDENCIAS=function(forcar){
   /* formulário: carrega o que o gestor já enviou (aguardando o RH) */
   const _ld=fmLoad;
   fmLoad=function(mat){ _ld(mat); const p=FMP; if(!p||p.mat!==mat) return;
-    if(p.agRH&&!fmSaved(p)){ const g=p.agRH; FM={...fmBlank(),notas:(g.notas||[]).slice(),coment:g.obs||"",gestor:g.gestor||"",cargoG:g.cargoG||"",gdec:g.decisao,assModo:(g.assin&&g.assin.modo)||"",naLid:g.notas&&g.notas[FAT.length-1]===null}; fmRender(); } };
+    if(p.agRH&&!fmSaved(p)){ const g=p.agRH; FM={...fmBlank(),notas:(g.notas||[]).slice(),coment:g.obs||"",gestor:g.gestor||"",cargoG:g.cargoG||"",gdec:g.decisao,assModo:(g.assin&&g.assin.modo)||"",assImg:(g.assin&&g.assin.img)||null,naLid:g.notas&&g.notas[FAT.length-1]===null}; fmRender(); } };
 
   function estado(p){ const s=fmSaved(p);
     if(p.encOk||p.encAnd) return ["crit","O RH já está tratando o encerramento deste contrato. Para qualquer mudança, fale com a Gestão de Pessoas."];
     if(p.bq) return ["crit","Colaborador bloqueado pela Gestão de Pessoas. Fale com o RH antes de avaliar."];
     if(p.cur) return ["ok","Avaliação desta etapa já registrada no painel ("+(DEC[p.cur.decisao]?DEC[p.cur.decisao][0].toLowerCase():p.cur.decisao)+(p.cur.rh?", pelo RH":"")+"). Para mudar, fale com a Gestão de Pessoas."];
     if(s) return ["ok","Formulário desta etapa já recebido pelo RH. Somente consulta."];
+    if(p.agRH&&p.agRH.fila) return null;   /* preenchido sem internet: segue editável até ser enviado */
     if(p.agRH) return ["ag","Avaliação enviada ao RH"+(p.agRH.em?" em "+fdy(pd(p.agRH.em.slice(0,10))):"")+": aguardando a conferência da Gestão de Pessoas."];
     return null; }
 
@@ -1722,7 +1723,7 @@ window.CRV_PENDENCIAS=function(forcar){
       '<p class="gs-falta" id="gsFalta"></p>';
     if(am==="tela"&&livre) cvLigar();
     let b=document.getElementById("fmEnv");
-    if(!b){ b=document.createElement("button"); b.id="fmEnv"; b.className="btn2 pri"; b.textContent="Enviar avaliação ao RH"; b.onclick=enviar; box.querySelector(".fmbtns").prepend(b); }
+    if(!b){ b=document.createElement("button"); b.id="fmEnv"; b.className="btn2 pri"; b.setAttribute("data-offline-ok",""); b.textContent="Enviar avaliação ao RH"; b.onclick=enviar; box.querySelector(".fmbtns").prepend(b); }
     botao(); }
   /* assinatura na tela: desenha com dedo/mouse; guarda como imagem a cada traço */
   function cvLigar(){ const c=document.getElementById("fmCv"); if(!c) return; const k=c.getContext("2d"); k.lineCap="round"; k.lineJoin="round"; k.lineWidth=4.2; k.strokeStyle="#14213d";
@@ -1744,7 +1745,7 @@ window.CRV_PENDENCIAS=function(forcar){
     box.querySelectorAll("input,textarea").forEach(i=>{ if(i.closest("#fmGs")) return; const ok=livre; i.readOnly=!ok; if(i.type==="radio"||i.type==="checkbox") i.disabled=!ok; });
     if(livre&&!FM.gestor&&GL){ FM.gestor=GL.padrao; FM.cargoG=(GL.lista.find(x=>x.nome===GL.padrao)||{}).funcao||""; }
     if(livre&&FM.gdec==="prorrogar"&&!regra(p).prOk) FM.gdec=null;
-    const ro=document.getElementById("fmRo"); if(ro) ro.textContent=e?e[1]:"Dê as notas, marque a decisão, escolha o gestor responsável e a forma de assinatura. Depois clique em “Enviar avaliação ao RH”.";
+    const ro=document.getElementById("fmRo"); if(ro) ro.textContent=e?e[1]:p.agRH&&p.agRH.fila?"Preenchida sem internet: está em “Aguardando envio”. Você pode corrigir e salvar de novo; o app envia sozinho quando a conexão voltar.":"Dê as notas, marque a decisão, escolha o gestor responsável e a forma de assinatura. Depois clique em “Enviar avaliação ao RH”.";
     gsRender();
   };
   document.getElementById("vF").addEventListener("change",e=>{const t=e.target;
@@ -1778,11 +1779,15 @@ window.CRV_PENDENCIAS=function(forcar){
     cur._g={etapa:p.key,venc:iso(r.venc),adm:iso(p.adm),decisao:dec,notas,obs:obs.slice(0,1200),gestor:String(FM.gestor||"").trim(),cargoG:String(FM.cargoG||"").trim(),em,
       assin:{modo:FM.assModo,img:FM.assModo==="tela"?FM.assImg:null},urgente:dec==="encerrar"&&r.tarde,lancadoPor:quem(),prOk:r.prOk};
     const b=document.getElementById("fmEnv"); ocup=true; if(b) b.disabled=true;
-    try{ await DBH.doc("registros/m"+p.mat).set(cur); const g={...cur._g}; delete g.assin; g.assin={modo:FM.assModo}; cur._g=g; REG[p.mat]={...cur,_aguardaRH:true}; refresh(); toast("Avaliação enviada ao RH. Aguardando a conferência da Gestão de Pessoas."); }
+    try{ await DBH.doc("registros/m"+p.mat).set(cur); const OF=(()=>{try{return window.parent.CRV_OFF}catch(_){return null}})(), fila=!!(OF&&OF.ultimaFila&&Date.now()-OF.ultimaFila.em<5000&&String(OF.ultimaFila.chave||"").indexOf("|"+p.mat+"|")>0);
+      const g={...cur._g}; if(!fila){ delete g.assin; g.assin={modo:FM.assModo}; } else g.fila=true; cur._g=g; REG[p.mat]={...cur,_aguardaRH:true}; refresh();
+      toast(fila?"Sem internet: avaliação guardada em “Aguardando envio”. O app envia sozinho quando a conexão voltar.":"Avaliação enviada ao RH. Aguardando a conferência da Gestão de Pessoas."); }
     catch(err){ if(!(err&&err.code==="cancelado")) toast((err&&err.message)||"Não foi possível enviar agora. Tente de novo em instantes."); }
     finally{ ocup=false; botao(); }
   }
   try{ refresh(); if(FMP) fmRender(); }catch(_){}
+  /* veio de "Aguardando envio" → Editar: abre direto o formulário desta pessoa */
+  try{ const m=window.parent&&window.parent.CRV_ABRIR_MAT; if(m){ window.parent.CRV_ABRIR_MAT=null; tab("F"); fmLoad(+m); fmRender(); } }catch(_){}
 })();
 </script>
 </body></html>
