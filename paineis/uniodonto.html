@@ -553,8 +553,11 @@ const tkey=t=>t.p?'m:'+t.p[0]:'t:'+t.i;
 const DL=[];T.forEach(t=>t[7].forEach(d=>DL.push({c:d[0],n:d[1],na:d[2],i:d[3],pa:d[4],t:t,a:idade(d[2]),q:norm(d[1]+' '+d[0]+' '+t[2]+' '+(t[5]||''))})));DL.sort((a,b)=>a.n.localeCompare(b.n));
 const VID=T.map(t=>({c:t[0],n:t[2],na:t[3],i:t[4],t:t,tp:0,a:idade(t[3])})).concat(DL.map(d=>({c:d.c,n:d.n,na:d.na,i:d.i,t:d.t,tp:1,a:d.a,pa:d.pa})));
 const CCN='Desligados sem centro de custo anterior';
-const ALL=VID.map(v=>({pa:v.pa||'',c:v.c,n:v.n,tp:v.tp,i:v.i,b:'',m:-1,tn:v.tp?v.t[2]:'',tk:tkey(v.t),mat:v.t.p?v.t.p[0]:'',cc:v.t.p?v.t.p[15]:(v.t[11]||CCN),dem:!v.t.p,res:v.t[8]?v.t[8][0]:'',rd:''})).concat(X.map(x=>{const p=x[9]?PM.get(x[9]):null;return {pa:DATA.PAR[x[0]]||'',c:x[0],n:x[1],tp:x[2],i:x[3],b:x[4],m:x[5],tn:x[6],tk:p?'m:'+p[0]:'',mat:p?p[0]:'',cc:p?p[15]:(x[12]||CCN),dem:!p,res:x[10],rd:x[11]}}));
-ALL.forEach(a=>{a.base=a.c.slice(0,16);const p=!a.dem&&a.mat?PM.get(a.mat):null;a.cpf=p?p[7]:(DATA.CPF[a.base]||'');if(a.dem&&!a.mat&&DATA.MD[a.base])a.mat=DATA.MD[a.base];a.q=norm(a.n+' '+a.c+' '+a.tn+' '+a.mat+' '+a.cpf)});
+/* desligado: centro de custo de quando saiu, pela matrícula no Quadro do app (e não "sem centro de custo") */
+const QDM=(window.CRV_QB&&window.CRV_QB.DM)||{};
+const ccDL=m=>{const k=String(m==null?'':m).replace(/\D/g,'').replace(/^0+(?=\d)/,'');const d=k&&QDM[k];return d?((d[0]?d[0]+' - ':'')+d[1]):''};
+const ALL=VID.map(v=>({pa:v.pa||'',c:v.c,n:v.n,tp:v.tp,i:v.i,b:'',m:-1,tn:v.tp?v.t[2]:'',tk:tkey(v.t),mat:v.t.p?v.t.p[0]:'',cc:v.t.p?v.t.p[15]:(v.t[11]||ccDL(v.t[1])||ccDL(DATA.MD&&DATA.MD[v.t[0].slice(0,16)])||CCN),dem:!v.t.p,res:v.t[8]?v.t[8][0]:'',rd:''})).concat(X.map(x=>{const p=x[9]?PM.get(x[9]):null;return {pa:DATA.PAR[x[0]]||'',c:x[0],n:x[1],tp:x[2],i:x[3],b:x[4],m:x[5],tn:x[6],tk:p?'m:'+p[0]:'',mat:p?p[0]:'',cc:p?p[15]:(x[12]||ccDL(x[9])||ccDL(x[7])||CCN),dem:!p,res:x[10],rd:x[11]}}));
+ALL.forEach(a=>{a.base=a.c.slice(0,16);const p=!a.dem&&a.mat?PM.get(a.mat):null;a.cpf=p?p[7]:(DATA.CPF[a.base]||'');if(a.dem&&!a.mat&&DATA.MD[a.base])a.mat=DATA.MD[a.base];if(a.dem&&a.cc===CCN&&a.mat){const c=ccDL(a.mat);if(c)a.cc=c}a.q=norm(a.n+' '+a.c+' '+a.tn+' '+a.mat+' '+a.cpf)});
 const famSet=R=>{const m={};R.forEach(a=>m[a.base]=(m[a.base]||0)+1);R.forEach(a=>a.fam=m[a.base]);return R};
 const azSort=(x,y)=>(x.jr?1:0)-(y.jr?1:0)||(x.tp?x.tn:x.n).localeCompare(y.tp?y.tn:y.n)||x.base.localeCompare(y.base)||x.tp-y.tp||x.n.localeCompare(y.n);
 const ccSort=(x,y)=>(x.cc==CCN)-(y.cc==CCN)||x.cc.localeCompare(y.cc)||(x.tp?x.tn:x.n).localeCompare(y.tp?y.tn:y.n)||x.base.localeCompare(y.base)||x.tp-y.tp||x.n.localeCompare(y.n);

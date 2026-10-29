@@ -1756,13 +1756,14 @@ async function telaModelo(p, cfg, acao){
     if (p.id === 'absenteismo' && ehRH()) { try { const OC = await window.CRV_OC_RH(); if (OC) tplU = tplU.replace(/<head[^>]*>/i, h => h + '<script>window.CRV_OC=' + JSON.stringify(OC).replace(/</g, '\\u003c') + ';<\/script>'); } catch(e) { console.warn('absenteísmo', e); } }
     if (['unimed', 'uniodonto'].includes(PAC_DE[p.id] || p.id)) { // Unimed e Uniodonto cruzam com o Quadro atual do app
       try { const Q = await window.CRV_QUADRO(); if (Q && Q.mapa) {
-        const dig = v => String(v || '').replace(/\D/g, ''), P = [], DL = {};
+        const dig = v => String(v || '').replace(/\D/g, ''), P = [], DL = {}, DM = {};
         Object.entries(Q.mapa).forEach(([m, o]) => {
-          if (o.situacao === 'Desligado') { const c = dig(o.cpf); if (c && (!DL[c] || (o.deslig || '') > DL[c][0])) DL[c] = [o.deslig || '', o.cc || '', o.ccd || '', o.setor || '', o.nome || '']; return; }
+          if (o.situacao === 'Desligado') { const c = dig(o.cpf); if (c && (!DL[c] || (o.deslig || '') > DL[c][0])) DL[c] = [o.deslig || '', o.cc || '', o.ccd || '', o.setor || '', o.nome || ''];
+            if (o.cc || o.ccd) DM[m] = [o.cc || '', o.ccd || '', o.deslig || '']; return; }   // centro de custo de quando saiu, pela matrícula
           P.push([+m, o.nome, o.funcao, o.area, o.vinculo, o.situacao, o.admissao, dig(o.cpf), o.setor, o.gerencia, o.idade || '', o.nasc || '', o.cid || '', o.ccd || '', o.cc || '', o.fx === '' || o.fx == null ? '' : o.fx, o.cel || '']); });
         const rf = String(Q.referencia || ''), ref = /^\d{4}-\d{2}-\d{2}/.test(rf) ? rf.slice(8, 10) + '/' + rf.slice(5, 7) + '/' + rf.slice(0, 4) : rf;
         let DF = null; try { const H = await window.CRV_HIST('dep'); if (Object.keys(H).length > 1) { DF = { ref:H.__ref, c:{} }; Object.entries(H).forEach(([m, L]) => { if (m !== '__ref') L.forEach(d => { if (d[4]) DF.c[d[4]] = [d[0], d[2], +m]; }); }); } } catch(_) {}
-        const js = JSON.stringify({ P, DL, ref, DF }).replace(/</g, '\\u003c');
+        const js = JSON.stringify({ P, DL, DM, ref, DF }).replace(/</g, '\\u003c');
         tplU = tplU.replace(/<head[^>]*>/i, h => h + '<script>window.CRV_QB=' + js + ';<\/script>'); } } catch(_) {}
     }
     const html = montarModelo(tplU, d.conteudo, d.referencia, p, novos);
