@@ -1,6 +1,6 @@
 // Service worker: guarda o "esqueleto" do app (telas, painéis e bibliotecas) para abrir rápido e também sem internet.
 // Os DADOS não ficam aqui: o modo offline (js/offline.js) guarda uma cópia limpa e cifrada no IndexedDB.
-const CACHE = 'crv-gp-v346';
+const CACHE = 'crv-gp-v347';
 const ARQS = ['./', 'index.html', 'css/app.css', 'js/app.js', 'js/ponte.js', 'js/area-paineis.js', 'js/area-filtros.js', 'js/painel-filtros.js', 'js/importadores.js', 'js/risco.js', 'js/onboarding.js', 'js/desempenho.js', 'js/justa.js', 'js/aprendiz-pos.js', 'js/pdf-totais.js', 'js/relatorio.js', 'js/bases.js', 'js/cadastros.js', 'js/organograma.js', 'js/org-empresa.js', 'js/org-crv.js', 'js/dispensa.js', 'js/respostas.js', 'js/gestor.js', 'js/notificacoes.js', 'js/offline.js', 'config.js', 'img/logo-crv.png', 'img/logo-syspro.png', 'img/icone-192.png', 'manifest.webmanifest'].concat(["paineis/absenteismo-gestao.html", "paineis/absenteismo.html", "paineis/admissoes.html", "paineis/alojamentos.html", "paineis/cartao-adm.html", "paineis/cartoes.html", "paineis/clube.html", "paineis/conexao.html", "paineis/crachas.html", "paineis/curriculos.html", "paineis/experiencia.html", "paineis/fadiga.html", "paineis/farmacia.html", "paineis/fat.html", "paineis/ferias.html", "paineis/gratificacao.html", "paineis/jovem.html", "paineis/lideres.html", "paineis/onibus.html", "paineis/ouvidorias.html", "paineis/perfil.html", "paineis/pesquisas.html", "paineis/processos.html", "paineis/quadro.html", "paineis/rd.html", "paineis/recepcao.html", "paineis/renapsi.html", "paineis/rescisoes.html", "paineis/sancoes.html", "paineis/servicos-gerais.html", "paineis/sysprocard.html", "paineis/treinamentos.html", "paineis/unimed.html", "paineis/uniodonto.html"]);
 // bibliotecas de fora (CDN) e fontes: usadas pelo app e pelos painéis; ficam guardadas para abrir sem internet
 const CDN = /^https:\/\/(cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com|fonts\.googleapis\.com|fonts\.gstatic\.com|unpkg\.com)\//;
@@ -18,7 +18,8 @@ self.addEventListener('fetch', e => {
   if (CDN.test(e.request.url)) { e.respondWith(caches.open(CACHE).then(c => c.match(e.request, { ignoreVary:true }).then(m => { const rede = fetch(e.request).then(r => { if (r && (r.ok || r.type === 'opaque')) c.put(e.request, r.clone()); return r; }).catch(() => m || Response.error()); return m || rede; }))); return; }
   if (u.origin !== location.origin) return; // Supabase: o app cuida (js/offline.js)
   if (u.searchParams.has('t')) return; // conferência de versão: direto na rede, sem guardar
-  e.respondWith(fetch(e.request,{cache:'no-cache'}).then(r => { const c = r.clone(); caches.open(CACHE).then(k => k.put(e.request, c)); return r; })
+  // rede primeiro; resposta com erro (ex.: site fora do ar, 404) não substitui a cópia boa guardada
+  e.respondWith(fetch(e.request,{cache:'no-cache'}).then(r => { if (!r.ok) return caches.match(e.request).then(m => m || caches.match(e.request, { ignoreSearch:true })).then(m => m || r); const c = r.clone(); caches.open(CACHE).then(k => k.put(e.request, c)); return r; })
     .catch(() => caches.match(e.request).then(r => r || caches.match(e.request, { ignoreSearch:true })).then(r => r || (e.request.mode === 'navigate' ? caches.match('index.html') : Response.error()))));
 });
 self.addEventListener('message', e => { if (e.data === 'skip') self.skipWaiting(); });
