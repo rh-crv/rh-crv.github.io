@@ -18,7 +18,7 @@ const MOD = [ { k:'inde', n:'Aviso indenizado', tit:'Dispensa sem Justa Causa �
               { k:'trab', n:'Aviso trabalhado', tit:'Dispensa sem Justa Causa – Aviso Trabalhado', txt:'aviso trabalhado' },
               { k:'jc',   n:'Justa causa',      tit:'Dispensa por Justa Causa',                    txt:'por justa causa' },
               { k:'acordo', n:'Comum acordo',   tit:'Rescisão do Contrato por Comum Acordo',       txt:'por comum acordo entre as partes, nos termos do art. 484-A da CLT', acordo:true } ];
-/* frase principal da dispensa da empresa (comum acordo: o contrato é encerrado pelas duas partes e o colaborador também assina) */
+/* frase principal da dispensa da empresa (comum acordo: assinada só pela coordenação de RH, como as demais) */
 const frase = (M, f, nome, mat, data) => M.acordo
   ? 'O contrato de trabalho ' + (f ? 'da colaboradora ' : 'do colaborador ') + nome + ', matrícula ' + mat + ', está sendo encerrado no dia ' + data + ', ' + M.txt + '.'
   : (f ? 'A colaboradora ' : 'O colaborador ') + nome + ', matrícula ' + mat + ', está sendo ' + (f ? 'dispensada' : 'dispensado') + ' no dia ' + data + ', ' + M.txt + '.';
@@ -45,9 +45,9 @@ function montar(r, K){
     y = cabecalho(doc, M.tit, r.dataDoc);
     y = D.caixa(doc, y, [['Colaborador(a):', tc(r.nome)], ['Matrícula:', r.mat || '']]) - 3;
     y = D.caixa(doc, y, [['Cargo:', tc(r.cargo)], [M.acordo ? 'Encerramento:' : 'Dispensa:', brD(r.dataDisp) + ' · ' + M.n]]) + 4;
-    y = paragrafos(doc, [frase(M, fem, String(r.nome || '').toUpperCase(), r.mat || '', brD(r.dataDisp)), M.acordo ? 'Por estarem de acordo, as partes firmam o presente.' : 'Por ser verdade, firmo o presente.'], y, K, L, W);
+    y = paragrafos(doc, [frase(M, fem, String(r.nome || '').toUpperCase(), r.mat || '', brD(r.dataDisp)), 'Por ser verdade, firmo o presente.'], y, K, L, W);
     ass = r.ass && r.ass.length ? r.ass : [{ nome:'Michelle Patrícia Alves Pereira', cargo:'Coordenadora de RH' }];
-    if (M.acordo) ass = [{ nome:String(r.nome || '').toUpperCase(), cargo:(fem ? 'Colaboradora' : 'Colaborador') + ' · Matrícula ' + (r.mat || '') }].concat(ass); }
+  }   // comum acordo também: só a assinatura da coordenação de RH
   else { y = cabecalho(doc, 'Solicitação de Dispensa do Aviso Prévio Trabalhado', r.dataDoc);
     y = D.caixa(doc, y, [['Colaborador(a):', tc(r.nome)], ['Matrícula:', r.mat || '']]) - 3;
     y = D.caixa(doc, y, [['Cargo:', tc(r.cargo)], ['Início do aviso:', brD(r.dataAviso)]]) + 4;
@@ -99,7 +99,7 @@ async function abrir(){
       const g = s => m.querySelector(s), msg = t => { g('#dv-msg').textContent = t; };
       const ler = () => { const o = Object.assign({}, r, { mat:g('#dv-mat').value.replace(/\D/g, '').replace(/^0+(?=\d)/, '') }); m.querySelectorAll('[data-k]').forEach(e => o[e.dataset.k] = e.value.trim()); return o; };
       const prev = () => { const o = ler(), N = String(o.nome || '(nome)').toUpperCase();
-        if (o.doc === 'emp') { const M = MOD.find(x => x.k === o.mod), f = o.trat === 'a'; g('#dv-prev').innerHTML = `<b>${esc(M.tit)}</b><br>${esc(frase(M, f, N, o.mat || '(matrícula)', brD(o.dataDisp) || '(data)'))}<br>${M.acordo ? 'Por estarem de acordo, as partes firmam o presente.' : 'Por ser verdade, firmo o presente.'}<br><span style="color:var(--mut)">Assinatura: ${M.acordo ? 'colaborador(a) e coordenação de RH' : 'coordenação de RH'}</span>`; }
+        if (o.doc === 'emp') { const M = MOD.find(x => x.k === o.mod), f = o.trat === 'a'; g('#dv-prev').innerHTML = `<b>${esc(M.tit)}</b><br>${esc(frase(M, f, N, o.mat || '(matrícula)', brD(o.dataDisp) || '(data)'))}<br>${'Por ser verdade, firmo o presente.'}<br><span style="color:var(--mut)">Assinatura: coordenação de RH</span>`; }
         else g('#dv-prev').innerHTML = `<b>Solicitação de Dispensa do Aviso Prévio Trabalhado</b><br>Eu, ${esc(N)}, portador(a) do CPF ${esc(o.cpf || '(CPF)')} e matrícula ${esc(o.mat || '(matrícula)')}, … solicitar formalmente minha dispensa do cumprimento do aviso prévio trabalhado, iniciado em ${esc(brD(o.dataAviso) || '(data)')}. Por motivos ${esc(o.motivo)}, … desconto correspondente ao período não trabalhado …<br><span style="color:var(--mut)">Assinaturas: colaborador(a) e empresa</span>`; };
       const vis = () => { m.querySelectorAll('.dv-emp').forEach(e => e.style.display = r.doc === 'emp' ? '' : 'none'); m.querySelectorAll('.dv-ped').forEach(e => e.style.display = r.doc === 'ped' ? '' : 'none'); prev(); };
       const radios = (nm, k) => m.querySelectorAll(`[name=${nm}]`).forEach(i => i.onchange = () => { r[k] = i.value; i.closest('.dv-op').querySelectorAll('label').forEach(l => l.classList.toggle('on', l.querySelector('input').checked)); vis(); });
